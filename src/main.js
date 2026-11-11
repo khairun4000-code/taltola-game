@@ -62,7 +62,7 @@ const PLAYER_RADIUS = 0.34;
 const playerPos = new THREE.Vector3(-0.2, EYE_HEIGHT, 2.2);
 const savedCameraQuat = new THREE.Quaternion();
 
-let inStudio = true;
+let inStudio = false;
 let started = false;
 let verticalVelocity = 0;
 let grounded = true;
@@ -364,7 +364,8 @@ async function initialize() {
   applyQuality(quality);
   // Set default studio camera preset: Full Body view so both the straightened head and freed hands are immediately visible
   setStudioCameraPreset('full');
-  setMode(true);
+  const startInStudio = new URLSearchParams(window.location.search).get('studio') === '1';
+  setMode(startInStudio);
   syncHUDButtons(false, true);
 
   loadingBar.style.width = '100%';
