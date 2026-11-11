@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#141918" />
+    <meta name="description" content="3D Full Human Character Studio & Taltola Real-Place Game" />
+    <title>3D Character Studio & Taltola Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <canvas id="scene" aria-label="Interactive 3D Character Studio and Khulna Street Game"></canvas>
+    <div id="vignette" class="vignette hidden" aria-hidden="true"></div>
+
+    <section id="loading" class="loading-screen">
+      <div class="loading-mark">3D<span>/</span>HUMAN</div>
+      <p class="eyebrow">PREPARING 3D CHARACTER & STUDIO</p>
+      <div class="loading-track"><div id="loading-bar"></div></div>
+      <p id="loading-status">Loading 3D human mesh…</p>
+    </section>
+
+    <header id="hud-header" class="hud-header hidden">
+      <div class="brand">
+        <span class="brand-index">3D</span>
+        <div><strong id="brand-title">CHARACTER STUDIO</strong><small id="brand-subtitle">FULL HUMAN 3D MODEL · STANDALONE VIEW</small></div>
+      </div>
+      <div class="hud-actions">
+        <span id="fps" class="fps">— FPS</span>
+        <button id="studio-toggle-button" class="text-button" type="button">CHARACTER STUDIO <span>★</span></button>
+        <button id="run-toggle-button" class="text-button hidden" type="button">RUN: OFF <span>[SHIFT/R]</span></button>
+        <button id="camera-toggle-button" class="text-button hidden" type="button">VIEW: BACK <span>[V]</span></button>
+        <button id="gate-toggle-button" class="text-button hidden" type="button">OPEN DOORS <span>[G]</span></button>
+        <button id="reference-button" class="text-button" type="button">REFERENCE <span>↗</span></button>
+      </div>
+    </header>
+
+    <!-- STANDALONE 3D CHARACTER STUDIO UI -->
+    <section id="studio-panel" class="studio-panel hidden">
+      <div class="studio-card">
+        <p class="eyebrow"><span></span> 3D FULL HUMAN SHOWCASE</p>
+        <h2>আপনার 3D ক্যারেক্টার</h2>
+        <p class="studio-hint">মাউস ড্র্যাগ করে ৩৬০° ঘুরিয়ে দেখুন · স্ক্রল করে জুম করুন</p>
+
+        <div class="studio-group">
+          <label>ক্যামেরা অ্যাঙ্গেল (CAMERA VIEW)</label>
+          <div class="studio-btn-grid">
+            <button type="button" class="studio-chip active" data-cam="full">সম্পূর্ণ মানুষ (Full Body)</button>
+            <button type="button" class="studio-chip" data-cam="face">চেহারা ক্লোজ-আপ (Face)</button>
+            <button type="button" class="studio-chip" data-cam="side">সাইড ভিউ (Profile)</button>
+            <button type="button" class="studio-chip" data-cam="spin">৩৬০° ঘোরান (Spin)</button>
+          </div>
+        </div>
+
+        <div class="studio-group">
+          <label>অ্যানিমেশন টেস্ট (MOVEMENT · হাত বাইরে)</label>
+          <div class="studio-btn-grid">
+            <button type="button" class="studio-chip active" data-anim="idle">দাঁড়ানো · হাত বাইরে (Idle)</button>
+            <button type="button" class="studio-chip" data-anim="walk">হাঁটা (Walk)</button>
+            <button type="button" class="studio-chip" data-anim="run">দৌড়ানো (Run)</button>
+            <button type="button" class="studio-chip" data-anim="jump">লাফ (Jump)</button>
+            <button type="button" class="studio-chip" data-anim="fight">মারামারি (Fight)</button>
+          </div>
+        </div>
+
+        <div class="studio-group">
+          <label>স্টাইল ও ইমোট (STYLE & EMOTES · KEYBOARD P / 1–7)</label>
+          <div class="studio-btn-grid">
+            <button type="button" class="studio-chip" data-anim="pocket">[P / 7] হাত পকেটে স্টাইল (Pocket Pose)</button>
+            <button type="button" class="studio-chip" data-anim="dance1">[1] হিপ-হপ নাচ</button>
+            <button type="button" class="studio-chip" data-anim="dance2">[2] বিজয় নাচ</button>
+            <button type="button" class="studio-chip" data-anim="wave">[3] হাই / সালাম</button>
+            <button type="button" class="studio-chip" data-anim="kick">[4] ফ্লাইং কিক</button>
+            <button type="button" class="studio-chip" data-anim="combo">[5] বক্সিং কম্বো</button>
+            <button type="button" class="studio-chip" data-anim="flex">[6] বডি ফ্লেক্স</button>
+          </div>
+        </div>
+
+        <div class="studio-group">
+          <label>মাথার অবস্থান ও গ্রাফিক্স (GAZE & GRAPHICS)</label>
+          <div class="studio-btn-grid">
+            <button type="button" class="studio-chip active" data-gaze="straight">সোজা তাকানো (Straight)</button>
+            <button type="button" class="studio-chip" data-gaze="original">ছবির ভঙ্গি (Photo Pose)</button>
+            <select id="studio-quality" class="studio-chip" aria-label="Studio graphics quality">
+              <option value="low">Graphics: Low (Smooth)</option>
+              <option value="medium">Graphics: Medium</option>
+              <option value="high" selected>Graphics: High HD</option>
+              <option value="ultra">Graphics: Ultra 4K</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="studio-footer-row">
+          <button id="enter-street-button" class="primary-button" type="button">
+            <span>বাসা ও রাস্তার গেমে যান (PLAY GAME)</span><b>→</b>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <main id="intro" class="intro hidden">
+      <div class="intro-copy">
+        <p class="eyebrow"><span></span> A REAL-PLACE STUDY · 2013</p>
+        <h1>A street<br />remembered.</h1>
+        <p class="intro-description">Step into a familiar Khulna lane, rebuilt in real-time 3D from your Street View reference.</p>
+        <div class="entry-row">
+          <button id="enter-button" class="primary-button" type="button"><span>ENTER THE STREET</span><b>→</b></button>
+          <div class="quality-control">
+            <label for="quality">GRAPHICS</label>
+            <select id="quality" aria-label="Graphics quality">
+              <option value="low">Low (Smooth · No GPU)</option>
+              <option value="medium">Medium</option>
+              <option value="high" selected>High HD</option>
+              <option value="ultra">Ultra 4K</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="scene-caption"><span>22.7998° N</span><i></i><span>89.5741° E</span></div>
+    </main>
+
+    <section id="pause" class="pause-screen hidden">
+      <div class="pause-card">
+        <p class="eyebrow">EXPLORATION PAUSED</p>
+        <h2>Take another look.</h2>
+        <p>The street is waiting for you.</p>
+        <button id="resume-button" class="primary-button" type="button"><span>CONTINUE WALKING</span><b>→</b></button>
+        <div class="pause-settings">
+          <label for="pause-quality">GRAPHICS</label>
+          <select id="pause-quality" aria-label="Graphics quality while paused">
+            <option value="low">Low (Smooth · No GPU)</option>
+            <option value="medium">Medium</option>
+            <option value="high" selected>High HD</option>
+            <option value="ultra">Ultra 4K</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <div id="walk-hud" class="walk-hud hidden">
+      <div class="crosshair" aria-hidden="true"></div>
+      <div id="interact-prompt" class="interact-prompt hidden">[E] মেইন গেট খুলুন</div>
+      <div id="emote-bar" class="emote-bar">
+        <button type="button" id="run-pill-button" class="emote-pill"><kbd>SHIFT / R</kbd> দৌড়ানো (Run)</button>
+        <button type="button" class="emote-pill" data-game-emote="pocket"><kbd>P</kbd> হাত পকেটে স্টাইল</button>
+        <button type="button" class="emote-pill" data-game-emote="dance1"><kbd>1</kbd> হিপ-হপ নাচ</button>
+        <button type="button" class="emote-pill" data-game-emote="dance2"><kbd>2</kbd> বিজয় নাচ</button>
+        <button type="button" class="emote-pill" data-game-emote="wave"><kbd>3</kbd> সালাম/হাই</button>
+        <button type="button" class="emote-pill" data-game-emote="kick"><kbd>4</kbd> ফ্লাইং কিক</button>
+        <button type="button" class="emote-pill" data-game-emote="combo"><kbd>5</kbd> মারামারি কম্বো</button>
+        <button type="button" class="emote-pill" data-game-emote="flex"><kbd>6</kbd> বডি ফ্লেক্স</button>
+      </div>
+      <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360° ORBIT</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>SHIFT / R / 2×W</kbd> দৌড়ানো (RUN)</span><span><kbd>SPACE</kbd> JUMP</span><span><kbd>E</kbd> DOOR</span><span><kbd>P</kbd> POCKET</span><span><kbd>1-6</kbd> EMOTE</span><span><kbd>V</kbd> VIEW</span></div>
+      <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
+    </div>
+
+    <dialog id="reference-modal">
+      <div class="reference-topline"><div><p class="eyebrow">SOURCE MATERIAL</p><h2>The original view</h2></div><button id="close-reference" type="button" aria-label="Close reference">×</button></div>
+      <img src="/assets/reference-streetview.png" alt="Google Street View reference showing the house facade, gate and boundary wall" />
+      <div class="reference-footer"><span>Google Street View · September 2013</span><span>Visible details guided this reconstruction.</span></div>
+    </dialog>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
