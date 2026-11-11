@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 function diffTexture(loader, name, anisotropy) {
-  const texture = loader.load(`/assets/${name}-diff.jpg`);
+  const texture = loader.load(`./assets/${name}-diff.jpg`);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.anisotropy = anisotropy;
   texture.colorSpace = THREE.SRGBColorSpace;

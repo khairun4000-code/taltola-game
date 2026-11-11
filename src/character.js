@@ -462,7 +462,7 @@ export function createPlayerCharacter(scene, manager) {
   }
 
   const loader = new GLTFLoader(manager);
-  loader.load('/assets/character-source.glb?v=photoreal3', (gltf) => {
+  loader.load('./assets/character-source.glb?v=photoreal3', (gltf) => {
     let sourceMesh = null;
     gltf.scene.traverse((child) => {
       if (child.isMesh && !sourceMesh) sourceMesh = child;
