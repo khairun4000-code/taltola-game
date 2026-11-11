@@ -726,7 +726,9 @@ function computeGroundHeight(pos) {
 }
 
 function applyWorldCollisions(pos) {
-  pos.x = THREE.MathUtils.clamp(pos.x, -17.8, 21.05);
+  // Fakir Bari Lane (z 10.2..14.25) is walkable all the way down to x = -42; elsewhere keep the old west limit
+  const inFakirBariLane = pos.z > 10.0 && pos.z < 14.5;
+  pos.x = THREE.MathUtils.clamp(pos.x, inFakirBariLane ? -42.0 : -17.8, 21.05);
   pos.z = THREE.MathUtils.clamp(pos.z, -40, 40);
 
   const footY = pos.y - EYE_HEIGHT;
@@ -735,8 +737,11 @@ function applyWorldCollisions(pos) {
 
   for (let iter = 0; iter < 2; iter++) {
     // West Side Walls & 6-Story Building Terrace (leaves Fakir Bari Lane z = 10.2..14.2 open to walk!)
-    resolveCircleAABB(pos, PLAYER_RADIUS, -19.0, -2.92, -42.0, 10.22);
-    resolveCircleAABB(pos, PLAYER_RADIUS, -19.0, -3.02, 14.18, 42.0);
+    // North boundary wall of the lane + Sk Arshan Alif Tower plinth/old buildings on the south side
+    resolveCircleAABB(pos, PLAYER_RADIUS, -46.0, -2.92, -42.0, 10.22);
+    resolveCircleAABB(pos, PLAYER_RADIUS, -46.0, -3.22, 14.26, 42.0);
+    // Lane end building
+    resolveCircleAABB(pos, PLAYER_RADIUS, -46.0, -42.45, 9.0, 15.5);
 
     // East Side Yard & Street Boundary Walls (North of Taltola House & Taltola House Front Wall)
     resolveCircleAABB(pos, PLAYER_RADIUS, 2.06, 2.86, -42, -2.06);

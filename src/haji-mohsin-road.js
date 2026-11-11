@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
+import { createHajiMaterials, buildSkArshanTower, buildFakirBariLane } from './sk-arshan-tower.js';
 
 function createRedPaverTexture() {
   const canvas = document.createElement('canvas');
@@ -415,8 +416,9 @@ export function buildHajiMohsinRoad(parent, m) {
   dynamicGroup.name = 'HajiMohsinRoadSignboardsAndVehicles';
   parent.add(dynamicGroup);
 
-  const redPaverMat = new THREE.MeshLambertMaterial({ map: createRedPaverTexture() });
-  redPaverMat.userData.uvScale = 1.6;
+  // Photo-matched materials extracted from Street View (see sk-arshan-tower.js)
+  const hm = createHajiMaterials();
+  const redPaverMat = hm.pavers;
 
   const shutterMat = new THREE.MeshLambertMaterial({ map: createShutterTexture() });
   shutterMat.userData.uvScale = 1.8;
@@ -439,11 +441,11 @@ export function buildHajiMohsinRoad(parent, m) {
   // 1. RED-BRICK HERRINGBONE SIDEWALKS (লাল ইটের ফুটপাত) & MANHOLE COVERS
   // ============================================================================
   // East Sidewalk (z = 7.35 .. 42.0, x = 2.08 .. 3.28) right beside Taltola House
-  box(staticGroup, [1.22, 0.14, 34.6], [2.66, 0.02, 24.65], redPaverMat, { uvScale: 1.6 });
+  box(staticGroup, [1.22, 0.14, 34.6], [2.66, 0.02, 24.65], redPaverMat, { uvScale: 2.4 });
   // West Sidewalk North of Fakir Bari Lane (z = -40.0 .. 10.2, x = -2.08 .. -3.12)
-  box(staticGroup, [1.08, 0.14, 50.2], [-2.58, 0.02, -14.9], redPaverMat, { uvScale: 1.6 });
+  box(staticGroup, [1.08, 0.14, 50.2], [-2.58, 0.02, -14.9], redPaverMat, { uvScale: 2.4 });
   // West Sidewalk South of Fakir Bari Lane (z = 14.2 .. 42.0, x = -2.08 .. -3.28)
-  box(staticGroup, [1.22, 0.14, 27.8], [-2.66, 0.02, 28.1], redPaverMat, { uvScale: 1.6 });
+  box(staticGroup, [1.22, 0.14, 27.8], [-2.66, 0.02, 28.1], redPaverMat, { uvScale: 2.4 });
 
   // Concrete Storm-Drain Manhole Covers along both sidewalks (matching Street View)
   for (const [mx, mz] of [[2.28, 11.2], [2.28, 22.4], [2.28, 33.0], [-2.28, 8.2], [-2.28, 19.5], [-2.28, 31.0]]) {
@@ -454,37 +456,22 @@ export function buildHajiMohsinRoad(parent, m) {
   // ============================================================================
   // 2. FAKIR BARI LANE — WALKABLE CONCRETE SIDE ALLEY (পশ্চিম পাশের গলি: z = 10.2..14.2)
   // ============================================================================
-  // Smooth cast-in-place concrete pavement extending from x = -2.05 to x = -18.5
-  box(staticGroup, [16.6, 0.13, 4.0], [-10.35, 0.015, 12.2], m.concrete, { uvScale: 2.8 });
+  // Rebuilt 1:1 from Street View: concrete paving, real weathered wall, rubble, old buildings down the lane
+  buildFakirBariLane(staticGroup, m, hm);
   // Red-brick threshold apron where the side alley meets Haji Mohsin Road
-  box(staticGroup, [1.10, 0.14, 4.0], [-2.58, 0.02, 12.2], redPaverMat, { uvScale: 1.5 });
-  // End of alley residential building backdrop at x = -18.6
-  box(staticGroup, [2.4, 9.8, 12.0], [-19.5, 4.9, 12.2], m.warmPlaster);
-  for (const fy of [1.6, 4.6, 7.6]) {
-    box(staticGroup, [0.35, 0.18, 4.5], [-18.2, fy + 0.8, 12.2], m.trim);
-    box(staticGroup, [0.12, 1.3, 1.8], [-18.28, fy, 12.2], m.glass);
-  }
+  box(staticGroup, [1.10, 0.14, 4.0], [-2.58, 0.02, 12.2], redPaverMat, { uvScale: 2.4 });
 
   // ============================================================================
   // 3. WEATHERED BRICK & PLASTER WALL + BLUE/YELLOW WALL ADS (z = -10.0 .. +10.2)
   // ============================================================================
   // Main aged boundary wall along x = -3.12 (z = -10.0 .. +10.2)
-  box(staticGroup, [0.28, 2.15, 20.2], [-3.12, 1.075, 0.1], m.wall, { uvScale: 2.2 });
+  box(staticGroup, [0.28, 2.15, 20.2], [-3.12, 1.075, 0.1], hm.weatheredWall);
   box(staticGroup, [0.36, 0.10, 20.3], [-3.12, 2.18, 0.1], m.darkConcrete);
-  // Return wall turning West along the north side of Fakir Bari Lane (z = 10.1, x = -3.12 .. -18.2)
-  box(staticGroup, [15.1, 2.15, 0.26], [-10.65, 1.075, 10.08], m.wall, { uvScale: 2.2 });
-  box(staticGroup, [15.2, 0.10, 0.34], [-10.65, 2.18, 10.08], m.darkConcrete);
-
-  // Exposed brick patches & painted Blue and Yellow advertising rectangles on the wall (from Street View!)
-  box(staticGroup, [0.04, 0.78, 1.45], [-2.97, 0.96, 8.95], adBlueMat);
-  box(staticGroup, [0.04, 0.82, 1.85], [-2.97, 1.02, 5.45], adYellowMat);
-  box(staticGroup, [0.04, 0.72, 1.55], [-2.97, 0.88, -1.8], adBlueMat);
-  box(staticGroup, [0.03, 0.65, 1.90], [-2.98, 0.55, 7.20], m.brick);
-  box(staticGroup, [0.03, 0.55, 2.10], [-2.98, 0.48, 2.10], m.brick);
+  // (Lane-side return wall, blue/yellow paint patches & exposed brick are now part of the real photo texture)
 
   // Brick pillars along the weathered wall + wire mesh fence posts on top
   for (let z = -9.8; z <= 10.1; z += 3.3) {
-    box(staticGroup, [0.40, 2.26, 0.38], [-3.10, 1.13, z], m.concrete);
+    box(staticGroup, [0.40, 2.26, 0.38], [-3.10, 1.13, z], hm.weatheredWall);
     rodBetween(staticGroup, [-3.08, 2.20, z], [-3.08, 2.75, z], 0.018, m.darkMetal, 6);
   }
   rodBetween(staticGroup, [-3.08, 2.48, -9.8], [-3.08, 2.48, 10.1], 0.012, m.darkMetal, 6);
@@ -500,17 +487,17 @@ export function buildHajiMohsinRoad(parent, m) {
     // White/blue paper flyers wrapped around the lower pole
     cylinder(staticGroup, 0.135, 0.145, 2.1, [-2.26, 1.25, pz], m.whiteBand, 10);
   }
-  const mcskSignMat = new THREE.MeshBasicMaterial({ map: createPoleSignTexture('mcsk'), side: THREE.DoubleSide });
-  const shetuSignMat = new THREE.MeshBasicMaterial({ map: createPoleSignTexture('shetu'), side: THREE.DoubleSide });
+  const mcskSignMat = hm.signMcsk;
+  const shetuSignMat = hm.signShetu;
 
-  const mcskSign = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.96), mcskSignMat);
+  const mcskSign = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 1.22), mcskSignMat);
   mcskSign.rotation.y = Math.PI / 2;
-  mcskSign.position.set(-2.12, 2.78, 9.15);
+  mcskSign.position.set(-2.12, 3.15, 9.15);
   dynamicGroup.add(mcskSign);
 
-  const shetuSign = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.96), shetuSignMat);
+  const shetuSign = new THREE.Mesh(new THREE.PlaneGeometry(0.86, 1.2), shetuSignMat);
   shetuSign.rotation.y = Math.PI / 2;
-  shetuSign.position.set(-2.12, 2.78, 9.95);
+  shetuSign.position.set(-2.12, 3.2, 9.95);
   dynamicGroup.add(shetuSign);
 
   // Older 2-story house visible behind the weathered wall & mango trees (x = -7.8, z = 4.5)
@@ -518,78 +505,9 @@ export function buildHajiMohsinRoad(parent, m) {
   box(staticGroup, [6.8, 0.25, 9.1], [-8.2, 6.45, 4.2], m.darkConcrete);
 
   // ============================================================================
-  // 4. MODERN 6-STORY WHITE & BLACK-GRANITE CORNER BUILDING (z = 14.3 .. 28.2, x = -3.3 .. -15.2)
+  // 4. SK ARSHAN ALIF TOWER — 35 HAJI MOHSIN RD (G+9, rebuilt 1:1 from Street View)
   // ============================================================================
-  // Raised Black-Granite Front & Corner Terrace Platform + Stainless Steel Railings
-  box(staticGroup, [1.45, 0.52, 13.8], [-3.75, 0.26, 21.2], graniteMat);
-  for (const ry of [0.68, 0.84, 1.00]) {
-    rodBetween(staticGroup, [-3.12, ry, 14.35], [-3.12, ry, 19.2], 0.018, m.chrome, 8);
-    rodBetween(staticGroup, [-3.12, ry, 22.8], [-3.12, ry, 28.0], 0.018, m.chrome, 8);
-    rodBetween(staticGroup, [-3.12, ry, 14.35], [-4.45, ry, 14.35], 0.018, m.chrome, 8);
-  }
-  for (const rz of [14.35, 16.0, 17.6, 19.2, 22.8, 24.5, 26.2, 28.0]) {
-    rodBetween(staticGroup, [-3.12, 0.52, rz], [-3.12, 1.04, rz], 0.022, m.chrome, 8);
-  }
-
-  // Ground-Floor Core Clad in Polished Black Granite Tiles (y = 0 .. 3.2)
-  box(staticGroup, [10.8, 3.25, 13.6], [-9.6, 1.625, 21.2], graniteMat, { uvScale: 1.5 });
-  // Grey Vertical Steel Security Grilles on Ground Floor (Front & Corner)
-  for (let gz = 15.2; gz <= 18.4; gz += 0.16) {
-    rodBetween(staticGroup, [-4.16, 0.52, gz], [-4.16, 2.95, gz], 0.014, m.rail, 6);
-  }
-  for (let gz = 19.6; gz <= 22.5; gz += 0.16) {
-    rodBetween(staticGroup, [-4.16, 0.20, gz], [-4.16, 2.95, gz], 0.014, m.rail, 6);
-  }
-  // Red Corrugated Roll-Down Shutter & Side Alley Doorways facing Fakir Bari Lane (z = 14.38)
-  const redShutterMat = new THREE.MeshLambertMaterial({ color: 0x8c2d27 });
-  box(staticGroup, [2.6, 2.55, 0.08], [-7.8, 1.45, 14.36], redShutterMat);
-  for (const ax of [-10.8, -12.8, -14.4]) {
-    box(staticGroup, [1.15, 2.40, 0.10], [ax, 1.38, 14.36], m.darkMetal);
-  }
-
-  // Upper 5 Floors (Levels 1..5, y = 3.25 .. 18.5) in Crisp Modern White Stucco & Grey Alcoves
-  box(staticGroup, [10.6, 15.25, 13.4], [-9.6, 10.875, 21.2], modernStuccoMat);
-  // Side facade grey architectural frame facing Fakir Bari Lane (z = 14.45)
-  box(staticGroup, [7.8, 15.1, 0.22], [-10.6, 10.85, 14.45], modernGreyMat);
-
-  for (let lvl = 0; lvl < 5; lvl++) {
-    const fy = 3.25 + lvl * 3.05;
-    // Cantilevered Front & Corner Balcony Slabs (extending out to x = -2.85, z = 13.85..28.0)
-    box(staticGroup, [1.65, 0.22, 13.6], [-3.65, fy, 21.2], modernStuccoMat);
-    // White vertical balcony divider piers
-    for (const pz of [14.4, 18.8, 23.4, 27.9]) {
-      box(staticGroup, [1.55, 3.05, 0.24], [-3.65, fy + 1.52, pz], modernStuccoMat);
-    }
-    // Blue-tinted Glass & Brushed Chrome Balcony Railings
-    box(staticGroup, [0.05, 0.88, 13.2], [-2.92, fy + 0.56, 21.2], blueGlassMat);
-    rodBetween(staticGroup, [-2.90, fy + 1.04, 14.4], [-2.90, fy + 1.04, 27.9], 0.022, m.chrome, 8);
-    // Corner Balcony Wrap facing Fakir Bari Lane (z = 13.95, x = -2.90 .. -5.80)
-    box(staticGroup, [2.95, 0.22, 0.95], [-4.35, fy, 14.05], modernStuccoMat);
-    for (let rx = -2.95; rx >= -5.75; rx -= 0.18) {
-      rodBetween(staticGroup, [rx, fy + 0.12, 13.62], [rx, fy + 1.05, 13.62], 0.012, m.chrome, 6);
-    }
-    rodBetween(staticGroup, [-2.95, fy + 1.05, 13.62], [-5.75, fy + 1.05, 13.62], 0.022, m.chrome, 8);
-
-    // Sliding Blue-Glass Balcony Doors & Windows
-    for (const wz of [16.6, 21.1, 25.6]) {
-      box(staticGroup, [0.10, 2.15, 2.25], [-4.26, fy + 1.18, wz], blueGlassMat);
-    }
-    // Side Alley Windows (along z = 14.32)
-    for (const wx of [-8.2, -11.4, -13.8]) {
-      box(staticGroup, [1.45, 1.35, 0.10], [wx, fy + 1.55, 14.32], blueGlassMat);
-      box(staticGroup, [1.65, 0.12, 0.42], [wx, fy + 2.32, 14.18], modernStuccoMat);
-    }
-    // Split AC Outdoor Compressor Units inside balconies
-    box(staticGroup, [0.34, 0.52, 0.74], [-4.05, fy + 2.25, 18.2], m.whiteBand);
-    cylinder(staticGroup, 0.18, 0.18, 0.36, [-4.05, fy + 2.25, 18.1], m.darkMetal, 10).rotation.z = Math.PI / 2;
-  }
-
-  // Colorful Bengali Academy Vinyl Banner hung on 1st-Floor Corner Balcony (facing Fakir Bari Lane / Street)
-  const bannerMat = new THREE.MeshBasicMaterial({ map: createBalconyBannerTexture(), side: THREE.DoubleSide });
-  const cornerBanner = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 0.82), bannerMat);
-  cornerBanner.position.set(-4.35, 3.82, 13.58);
-  cornerBanner.rotation.y = Math.PI; // Faces North toward the alley & oncoming player!
-  dynamicGroup.add(cornerBanner);
+  buildSkArshanTower(staticGroup, dynamicGroup, m, hm);
 
   // ============================================================================
   // 5. EAST SIDE: PLANTER BOX, SAGO PALMS & TALL CONICAL PINE/THUJA TREE (z = 7.4..11.2)
@@ -764,8 +682,8 @@ export function buildHajiMohsinRoad(parent, m) {
   // Parked Blue & Black Motorcycle on the West Sidewalk in front of the 6-Story Building
   buildParkedMotorcycle(staticGroup, m, -2.52, 18.2);
 
-  // Traditional Khulna Cycle Rickshaw on Haji Mohsin Road
-  buildCycleRickshaw(staticGroup, m, -0.95, 13.0);
+  // Traditional Khulna Cycle Rickshaw further south on Haji Mohsin Road
+  buildCycleRickshaw(staticGroup, m, 0.85, 31.0);
 
   mergeStaticMeshes(staticGroup);
 }
