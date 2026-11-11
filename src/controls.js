@@ -28,29 +28,41 @@ export class FirstPersonControls extends EventTarget {
     domElement.addEventListener('contextmenu', (event) => event.preventDefault());
   }
 
-  async lock() {
-    if (this.fallback) {
-      this.enableFallback();
-      return;
+  syncRotationFromCamera() {
+    this.euler.setFromQuaternion(this.camera.quaternion, 'YXZ');
+  }
+
+  getHorizontalVectors(forward, right) {
+    this.camera.getWorldDirection(forward);
+    forward.y = 0;
+    if (forward.lengthSq() > 1e-6) {
+      forward.normalize();
+    } else {
+      forward.set(1, 0, 0);
     }
-    const fallbackTimer = setTimeout(() => {
-      if (!this.isLocked) this.enableFallback();
-    }, 500);
+    right.crossVectors(forward, this.camera.up).normalize();
+  }
+
+  async lock() {
+    // Activate immediately in fallback mode first so WASD & UI start with zero delay,
+    // then upgrade to full pointer lock if the browser grants it.
+    if (!this.isLocked) {
+      this.enableFallback();
+    }
     try {
       if (!this.domElement.requestPointerLock) {
-        this.enableFallback();
         return;
       }
       const request = this.domElement.requestPointerLock();
       if (request?.then) {
         await request;
-        if (document.pointerLockElement === this.domElement) this.activate(true);
-        else if (!this.isLocked) this.enableFallback();
+        if (document.pointerLockElement === this.domElement) {
+          this.fallback = false;
+          this.activate(true);
+        }
       }
     } catch {
-      this.enableFallback();
-    } finally {
-      clearTimeout(fallbackTimer);
+      if (!this.isLocked) this.enableFallback();
     }
   }
 
@@ -111,9 +123,9 @@ export class FirstPersonControls extends EventTarget {
     const movementY = this.fallback ? event.clientY - this.lastY : event.movementY;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
-    this.euler.setFromQuaternion(this.camera.quaternion);
-    this.euler.y -= movementX * 0.002;
-    this.euler.x = THREE.MathUtils.clamp(this.euler.x - movementY * 0.002, -Math.PI / 2 + 0.02, Math.PI / 2 - 0.02);
+    this.euler.setFromQuaternion(this.camera.quaternion, 'YXZ');
+    this.euler.y -= movementX * 0.0022;
+    this.euler.x = THREE.MathUtils.clamp(this.euler.x - movementY * 0.0022, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05);
     this.camera.quaternion.setFromEuler(this.euler);
   }
 

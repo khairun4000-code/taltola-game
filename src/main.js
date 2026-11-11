@@ -439,6 +439,10 @@ canvas.addEventListener('pointerdown', (event) => {
     canvas.setPointerCapture?.(event.pointerId);
     return;
   }
+  if (!controls.isLocked) {
+    beginWalking();
+    return;
+  }
   if (event.button === 0 && controls.pointerLocked) {
     if (house?.getPrompt(playerPos)) {
       handleDoorInteraction();
@@ -476,8 +480,8 @@ canvas.addEventListener('wheel', (event) => {
 }, { passive: false });
 
 function beginWalking() {
-  if (!ready) return;
   if (!started) {
+    started = true;
     playerPos.set(-0.2, EYE_HEIGHT, 0.8);
     camera.position.copy(playerPos);
     camera.lookAt(5.0, 2.0, 0);
@@ -486,6 +490,9 @@ function beginWalking() {
       playerCharacter.state.facingYaw = controls.euler.y + Math.PI;
     }
   }
+  intro?.classList.add('hidden');
+  pause?.classList.add('hidden');
+  walkHud?.classList.remove('hidden');
   controls.lock();
 }
 
@@ -901,7 +908,7 @@ function updateStudioCamera(delta) {
 }
 
 function updateMovement(delta) {
-  if (!controls.isLocked) return;
+  if (!started || (pause && !pause.classList.contains('hidden'))) return;
 
   const turnInput = Number(keys.has('KeyQ'));
   if (turnInput !== 0) {
@@ -1056,7 +1063,12 @@ function animate() {
   fpsFrames++;
   const now = performance.now();
   if (now - fpsTime > 800) {
-    fpsLabel.textContent = `${Math.round((fpsFrames * 1000) / (now - fpsTime))} FPS`;
+    const currentFps = Math.round((fpsFrames * 1000) / (now - fpsTime));
+    fpsLabel.textContent = `${currentFps} FPS`;
+    // Auto-adapt to Low (No GPU) mode if a machine without a GPU drops below 20 FPS
+    if (ready && currentFps < 20 && quality !== 'low') {
+      applyQuality('low');
+    }
     fpsFrames = 0;
     fpsTime = now;
   }

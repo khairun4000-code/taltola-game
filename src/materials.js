@@ -9,12 +9,10 @@ function diffTexture(loader, name, anisotropy) {
 }
 
 function tiledMaterial(diffMap, options = {}) {
-  const material = new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshLambertMaterial({
     map: diffMap,
     bumpMap: diffMap,
     bumpScale: options.bumpScale ?? 0.006,
-    roughness: options.roughness ?? 0.78,
-    metalness: options.metalness ?? 0.04,
     color: options.color ?? 0xffffff,
     emissive: options.emissive ?? 0x000000,
     side: THREE.FrontSide,

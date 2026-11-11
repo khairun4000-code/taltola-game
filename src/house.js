@@ -461,7 +461,7 @@ function buildAttachedBathroom(staticGroup, m, fy, side) {
  * Builds the complete interior architecture, stairs, rooms, bathrooms, and furniture
  * for ALL 5 FLOORS (levels 0..4: y = 0, 3.05, 6.10, 9.15, 12.20) + Rooftop access (y = 15.25).
  */
-function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans, flatDoors) {
+function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans, flatDoors, floorInteriors) {
   const levelBaseYs = [0, 3.05, 6.10, 9.15, 12.20];
   const wallH = 2.96;
 
@@ -655,133 +655,142 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
 
     // ==========================================================================
     // 5. INTERIOR ROOM & BATHROOM PARTITIONS (for both Unit A & Unit B)
+    // Put each floor's interior rooms & furniture into its own culled group!
     // ==========================================================================
+    const floorInterior = new THREE.Group();
+    floorInterior.name = `FloorInterior_${lvl}`;
+
     for (const side of [-1, 1]) {
       // Partition 1 at x = 9.65 (separates Front Living/Dining from Bathroom + Inner Passage)
       // Doorway at z ∈ [side*1.35, side*2.40] so player can walk freely between Front Room, Bathroom & Bedroom!
-      box(staticGroup, [0.15, wallH, 2.86], [9.65, midY, side * 3.83], m.roomWall);
-      box(staticGroup, [0.15, 0.68, 1.15], [9.65, fy + 2.62, side * 1.82], m.roomWall);
+      box(floorInterior, [0.15, wallH, 2.86], [9.65, midY, side * 3.83], m.roomWall);
+      box(floorInterior, [0.15, 0.68, 1.15], [9.65, fy + 2.62, side * 1.82], m.roomWall);
 
       // Partition 2 at x = 11.45 (separates Bathroom from Rear Bedroom/Kitchen)
       // Doorway at z ∈ [side*1.35, side*2.40]
-      box(staticGroup, [0.15, wallH, 2.86], [11.45, midY, side * 3.83], m.roomWall);
-      box(staticGroup, [0.15, 0.68, 1.15], [11.45, fy + 2.62, side * 1.82], m.roomWall);
+      box(floorInterior, [0.15, wallH, 2.86], [11.45, midY, side * 3.83], m.roomWall);
+      box(floorInterior, [0.15, 0.68, 1.15], [11.45, fy + 2.62, side * 1.82], m.roomWall);
 
       // Bathroom Front Wall at z = side * 2.55 (between x = 9.65 and x = 11.45)
       // Bathroom Doorway at x = 10.10 .. 11.00 (center 10.55, width 0.90m)
-      box(staticGroup, [0.46, wallH, 0.14], [9.88, midY, side * 2.55], m.roomWall);
-      box(staticGroup, [0.46, wallH, 0.14], [11.22, midY, side * 2.55], m.roomWall);
-      box(staticGroup, [0.90, 0.72, 0.14], [10.55, fy + 2.60, side * 2.55], m.roomWall);
-      box(staticGroup, [0.06, 2.24, 0.17], [10.10, fy + 1.12, side * 2.55], m.wood);
-      box(staticGroup, [0.06, 2.24, 0.17], [11.00, fy + 1.12, side * 2.55], m.wood);
-      box(staticGroup, [0.96, 0.06, 0.17], [10.55, fy + 2.24, side * 2.55], m.wood);
+      box(floorInterior, [0.46, wallH, 0.14], [9.88, midY, side * 2.55], m.roomWall);
+      box(floorInterior, [0.46, wallH, 0.14], [11.22, midY, side * 2.55], m.roomWall);
+      box(floorInterior, [0.90, 0.72, 0.14], [10.55, fy + 2.60, side * 2.55], m.roomWall);
+      box(floorInterior, [0.06, 2.24, 0.17], [10.10, fy + 1.12, side * 2.55], m.wood);
+      box(floorInterior, [0.06, 2.24, 0.17], [11.00, fy + 1.12, side * 2.55], m.wood);
+      box(floorInterior, [0.96, 0.06, 0.17], [10.55, fy + 2.24, side * 2.55], m.wood);
 
       // Build the complete Attached Bathroom (বাথরুম)
-      buildAttachedBathroom(staticGroup, m, fy, side);
+      buildAttachedBathroom(floorInterior, m, fy, side);
     }
 
     // ==========================================================================
     // 6. FURNISH UNIT A: DRAWING / LIVING ROOM (x = 6.20..9.55, z = -5.25..-1.25)
     // ==========================================================================
     // Woven Carpet Rug
-    box(staticGroup, [2.15, 0.02, 1.85], [7.85, fy + 0.09, -3.55], m.rugMat);
+    box(floorInterior, [2.15, 0.02, 1.85], [7.85, fy + 0.09, -3.55], m.rugMat);
     // 3-Seater Plush Teal Sofa along left wall (z = -4.82)
-    box(staticGroup, [2.05, 0.40, 0.76], [7.85, fy + 0.28, -4.78], m.sofaFabric);
-    box(staticGroup, [2.05, 0.52, 0.18], [7.85, fy + 0.66, -5.08], m.sofaFabric);
-    box(staticGroup, [0.18, 0.36, 0.76], [6.88, fy + 0.50, -4.78], m.sofaFabric);
-    box(staticGroup, [0.18, 0.36, 0.76], [8.82, fy + 0.50, -4.78], m.sofaFabric);
+    box(floorInterior, [2.05, 0.40, 0.76], [7.85, fy + 0.28, -4.78], m.sofaFabric);
+    box(floorInterior, [2.05, 0.52, 0.18], [7.85, fy + 0.66, -5.08], m.sofaFabric);
+    box(floorInterior, [0.18, 0.36, 0.76], [6.88, fy + 0.50, -4.78], m.sofaFabric);
+    box(floorInterior, [0.18, 0.36, 0.76], [8.82, fy + 0.50, -4.78], m.sofaFabric);
     for (const cx of [7.28, 7.85, 8.42]) {
-      box(staticGroup, [0.40, 0.28, 0.14], [cx, fy + 0.60, -4.88], m.cushionMat);
+      box(floorInterior, [0.40, 0.28, 0.14], [cx, fy + 0.60, -4.88], m.cushionMat);
     }
     // Center Wooden Coffee Table with Porcelain Teacups
-    box(staticGroup, [1.12, 0.05, 0.60], [7.85, fy + 0.45, -3.55], m.wood);
+    box(floorInterior, [1.12, 0.05, 0.60], [7.85, fy + 0.45, -3.55], m.wood);
     for (const [lx, lz] of [[7.36, -3.80], [8.34, -3.80], [7.36, -3.30], [8.34, -3.30]]) {
-      box(staticGroup, [0.05, 0.38, 0.05], [lx, fy + 0.24, lz], m.wood);
+      box(floorInterior, [0.05, 0.38, 0.05], [lx, fy + 0.24, lz], m.wood);
     }
-    cylinder(staticGroup, 0.045, 0.035, 0.07, [7.72, fy + 0.51, -3.52], m.porcelain, 10);
-    cylinder(staticGroup, 0.045, 0.035, 0.07, [7.98, fy + 0.51, -3.58], m.porcelain, 10);
+    cylinder(floorInterior, 0.045, 0.035, 0.07, [7.72, fy + 0.51, -3.52], m.porcelain, 10);
+    cylinder(floorInterior, 0.045, 0.035, 0.07, [7.98, fy + 0.51, -3.58], m.porcelain, 10);
 
     // 55" 4K Smart TV & Media Unit on partition wall x = 9.55 (facing -X toward the sofa & room!)
-    buildSmartTVUnit(staticGroup, m, { x: 9.56, fy, z: -3.65, faceDir: -1 });
+    buildSmartTVUnit(floorInterior, m, { x: 9.56, fy, z: -3.65, faceDir: -1 });
 
     // Framed Landscape Painting on Front Wall & Window Curtains
-    box(staticGroup, [0.04, 0.68, 0.96], [6.22, fy + 1.62, -3.28], m.wood);
-    box(staticGroup, [0.05, 0.60, 0.88], [6.23, fy + 1.62, -3.28], m.wallArt);
-    box(staticGroup, [0.22, 1.85, 0.08], [6.95, fy + 1.52, -5.20], m.curtainMat);
-    box(staticGroup, [0.22, 1.85, 0.08], [8.95, fy + 1.52, -5.20], m.curtainMat);
+    box(floorInterior, [0.04, 0.68, 0.96], [6.22, fy + 1.62, -3.28], m.wood);
+    box(floorInterior, [0.05, 0.60, 0.88], [6.23, fy + 1.62, -3.28], m.wallArt);
+    box(floorInterior, [0.22, 1.85, 0.08], [6.95, fy + 1.52, -5.20], m.curtainMat);
+    box(floorInterior, [0.22, 1.85, 0.08], [8.95, fy + 1.52, -5.20], m.curtainMat);
     // Glowing Ceiling LED Panel & Fan
-    box(staticGroup, [0.55, 0.04, 0.55], [7.85, fy + 2.89, -3.45], m.lamp);
-    createCeilingFan(lvl === 0 ? dynamicParent : staticGroup, [7.85, fy + 2.88, -3.45], m, lvl === 0 ? animatedFans : null);
+    box(floorInterior, [0.55, 0.04, 0.55], [7.85, fy + 2.89, -3.45], m.lamp);
+    createCeilingFan(lvl === 0 ? dynamicParent : floorInterior, [7.85, fy + 2.88, -3.45], m, lvl === 0 ? animatedFans : null);
 
     // ==========================================================================
     // 7. FURNISH UNIT A: MASTER BEDROOM (x = 11.55..14.18, z = -5.25..-1.25)
     // ==========================================================================
     // King-size Wooden Bed against left-back wall
-    box(staticGroup, [1.95, 0.30, 1.80], [12.85, fy + 0.23, -4.18], m.wood);
-    box(staticGroup, [1.85, 0.18, 1.70], [12.85, fy + 0.45, -4.15], m.mattressMat);
-    box(staticGroup, [1.87, 0.19, 1.02], [12.85, fy + 0.46, -3.78], m.blanketMat);
-    box(staticGroup, [1.98, 1.02, 0.10], [12.85, fy + 0.60, -5.04], m.wood);
+    box(floorInterior, [1.95, 0.30, 1.80], [12.85, fy + 0.23, -4.18], m.wood);
+    box(floorInterior, [1.85, 0.18, 1.70], [12.85, fy + 0.45, -4.15], m.mattressMat);
+    box(floorInterior, [1.87, 0.19, 1.02], [12.85, fy + 0.46, -3.78], m.blanketMat);
+    box(floorInterior, [1.98, 1.02, 0.10], [12.85, fy + 0.60, -5.04], m.wood);
     for (const px of [12.42, 13.28]) {
-      box(staticGroup, [0.62, 0.13, 0.36], [px, fy + 0.58, -4.68], m.porcelain);
+      box(floorInterior, [0.62, 0.13, 0.36], [px, fy + 0.58, -4.68], m.porcelain);
     }
     // Bedside Nightstand with Glowing Lamp
-    box(staticGroup, [0.42, 0.48, 0.42], [11.72, fy + 0.32, -4.85], m.wood);
-    cylinder(staticGroup, 0.10, 0.14, 0.22, [11.72, fy + 0.68, -4.85], m.lamp, 10);
+    box(floorInterior, [0.42, 0.48, 0.42], [11.72, fy + 0.32, -4.85], m.wood);
+    cylinder(floorInterior, 0.10, 0.14, 0.22, [11.72, fy + 0.68, -4.85], m.lamp, 10);
     // Wooden Wardrobe / Almirah with Full-Length Dressing Mirror
-    box(staticGroup, [0.54, 2.02, 1.18], [11.82, fy + 1.08, -3.15], m.wood);
-    box(staticGroup, [0.56, 1.48, 0.44], [11.82, fy + 1.15, -3.15], m.mirrorMat);
+    box(floorInterior, [0.54, 2.02, 1.18], [11.82, fy + 1.08, -3.15], m.wood);
+    box(floorInterior, [0.56, 1.48, 0.44], [11.82, fy + 1.15, -3.15], m.mirrorMat);
     // Bedroom Curtains, Ceiling LED Panel & Fan
-    box(staticGroup, [0.22, 1.85, 0.08], [11.80, fy + 1.52, -5.20], m.curtainMat);
-    box(staticGroup, [0.22, 1.85, 0.08], [13.55, fy + 1.52, -5.20], m.curtainMat);
-    box(staticGroup, [0.55, 0.04, 0.55], [12.85, fy + 2.89, -3.35], m.lamp);
-    createCeilingFan(lvl === 0 ? dynamicParent : staticGroup, [12.85, fy + 2.88, -3.35], m, lvl === 0 ? animatedFans : null);
+    box(floorInterior, [0.22, 1.85, 0.08], [11.80, fy + 1.52, -5.20], m.curtainMat);
+    box(floorInterior, [0.22, 1.85, 0.08], [13.55, fy + 1.52, -5.20], m.curtainMat);
+    box(floorInterior, [0.55, 0.04, 0.55], [12.85, fy + 2.89, -3.35], m.lamp);
+    createCeilingFan(lvl === 0 ? dynamicParent : floorInterior, [12.85, fy + 2.88, -3.35], m, lvl === 0 ? animatedFans : null);
 
     // ==========================================================================
     // 8. FURNISH UNIT B: DINING & FAMILY LOUNGE (x = 6.20..9.55, z = +1.25..+5.25)
     // ==========================================================================
     // 6-Seater Wooden Dining Table with Porcelain Plates & Water Jug
-    box(staticGroup, [1.50, 0.06, 1.02], [7.85, fy + 0.76, 3.55], m.wood);
+    box(floorInterior, [1.50, 0.06, 1.02], [7.85, fy + 0.76, 3.55], m.wood);
     for (const [lx, lz] of [[7.20, 3.12], [8.50, 3.12], [7.20, 3.98], [8.50, 3.98]]) {
-      box(staticGroup, [0.06, 0.70, 0.06], [lx, fy + 0.40, lz], m.wood);
+      box(floorInterior, [0.06, 0.70, 0.06], [lx, fy + 0.40, lz], m.wood);
     }
     for (const [px, pz] of [[7.50, 3.30], [8.20, 3.30], [7.50, 3.80], [8.20, 3.80]]) {
-      cylinder(staticGroup, 0.13, 0.10, 0.02, [px, fy + 0.80, pz], m.porcelain, 12);
+      cylinder(floorInterior, 0.13, 0.10, 0.02, [px, fy + 0.80, pz], m.porcelain, 12);
     }
-    cylinder(staticGroup, 0.07, 0.08, 0.22, [7.85, fy + 0.90, 3.55], m.porcelain, 10);
+    cylinder(floorInterior, 0.07, 0.08, 0.22, [7.85, fy + 0.90, 3.55], m.porcelain, 10);
     // 4 Dining Chairs
     for (const [cx, cz, backOff] of [[7.50, 2.78, -0.18], [8.20, 2.78, -0.18], [7.50, 4.32, 0.18], [8.20, 4.32, 0.18]]) {
-      box(staticGroup, [0.42, 0.05, 0.42], [cx, fy + 0.45, cz], m.wood);
-      box(staticGroup, [0.42, 0.46, 0.05], [cx, fy + 0.70, cz + backOff], m.wood);
-      box(staticGroup, [0.05, 0.40, 0.05], [cx - 0.16, fy + 0.24, cz - 0.16], m.wood);
-      box(staticGroup, [0.05, 0.40, 0.05], [cx + 0.16, fy + 0.24, cz + 0.16], m.wood);
+      box(floorInterior, [0.42, 0.05, 0.42], [cx, fy + 0.45, cz], m.wood);
+      box(floorInterior, [0.42, 0.46, 0.05], [cx, fy + 0.70, cz + backOff], m.wood);
+      box(floorInterior, [0.05, 0.40, 0.05], [cx - 0.16, fy + 0.24, cz - 0.16], m.wood);
+      box(floorInterior, [0.05, 0.40, 0.05], [cx + 0.16, fy + 0.24, cz + 0.16], m.wood);
     }
     // Smart TV mounted on partition wall x = 9.56 in Unit B Family/Dining Room too!
-    buildSmartTVUnit(staticGroup, m, { x: 9.56, fy, z: 3.75, faceDir: -1 });
+    buildSmartTVUnit(floorInterior, m, { x: 9.56, fy, z: 3.75, faceDir: -1 });
     // Glowing Ceiling LED Panel & Fan
-    box(staticGroup, [0.55, 0.04, 0.55], [7.85, fy + 2.89, 3.45], m.lamp);
-    createCeilingFan(lvl === 0 ? dynamicParent : staticGroup, [7.85, fy + 2.88, 3.45], m, lvl === 0 ? animatedFans : null);
+    box(floorInterior, [0.55, 0.04, 0.55], [7.85, fy + 2.89, 3.45], m.lamp);
+    createCeilingFan(lvl === 0 ? dynamicParent : floorInterior, [7.85, fy + 2.88, 3.45], m, lvl === 0 ? animatedFans : null);
 
     // ==========================================================================
     // 9. FURNISH UNIT B: MODERN KITCHEN (x = 11.55..14.18, z = +1.25..+5.25)
     // ==========================================================================
     // Kitchen Counter with Black Granite Top
-    box(staticGroup, [2.45, 0.84, 0.62], [12.85, fy + 0.48, 4.92], m.pillarTile);
-    box(staticGroup, [2.50, 0.05, 0.66], [12.85, fy + 0.92, 4.92], m.blackTile);
+    box(floorInterior, [2.45, 0.84, 0.62], [12.85, fy + 0.48, 4.92], m.pillarTile);
+    box(floorInterior, [2.50, 0.05, 0.66], [12.85, fy + 0.92, 4.92], m.blackTile);
     // Double-Burner Gas Stove with Glowing Blue Flames & Cooking Pot
-    box(staticGroup, [0.68, 0.05, 0.42], [12.30, fy + 0.97, 4.90], m.chrome);
-    cylinder(staticGroup, 0.09, 0.09, 0.02, [12.14, fy + 1.00, 4.90], m.stoveFlame, 12);
-    cylinder(staticGroup, 0.09, 0.09, 0.02, [12.46, fy + 1.00, 4.90], m.stoveFlame, 12);
-    cylinder(staticGroup, 0.12, 0.10, 0.14, [12.14, fy + 1.08, 4.90], m.aluminum, 12);
+    box(floorInterior, [0.68, 0.05, 0.42], [12.30, fy + 0.97, 4.90], m.chrome);
+    cylinder(floorInterior, 0.09, 0.09, 0.02, [12.14, fy + 1.00, 4.90], m.stoveFlame, 12);
+    cylinder(floorInterior, 0.09, 0.09, 0.02, [12.46, fy + 1.00, 4.90], m.stoveFlame, 12);
+    cylinder(floorInterior, 0.12, 0.10, 0.14, [12.14, fy + 1.08, 4.90], m.aluminum, 12);
     // Stainless Sink & Chrome Faucet
-    box(staticGroup, [0.58, 0.04, 0.42], [13.35, fy + 0.95, 4.90], m.darkMetal);
-    rodBetween(staticGroup, [13.35, fy + 0.96, 5.12], [13.35, fy + 1.22, 5.00], 0.016, m.chrome, 8);
+    box(floorInterior, [0.58, 0.04, 0.42], [13.35, fy + 0.95, 4.90], m.darkMetal);
+    rodBetween(floorInterior, [13.35, fy + 0.96, 5.12], [13.35, fy + 1.22, 5.00], 0.016, m.chrome, 8);
     // Overhead Wooden Kitchen Cabinets
-    box(staticGroup, [2.35, 0.58, 0.36], [12.85, fy + 2.12, 5.04], m.wood);
+    box(floorInterior, [2.35, 0.58, 0.36], [12.85, fy + 2.12, 5.04], m.wood);
     // Double-Door Silver Refrigerator (ফ্রিজ)
-    box(staticGroup, [0.66, 1.76, 0.66], [11.88, fy + 0.95, 3.05], m.aluminum);
-    box(staticGroup, [0.68, 0.02, 0.68], [11.88, fy + 1.24, 3.05], m.darkMetal);
+    box(floorInterior, [0.66, 1.76, 0.66], [11.88, fy + 0.95, 3.05], m.aluminum);
+    box(floorInterior, [0.68, 0.02, 0.68], [11.88, fy + 1.24, 3.05], m.darkMetal);
     // Kitchen Ceiling LED Light
-    box(staticGroup, [0.52, 0.04, 0.52], [12.85, fy + 2.89, 3.35], m.lamp);
+    box(floorInterior, [0.52, 0.04, 0.52], [12.85, fy + 2.89, 3.35], m.lamp);
+
+    mergeStaticMeshes(floorInterior);
+    floorInterior.visible = false;
+    dynamicParent.add(floorInterior);
+    floorInteriors.push(floorInterior);
   }
 
   // ============================================================================
@@ -1033,9 +1042,10 @@ export function buildHouse(scene, m) {
 
   const animatedFans = [];
   const flatDoors = [];
+  const floorInteriors = [];
 
   // Build ALL 5 floors hollow & furnished + continuous staircase + 10 openable flats + bathrooms!
-  buildAllFloorsAndInteriors(staticGroup, group, m, animatedFans, flatDoors);
+  buildAllFloorsAndInteriors(staticGroup, group, m, animatedFans, flatDoors, floorInteriors);
 
   // Front Red-Brick Vertical Column starts at 1st floor (y = 3.05..15.65) so Ground-Floor Front Door is 100% clear!
   box(staticGroup, [0.36, 12.6, 2.05], [5.72, 9.35, 0.45], m.brick, { uvScale: 2.5 });
@@ -1233,6 +1243,19 @@ export function buildHouse(scene, m) {
         if (Math.abs(target - fd.angle) > 0.0005) {
           fd.angle += (target - fd.angle) * step;
           fd.pivot.rotation.y = fd.angle;
+        }
+      }
+
+      // Cull interior furniture of floors the player cannot see (eliminates 85% of geometry outside / on other floors!)
+      if (playerPosition) {
+        const insideOrNear = playerPosition.x > 3.8 && playerPosition.x < 15.8 && Math.abs(playerPosition.z) < 6.8;
+        const playerLvl = Math.round((playerPosition.y - 1.68) / 3.05);
+        const maxLvlDiff = isLowQuality ? 0 : 1;
+        for (let i = 0; i < floorInteriors.length; i++) {
+          const shouldShow = insideOrNear && Math.abs(i - playerLvl) <= maxLvlDiff;
+          if (floorInteriors[i].visible !== shouldShow) {
+            floorInteriors[i].visible = shouldShow;
+          }
         }
       }
 
