@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { box, cylinder, rodBetween, seededRandom, mergeStaticMeshes } from './scene-utils.js';
+import { buildHajiMohsinRoad } from './haji-mohsin-road.js';
 
 function leafClusterTexture() {
   const random = seededRandom(71513);
@@ -209,24 +210,24 @@ function buildRoad(parent, m) {
 }
 
 function buildNeighbourhood(parent, m) {
-  box(parent, [0.28, 1.55, 84], [-2.96, 0.62, 0], m.brick, { uvScale: 2.7 });
-  box(parent, [0.34, 0.12, 84], [-2.96, 1.43, 0], m.concrete);
-  for (let z = -40; z <= 40; z += 5.5) {
+  // North-West brick boundary wall (z = -42 to -10; south of -10 is Haji Mohsin Road & Fakir Bari Lane)
+  box(parent, [0.28, 1.55, 32], [-2.96, 0.62, -26], m.brick, { uvScale: 2.7 });
+  box(parent, [0.34, 0.12, 32], [-2.96, 1.43, -26], m.concrete);
+  for (let z = -40; z <= -12; z += 5.5) {
     box(parent, [0.48, 1.8, 0.48], [-2.94, 0.73, z], m.concrete);
     box(parent, [0.08, 0.42, 5.1], [-2.78, -0.05, z + 2.6], m.moss, { castShadow: false });
   }
-  for (const side of [-1, 1]) {
-    const center = side * 24;
-    box(parent, [0.27, 1.85, 33.8], [2.78, 0.75, center], m.concrete);
-    box(parent, [0.08, 0.4, 33.8], [2.61, -0.02, center], m.moss, { castShadow: false });
-    for (let z = 7; z <= 41; z += 5.7) {
-      box(parent, [0.44, 2.08, 0.44], [2.77, 0.86, side * z], m.darkConcrete);
-    }
-    box(parent, [0.4, 0.13, 34], [2.78, 1.71, center], m.darkConcrete);
+  // North-East boundary wall (side = -1: z = -41 to -7.3; side = +1 is now the Haji Mohsin Road commercial & ASB block!)
+  const center = -24;
+  box(parent, [0.27, 1.85, 33.8], [2.78, 0.75, center], m.concrete);
+  box(parent, [0.08, 0.4, 33.8], [2.61, -0.02, center], m.moss, { castShadow: false });
+  for (let z = 7; z <= 41; z += 5.7) {
+    box(parent, [0.44, 2.08, 0.44], [2.77, 0.86, -z], m.darkConcrete);
   }
+  box(parent, [0.4, 0.13, 34], [2.78, 1.71, center], m.darkConcrete);
+
   const distant = new THREE.MeshStandardMaterial({ color: 0xc8c3af, roughness: 0.95 });
   box(parent, [9, 8, 13], [10, 3.7, -35], distant);
-  box(parent, [8, 6.5, 11], [9, 3, 37], distant);
   box(parent, [8, 5, 12], [-9, 2.2, -35], distant);
 }
 
@@ -250,6 +251,9 @@ function buildUtilities(parent, m) {
   for (let i = 0; i < 4; i++) {
     createWire(parent, [[-2.42, 8.5 + i * 0.15, -16], [0.5, 7.45 + i * 0.1, -9], [5.65, 6.3 + i * 0.12, -3.4]], 0.011, m.wire);
     createWire(parent, [[-2.42, 8.55 + i * 0.13, 17], [0.8, 7.6 + i * 0.1, 11], [5.65, 6.9 + i * 0.12, 3.5]], 0.011, m.wire);
+    // Overhead criss-cross fiber/electric cables across Haji Mohsin Road (connecting ASB pole z=23.8 & corner poles z=9.5..21.8)
+    createWire(parent, [[-2.26, 7.1 + i * 0.14, 9.95], [0.0, 6.5 + i * 0.12, 16.8], [2.28, 7.2 + i * 0.14, 23.8]], 0.012, m.wire);
+    createWire(parent, [[2.28, 6.8 + i * 0.15, 23.8], [0.2, 6.3 + i * 0.1, 22.8], [-2.95, 7.0 + i * 0.14, 21.8]], 0.012, m.wire);
   }
 }
 
@@ -261,10 +265,11 @@ export function buildEnvironment(scene, m) {
   buildNeighbourhood(group, m);
   buildUtilities(group, m);
   mergeStaticMeshes(group);
+  buildHajiMohsinRoad(group, m);
   const animated = [];
   const palms = [
-    [-5.4, -9, 11.8, 41], [-6.1, 8, 12.7, 53], [-5.8, 25, 10.6, 65], [-5.6, -27, 12.2, 77],
-    [4.9, -6.4, 10.8, 89], [5.3, 6.5, 11.5, 101], [10.5, 15, 13.1, 113], [9.5, -18, 12.1, 125],
+    [-5.4, -9, 11.8, 41], [-5.2, 7.8, 12.7, 53], [-12.5, 8.2, 11.6, 65], [-5.6, -27, 12.2, 77],
+    [4.9, -6.4, 10.8, 89], [5.3, 6.5, 11.5, 101], [12.5, 19.5, 13.1, 113], [9.5, -18, 12.1, 125],
   ];
   for (const [x, z, height, seed] of palms) createPalm(group, [x, 0, z], height, seed, m, animated);
   const foliageMaterial = new THREE.MeshStandardMaterial({
@@ -275,8 +280,8 @@ export function buildEnvironment(scene, m) {
     color: 0xffffff,
   });
   const trees = [
-    [-5.0, -1, 8.0, 211], [-6.3, 14, 9.0, 223], [-5.3, -17, 8.8, 227], [-7.0, 30, 10.0, 229],
-    [-6.7, -33, 9.2, 233], [5.7, 11, 8.0, 239], [6.3, -11, 7.4, 241], [10.0, 28, 9.5, 251],
+    [-5.0, -1, 8.0, 211], [-5.4, 6.2, 8.8, 223], [-5.3, -17, 8.8, 227], [-14.0, 8.5, 9.5, 229],
+    [-6.7, -33, 9.2, 233], [9.5, 16.0, 8.5, 239], [6.3, -11, 7.4, 241], [12.0, 35, 9.5, 251],
   ];
   for (const [x, z, height, seed] of trees) createBroadleafTree(group, [x, 0, z], height, seed, foliageMaterial);
   return {

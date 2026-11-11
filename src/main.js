@@ -726,7 +726,7 @@ function computeGroundHeight(pos) {
 }
 
 function applyWorldCollisions(pos) {
-  pos.x = THREE.MathUtils.clamp(pos.x, -1.82, 21.05);
+  pos.x = THREE.MathUtils.clamp(pos.x, -17.8, 21.05);
   pos.z = THREE.MathUtils.clamp(pos.z, -40, 40);
 
   const footY = pos.y - EYE_HEIGHT;
@@ -734,17 +734,29 @@ function applyWorldCollisions(pos) {
   const onStairs = pos.x >= 7.68 && pos.x <= 12.12 && pos.z >= 0.16 && pos.z <= 1.16;
 
   for (let iter = 0; iter < 2; iter++) {
-    // Yard & Street Boundary Walls
+    // West Side Walls & 6-Story Building Terrace (leaves Fakir Bari Lane z = 10.2..14.2 open to walk!)
+    resolveCircleAABB(pos, PLAYER_RADIUS, -19.0, -2.92, -42.0, 10.22);
+    resolveCircleAABB(pos, PLAYER_RADIUS, -19.0, -3.02, 14.18, 42.0);
+
+    // East Side Yard & Street Boundary Walls (North of Taltola House & Taltola House Front Wall)
     resolveCircleAABB(pos, PLAYER_RADIUS, 2.06, 2.86, -42, -2.06);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 2.06, 2.86, 2.06, 42);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 2.06, 2.86, 2.06, 7.36);
 
     if (house && !house.state.gateOpen) {
       resolveCircleAABB(pos, PLAYER_RADIUS, 2.36, 2.66, -2.06, 2.06);
     }
 
+    // Taltola House North & South Side Compound Walls (z = -7.28 and z = +7.28)
     resolveCircleAABB(pos, PLAYER_RADIUS, 2.4, 22.0, -20.0, -7.08);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 2.4, 22.0, 7.08, 20.0);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 2.4, 22.0, 7.08, 7.48);
     resolveCircleAABB(pos, PLAYER_RADIUS, 21.25, 24.0, -15.0, 15.0);
+
+    // Haji Mohsin Road East Side: Planter Box (z = 7.5..11.2), 4 Shutter Shops (z = 11.3..20.7),
+    // Open ASB Gate Entrance (z = 23.7..26.5 lets player walk inside x = 3.0..7.2!), and Milk Vita Shops (z = 26.8..42.0)
+    resolveCircleAABB(pos, PLAYER_RADIUS, 3.02, 22.0, 7.45, 20.85);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 2.95, 3.65, 20.85, 23.75);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 7.20, 22.0, 20.85, 26.80);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 3.05, 22.0, 26.55, 42.0);
 
     // Rooftop Parapet & Mumty Collisions (Level 5: y ≈ 15.25)
     if (footY >= 14.1) {
@@ -849,25 +861,35 @@ function updateHUDPrompt() {
     const flName = FLOOR_NAMES_BN[lvl] || FLOOR_NAMES_BN[0];
 
     let zone = 'TALTOLA HOSPITAL CROSS RD · STREET';
-    if (lvl === 5 && x >= 5.9 && x <= 14.4) {
+    if (x < -3.0 && z >= 10.0 && z <= 14.4) {
+      zone = 'FAKIR BARI LANE · ফকির বাড়ি লেন (পাশের গলি)';
+    } else if (x > 3.1 && z >= 20.8 && z <= 26.8) {
+      zone = "AVIJIT'S SPECIAL BATCH (ASB) · কোচিং কম্পাউন্ড";
+    } else if (x > 1.8 && z > 11.2 && z < 20.8) {
+      zone = 'HAJI MOHSIN RD SHOPS · হাজী মহসিন রোড মার্কেট ও দোকানপাট';
+    } else if (x < -1.6 && z > 14.2 && z < 28.5) {
+      zone = '6-STORY CORNER TOWER · ৬-তলা আধুনিক ভবন চত্বর';
+    } else if (z > 7.45) {
+      zone = 'HAJI MOHSIN ROAD · হাজী মহসিন রোড, খুলনা';
+    } else if (lvl === 5 && x >= 5.9 && x <= 14.4) {
       zone = `ROOFTOP · বাড়ির ছাদ (${flName})`;
     } else if (x > 14.4) {
       zone = 'HOUSE BACKYARD · ঘরের পিছনের উঠান';
-    } else if (x >= 6.08 && x <= 14.28 && z < -1.2 && z > -5.3) {
+    } else if (x >= 6.08 && x <= 14.28 && z < -1.2 && z > -5.3 && Math.abs(z) < 7.2) {
       if (x < 9.65) zone = `FLAT ${lvl + 1}A · বসার ঘর ও টিভি রুম (${flName})`;
       else if (x < 11.45 && z < -2.5) zone = `FLAT ${lvl + 1}A · অ্যাটাচড বাথরুম (${flName})`;
       else zone = `FLAT ${lvl + 1}A · মাস্টার বেডরুম (${flName})`;
-    } else if (x >= 6.08 && x <= 14.28 && z > 1.2 && z < 5.3) {
+    } else if (x >= 6.08 && x <= 14.28 && z > 1.2 && z < 5.3 && Math.abs(z) < 7.2) {
       if (x < 9.65) zone = `FLAT ${lvl + 1}B · ডাইনিং ও ফ্যামিলি রুম (${flName})`;
       else if (x < 11.45 && z > 2.5) zone = `FLAT ${lvl + 1}B · অ্যাটাচড বাথরুম (${flName})`;
       else zone = `FLAT ${lvl + 1}B · রান্নাঘর (${flName})`;
-    } else if (x >= 6.0 && x <= 14.35 && z <= -5.2) {
+    } else if (x >= 6.0 && x <= 14.35 && z <= -5.2 && z >= -7.3) {
       zone = 'LEFT SIDE PASSAGE · বাম পাশের গলি';
-    } else if (x >= 6.0 && x <= 14.35 && z >= 5.2) {
+    } else if (x >= 6.0 && x <= 14.35 && z >= 5.2 && z <= 7.3) {
       zone = 'RIGHT SIDE PASSAGE · ডান পাশের গলি';
-    } else if (x >= 6.0 && x <= 14.35) {
+    } else if (x >= 6.0 && x <= 14.35 && Math.abs(z) < 5.3) {
       zone = `STAIRWELL & CORRIDOR · করিডোর ও সিঁড়ি (${flName})`;
-    } else if (x > 2.55) {
+    } else if (x > 2.55 && Math.abs(z) <= 7.35) {
       zone = 'FRONT COURTYARD · বাড়ির সামনের উঠান';
     }
     if (zone !== lastZoneText) {
