@@ -276,8 +276,18 @@ function acUnit(B, parent, hm, x, y, z, facing = '+x') {
   }
 }
 
+/** Helper to place a crisp untiled PlaneGeometry sign/screen that won't have its UVs overwritten by mergeStaticMeshes. */
+function addScreenPlane(parent, width, height, pos, rotY, mat) {
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
+  mesh.position.set(pos[0], pos[1], pos[2]);
+  mesh.rotation.y = rotY;
+  mesh.userData.skipMerge = true;
+  parent.add(mesh);
+  return mesh;
+}
+
 /** Builds a detailed luxury apartment interior for floor k (y = L(k)). */
-function buildApartmentFloorInterior(parent, hm, y) {
+function buildApartmentFloorInterior(parent, screenParent, hm, y) {
   const B = makeB(parent);
   const fy = y + 0.02; // top of floor slab
 
@@ -288,8 +298,8 @@ function buildApartmentFloorInterior(parent, hm, y) {
   B(-11.55, -11.6, fy + 0.02, y + 2.25, 19.05, 19.62, hm.steel);
   B(-11.55, -11.6, fy + 0.02, y + 2.25, 19.65, 20.22, hm.steel);
   B(-11.53, -11.62, y + 2.25, y + 2.42, 18.98, 20.30, hm.dark);
-  // Digital Lift Panel beside elevator door
-  B(-11.54, -11.58, fy + 0.95, fy + 1.75, 18.68, 19.02, hm.liftDisplay);
+  // Digital Lift Panel beside elevator door (crisp PlaneGeometry facing +X)
+  addScreenPlane(screenParent, 0.36, 0.78, [-11.52, fy + 1.35, 18.85], Math.PI / 2, hm.liftDisplay);
   // Ceiling LED panels in lobby
   B(-7.0, -8.5, y + 2.71, y + 2.74, 20.0, 21.2, hm.ledWarm);
   B(-9.5, -11.0, y + 2.71, y + 2.74, 19.2, 20.4, hm.ledWarm);
@@ -329,10 +339,10 @@ function buildApartmentFloorInterior(parent, hm, y) {
   B(-7.5, -9.3, fy + 0.38, fy + 0.44, 16.35, 17.25, hm.marble);
   B(-7.6, -9.2, fy + 0.02, fy + 0.38, 16.45, 17.15, hm.gold);
 
-  // 75-Inch Wall-Mounted 4K Smart TV & Walnut Media Console on South Wall (z = 18.48)
+  // 75-Inch Wall-Mounted 4K Smart TV & Walnut Media Console on South Wall (z = 18.48, facing -Z)
   B(-6.8, -10.2, fy + 0.02, fy + 0.52, 18.05, 18.52, hm.woodWalnut);
   B(-7.2, -9.8, fy + 0.92, fy + 2.12, 18.46, 18.53, hm.dark);
-  B(-7.26, -9.74, fy + 0.96, fy + 2.08, 18.44, 18.46, hm.smartTv);
+  addScreenPlane(screenParent, 2.48, 1.12, [-8.5, fy + 1.52, 18.44], Math.PI, hm.smartTv);
   // Warm false-ceiling cove light strips
   B(-6.0, -11.8, y + 2.70, y + 2.74, 15.4, 15.55, hm.ledWarm);
   B(-6.0, -11.8, y + 2.70, y + 2.74, 17.9, 18.05, hm.ledWarm);
@@ -380,8 +390,9 @@ function buildApartmentFloorInterior(parent, hm, y) {
   B(-18.65, -19.55, fy + 0.78, fy + 0.80, 24.2, 24.26, hm.ledCyan);
   B(-18.6, -18.66, fy + 0.78, fy + 0.80, 24.2, 27.6, hm.ledMagenta);
   // Dual curved gaming monitors + RGB PC Tower
-  B(-19.15, -19.25, fy + 0.92, fy + 1.42, 25.0, 26.0, hm.smartTv);
-  B(-19.15, -19.25, fy + 0.92, fy + 1.42, 26.1, 27.1, hm.liftDisplay);
+  B(-19.15, -19.25, fy + 0.92, fy + 1.42, 25.0, 27.1, hm.dark);
+  addScreenPlane(screenParent, 0.98, 0.48, [-19.13, fy + 1.17, 25.5], Math.PI / 2, hm.smartTv);
+  addScreenPlane(screenParent, 0.98, 0.48, [-19.13, fy + 1.17, 26.6], Math.PI / 2, hm.liftDisplay);
   B(-18.8, -19.4, fy + 0.78, fy + 1.32, 24.35, 24.75, hm.ledCyan); // RGB PC case
   // Ergonomic Gaming Chair
   B(-17.8, -18.4, fy + 0.02, fy + 0.52, 25.5, 26.1, hm.redCar);
@@ -519,14 +530,16 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   B(-9.1, -10.9, PL + 1.12, PL + 1.20, 17.1, 18.6, hm.granite);
   B(-9.15, -10.85, PL + 0.04, PL + 0.14, 17.18, 18.52, hm.gold);
   // Dual CCTV Security Monitors on Reception Desk
-  B(-9.8, -10.0, PL + 1.20, PL + 1.68, 17.5, 18.2, hm.smartTv);
+  B(-9.8, -9.92, PL + 1.20, PL + 1.68, 17.5, 18.2, hm.dark);
+  addScreenPlane(dynamicParent, 0.68, 0.44, [-9.79, PL + 1.44, 17.85], Math.PI / 2, hm.smartTv);
   // Illuminated Golden Building Signboard on Lobby Wall (x = -11.52, z = 16.2 .. 18.5)
   B(-11.55, -12.1, PL, 3.82, 16.0, 20.8, hm.marble);
-  B(-11.48, -11.54, PL + 1.85, PL + 2.75, 16.15, 18.55, hm.lobbySign);
+  B(-11.50, -11.56, PL + 1.82, PL + 2.78, 16.12, 18.58, hm.gold);
+  addScreenPlane(dynamicParent, 2.38, 0.88, [-11.48, PL + 2.30, 17.35], Math.PI / 2, hm.lobbySign);
   // Ground-Floor High-Speed Lift Doors & Digital Call Panel (x = -11.52, z = 18.95 .. 20.3)
   B(-11.50, -11.56, PL + 0.02, PL + 2.35, 19.05, 19.62, hm.steel);
   B(-11.50, -11.56, PL + 0.02, PL + 2.35, 19.65, 20.22, hm.steel);
-  B(-11.48, -11.56, PL + 1.05, PL + 1.88, 18.62, 18.98, hm.liftDisplay);
+  addScreenPlane(dynamicParent, 0.36, 0.82, [-11.48, PL + 1.46, 18.80], Math.PI / 2, hm.liftDisplay);
 
   // Lane-side ground floor (facade z = 14.6), from the corner westwards
   B(-4.55, -6.0, PL, 3.38, 14.56, 14.7, hm.maroonShutter);   // maroon rolling shutter
@@ -684,13 +697,13 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   B(-14.2, BX, ROOF - 0.24, ROOF + 0.04, 21.55, 22.80, hm.stucco);
 
   // Rooftop Parapet Walls
-  B(-3.65, -3.9, ROOF + 0.04, ROOF + 1.2, 14.3, EZ, hm.stucco);
-  B(-3.65, BX, ROOF + 0.04, ROOF + 1.2, 14.3, 14.55, hm.stucco);
-  B(BX + 0.25, BX, ROOF + 0.04, ROOF + 1.2, 14.3, EZ, hm.stucco);
-  B(-3.65, BX, ROOF + 0.04, ROOF + 1.2, EZ - 0.25, EZ, hm.stucco);
-  // Architectural grey frame & pergola beams
-  B(-3.75, -5.6, ROOF + 1.2, ROOF + 1.55, 18.6, 28.6, hm.darkGrey);
-  for (const z of [18.75, 23.45, 28.45]) B(-3.8, -4.1, ROOF + 0.04, ROOF + 1.2, z - 0.15, z + 0.15, hm.darkGrey);
+  B(-3.65, -3.9, ROOF + 0.04, ROOF + 1.15, 14.3, EZ, hm.stucco);
+  B(-3.65, BX, ROOF + 0.04, ROOF + 1.15, 14.3, 14.55, hm.stucco);
+  B(BX + 0.25, BX, ROOF + 0.04, ROOF + 1.15, 14.3, EZ, hm.stucco);
+  B(-3.65, BX, ROOF + 0.04, ROOF + 1.15, EZ - 0.25, EZ, hm.stucco);
+  // Architectural grey frame & pergola beams raised to 2.7m above roof so player walks freely underneath!
+  B(-3.75, -5.6, ROOF + 2.65, ROOF + 2.95, 18.6, 28.6, hm.darkGrey);
+  for (const z of [18.75, 23.45, 28.45]) B(-3.8, -4.1, ROOF + 0.04, ROOF + 2.65, z - 0.15, z + 0.15, hm.darkGrey);
 
   // Stair & Lift Penthouse Room on Roof (x = -9.4 .. -14.5, z = 18.2 .. 23.1) with open door at x = -9.4, z = 19.3..20.8
   B(-9.4, -14.5, ROOF + 3.0, ROOF + 3.25, 18.2, 23.1, hm.stucco);
@@ -700,7 +713,7 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   B(-9.4, -9.65, ROOF + 0.04, ROOF + 3.0, 18.2, 19.3, hm.stucco);
   B(-9.4, -9.65, ROOF + 0.04, ROOF + 3.0, 20.8, 23.1, hm.stucco);
   B(-11.0, -13.5, ROOF + 3.25, ROOF + 4.5, 18.8, 21.6, hm.darkGrey); // overhead water tank
-  B(-11.4, -11.5, ROOF + 0.9, ROOF + 1.8, 18.6, 19.1, hm.liftDisplay); // rooftop lift panel
+  addScreenPlane(dynamicParent, 0.42, 0.85, [-9.38, ROOF + 1.45, 18.85], Math.PI / 2, hm.liftDisplay); // rooftop lift panel
 
   // Rooftop Sky Lounge Turf, Wooden Deck, Outdoor Sofas & Warm Lanterns
   B(-4.2, -8.8, ROOF + 0.04, ROOF + 0.08, 15.0, 22.5, hm.turfGreen);
@@ -721,8 +734,11 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   for (let k = 1; k <= FLOORS; k++) {
     const fg = new THREE.Group();
     fg.name = `SkArshanFloor_${k}`;
-    buildApartmentFloorInterior(fg, hm, L(k));
-    mergeStaticMeshes(fg);
+    const staticPart = new THREE.Group();
+    const screenPart = new THREE.Group();
+    fg.add(staticPart, screenPart);
+    buildApartmentFloorInterior(staticPart, screenPart, hm, L(k));
+    mergeStaticMeshes(staticPart);
     dynamicParent.add(fg);
     floorInteriors.push({ level: k, y: L(k), group: fg });
   }
