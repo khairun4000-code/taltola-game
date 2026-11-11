@@ -327,6 +327,10 @@ function toggleRunMode() {
 }
 
 function handleDoorInteraction() {
+  if (environment?.tower?.interact(playerPos)) {
+    syncHUDButtons(false, true);
+    return;
+  }
   if (!house) return;
   house.toggleNearestDoor(playerPos);
   syncHUDButtons(false, true);
@@ -445,7 +449,7 @@ canvas.addEventListener('pointerdown', (event) => {
     return;
   }
   if (event.button === 0 && controls.pointerLocked) {
-    if (house?.getPrompt(playerPos)) {
+    if (environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos)) {
       handleDoorInteraction();
     } else {
       playerCharacter?.triggerAttack();
@@ -692,10 +696,63 @@ function resolveCircleAABB(pos, radius, minX, maxX, minZ, maxZ) {
 }
 
 /**
- * Computes exact floor or staircase ground elevation under playerPos across all 5 floors + rooftop
+ * Computes exact floor or staircase ground elevation under playerPos across both buildings:
+ *  1) 5-Story Taltola House + Rooftop (x = 5.95..14.38, z = -5.42..5.42)
+ *  2) 10-Story Sk Arshan Alif Tower + Rooftop Sky Lounge (x = -19.85..-2.85, z = 14.25..28.55)
  */
 function computeGroundHeight(pos) {
   const footY = pos.y - EYE_HEIGHT;
+
+  // --- SK ARSHAN ALIF TOWER (35 Haji Mohsin Road) ---
+  const inSkArshanZone = pos.x >= -19.85 && pos.x <= -2.85 && pos.z >= 14.25 && pos.z <= 28.55;
+  if (inSkArshanZone) {
+    // Ground-floor Car Ramp (z = 19.1..22.9, x = -4.65..-3.15) & South Steps (z = 26.5..28.5)
+    if (footY < 1.8 && pos.x > -4.6) {
+      if ((pos.z >= 19.1 && pos.z <= 22.9) || (pos.z >= 26.5 && pos.z <= 28.5)) {
+        const rampT = THREE.MathUtils.clamp((-3.25 - pos.x) / 1.3, 0, 1);
+        return rampT * 0.50;
+      }
+      if (pos.x <= -3.25) return 0.50;
+      return 0.0;
+    }
+
+    // Continuous Walkable Marble Staircase inside Sk Arshan Tower (x = -14.25..-9.55, z = 21.50..22.85)
+    const inTowerStairs = pos.x >= -14.25 && pos.x <= -9.55 && pos.z >= 21.50 && pos.z <= 22.85;
+    const L = (k) => (k === 0 ? 0.50 : 4.0 + (k - 1) * 3.0);
+    if (inTowerStairs) {
+      const t = THREE.MathUtils.clamp((-9.65 - pos.x) / 4.45, 0, 1);
+      let bestY = 0.50;
+      let bestDiff = Infinity;
+      for (let k = 0; k <= 9; k++) {
+        const y0 = L(k);
+        const y1 = L(k + 1);
+        const rampY = y0 + t * (y1 - y0);
+        const diff = Math.abs(footY - rampY);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          bestY = rampY;
+        }
+      }
+      if (bestDiff < 1.65) {
+        return bestY;
+      }
+    }
+
+    // Nearest floor slab inside Sk Arshan Tower (k = 0..10 -> 0.5m, 4.0m, 7.0m, ..., 31.0m)
+    let nearestY = 0.50;
+    let minDiff = Infinity;
+    for (let k = 0; k <= 10; k++) {
+      const fy = L(k);
+      const d = Math.abs(footY - fy);
+      if (d < minDiff) {
+        minDiff = d;
+        nearestY = fy;
+      }
+    }
+    return nearestY;
+  }
+
+  // --- 5-STORY TALTOLA HOUSE ---
   const insideBuilding = pos.x >= 5.95 && pos.x <= 14.38 && Math.abs(pos.z) <= 5.42;
   if (!insideBuilding) {
     return 0.0;
@@ -726,9 +783,11 @@ function computeGroundHeight(pos) {
 }
 
 function applyWorldCollisions(pos) {
-  // Fakir Bari Lane (z 10.2..14.25) is walkable all the way down to x = -42; elsewhere keep the old west limit
+  // Fakir Bari Lane (z 10.2..14.25) is walkable to x = -42; Sk Arshan Tower (z 14.25..28.6) is walkable to x = -19.7
   const inFakirBariLane = pos.z > 10.0 && pos.z < 14.5;
-  pos.x = THREE.MathUtils.clamp(pos.x, inFakirBariLane ? -42.0 : -17.8, 21.05);
+  const inSkArshanZ = pos.z >= 14.25 && pos.z <= 28.6;
+  const minXBound = inFakirBariLane ? -42.0 : (inSkArshanZ ? -19.7 : -17.8);
+  pos.x = THREE.MathUtils.clamp(pos.x, minXBound, 21.05);
   pos.z = THREE.MathUtils.clamp(pos.z, -40, 40);
 
   const footY = pos.y - EYE_HEIGHT;
@@ -736,12 +795,53 @@ function applyWorldCollisions(pos) {
   const onStairs = pos.x >= 7.68 && pos.x <= 12.12 && pos.z >= 0.16 && pos.z <= 1.16;
 
   for (let iter = 0; iter < 2; iter++) {
-    // West Side Walls & 6-Story Building Terrace (leaves Fakir Bari Lane z = 10.2..14.2 open to walk!)
-    // North boundary wall of the lane + Sk Arshan Alif Tower plinth/old buildings on the south side
+    // North boundary wall of Fakir Bari Lane (z <= 10.22)
     resolveCircleAABB(pos, PLAYER_RADIUS, -46.0, -2.92, -42.0, 10.22);
-    resolveCircleAABB(pos, PLAYER_RADIUS, -46.0, -3.22, 14.26, 42.0);
+    // Old buildings west of Sk Arshan Tower along Fakir Bari Lane (x <= -19.85, z >= 14.26)
+    resolveCircleAABB(pos, PLAYER_RADIUS, -46.0, -19.85, 14.26, 42.0);
+    // Under-construction building south of Sk Arshan Tower (z >= 28.58, x <= -3.22)
+    resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -3.22, 28.58, 42.0);
     // Lane end building
     resolveCircleAABB(pos, PLAYER_RADIUS, -46.0, -42.45, 9.0, 15.5);
+
+    // --- SK ARSHAN ALIF TOWER COLLISIONS (x ∈ [-19.85, -2.85], z ∈ [14.25, 28.58]) ---
+    if (pos.x < -2.6 && pos.z >= 14.1 && pos.z <= 28.8) {
+      // Rear wall (x = -19.8) & South wall (z = 28.5)
+      resolveCircleAABB(pos, PLAYER_RADIUS, -20.2, -19.65, 14.2, 28.7);
+      resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -3.5, 28.42, 28.8);
+      // Elevator & Reception marble core wall (x = -11.55..-12.15, z = 18.6..20.6)
+      resolveCircleAABB(pos, PLAYER_RADIUS, -12.15, -11.52, 18.65, 20.55);
+
+      if (footY < 2.2) {
+        // Ground-floor lane-side shop shutters wall (z = 14.48..14.75, x = -19.85..-4.45)
+        resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -4.45, 14.42, 14.76);
+        // Plinth stainless railings along road (leaving Car Ramp z=19.15..22.95 & South Steps z=26.55..28.45 open!)
+        resolveCircleAABB(pos, PLAYER_RADIUS, -3.42, -3.22, 14.30, 19.15);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -3.42, -3.22, 22.95, 26.55);
+        // Front ground-floor piers & closed gates (leaving Bay B z=18.9..21.9 open when gateOpen, and South Entry z=26.6..27.8 open!)
+        resolveCircleAABB(pos, PLAYER_RADIUS, -4.55, -4.02, 14.55, 18.88);
+        if (environment?.tower && !environment.tower.state.gateOpen) {
+          resolveCircleAABB(pos, PLAYER_RADIUS, -4.45, -4.05, 18.88, 21.92);
+        }
+        resolveCircleAABB(pos, PLAYER_RADIUS, -4.55, -4.02, 21.92, 26.58);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -4.55, -4.02, 27.82, 28.60);
+        // Parked Red Car & Black SUV colliders on ground floor
+        resolveCircleAABB(pos, PLAYER_RADIUS, -9.2, -5.0, 24.55, 26.25);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -18.8, -14.5, 15.6, 17.6);
+      } else if (footY < 29.5) {
+        // Upper floors (k = 1..9): Lane-side wall (z = 14.48) & Front balcony outer railings
+        resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -4.25, 14.42, 14.72);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -3.02, -2.82, 14.30, 18.60); // Bay A balcony front rail
+        resolveCircleAABB(pos, PLAYER_RADIUS, -4.25, -2.85, 14.28, 14.44); // Bay A balcony north rail
+        resolveCircleAABB(pos, PLAYER_RADIUS, -3.92, -3.72, 18.60, 23.55); // Bay B balcony front rail
+        resolveCircleAABB(pos, PLAYER_RADIUS, -3.75, -3.55, 23.55, 28.55); // Bay C balcony front rail
+      } else {
+        // Rooftop Sky Lounge parapet walls (y = 31.0m)
+        resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -3.65, 14.25, 14.55);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -3.92, -3.62, 14.30, 28.55);
+      }
+      continue;
+    }
 
     // East Side Yard & Street Boundary Walls (North of Taltola House & Taltola House Front Wall)
     resolveCircleAABB(pos, PLAYER_RADIUS, 2.06, 2.86, -42, -2.06);
@@ -847,7 +947,9 @@ const FLOOR_NAMES_BN = ['নিচতলা (1st Floor)', '২য় তলা (2nd
 
 function updateHUDPrompt() {
   if (!house || !interactPrompt) return;
-  const promptText = controls.isLocked ? house.getPrompt(playerPos) : null;
+  const promptText = controls.isLocked
+    ? (environment?.tower?.getPrompt(playerPos) || house.getPrompt(playerPos))
+    : null;
   if (promptText !== lastPromptText) {
     lastPromptText = promptText;
     if (promptText) {
@@ -866,14 +968,31 @@ function updateHUDPrompt() {
     const flName = FLOOR_NAMES_BN[lvl] || FLOOR_NAMES_BN[0];
 
     let zone = 'TALTOLA HOSPITAL CROSS RD · STREET';
-    if (x < -3.0 && z >= 10.0 && z <= 14.4) {
+    if (x < -3.0 && z >= 10.0 && z <= 14.25) {
       zone = 'FAKIR BARI LANE · ফকির বাড়ি লেন (পাশের গলি)';
     } else if (x > 3.1 && z >= 20.8 && z <= 26.8) {
       zone = "AVIJIT'S SPECIAL BATCH (ASB) · কোচিং কম্পাউন্ড";
     } else if (x > 1.8 && z > 11.2 && z < 20.8) {
       zone = 'HAJI MOHSIN RD SHOPS · হাজী মহসিন রোড মার্কেট ও দোকানপাট';
-    } else if (x < -1.6 && z > 14.2 && z < 28.5) {
-      zone = '6-STORY CORNER TOWER · ৬-তলা আধুনিক ভবন চত্বর';
+    } else if (x <= -2.8 && x >= -19.9 && z >= 14.25 && z <= 28.6) {
+      const towerFl = footY < 2.2 ? 0 : Math.min(10, Math.round((footY - 4.0) / 3.0) + 1);
+      if (towerFl === 0) {
+        zone = 'SK ARSHAN ALIF TOWER · গ্র্যান্ড পার্কিং ও রিসেপশন লবি (নিচতলা)';
+      } else if (towerFl >= 10 || footY >= 29.8) {
+        zone = 'SK ARSHAN ALIF TOWER · ছাদের স্কাই লাউঞ্জ ও গার্ডেন (Rooftop)';
+      } else if (x > -4.35) {
+        zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · সামনের বারান্দা (Balcony View)`;
+      } else if (z >= 18.55 && z <= 23.3) {
+        zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · হাই-স্পিড লিফট ও সিঁড়ি লবি`;
+      } else if (z < 18.55) {
+        zone = x > -13.3
+          ? `SK ARSHAN TOWER (${towerFl + 1} তলা) · নর্থ ফ্ল্যাট — ড্রয়িং রুম ও ৪কে স্মার্ট টিভি লাউঞ্জ`
+          : `SK ARSHAN TOWER (${towerFl + 1} তলা) · নর্থ ফ্ল্যাট — মাস্টার বেডরুম`;
+      } else {
+        zone = x > -13.3
+          ? `SK ARSHAN TOWER (${towerFl + 1} তলা) · সাউথ ফ্ল্যাট — ডাইনিং ও মডুলার কিচেন`
+          : `SK ARSHAN TOWER (${towerFl + 1} তলা) · সাউথ ফ্ল্যাট — আরজিবি গেমিং ও স্টাডি স্যুট`;
+      }
     } else if (z > 7.45) {
       zone = 'HAJI MOHSIN ROAD · হাজী মহসিন রোড, খুলনা';
     } else if (lvl === 5 && x >= 5.9 && x <= 14.4) {
@@ -1031,7 +1150,8 @@ function updateMovement(delta) {
   }
 
   if (playerCharacter && playerCharacter.state.cameraMode === 'back') {
-    const insideHouse = playerPos.x > 5.7 && playerPos.x < 14.6 && Math.abs(playerPos.z) < 5.3;
+    const insideHouse = (playerPos.x > 5.7 && playerPos.x < 14.6 && Math.abs(playerPos.z) < 5.3)
+      || (playerPos.x < -3.6 && playerPos.x > -19.9 && playerPos.z > 14.3 && playerPos.z < 28.6);
     const followDist = insideHouse ? 1.15 : 1.95;
     camTargetPos.copy(playerPos).addScaledVector(forwardVec, -followDist);
     camTargetPos.y = playerPos.y + (insideHouse ? 0.12 : 0.22);
@@ -1072,6 +1192,7 @@ function animate() {
   } else {
     updateMovement(delta);
     if (house) house.update(delta, playerPos, isLow);
+    if (environment?.tower) environment.tower.update(delta, playerPos, isLow);
     if (environment && !isLow) environment.update(elapsed);
 
     if (!started) {

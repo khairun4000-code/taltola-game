@@ -507,7 +507,7 @@ export function buildHajiMohsinRoad(parent, m) {
   // ============================================================================
   // 4. SK ARSHAN ALIF TOWER — 35 HAJI MOHSIN RD (G+9, rebuilt 1:1 from Street View)
   // ============================================================================
-  buildSkArshanTower(staticGroup, dynamicGroup, m, hm);
+  const skArshanTower = buildSkArshanTower(staticGroup, dynamicGroup, m, hm);
 
   // ============================================================================
   // 5. EAST SIDE: PLANTER BOX, SAGO PALMS & TALL CONICAL PINE/THUJA TREE (z = 7.4..11.2)
@@ -686,4 +686,5 @@ export function buildHajiMohsinRoad(parent, m) {
   buildCycleRickshaw(staticGroup, m, 0.85, 31.0);
 
   mergeStaticMeshes(staticGroup);
+  return skArshanTower;
 }

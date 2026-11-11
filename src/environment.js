@@ -265,7 +265,7 @@ export function buildEnvironment(scene, m) {
   buildNeighbourhood(group, m);
   buildUtilities(group, m);
   mergeStaticMeshes(group);
-  buildHajiMohsinRoad(group, m);
+  const tower = buildHajiMohsinRoad(group, m);
   const animated = [];
   const palms = [
     [-5.4, -9, 11.8, 41], [-5.2, 7.8, 12.7, 53], [-12.5, 8.2, 11.6, 65], [-5.6, -27, 12.2, 77],
@@ -285,6 +285,7 @@ export function buildEnvironment(scene, m) {
   ];
   for (const [x, z, height, seed] of trees) createBroadleafTree(group, [x, 0, z], height, seed, foliageMaterial);
   return {
+    tower,
     update(time) {
       for (const item of animated) {
         item.object.rotation.x = Math.sin(time * 0.55 + item.phase) * item.strength;
