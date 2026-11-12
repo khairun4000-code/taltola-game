@@ -381,7 +381,7 @@ function sitOnSeat(seat) {
     }
     playerCharacter.state.emote = 'sit';
     playerCharacter.state.emoteClock = 0;
-    playerCharacter.state.facingYaw = seat.yaw + Math.PI;
+    playerCharacter.state.facingYaw = seat.yaw;
   }
   syncHUDButtons(false, true);
   return true;
@@ -1530,7 +1530,7 @@ function updateMovement(delta) {
 
       if (playerCharacter) {
         playerCharacter.state.emote = 'sit';
-        playerCharacter.state.facingYaw = seat.yaw + Math.PI;
+        playerCharacter.state.facingYaw = seat.yaw;
         playerCharacter.update(delta, {
           position: { x: seat.seatX, y: seat.fy + EYE_HEIGHT + (seat.seatY - 0.34), z: seat.seatZ },
           yaw: controls.euler.y,

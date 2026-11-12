@@ -636,7 +636,7 @@ export function createPlayerCharacter(scene, manager) {
         activeEmote = null;
       }
 
-      if (state.cameraMode === 'front') {
+      if (state.cameraMode === 'front' && activeEmote !== 'sit') {
         // In Front-Face mode, always face directly at the front camera
         state.facingYaw = yaw + Math.PI;
       } else if (speed > 0.22 && (Math.abs(moveDirX) > 0.01 || Math.abs(moveDirZ) > 0.01)) {
