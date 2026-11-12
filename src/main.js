@@ -371,6 +371,9 @@ function sitOnSeat(seat) {
   playerPos.x = seat.seatX;
   playerPos.z = seat.seatZ;
   playerPos.y = seat.fy + seat.seatY + EYE_HEIGHT - 0.42;
+  // Orient camera yaw to face out from the seat (+Y rotation in Three.js looks along -Z when euler.y=0, so euler.y = seat.yaw + Math.PI)
+  controls.euler.set(-0.06, seat.yaw + Math.PI, 0, 'YXZ');
+  camera.quaternion.setFromEuler(controls.euler);
   if (playerCharacter) {
     if (playerCharacter.state.cameraMode === 'first') {
       sittingState.prevCameraMode = 'first';
@@ -1529,7 +1532,7 @@ function updateMovement(delta) {
         playerCharacter.state.emote = 'sit';
         playerCharacter.state.facingYaw = seat.yaw;
         playerCharacter.update(delta, {
-          position: { x: seat.seatX, y: seat.fy + seat.seatY - 0.42 + EYE_HEIGHT, z: seat.seatZ },
+          position: { x: seat.seatX, y: seat.fy + EYE_HEIGHT, z: seat.seatZ },
           yaw: controls.euler.y,
           speed: 0,
           maxSpeed: 3.45,
@@ -1544,13 +1547,16 @@ function updateMovement(delta) {
         indoorLight.position.set(playerPos.x, playerPos.y + 0.65, playerPos.z);
       }
 
-      if (playerCharacter && playerCharacter.state.cameraMode === 'back') {
-        camTargetPos.copy(playerPos).addScaledVector(forwardVec, -1.25);
-        camTargetPos.y = playerPos.y + 0.18;
-        camera.position.copy(camTargetPos);
-      } else if (playerCharacter && playerCharacter.state.cameraMode === 'front') {
-        camTargetPos.copy(playerPos).addScaledVector(forwardVec, 1.25);
-        camTargetPos.y = playerPos.y + 0.05;
+      if (playerCharacter && playerCharacter.state.cameraMode !== 'first') {
+        // Place camera in front of the seat (into the open room) so it never clips into the wall behind the seat!
+        const angleOffset = playerCharacter.state.cameraMode === 'front' ? 0.16 : -0.36;
+        const camAngle = seat.yaw + angleOffset;
+        const camDist = 1.48;
+        camTargetPos.set(
+          seat.seatX + Math.sin(camAngle) * camDist,
+          seat.fy + 1.38,
+          seat.seatZ + Math.cos(camAngle) * camDist
+        );
         camera.position.copy(camTargetPos);
       } else {
         camera.position.copy(playerPos);
@@ -1700,6 +1706,11 @@ function animate() {
       camera.position.z = 10.5 + Math.sin(elapsed * 0.12) * 0.25;
       camera.lookAt(4.6, 4.4, 0);
       renderer.render(scene, camera);
+    } else if (sittingState.active && sittingState.seat && playerCharacter && playerCharacter.state.cameraMode !== 'first') {
+      savedCameraQuat.copy(camera.quaternion);
+      camera.lookAt(sittingState.seat.seatX, sittingState.seat.fy + 0.92, sittingState.seat.seatZ);
+      renderer.render(scene, camera);
+      camera.quaternion.copy(savedCameraQuat);
     } else if (playerCharacter && playerCharacter.state.cameraMode === 'front') {
       savedCameraQuat.copy(camera.quaternion);
       camera.lookAt(playerPos.x, playerPos.y - 0.12, playerPos.z);
