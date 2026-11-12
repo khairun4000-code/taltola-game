@@ -308,21 +308,178 @@ function createBathTileTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 256;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#e0f2fe';
+  ctx.fillStyle = '#0f3f3c';
   ctx.fillRect(0, 0, 256, 256);
   const sz = 32;
   for (let y = 0; y < 256; y += sz) {
     for (let x = 0; x < 256; x += sz) {
-      ctx.fillStyle = (x / sz + y / sz) % 2 === 0 ? '#bae6fd' : '#e0f2fe';
+      const even = (x / sz + y / sz) % 2 === 0;
+      ctx.fillStyle = even ? '#115e59' : '#0f766e';
       ctx.fillRect(x + 2, y + 2, sz - 4, sz - 4);
-      ctx.strokeStyle = '#7dd3fc';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x + 1, y + 1, sz - 2, sz - 2);
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 3, y + 3, sz - 6, sz - 6);
     }
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createLuxuryFloorTileTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  // Warm golden-tan travertine & emperador marble base (never white!)
+  ctx.fillStyle = '#bfa07a';
+  ctx.fillRect(0, 0, 512, 512);
+
+  const sz = 128;
+  for (let y = 0; y < 512; y += sz) {
+    for (let x = 0; x < 512; x += sz) {
+      const even = ((x / sz) + (y / sz)) % 2 === 0;
+      const grad = ctx.createLinearGradient(x, y, x + sz, y + sz);
+      grad.addColorStop(0, even ? '#c7a983' : '#b8966e');
+      grad.addColorStop(0.5, even ? '#b59268' : '#c2a37c');
+      grad.addColorStop(1, even ? '#a88459' : '#b38f65');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x + 4, y + 4, sz - 8, sz - 8);
+
+      // Organic marble veining inside each tile
+      ctx.strokeStyle = 'rgba(74, 48, 26, 0.28)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 12, y + 28);
+      ctx.bezierCurveTo(x + 48, y + 54, x + 76, y + 36, x + sz - 14, y + 96);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(254, 243, 199, 0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x + 22, y + sz - 18);
+      ctx.bezierCurveTo(x + 60, y + 70, x + 88, y + 84, x + sz - 18, y + 24);
+      ctx.stroke();
+
+      // Inner bronze bevel border
+      ctx.strokeStyle = '#785536';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 8, y + 8, sz - 16, sz - 16);
+
+      // Dark espresso grout joint
+      ctx.strokeStyle = '#3d2614';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(x + 2, y + 2, sz - 4, sz - 4);
+
+      // Golden corner diamond inlay
+      ctx.fillStyle = '#d97706';
+      ctx.beginPath();
+      ctx.moveTo(x, y - 6);
+      ctx.lineTo(x + 6, y);
+      ctx.lineTo(x, y + 6);
+      ctx.lineTo(x - 6, y);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createLuxuryWallTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Warm champagne-cappuccino Venetian plaster (rich warm tone, never washed-out white!)
+  const grad = ctx.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0, '#c8b299');
+  grad.addColorStop(0.68, '#bfa68a');
+  grad.addColorStop(0.69, '#855834');
+  grad.addColorStop(0.72, '#4a2c16');
+  grad.addColorStop(1.0, '#3b2210');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle vertical linen/damask texture lines
+  for (let x = 0; x < 512; x += 8) {
+    ctx.fillStyle = x % 16 === 0 ? 'rgba(68, 42, 22, 0.08)' : 'rgba(255, 245, 230, 0.06)';
+    ctx.fillRect(x, 0, 3, 350);
+  }
+
+  // Architectural wall molding frames on upper plaster section
+  ctx.strokeStyle = '#8c6d4e';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(28, 28, 200, 290);
+  ctx.strokeRect(284, 28, 200, 290);
+  ctx.strokeStyle = '#e6d5c1';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(34, 34, 188, 278);
+  ctx.strokeRect(290, 34, 188, 278);
+
+  // Golden chair-rail band & dark walnut wainscoting panels at bottom
+  ctx.fillStyle = '#d97706';
+  ctx.fillRect(0, 352, 512, 8);
+  for (let x = 16; x < 512; x += 64) {
+    ctx.strokeStyle = '#291609';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(x, 370, 48, 126);
+    ctx.strokeStyle = '#784b27';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 4, 374, 40, 118);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createFramedArtTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 320;
+  const ctx = canvas.getContext('2d');
+
+  // Ornate gold & walnut frame
+  ctx.fillStyle = '#3b2210';
+  ctx.fillRect(0, 0, 512, 320);
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 12;
+  ctx.strokeRect(10, 10, 492, 300);
+  ctx.strokeStyle = '#fef08a';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(22, 22, 468, 276);
+
+  // Golden Sundarbans sunset sky & river reflection
+  const sky = ctx.createLinearGradient(0, 26, 0, 294);
+  sky.addColorStop(0, '#1e1b4b');
+  sky.addColorStop(0.35, '#9a3412');
+  sky.addColorStop(0.55, '#f59e0b');
+  sky.addColorStop(0.62, '#064e3b');
+  sky.addColorStop(1, '#0f172a');
+  ctx.fillStyle = sky;
+  ctx.fillRect(26, 26, 460, 268);
+
+  // Setting sun & shimmering water reflection
+  ctx.fillStyle = '#fef08a';
+  ctx.beginPath();
+  ctx.arc(256, 148, 38, 0, Math.PI * 2);
+  ctx.fill();
+  for (let y = 198; y < 280; y += 10) {
+    ctx.fillStyle = 'rgba(253, 224, 71, 0.55)';
+    ctx.fillRect(210 + (y % 20), y, 92 - (y % 30), 4);
+  }
+
+  // Silhouette mangrove trees & country boat
+  ctx.fillStyle = '#052e16';
+  ctx.fillRect(26, 172, 165, 22);
+  ctx.fillRect(320, 168, 166, 26);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
 
@@ -344,8 +501,8 @@ export function createHajiMaterials() {
     stuccoShade: lam({ map: stuccoMap, color: 0xdedcd6 }, 3.2),
     grey: lam({ map: loadTex('grey-cement.jpg'), color: 0xe2e4e4 }, 2.6),
     darkGrey: lam({ map: loadTex('grey-cement.jpg'), color: 0x8a8e90 }, 2.6),
-    marble: std({ map: loadTex('swirl-marble.jpg'), roughness: 0.24, metalness: 0.02 }, 1.8),
-    granite: std({ map: loadTex('black-granite.jpg'), roughness: 0.2, metalness: 0.04 }, 1.3),
+    marble: lam({ map: loadTex('swirl-marble.jpg') }, 1.8),
+    granite: lam({ map: loadTex('black-granite.jpg') }, 1.3),
     pavers: lam({ map: loadTex('red-pavers.jpg') }, 2.4),
     alleyConcrete: lam({ map: loadTex('alley-concrete.jpg') }, 3.4),
     maroonShutter: lam({ map: loadTex('maroon-shutter.jpg') }, 2.4),
@@ -378,45 +535,26 @@ export function createHajiMaterials() {
     banner: lam({ map: loadTex('balcony-banner.jpg'), side: THREE.DoubleSide }),
     signMcsk: lam({ map: loadTex('sign-mcsk.jpg'), side: THREE.DoubleSide }),
     signShetu: lam({ map: loadTex('sign-shetu.jpg'), side: THREE.DoubleSide }),
-    // High-Fi Interior Luxury Materials (with rich procedural PBR textures & bump detail!)
-    creamTile: std({ map: stuccoMap, color: 0xf5f2eb, roughness: 0.16, metalness: 0.06 }, 2.5),
-    wallCream: std({ map: stuccoMap, color: 0xfbf9f5, roughness: 0.72 }, 3.0),
-    wallAccent: std({ map: stuccoMap, color: 0xe2e8f0, roughness: 0.65 }, 3.0),
-    woodWalnut: (() => {
-      const t = createWoodGrainTexture('#5c3a21', '#3b2210');
-      return std({ map: t, bumpMap: t, bumpScale: 0.008, roughness: 0.34, metalness: 0.08 }, 1.6);
-    })(),
-    woodOak: (() => {
-      const t = createWoodGrainTexture('#a47551', '#7c5333');
-      return std({ map: t, bumpMap: t, bumpScale: 0.006, roughness: 0.40, metalness: 0.05 }, 1.6);
-    })(),
-    velvetBlue: (() => {
-      const t = createTuftedFabricTexture('#1d4ed8', '#1e3a8a');
-      return std({ map: t, bumpMap: t, bumpScale: 0.012, roughness: 0.62, metalness: 0.04 }, 1.2);
-    })(),
-    velvetCream: (() => {
-      const t = createTuftedFabricTexture('#ece6dc', '#c7bfb1');
-      return std({ map: t, bumpMap: t, bumpScale: 0.010, roughness: 0.58, metalness: 0.03 }, 1.2);
-    })(),
-    velvetEmerald: (() => {
-      const t = createTuftedFabricTexture('#047857', '#064e3b');
-      return std({ map: t, bumpMap: t, bumpScale: 0.010, roughness: 0.58, metalness: 0.04 }, 1.2);
-    })(),
-    rugPattern: std({ map: createPersianRugTexture(), roughness: 0.82 }, 3.2),
-    bedSheet: (() => {
-      const t = createTuftedFabricTexture('#f8fafc', '#cbd5e1');
-      return std({ map: t, bumpMap: t, bumpScale: 0.008, roughness: 0.68 }, 1.5);
-    })(),
-    bedBlanket: (() => {
-      const t = createTuftedFabricTexture('#0284c7', '#0369a1');
-      return std({ map: t, bumpMap: t, bumpScale: 0.010, roughness: 0.62 }, 1.4);
-    })(),
-    bathTile: std({ map: createBathTileTexture(), roughness: 0.18, metalness: 0.08 }, 1.4),
-    porcelain: std({ color: 0xffffff, roughness: 0.10, metalness: 0.08 }),
-    chrome: std({ color: 0xe2e8f0, roughness: 0.12, metalness: 0.85 }),
-    mirrorMat: std({ color: 0xdbeafe, roughness: 0.03, metalness: 0.92 }),
-    waterBlue: std({ color: 0x38bdf8, roughness: 0.08, metalness: 0.1, emissive: 0x0284c7, emissiveIntensity: 0.25 }),
-    curtainGold: std({ color: 0xd97706, roughness: 0.65 }),
+    // High-Fi Interior Luxury Materials (rich procedural textures with ultra-fast Lambert shading for 60-120 FPS & zero white washout!)
+    creamTile: lam({ map: createLuxuryFloorTileTexture() }, 2.2),
+    wallCream: lam({ map: createLuxuryWallTexture() }, 2.6),
+    wallAccent: lam({ map: stuccoMap, color: 0xb8a38a }, 3.0),
+    ceilingMat: lam({ color: 0xe6decb }),
+    wallArt: new THREE.MeshBasicMaterial({ map: createFramedArtTexture() }),
+    woodWalnut: lam({ map: createWoodGrainTexture('#5c3a21', '#3b2210') }, 1.6),
+    woodOak: lam({ map: createWoodGrainTexture('#a47551', '#7c5333') }, 1.6),
+    velvetBlue: lam({ map: createTuftedFabricTexture('#1d4ed8', '#1e3a8a') }, 1.2),
+    velvetCream: lam({ map: createTuftedFabricTexture('#ece6dc', '#c7bfb1') }, 1.2),
+    velvetEmerald: lam({ map: createTuftedFabricTexture('#047857', '#064e3b') }, 1.2),
+    rugPattern: lam({ map: createPersianRugTexture() }, 3.2),
+    bedSheet: lam({ map: createTuftedFabricTexture('#f8fafc', '#cbd5e1') }, 1.5),
+    bedBlanket: lam({ map: createTuftedFabricTexture('#0284c7', '#0369a1') }, 1.4),
+    bathTile: lam({ map: createBathTileTexture() }, 1.4),
+    porcelain: lam({ color: 0xf8fafc }),
+    chrome: lam({ color: 0xcbd5e1 }),
+    mirrorMat: std({ color: 0x93c5fd, roughness: 0.05, metalness: 0.85 }),
+    waterBlue: new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
+    curtainGold: lam({ color: 0xd97706 }),
     ledWarm: new THREE.MeshBasicMaterial({ color: 0xfffbeb }),
     ledCyan: new THREE.MeshBasicMaterial({ color: 0x22d3ee }),
     ledMagenta: new THREE.MeshBasicMaterial({ color: 0xe879f9 }),
@@ -503,7 +641,18 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y, levelIndex = 1
   const B = makeB(parent);
   const fy = y + 0.02; // top of floor slab
 
-  // 1. Central Elevator & Stair Lobby (z = 18.65 .. 23.18, x = -5.6 .. -16.65)
+  // 0. Interior Wainscoted Wall Lining over Perimeter Walls (so no interior wall is ever plain white stucco!)
+  B(-19.52, -19.62, fy, y + 2.74, 14.75, 28.30, hm.wallCream); // west interior wall lining
+  B(-5.55, -19.62, fy, y + 2.74, 28.22, 28.32, hm.wallCream);  // south interior wall lining
+  B(-19.48, -19.54, fy, fy + 0.16, 14.75, 28.30, hm.woodWalnut); // west walnut baseboard
+  B(-5.55, -19.54, fy, fy + 0.16, 28.18, 28.24, hm.woodWalnut);  // south walnut baseboard
+
+  // 1. Central Elevator & Stair Lobby (z = 18.65 .. 23.18, x = -5.6 .. -16.55)
+  // Royal Red & Gold Persian Runner Carpet from Front Balcony past Lift to Top of Stairs!
+  B(-6.10, -11.45, fy, fy + 0.022, 19.35, 21.15, hm.rugPattern);
+  B(-13.45, -16.45, fy, fy + 0.022, 19.25, 21.15, hm.rugPattern);
+  B(-14.25, -16.45, fy, fy + 0.022, 21.15, 23.05, hm.rugPattern);
+
   // Hollow Elevator Shaft Walls (x = -11.55 .. -13.38, z = 18.70 .. 20.40) with open doorway z = 18.96 .. 20.14!
   B(-13.26, -13.40, fy, y + 2.74, 18.70, 20.40, hm.marble); // rear shaft wall
   B(-11.55, -13.40, fy, y + 2.74, 18.68, 18.80, hm.marble); // north shaft wall
@@ -518,16 +667,19 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y, levelIndex = 1
   B(-11.49, -11.55, fy + 2.27, fy + 2.33, 18.92, 20.18, hm.gold);
   // Digital Lift Call & Floor Panel beside elevator door (crisp PlaneGeometry facing +X)
   addScreenPlane(screenParent, 0.36, 0.78, [-11.48, fy + 1.35, 18.82], Math.PI / 2, hm.liftDisplay);
-  // Ceiling LED panels in lobby & stair hallway
-  B(-7.0, -8.5, y + 2.71, y + 2.74, 20.0, 21.2, hm.ledWarm);
-  B(-9.5, -11.0, y + 2.71, y + 2.74, 19.2, 20.4, hm.ledWarm);
-  B(-14.3, -15.8, y + 2.71, y + 2.74, 20.2, 21.4, hm.ledWarm);
+  // Ceiling LED panels with Walnut & Gold Coffered Frames in lobby & stair hallway
+  B(-6.9, -8.6, y + 2.68, y + 2.74, 19.9, 21.3, hm.woodWalnut);
+  B(-7.0, -8.5, y + 2.66, y + 2.70, 20.0, 21.2, hm.ledWarm);
+  B(-9.4, -11.1, y + 2.68, y + 2.74, 19.1, 20.5, hm.woodWalnut);
+  B(-9.5, -11.0, y + 2.66, y + 2.70, 19.2, 20.4, hm.ledWarm);
+  B(-14.2, -15.9, y + 2.68, y + 2.74, 20.1, 21.5, hm.woodWalnut);
+  B(-14.3, -15.8, y + 2.66, y + 2.70, 20.2, 21.4, hm.ledWarm);
 
   // Partition walls separating Central Lobby from North Flat A (z = 18.63) & South Flat B (z = 23.26)
   // North Flat A entrance doorway is open at x = -7.2 .. -8.6, and En-Suite Bathroom doorway is open at x = -17.1 .. -18.3!
   B(-5.6, -7.2, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
   B(-8.6, -17.1, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
-  B(-18.3, -19.7, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
+  B(-18.3, -19.6, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
   B(-7.2, -8.6, y + 2.22, y + 2.74, 18.55, 18.72, hm.wallCream);
   B(-17.1, -18.3, y + 2.22, y + 2.74, 18.55, 18.72, hm.wallCream);
   // Walnut door frames & open wooden door leaf swung into Flat A
@@ -535,13 +687,37 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y, levelIndex = 1
   B(-8.56, -8.64, fy, y + 2.24, 18.52, 18.75, hm.woodWalnut);
   B(-8.55, -8.65, fy, y + 2.2, 17.35, 18.55, hm.woodWalnut);
 
-  // ATTACHED LUXURY BATHROOM (অ্যাটাচড বাথরুম: x = -16.65 .. -19.65, z = 18.65 .. 21.35)
-  // Positioned on the West En-Suite side so the Staircase Top Landing (x = -14.1 .. -16.5) is 100% open!
-  // Entered via open doorway at z = 18.63, x = -17.1 .. -18.3 (from Master Bedroom)
-  B(-16.65, -19.65, fy, fy + 0.03, 18.65, 21.35, hm.bathTile);
-  B(-16.60, -16.75, fy, y + 2.74, 18.65, 21.35, hm.bathTile);
-  B(-19.50, -19.65, fy, y + 2.74, 18.65, 21.35, hm.bathTile);
-  B(-16.65, -19.65, fy, y + 2.74, 21.25, 21.40, hm.bathTile);
+  // ATTACHED LUXURY BATHROOM (অ্যাটাচড বাথরুম: x = -16.65 .. -19.55, z = 18.65 .. 21.35)
+  // Outer walls facing the Stair Landing (x = -16.56) and South Corridor (z = 21.38) are clad in
+  // Luxury Walnut Wainscoting + Warm Venetian Plaster + Framed Sundarbans Artwork (NEVER bathroom tiles outside!)
+  // Inner walls are clad in Deep Emerald-Teal & Gold Spa Mosaic Tiles (hm.bathTile).
+  B(-16.68, -19.54, fy, fy + 0.025, 18.68, 21.30, hm.bathTile); // interior spa tile floor
+  // East bathroom wall: outer face (x = -16.56 .. -16.65) in wallCream + Walnut slats, inner face (x = -16.65 .. -16.74) in bathTile
+  B(-16.56, -16.65, fy, y + 2.74, 18.65, 21.38, hm.wallCream);
+  B(-16.53, -16.57, fy, fy + 1.05, 18.68, 21.38, hm.woodWalnut);
+  B(-16.52, -16.56, fy + 1.05, fy + 1.10, 18.68, 21.38, hm.gold);
+  B(-16.65, -16.74, fy, y + 2.74, 18.68, 21.30, hm.bathTile);
+  // Framed Sundarbans Sunset Painting & Luxury Marble Console on East Feature Wall facing Stair Landing!
+  addScreenPlane(screenParent, 1.55, 0.96, [-16.51, fy + 1.68, 20.02], Math.PI / 2, hm.wallArt);
+  B(-16.12, -16.53, fy + 0.72, fy + 0.78, 19.45, 20.58, hm.marble);
+  B(-16.16, -16.52, fy + 0.02, fy + 0.72, 19.52, 20.50, hm.woodWalnut);
+  cylinder(parent, 0.14, 0.10, 0.24, [-16.30, fy + 0.90, 20.32], hm.terracotta, 10);
+  B(-16.18, -16.42, fy + 1.02, fy + 1.45, 20.20, 20.44, hm.plant);
+
+  // West bathroom inner wall (x = -19.46 .. -19.54)
+  B(-19.46, -19.54, fy, y + 2.74, 18.68, 21.30, hm.bathTile);
+  // South bathroom wall (z = 21.25 .. 21.40) with open Walnut Doorway at x = -17.20 .. -18.30 so player can enter right from Stair Landing!
+  B(-16.56, -17.20, fy, y + 2.74, 21.31, 21.40, hm.wallCream);
+  B(-18.30, -19.55, fy, y + 2.74, 21.31, 21.40, hm.wallCream);
+  B(-17.20, -18.30, y + 2.22, y + 2.74, 21.31, 21.40, hm.wallCream);
+  B(-16.65, -17.20, fy, y + 2.74, 21.24, 21.31, hm.bathTile);
+  B(-18.30, -19.54, fy, y + 2.74, 21.24, 21.31, hm.bathTile);
+  B(-17.20, -18.30, y + 2.22, y + 2.74, 21.24, 21.31, hm.bathTile);
+  // Walnut door jambs around both bathroom entrances
+  B(-17.16, -17.24, fy, y + 2.24, 21.22, 21.42, hm.woodWalnut);
+  B(-18.26, -18.34, fy, y + 2.24, 21.22, 21.42, hm.woodWalnut);
+  B(-17.06, -17.14, fy, y + 2.24, 18.52, 18.75, hm.woodWalnut);
+  B(-18.26, -18.34, fy, y + 2.24, 18.52, 18.75, hm.woodWalnut);
   // 1) Western Porcelain Commode / Toilet (কমোড) at x = -19.00, z = 20.65 (facing +X)
   cylinder(parent, 0.19, 0.15, 0.38, [-18.97, fy + 0.20, 20.65], hm.porcelain, 14);
   cylinder(parent, 0.24, 0.20, 0.08, [-18.93, fy + 0.42, 20.65], hm.porcelain, 14);
@@ -784,13 +960,14 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   // Helper to build a floor slab with cutouts for BOTH the Elevator Shaft (x ∈ [-13.38, -11.55], z ∈ [18.70, 20.40])
   // and the Stairwell Opening (x ∈ [-14.20, -9.60], z ∈ [21.55, 22.80])
   function buildSlabWithShaftCutouts(xEast, xWest, y0, y1, zNorth, zSouth, mat) {
-    B(xEast, xWest, y0, y1, zNorth, 18.70, mat);          // North of elevator shaft
-    B(xEast, -11.55, y0, y1, 18.70, 20.40, mat);          // East of elevator shaft (lobby in front of lift)
-    B(-13.38, xWest, y0, y1, 18.70, 20.40, mat);          // West of elevator shaft
-    B(xEast, xWest, y0, y1, 20.40, 21.55, mat);           // Hallway between elevator shaft & stairwell
-    B(xEast, -9.60, y0, y1, 21.55, 22.80, mat);           // East of stairwell
-    B(-14.20, xWest, y0, y1, 21.55, 22.80, mat);          // West of stairwell (top landing)
-    B(xEast, xWest, y0, y1, 22.80, zSouth, mat);          // South of stairwell
+    const opts = { castShadow: false };
+    B(xEast, xWest, y0, y1, zNorth, 18.70, mat, opts);          // North of elevator shaft
+    B(xEast, -11.55, y0, y1, 18.70, 20.40, mat, opts);          // East of elevator shaft (lobby in front of lift)
+    B(-13.38, xWest, y0, y1, 18.70, 20.40, mat, opts);          // West of elevator shaft
+    B(xEast, xWest, y0, y1, 20.40, 21.55, mat, opts);           // Hallway between elevator shaft & stairwell
+    B(xEast, -9.60, y0, y1, 21.55, 22.80, mat, opts);           // East of stairwell
+    B(-14.20, xWest, y0, y1, 21.55, 22.80, mat, opts);          // West of stairwell (top landing)
+    B(xEast, xWest, y0, y1, 22.80, zSouth, mat, opts);          // South of stairwell
   }
 
   // ==========================================================================
@@ -816,8 +993,8 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   // Perimeter Rear & South Walls of Ground Floor
   B(BX, BX + 0.32, PL, 3.85, 14.6, EZ, hm.stucco);
   B(-4.2, BX, PL, 3.85, EZ - 0.32, EZ, hm.stucco);
-  // 1st-floor ceiling / slab with cutouts for BOTH Elevator Shaft & Stairwell
-  buildSlabWithShaftCutouts(-3.95, BX, 3.82, 4.02, SZ - 0.05, EZ, hm.stucco);
+  // 1st-floor ceiling / exterior trim slab with cutouts for BOTH Elevator Shaft & Stairwell (kept below y=3.96 so k=1 luxury tile floor at y=4.02 is never covered!)
+  buildSlabWithShaftCutouts(-3.95, BX, 3.76, 3.96, SZ - 0.05, EZ, hm.stucco);
 
   // Glowing LED Tube Lights on Ground Floor Ceiling + Yellow Parking Bay Lines
   for (const lx of [-6.8, -10.5, -14.8, -18.0]) {
@@ -942,11 +1119,12 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
       const sx0 = -9.65 - t0 * 4.45;
       const sx1 = -9.65 - t1 * 4.45;
       const sy = y0 + t1 * (y1 - y0);
-      B(sx0, sx1, sy - 0.24, sy, 21.58, 22.78, hm.marble);
+      B(sx0, sx1, sy - 0.22, sy, 21.58, 22.78, hm.marble, { castShadow: false });
+      B(sx0, sx0 - 0.04, sy - 0.03, sy + 0.005, 21.58, 22.78, hm.gold, { castShadow: false });
     }
-    // Stainless steel stair handrail
-    rodBetween(g, [-9.65, y0 + 0.92, 21.58], [-14.1, y1 + 0.92, 21.58], 0.025, hm.steel, 8);
-    rodBetween(g, [-9.65, y0 + 0.92, 22.78], [-14.1, y1 + 0.92, 22.78], 0.025, hm.steel, 8);
+    // Walnut & Brushed Gold stair handrails
+    rodBetween(g, [-9.65, y0 + 0.92, 21.58], [-14.1, y1 + 0.92, 21.58], 0.032, hm.woodWalnut, 8);
+    rodBetween(g, [-9.65, y0 + 0.92, 22.78], [-14.1, y1 + 0.92, 22.78], 0.032, hm.woodWalnut, 8);
   }
 
   // ==========================================================================
@@ -957,9 +1135,11 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   B(-5.6, BX, 4.0, ROOF, EZ - 0.28, EZ, hm.stucco);
 
   // Per-floor floor slabs (with cutouts for BOTH Elevator Shaft & Stairwell)
+  // Bottom layer is warm architectural ceiling, top layer is golden-tan Emperador marble floor tile grid!
   for (let k = 1; k <= FLOORS; k++) {
     const y = L(k);
-    buildSlabWithShaftCutouts(-5.5, BX + 0.25, y - 0.24, y + 0.02, 14.7, EZ - 0.25, hm.creamTile);
+    buildSlabWithShaftCutouts(-5.5, BX + 0.25, y - 0.24, y - 0.02, 14.7, EZ - 0.25, hm.ceilingMat);
+    buildSlabWithShaftCutouts(-5.5, BX + 0.25, y - 0.02, y + 0.02, 14.7, EZ - 0.25, hm.creamTile);
   }
 
   // ==========================================================================
@@ -1113,12 +1293,12 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
     dg.name = `LiftLandingDoors_${k}`;
     dynamicParent.add(dg);
 
-    const leftDoor = box(dg, [0.045, 2.26, 0.60], [-11.54, fy + 1.13, 19.25], hm.steel);
-    const rightDoor = box(dg, [0.045, 2.26, 0.60], [-11.54, fy + 1.13, 19.85], hm.steel);
+    const leftDoor = box(dg, [0.045, 2.26, 0.60], [-11.54, fy + 1.13, 19.25], hm.steel, { castShadow: false });
+    const rightDoor = box(dg, [0.045, 2.26, 0.60], [-11.54, fy + 1.13, 19.85], hm.steel, { castShadow: false });
     const initOpen = k === 0 ? 1.0 : 0.0;
     leftDoor.position.z = 19.25 - initOpen * 0.56;
     rightDoor.position.z = 19.85 + initOpen * 0.56;
-    landingDoors.push({ level: k, y: L(k), leftDoor, rightDoor, open: initOpen });
+    landingDoors.push({ level: k, y: L(k), group: dg, leftDoor, rightDoor, open: initOpen });
   }
 
   // 3D Walk-In Luxury Elevator Cabin (rides smoothly from y = 0.5m to y = 31.0m!)
@@ -1126,39 +1306,43 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   elevatorCabGroup.name = 'SkArshanElevatorCabin';
   elevatorCabGroup.position.set(0, state.liftY, 0);
   dynamicParent.add(elevatorCabGroup);
-  const BC = makeB(elevatorCabGroup);
+  const cabStaticGroup = new THREE.Group();
+  elevatorCabGroup.add(cabStaticGroup);
+  const BC = makeB(cabStaticGroup);
 
   // Cabin Swirl-Marble Floor & Gold Border Inlay (x = -11.58 .. -13.32, z = 18.74 .. 20.36)
-  BC(-11.56, -13.34, -0.04, 0.022, 18.74, 20.36, hm.marble);
-  BC(-11.60, -13.30, 0.022, 0.028, 18.78, 18.84, hm.gold);
-  BC(-11.60, -13.30, 0.022, 0.028, 20.26, 20.32, hm.gold);
-  BC(-13.24, -13.30, 0.022, 0.028, 18.78, 20.32, hm.gold);
+  BC(-11.56, -13.34, -0.04, 0.022, 18.74, 20.36, hm.marble, { castShadow: false });
+  BC(-11.60, -13.30, 0.022, 0.028, 18.78, 18.84, hm.gold, { castShadow: false });
+  BC(-11.60, -13.30, 0.022, 0.028, 20.26, 20.32, hm.gold, { castShadow: false });
+  BC(-13.24, -13.30, 0.022, 0.028, 18.78, 20.32, hm.gold, { castShadow: false });
 
   // Cabin Walnut & Brushed Gold Interior Walls
-  BC(-13.26, -13.34, 0.02, 2.42, 18.74, 20.36, hm.woodWalnut); // rear cabin wall
-  BC(-11.58, -13.34, 0.02, 2.42, 18.72, 18.79, hm.woodWalnut); // north cabin wall
-  BC(-11.58, -13.34, 0.02, 2.42, 20.31, 20.38, hm.woodWalnut); // south cabin wall
+  BC(-13.26, -13.34, 0.02, 2.42, 18.74, 20.36, hm.woodWalnut, { castShadow: false }); // rear cabin wall
+  BC(-11.58, -13.34, 0.02, 2.42, 18.72, 18.79, hm.woodWalnut, { castShadow: false }); // north cabin wall
+  BC(-11.58, -13.34, 0.02, 2.42, 20.31, 20.38, hm.woodWalnut, { castShadow: false }); // south cabin wall
   // Beveled Rear Mirror & Brushed Gold Handrails inside Cabin
-  BC(-13.22, -13.26, 0.94, 2.16, 18.90, 20.20, hm.mirrorMat);
-  BC(-13.21, -13.25, 0.90, 0.94, 18.88, 20.22, hm.gold);
-  BC(-13.21, -13.25, 2.16, 2.20, 18.88, 20.22, hm.gold);
-  rodBetween(elevatorCabGroup, [-13.16, 0.86, 18.86], [-13.16, 0.86, 20.24], 0.024, hm.gold, 10);
-  rodBetween(elevatorCabGroup, [-11.72, 0.86, 18.84], [-13.16, 0.86, 18.84], 0.022, hm.gold, 10);
-  rodBetween(elevatorCabGroup, [-11.72, 0.86, 20.26], [-13.16, 0.86, 20.26], 0.022, hm.gold, 10);
+  BC(-13.22, -13.26, 0.94, 2.16, 18.90, 20.20, hm.mirrorMat, { castShadow: false });
+  BC(-13.21, -13.25, 0.90, 0.94, 18.88, 20.22, hm.gold, { castShadow: false });
+  BC(-13.21, -13.25, 2.16, 2.20, 18.88, 20.22, hm.gold, { castShadow: false });
+  rodBetween(cabStaticGroup, [-13.16, 0.86, 18.86], [-13.16, 0.86, 20.24], 0.024, hm.gold, 8);
+  rodBetween(cabStaticGroup, [-11.72, 0.86, 18.84], [-13.16, 0.86, 18.84], 0.022, hm.gold, 8);
+  rodBetween(cabStaticGroup, [-11.72, 0.86, 20.26], [-13.16, 0.86, 20.26], 0.022, hm.gold, 8);
 
   // Cabin Coffered Warm LED Ceiling
-  BC(-11.58, -13.34, 2.38, 2.45, 18.74, 20.36, hm.granite);
-  BC(-11.82, -13.10, 2.35, 2.38, 18.96, 20.14, hm.ledWarm);
+  BC(-11.58, -13.34, 2.38, 2.45, 18.74, 20.36, hm.granite, { castShadow: false });
+  BC(-11.82, -13.10, 2.35, 2.38, 18.96, 20.14, hm.ledWarm, { castShadow: false });
 
   // Cabin Front Return Jambs & Sliding Inner Doors
-  BC(-11.58, -11.65, 0.02, 2.42, 18.74, 18.96, hm.steel);
-  BC(-11.58, -11.65, 0.02, 2.42, 20.14, 20.36, hm.steel);
-  BC(-11.58, -11.65, 2.28, 2.42, 18.96, 20.14, hm.steel);
-  const cabLeftDoor = box(elevatorCabGroup, [0.04, 2.26, 0.60], [-11.60, 1.15, 19.25 - state.liftDoorOpen * 0.56], hm.steel);
-  const cabRightDoor = box(elevatorCabGroup, [0.04, 2.26, 0.60], [-11.60, 1.15, 19.85 + state.liftDoorOpen * 0.56], hm.steel);
+  BC(-11.58, -11.65, 0.02, 2.42, 18.74, 18.96, hm.steel, { castShadow: false });
+  BC(-11.58, -11.65, 0.02, 2.42, 20.14, 20.36, hm.steel, { castShadow: false });
+  BC(-11.58, -11.65, 2.28, 2.42, 18.96, 20.14, hm.steel, { castShadow: false });
+  BC(-12.02, -12.48, 0.92, 1.82, 20.27, 20.31, hm.gold, { castShadow: false });
+  mergeStaticMeshes(cabStaticGroup);
+
+  const cabLeftDoor = box(elevatorCabGroup, [0.04, 2.26, 0.60], [-11.60, 1.15, 19.25 - state.liftDoorOpen * 0.56], hm.steel, { castShadow: false });
+  const cabRightDoor = box(elevatorCabGroup, [0.04, 2.26, 0.60], [-11.60, 1.15, 19.85 + state.liftDoorOpen * 0.56], hm.steel, { castShadow: false });
 
   // 3D Interactive Button Column inside the Elevator Cabin (on south wall z = 20.29 & front jamb)
-  BC(-12.02, -12.48, 0.92, 1.82, 20.27, 20.31, hm.gold);
   addScreenPlane(elevatorCabGroup, 0.42, 0.84, [-12.25, 1.37, 20.26], Math.PI, hm.liftDisplay);
   addScreenPlane(elevatorCabGroup, 0.36, 0.72, [-11.95, 1.37, 18.81], 0, hm.liftDisplay);
 
@@ -1417,7 +1601,11 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
       cabLeftDoor.position.z = 19.25 - state.liftDoorOpen * 0.56;
       cabRightDoor.position.z = 19.85 + state.liftDoorOpen * 0.56;
 
+      const insideTower = playerPos.x <= -2.8 && playerPos.x >= -20.2 && playerPos.z >= 14.2 && playerPos.z <= 28.8;
       for (const ld of landingDoors) {
+        const shouldShowDoor = (ld.level === 0 && footY < 3.6) || (insideTower && Math.abs(footY - ld.y) <= 2.4);
+        if (ld.group.visible !== shouldShowDoor) ld.group.visible = shouldShowDoor;
+        if (!shouldShowDoor) continue;
         const isCurrentFloor = Math.abs(state.liftY - ld.y) < 0.18;
         const targetOpen = isCurrentFloor ? state.liftDoorOpen : 0.0;
         if (Math.abs(ld.open - targetOpen) > 0.001) {
@@ -1427,14 +1615,11 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
         }
       }
 
-      const insideTower = playerPos.x <= -2.8 && playerPos.x >= -20.2 && playerPos.z >= 14.2 && playerPos.z <= 28.8;
+      // Ultra-fast per-floor occlusion culling: only draw the single floor interior the player is currently on!
       for (const fl of floorInteriors) {
-        if (isLow && !insideTower) {
-          fl.group.visible = fl.level <= 2;
-        } else if (insideTower) {
-          fl.group.visible = Math.abs(footY - fl.y) <= 4.5;
-        } else {
-          fl.group.visible = fl.level <= 4;
+        const shouldShowFloor = insideTower && Math.abs(footY - fl.y) <= 2.1;
+        if (fl.group.visible !== shouldShowFloor) {
+          fl.group.visible = shouldShowFloor;
         }
       }
     },

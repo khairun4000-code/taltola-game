@@ -1,9 +1,4 @@
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { FirstPersonControls } from './controls.js';
 import { createMaterials } from './materials.js';
 import { buildHouse } from './house.js';
@@ -53,50 +48,25 @@ const brandSubtitle = document.querySelector('#brand-subtitle');
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
-  antialias: true,
+  antialias: false,
   powerPreference: 'high-performance',
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.06;
-renderer.shadowMap.enabled = true;
+renderer.toneMappingExposure = 0.92;
+renderer.shadowMap.enabled = false;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x18211e);
 scene.fog = new THREE.Fog(0xcfe0e6, 55, 130);
 
-// PBR Environment Map for realistic marble, chrome, brass, mirror, glass & tile reflections
-const pmremGenerator = new THREE.PMREMGenerator(renderer);
-const roomEnv = new RoomEnvironment();
-scene.environment = pmremGenerator.fromScene(roomEnv, 0.04).texture;
-scene.environmentIntensity = 0.65;
-roomEnv.dispose();
-pmremGenerator.dispose();
-
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.08, 175);
 
-// AAA Post-Processing Pipeline (EffectComposer + UnrealBloomPass + OutputPass)
-const composer = new EffectComposer(renderer);
-const renderPass = new RenderPass(scene, camera);
-const bloomPass = new UnrealBloomPass(
-  new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.20,
-  0.42,
-  0.86
-);
-const outputPass = new OutputPass();
-composer.addPass(renderPass);
-composer.addPass(bloomPass);
-composer.addPass(outputPass);
-
 function renderActiveScene() {
-  if (quality === 'ultra' && !inStudio) {
-    composer.render();
-  } else {
-    renderer.render(scene, camera);
-  }
+  renderer.render(scene, camera);
 }
 
 const controls = new FirstPersonControls(camera, renderer.domElement);
@@ -142,8 +112,8 @@ const studioOrbit = {
   lastY: 0,
 };
 
-let quality = localStorage.getItem('taltola_quality') || 'high';
-if (!['low', 'medium', 'high', 'ultra'].includes(quality)) quality = 'high';
+let quality = localStorage.getItem('taltola_quality') || 'medium';
+if (!['low', 'medium', 'high', 'ultra'].includes(quality)) quality = 'medium';
 let sceneMaterials;
 let environment;
 let house;
@@ -259,49 +229,51 @@ function applyQuality(nextQuality) {
   const dpr = window.devicePixelRatio || 1;
   const isLow = quality === 'low';
   const ratios = {
-    low: Math.min(dpr, 1.0),
-    medium: Math.min(dpr * 1.15, 1.35),
-    high: Math.min(Math.max(dpr * 1.4, 1.5), 2.0),
-    ultra: Math.min(Math.max(dpr * 1.85, 2.0), 2.5),
+    low: Math.min(dpr, 0.78),
+    medium: Math.min(dpr, 0.92),
+    high: Math.min(dpr, 1.0),
+    ultra: Math.min(dpr * 1.15, 1.25),
   };
-  const shadowSizes = { low: 512, medium: 1024, high: 2048, ultra: 4096 };
-  const useShadows = !isLow;
+  const shadowSizes = { low: 512, medium: 1024, high: 1536, ultra: 2048 };
+  const useShadows = quality === 'high' || quality === 'ultra';
   const activeRatio = ratios[quality] ?? ratios.high;
 
   renderer.setPixelRatio(activeRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setPixelRatio(activeRatio);
-  composer.setSize(window.innerWidth, window.innerHeight);
-  bloomPass.resolution.set(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = useShadows;
-  renderer.shadowMap.type = (quality === 'high' || quality === 'ultra')
-    ? THREE.PCFSoftShadowMap
-    : THREE.BasicShadowMap;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;
+  if (useShadows) renderer.shadowMap.needsUpdate = true;
 
   if (!inStudio) {
     scene.fog.near = isLow ? 36 : 48;
     scene.fog.far = isLow ? 88 : 115;
-    camera.far = isLow ? 95 : 175;
+    camera.far = isLow ? 95 : 145;
     camera.updateProjectionMatrix();
   }
 
-  // In Low (No GPU) mode, disable extra directional lights outside Studio so the GPU/CPU only computes 1 directional light
+  // Keep directional fill light active in all modes so walls, corners & the character's hair/back have true 3D shading without white washout
   const useExtraLights = !isLow || inStudio;
   if (studioKeyLight) studioKeyLight.visible = useExtraLights;
-  if (fillDirLight) fillDirLight.visible = useExtraLights;
-  if (ambientLight) ambientLight.intensity = isLow && !inStudio ? 1.26 : 0.88;
-  if (hemisphereLight) hemisphereLight.intensity = isLow && !inStudio ? 1.05 : 0.82;
+  if (fillDirLight) {
+    fillDirLight.visible = true;
+    fillDirLight.intensity = isLow && !inStudio ? 0.58 : 0.68;
+  }
+  if (ambientLight) ambientLight.intensity = isLow && !inStudio ? 0.68 : 0.62;
+  if (hemisphereLight) hemisphereLight.intensity = isLow && !inStudio ? 0.64 : 0.58;
 
   if (sun) {
     sun.castShadow = useShadows;
     if (useShadows) {
-      const size = shadowSizes[quality] || 2048;
+      const size = shadowSizes[quality] || 1536;
       sun.shadow.mapSize.set(size, size);
-      sun.shadow.bias = -0.0004;
+      sun.shadow.bias = -0.0014;
+      sun.shadow.normalBias = 0.04;
       if (sun.shadow.map) {
         sun.shadow.map.dispose();
         sun.shadow.map = null;
       }
+      renderer.shadowMap.needsUpdate = true;
     }
   }
 
@@ -318,13 +290,13 @@ for (const input of qualityInputs) {
 }
 
 function setupLighting() {
-  ambientLight = new THREE.AmbientLight(0xf6f4ee, 0.88);
+  ambientLight = new THREE.AmbientLight(0xf6f0e4, 0.56);
   scene.add(ambientLight);
 
-  hemisphereLight = new THREE.HemisphereLight(0xe6f2f7, 0x6b7058, 0.82);
+  hemisphereLight = new THREE.HemisphereLight(0xdcebf2, 0x5c5346, 0.52);
   scene.add(hemisphereLight);
 
-  sun = new THREE.DirectionalLight(0xfff5e4, 1.85);
+  sun = new THREE.DirectionalLight(0xfff2dc, 1.45);
   sun.position.set(4, 14, 12);
   sun.target.position.set(0, 1, 0);
   sun.castShadow = true;
@@ -614,7 +586,7 @@ async function initialize() {
     scene,
     camera,
     renderer,
-    composer,
+    composer: null,
     controls,
     house,
     environment,
@@ -1505,11 +1477,12 @@ function applyWorldCollisions(pos) {
           resolveCircleAABB(pos, PLAYER_RADIUS, -13.40, -13.20, 14.68, 16.00);
           resolveCircleAABB(pos, PLAYER_RADIUS, -13.40, -13.20, 17.30, 18.63);
 
-          // West En-Suite Attached Luxury Bathroom Walls (x = -16.65, x = -19.65, z = 21.32, plus shower glass at x = -18.32)
+          // West En-Suite Attached Luxury Bathroom Walls (x = -16.65, x = -19.65, z = 21.32 with open doorway at x = -18.30..-17.20)
           // Leaves x = -16.55..-14.10 completely open in front of the top stair landing!
           resolveCircleAABB(pos, PLAYER_RADIUS, -16.75, -16.56, 18.63, 21.40);
           resolveCircleAABB(pos, PLAYER_RADIUS, -19.75, -19.55, 18.63, 21.40);
-          resolveCircleAABB(pos, PLAYER_RADIUS, -19.75, -16.56, 21.22, 21.42);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -17.20, -16.56, 21.22, 21.42);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -19.75, -18.30, 21.22, 21.42);
           resolveCircleAABB(pos, 0.20, -18.38, -18.24, 18.65, 19.60);
 
           // South Wing: Dining Room / RGB Gaming Suite Wall (x = -13.30, open doorway at z = 24.90..26.30)
@@ -2009,8 +1982,6 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setSize(window.innerWidth, window.innerHeight);
-  bloomPass.resolution.set(window.innerWidth, window.innerHeight);
 });
 
 let fpsFrames = 0;
@@ -2027,8 +1998,13 @@ function animate() {
   } else {
     if (environment?.tower) environment.tower.update(delta, playerPos, isLow);
     updateMovement(delta);
-    if (house) house.update(delta, playerPos, isLow);
-    if (environment && !isLow) environment.update(elapsed);
+    // Smart indoor building culling: hide distant Taltola House when deep inside an upper floor of Sk Arshan Tower
+    const deepInTowerUpper = (playerPos.y - EYE_HEIGHT) >= 3.2 && playerPos.x < -5.8 && playerPos.z > 14.7;
+    if (house?.group && house.group.visible === deepInTowerUpper) {
+      house.group.visible = !deepInTowerUpper;
+    }
+    if (house && !deepInTowerUpper) house.update(delta, playerPos, isLow);
+    if (environment && !isLow && !deepInTowerUpper) environment.update(elapsed);
 
     if (!started) {
       camera.position.z = 10.5 + Math.sin(elapsed * 0.12) * 0.25;
@@ -2054,8 +2030,8 @@ function animate() {
   if (now - fpsTime > 800) {
     const currentFps = Math.round((fpsFrames * 1000) / (now - fpsTime));
     fpsLabel.textContent = `${currentFps} FPS`;
-    // Auto-adapt to Low (No GPU) mode if a machine without a GPU drops below 20 FPS
-    if (ready && currentFps < 20 && quality !== 'low') {
+    // Auto-adapt to Low / Fast 60-120 FPS mode if FPS drops below 48 FPS
+    if (ready && currentFps < 48 && quality !== 'low') {
       applyQuality('low');
     }
     fpsFrames = 0;
