@@ -627,6 +627,7 @@ export function createPlayerCharacter(scene, manager) {
       }
     } else {
       root.position.set(position.x, position.y - 1.68, position.z);
+      state.thirdPerson = state.cameraMode !== 'first';
       root.visible = state.thirdPerson;
 
       // Cancel emote if player starts walking/running or jumping (unless locked in seated pose)

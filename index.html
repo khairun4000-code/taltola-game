@@ -29,6 +29,7 @@
       <div class="hud-actions">
         <span id="fps" class="fps">— FPS</span>
         <button id="studio-toggle-button" class="text-button" type="button">CHARACTER STUDIO <span>★</span></button>
+        <button id="lift-hud-button" class="text-button hidden" type="button">LIFT PANEL <span>[L]</span></button>
         <button id="run-toggle-button" class="text-button hidden" type="button">RUN: OFF <span>[SHIFT/R]</span></button>
         <button id="camera-toggle-button" class="text-button hidden" type="button">VIEW: BACK <span>[V]</span></button>
         <button id="gate-toggle-button" class="text-button hidden" type="button">OPEN DOORS <span>[G]</span></button>
@@ -151,9 +152,86 @@
         <button type="button" class="emote-pill" data-game-emote="combo"><kbd>5</kbd> মারামারি কম্বো</button>
         <button type="button" class="emote-pill" data-game-emote="flex"><kbd>6</kbd> বডি ফ্লেক্স</button>
       </div>
-      <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360° ORBIT</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>SHIFT / R / 2×W</kbd> দৌড়ানো (RUN)</span><span><kbd>SPACE</kbd> JUMP</span><span><kbd>E</kbd> DOOR</span><span><kbd>P</kbd> POCKET</span><span><kbd>1-6</kbd> EMOTE</span><span><kbd>V</kbd> VIEW</span></div>
+      <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360° ORBIT</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>SHIFT / R / 2×W</kbd> দৌড়ানো (RUN)</span><span><kbd>SPACE</kbd> JUMP</span><span><kbd>E</kbd> INTERACT / LIFT</span><span><kbd>L</kbd> LIFT PAD</span><span><kbd>1-6</kbd> EMOTE</span><span><kbd>V</kbd> VIEW</span></div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
     </div>
+
+    <!-- INTERACTIVE HIGH-SPEED ELEVATOR (LIFT) CONTROL KEYPAD -->
+    <aside id="lift-keypad" class="lift-keypad hidden" aria-label="High-Speed Elevator Floor Control Panel">
+      <div class="lift-keypad-card">
+        <div class="lift-keypad-header">
+          <div>
+            <p class="lift-eyebrow">SK ARSHAN ALIF TOWER</p>
+            <h3>হাই-স্পিড লিফট প্যানেল</h3>
+          </div>
+          <button id="lift-close-ui" type="button" class="lift-close-x" title="Close Panel">×</button>
+        </div>
+
+        <div class="lift-led-screen">
+          <div class="lift-led-top">
+            <span id="lift-led-arrow" class="lift-led-arrow">●</span>
+            <span id="lift-led-code" class="lift-led-code">GF</span>
+          </div>
+          <div id="lift-led-name" class="lift-led-name">নিচতলা · গ্র্যান্ড লবি (Ground Floor)</div>
+          <div id="lift-led-status" class="lift-led-status">দরজা খোলা আছে · নাম্বার ক্লিক করুন</div>
+        </div>
+
+        <p class="lift-hint">যে তলায় যেতে চান সেই নাম্বারে মাউস দিয়ে ক্লিক করুন (অথবা কিবোর্ডে G, 1–9, R চাপুন):</p>
+
+        <div id="lift-btn-grid" class="lift-btn-grid">
+          <button type="button" class="lift-floor-btn" data-lift-floor="10">
+            <span class="lift-btn-num">R</span>
+            <span class="lift-btn-label">ছাদ · স্কাই লাউঞ্জ</span>
+          </button>
+          <button type="button" class="lift-floor-btn" data-lift-floor="9">
+            <span class="lift-btn-num">9</span>
+            <span class="lift-btn-label">১০ম তলা · পেন্টহাউস</span>
+          </button>
+          <button type="button" class="lift-floor-btn" data-lift-floor="8">
+            <span class="lift-btn-num">8</span>
+            <span class="lift-btn-label">৯ম তলা · ফ্ল্যাট ৮</span>
+          </button>
+          <button type="button" class="lift-floor-btn" data-lift-floor="7">
+            <span class="lift-btn-num">7</span>
+            <span class="lift-btn-label">৮ম তলা · স্কাই স্যুট</span>
+          </button>
+          <button type="button" class="lift-floor-btn" data-lift-floor="6">
+            <span class="lift-btn-num">6</span>
+            <span class="lift-btn-label">৭ম তলা · ফ্ল্যাট ৬</span>
+          </button>
+          <button type="button" class="lift-floor-btn" data-lift-floor="5">
+            <span class="lift-btn-num">5</span>
+            <span class="lift-btn-label">৬ষ্ঠ তলা · ফ্ল্যাট ৫</span>
+          </button>
+          <button type="button" class="lift-floor-btn" data-lift-floor="4">
+            <span class="lift-btn-num">4</span>
+            <span class="lift-btn-label">৫ম তলা · ডুপ্লেক্স</span>
+          </button>
+          <button type="button" class="lift-floor-btn" data-lift-floor="3">
+            <span class="lift-btn-num">3</span>
+            <span class="lift-btn-label">৪র্থ তলা · ফ্ল্যাট ৩</span>
+          </button>
+          <button type="button" class="lift-floor-btn" data-lift-floor="2">
+            <span class="lift-btn-num">2</span>
+            <span class="lift-btn-label">৩য় তলা · মডেল ফ্ল্যাট</span>
+          </button>
+          <button type="button" class="lift-floor-btn" data-lift-floor="1">
+            <span class="lift-btn-num">1</span>
+            <span class="lift-btn-label">২য় তলা · কোচিং ও ফ্ল্যাট</span>
+          </button>
+          <button type="button" class="lift-floor-btn lift-floor-btn-wide active" data-lift-floor="0">
+            <span class="lift-btn-num">G</span>
+            <span class="lift-btn-label">নিচতলা · গ্র্যান্ড লবি ও পার্কিং (Ground)</span>
+          </button>
+        </div>
+
+        <div class="lift-door-controls">
+          <button type="button" id="lift-door-open-btn" class="lift-door-btn">◄► দরজা খুলুন (Open)</button>
+          <button type="button" id="lift-door-close-btn" class="lift-door-btn">►◄ দরজা বন্ধ (Close)</button>
+          <button type="button" id="lift-exit-btn" class="lift-door-btn lift-exit-highlight">লিফট থেকে বের হোন →</button>
+        </div>
+      </div>
+    </aside>
 
     <dialog id="reference-modal">
       <div class="reference-topline"><div><p class="eyebrow">SOURCE MATERIAL</p><h2>The original view</h2></div><button id="close-reference" type="button" aria-label="Close reference">×</button></div>

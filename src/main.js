@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { FirstPersonControls } from './controls.js';
 import { createMaterials } from './materials.js';
 import { buildHouse } from './house.js';
@@ -23,6 +28,17 @@ const gateToggleButton = document.querySelector('#gate-toggle-button');
 const cameraToggleButton = document.querySelector('#camera-toggle-button');
 const runToggleButton = document.querySelector('#run-toggle-button');
 const runPillButton = document.querySelector('#run-pill-button');
+const liftHudButton = document.querySelector('#lift-hud-button');
+const liftKeypad = document.querySelector('#lift-keypad');
+const liftCloseUiButton = document.querySelector('#lift-close-ui');
+const liftLedArrow = document.querySelector('#lift-led-arrow');
+const liftLedCode = document.querySelector('#lift-led-code');
+const liftLedName = document.querySelector('#lift-led-name');
+const liftLedStatus = document.querySelector('#lift-led-status');
+const liftFloorButtons = Array.from(document.querySelectorAll('[data-lift-floor]'));
+const liftDoorOpenBtn = document.querySelector('#lift-door-open-btn');
+const liftDoorCloseBtn = document.querySelector('#lift-door-close-btn');
+const liftExitBtn = document.querySelector('#lift-exit-btn');
 const interactPrompt = document.querySelector('#interact-prompt');
 const locationTagText = document.querySelector('.location-tag');
 const qualityInputs = [
@@ -51,7 +67,37 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x18211e);
 scene.fog = new THREE.Fog(0xcfe0e6, 55, 130);
 
+// PBR Environment Map for realistic marble, chrome, brass, mirror, glass & tile reflections
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+const roomEnv = new RoomEnvironment();
+scene.environment = pmremGenerator.fromScene(roomEnv, 0.04).texture;
+scene.environmentIntensity = 0.65;
+roomEnv.dispose();
+pmremGenerator.dispose();
+
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.08, 175);
+
+// AAA Post-Processing Pipeline (EffectComposer + UnrealBloomPass + OutputPass)
+const composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(scene, camera);
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.20,
+  0.42,
+  0.86
+);
+const outputPass = new OutputPass();
+composer.addPass(renderPass);
+composer.addPass(bloomPass);
+composer.addPass(outputPass);
+
+function renderActiveScene() {
+  if (quality === 'ultra' && !inStudio) {
+    composer.render();
+  } else {
+    renderer.render(scene, camera);
+  }
+}
 
 const controls = new FirstPersonControls(camera, renderer.domElement);
 const clock = new THREE.Clock();
@@ -64,6 +110,8 @@ const savedCameraQuat = new THREE.Quaternion();
 
 let inStudio = false;
 let started = false;
+let liftKeypadOpen = false;
+let wasInsideLift = false;
 let verticalVelocity = 0;
 let grounded = true;
 let jumpBuffer = 0;
@@ -150,6 +198,8 @@ function buildStudioEnvironment() {
 function setMode(studioMode) {
   inStudio = studioMode;
   if (inStudio) {
+    liftKeypadOpen = false;
+    liftKeypad?.classList.add('hidden');
     if (controls.isLocked) controls.unlock();
     started = false;
     scene.background.setHex(0x18211e);
@@ -169,6 +219,7 @@ function setMode(studioMode) {
     cameraToggleButton?.classList.add('hidden');
     gateToggleButton?.classList.add('hidden');
     runToggleButton?.classList.add('hidden');
+    liftHudButton?.classList.add('hidden');
     if (brandTitle) brandTitle.textContent = 'CHARACTER STUDIO';
     if (brandSubtitle) brandSubtitle.textContent = 'FULL HUMAN 3D MODEL · DRAG TO ROTATE 360°';
     if (studioToggleButton) studioToggleButton.innerHTML = 'PLAY STREET GAME <span>→</span>';
@@ -190,6 +241,7 @@ function setMode(studioMode) {
     cameraToggleButton?.classList.remove('hidden');
     gateToggleButton?.classList.remove('hidden');
     runToggleButton?.classList.remove('hidden');
+    liftHudButton?.classList.remove('hidden');
     if (brandTitle) brandTitle.textContent = 'TALTOLA';
     if (brandSubtitle) brandSubtitle.textContent = 'KHULNA · BANGLADESH';
     if (studioToggleButton) studioToggleButton.innerHTML = 'CHARACTER STUDIO <span>★</span>';
@@ -207,16 +259,20 @@ function applyQuality(nextQuality) {
   const dpr = window.devicePixelRatio || 1;
   const isLow = quality === 'low';
   const ratios = {
-    low: Math.min(dpr, 0.68),
+    low: Math.min(dpr, 1.0),
     medium: Math.min(dpr * 1.15, 1.35),
     high: Math.min(Math.max(dpr * 1.4, 1.5), 2.0),
     ultra: Math.min(Math.max(dpr * 1.85, 2.0), 2.5),
   };
   const shadowSizes = { low: 512, medium: 1024, high: 2048, ultra: 4096 };
   const useShadows = !isLow;
+  const activeRatio = ratios[quality] ?? ratios.high;
 
-  renderer.setPixelRatio(ratios[quality] ?? ratios.high);
+  renderer.setPixelRatio(activeRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setPixelRatio(activeRatio);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  bloomPass.resolution.set(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = useShadows;
   renderer.shadowMap.type = (quality === 'high' || quality === 'ultra')
     ? THREE.PCFSoftShadowMap
@@ -337,6 +393,102 @@ function toggleRunMode() {
   syncHUDButtons(runModeToggle, true);
 }
 
+function syncLiftKeypadUI() {
+  const tower = environment?.tower;
+  if (!tower || !liftKeypad) return;
+  const st = tower.state;
+  const stops = tower.stops || [];
+  const curStop = stops[st.liftFloorIndex] || { code: 'GF', label: 'নিচতলা (Ground Lobby)' };
+  const tgtStop = stops[st.liftTargetIndex] || curStop;
+  const isMoving = st.liftPhase === 'moving' || st.liftPhase === 'closing';
+  const curName = curStop.nameBn || curStop.label || 'নিচতলা';
+  const tgtName = tgtStop.nameBn || tgtStop.label || curName;
+
+  if (liftLedArrow) {
+    liftLedArrow.textContent = isMoving
+      ? (st.liftDirection >= 0 ? '▲' : '▼')
+      : (st.liftDoorOpen > 0.6 ? '●' : '■');
+  }
+  if (liftLedCode) {
+    liftLedCode.textContent = curStop.code;
+  }
+  if (liftLedName) {
+    liftLedName.textContent = curName;
+  }
+  if (liftLedStatus) {
+    if (st.liftPhase === 'moving') {
+      liftLedStatus.textContent = `লিফট চলছে → গন্তব্য: ${tgtName}`;
+    } else if (st.liftPhase === 'opening') {
+      liftLedStatus.textContent = 'দরজা খুলছে... (Doors Opening)';
+    } else if (st.liftPhase === 'closing') {
+      liftLedStatus.textContent = 'দরজা বন্ধ হচ্ছে... (Doors Closing)';
+    } else if (st.liftDoorOpen >= 0.85) {
+      liftLedStatus.textContent = 'দরজা খোলা · ফ্লোর নাম্বার ক্লিক করুন';
+    } else {
+      liftLedStatus.textContent = 'প্রস্তুত · ফ্লোর নাম্বার ক্লিক করুন';
+    }
+  }
+
+  for (const btn of liftFloorButtons) {
+    const fIdx = Number(btn.dataset.liftFloor);
+    const isCurrent = fIdx === st.liftFloorIndex && !isMoving;
+    const isTarget = fIdx === st.liftTargetIndex && isMoving;
+    btn.classList.toggle('current-floor', isCurrent);
+    btn.classList.toggle('active-target', isTarget);
+  }
+}
+
+function openLiftKeypad() {
+  if (inStudio) return;
+  liftKeypadOpen = true;
+  liftKeypad?.classList.remove('hidden');
+  pause?.classList.add('hidden');
+  walkHud?.classList.remove('hidden');
+  if (controls.isLocked) {
+    controls.unlock();
+  }
+  syncLiftKeypadUI();
+}
+
+function closeLiftKeypad(relock = true) {
+  liftKeypadOpen = false;
+  liftKeypad?.classList.add('hidden');
+  if (relock && started && !inStudio && !referenceModal?.open) {
+    pause?.classList.add('hidden');
+    walkHud?.classList.remove('hidden');
+    controls.lock();
+  }
+}
+
+function selectLiftFloor(floorIndex) {
+  const tower = environment?.tower;
+  if (!tower) return false;
+  const stops = tower.stops || [];
+  const idx = THREE.MathUtils.clamp(Math.round(floorIndex), 0, stops.length - 1);
+
+  // If the player is standing in Sk Arshan Tower or near the lift lobby, step them smoothly inside the 3D cabin so they ride with it!
+  const insideTower = playerPos.x <= -2.8 && playerPos.x >= -19.9 && playerPos.z >= 14.25 && playerPos.z <= 28.6;
+  if (insideTower && !tower.isInsideLift(playerPos)) {
+    if (sittingState.active) standUpFromSeat();
+    const footY = playerPos.y - EYE_HEIGHT;
+    const nearK = tower.nearestFloorIndex(footY);
+    if (tower.state.liftPhase !== 'moving' && tower.state.liftFloorIndex !== nearK) {
+      tower.state.liftFloorIndex = nearK;
+      tower.state.liftY = stops[nearK].y;
+    }
+    playerPos.set(-12.38, tower.state.liftY + EYE_HEIGHT, 19.55);
+    horizontalVelocity.set(0, 0);
+    verticalVelocity = 0;
+    grounded = true;
+    controls.euler.set(-0.04, -Math.PI / 2, 0, 'YXZ');
+    camera.quaternion.setFromEuler(controls.euler);
+  }
+
+  tower.goToFloor(idx);
+  syncLiftKeypadUI();
+  return true;
+}
+
 function standUpFromSeat() {
   if (!sittingState.active) return false;
   const seat = sittingState.seat;
@@ -399,7 +551,13 @@ function handleDoorInteraction() {
     sitOnSeat(nearSeat);
     return;
   }
-  if (environment?.tower?.interact(playerPos)) {
+  const towerRes = environment?.tower?.interact(playerPos);
+  if (towerRes) {
+    if (towerRes === 'open_lift_keypad' || environment?.tower?.isInsideLift(playerPos)) {
+      openLiftKeypad();
+    } else if (environment?.tower?.isNearLiftLobby(playerPos)) {
+      openLiftKeypad();
+    }
     syncHUDButtons(false, true);
     return;
   }
@@ -456,6 +614,7 @@ async function initialize() {
     scene,
     camera,
     renderer,
+    composer,
     controls,
     house,
     environment,
@@ -465,10 +624,13 @@ async function initialize() {
     sitOnSeat,
     standUpFromSeat,
     findNearestSeat,
+    openLiftKeypad,
+    closeLiftKeypad,
+    selectLiftFloor,
     setMode,
     ready,
   };
-  renderer.render(scene, camera);
+  renderActiveScene();
   loading.classList.add('complete');
   header.classList.remove('hidden');
   setTimeout(() => loading.classList.add('hidden'), 450);
@@ -536,6 +698,11 @@ canvas.addEventListener('pointerdown', (event) => {
     canvas.setPointerCapture?.(event.pointerId);
     return;
   }
+  if (liftKeypadOpen) {
+    // Clicking the 3D scene while lift keypad is open closes the keypad & locks pointer back to walking
+    closeLiftKeypad(true);
+    return;
+  }
   if (!controls.isLocked) {
     beginWalking();
     return;
@@ -587,6 +754,8 @@ function beginWalking() {
       playerCharacter.state.facingYaw = controls.euler.y + Math.PI;
     }
   }
+  liftKeypadOpen = false;
+  liftKeypad?.classList.add('hidden');
   intro?.classList.add('hidden');
   pause?.classList.add('hidden');
   walkHud?.classList.remove('hidden');
@@ -612,6 +781,49 @@ runPillButton?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleRunMode();
 });
+liftHudButton?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (liftKeypadOpen) {
+    closeLiftKeypad(true);
+  } else {
+    openLiftKeypad();
+  }
+});
+liftCloseUiButton?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeLiftKeypad(true);
+});
+liftDoorOpenBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  environment?.tower?.openDoors();
+  syncLiftKeypadUI();
+});
+liftDoorCloseBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  environment?.tower?.closeDoors();
+  syncLiftKeypadUI();
+});
+liftExitBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (environment?.tower) {
+    environment.tower.openDoors();
+    if (environment.tower.isInsideLift(playerPos)) {
+      playerPos.x = -10.85;
+      playerPos.z = 19.55;
+      playerPos.y = environment.tower.state.liftY + EYE_HEIGHT;
+      controls.euler.set(-0.04, -Math.PI / 2, 0, 'YXZ');
+      camera.quaternion.setFromEuler(controls.euler);
+    }
+  }
+  closeLiftKeypad(true);
+});
+liftFloorButtons.forEach((btn) => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const floorIdx = Number(btn.dataset.liftFloor);
+    selectLiftFloor(floorIdx);
+  });
+});
 interactPrompt?.addEventListener('click', () => {
   handleDoorInteraction();
 });
@@ -627,6 +839,11 @@ controls.addEventListener('lock', () => {
 
 controls.addEventListener('unlock', () => {
   keys.clear();
+  if (liftKeypadOpen) {
+    pause.classList.add('hidden');
+    walkHud.classList.remove('hidden');
+    return;
+  }
   walkHud.classList.add('hidden');
   if (!inStudio && started && !referenceModal.open) pause.classList.remove('hidden');
 });
@@ -660,6 +877,29 @@ const EMOTE_KEY_MAP = {
   Digit7: 'pocket',
   Numpad7: 'pocket',
   KeyP: 'pocket',
+};
+
+const LIFT_FLOOR_KEY_MAP = {
+  Digit0: 0,
+  Numpad0: 0,
+  Digit1: 1,
+  Numpad1: 1,
+  Digit2: 2,
+  Numpad2: 2,
+  Digit3: 3,
+  Numpad3: 3,
+  Digit4: 4,
+  Numpad4: 4,
+  Digit5: 5,
+  Numpad5: 5,
+  Digit6: 6,
+  Numpad6: 6,
+  Digit7: 7,
+  Numpad7: 7,
+  Digit8: 8,
+  Numpad8: 8,
+  Digit9: 9,
+  Numpad9: 9,
 };
 
 const gameEmoteButtons = Array.from(document.querySelectorAll('[data-game-emote]'));
@@ -703,6 +943,51 @@ window.addEventListener('keydown', (event) => {
   }
 
   if (!started) return;
+
+  // Toggle Lift Keypad with [L] key anytime
+  if (event.code === 'KeyL') {
+    event.preventDefault();
+    if (liftKeypadOpen) {
+      closeLiftKeypad(true);
+    } else {
+      openLiftKeypad();
+    }
+    return;
+  }
+
+  const insideOrNearLift = Boolean(
+    liftKeypadOpen
+    || environment?.tower?.isInsideLift(playerPos)
+    || environment?.tower?.isNearLiftLobby(playerPos)
+  );
+
+  // When inside the lift, near the lift, or when the lift keypad is open, number keys 0-9 / G / R select lift floors!
+  if (insideOrNearLift && event.code in LIFT_FLOOR_KEY_MAP) {
+    event.preventDefault();
+    selectLiftFloor(LIFT_FLOOR_KEY_MAP[event.code]);
+    if (!liftKeypadOpen) openLiftKeypad();
+    return;
+  }
+  if ((liftKeypadOpen || environment?.tower?.isInsideLift(playerPos)) && event.code === 'KeyG') {
+    event.preventDefault();
+    selectLiftFloor(0);
+    return;
+  }
+  if ((liftKeypadOpen || environment?.tower?.isInsideLift(playerPos)) && event.code === 'KeyR') {
+    event.preventDefault();
+    selectLiftFloor(10);
+    return;
+  }
+
+  // If the player presses W/A/S/D while the lift keypad is open and the lift doors are open, close the keypad so they can walk out smoothly
+  if (
+    liftKeypadOpen &&
+    environment?.tower?.state?.liftPhase !== 'moving' &&
+    (event.code === 'KeyW' || event.code === 'KeyS' || event.code === 'KeyA' || event.code === 'KeyD' ||
+     event.code === 'ArrowUp' || event.code === 'ArrowDown' || event.code === 'ArrowLeft' || event.code === 'ArrowRight')
+  ) {
+    closeLiftKeypad(true);
+  }
 
   if (mappedEmote && playerCharacter) {
     event.preventDefault();
@@ -819,20 +1104,20 @@ function getFurnitureBoxesForFloor(building, fy) {
     }
     // Apartment Floors 1..9 (fy = 4.0, 7.0, ..., 28.0)
     const items = [
-      // 1) Attached Luxury Bathroom — Western Porcelain Commode (কমোড) & Vanity Basin
+      // 1) Attached Luxury Bathroom (West En-Suite: x ∈ [-19.65, -16.65], z ∈ [18.63, 21.35]) — Western Porcelain Commode & Vanity
       {
-        minX: -16.12, maxX: -15.32, minZ: 20.38, maxZ: 20.92, h: 0.48,
-        seat: true, seatX: -15.56, seatZ: 20.65, seatY: 0.46, yaw: Math.PI / 2,
+        minX: -19.47, maxX: -18.67, minZ: 20.38, maxZ: 20.92, h: 0.48,
+        seat: true, seatX: -18.91, seatZ: 20.65, seatY: 0.46, yaw: Math.PI / 2,
         label: 'বাথরুমের কমোড (Toilet Commode)',
       },
-      { minX: -13.98, maxX: -13.40, minZ: 19.56, maxZ: 20.48, h: 0.88, seat: false },
+      { minX: -17.33, maxX: -16.75, minZ: 19.56, maxZ: 20.48, h: 0.88, seat: false },
       // 2) Master Bedroom — King-Size Luxury Bed & Wardrobe
       {
-        minX: -19.50, maxX: -16.60, minZ: 15.55, maxZ: 17.75, h: 0.68,
-        seat: true, seatX: -17.35, seatZ: 16.65, seatY: 0.64, yaw: Math.PI / 2,
+        minX: -19.50, maxX: -16.60, minZ: 15.25, maxZ: 17.45, h: 0.68,
+        seat: true, seatX: -17.35, seatZ: 16.35, seatY: 0.64, yaw: Math.PI / 2,
         label: 'মাস্টার বেডরুমের খাট (King Bed)',
       },
-      { minX: -17.80, maxX: -15.30, minZ: 17.92, maxZ: 18.52, h: 2.45, seat: false }, // Wardrobe
+      { minX: -16.50, maxX: -14.00, minZ: 17.92, maxZ: 18.52, h: 2.45, seat: false }, // Wardrobe
       // 3) Living Lounge — Royal Blue Tufted Velvet L-Sofa, Marble Coffee Table & TV Console
       {
         minX: -11.02, maxX: -6.58, minZ: 15.02, maxZ: 15.98, h: 0.48,
@@ -977,17 +1262,28 @@ function findNearestSeat(pos) {
 }
 
 /**
- * Computes exact floor, staircase, or furniture top elevation under playerPos across both buildings:
+ * Computes exact floor, elevator cabin, staircase, or furniture top elevation under playerPos across both buildings:
  *  1) 5-Story Taltola House + Balconies + Rooftop (x = 4.72..14.38, z = -5.42..5.42)
  *  2) 10-Story Sk Arshan Alif Tower + Balconies + Rooftop Sky Lounge (x = -19.85..-2.85, z = 14.25..28.55)
+ *
+ * Uses `maxStepUp` and stairwell/shaft cutouts so jumping on stairs or indoors NEVER snaps the player to the floor above.
  */
 function computeGroundHeight(pos) {
   const footY = pos.y - EYE_HEIGHT;
+  const maxStepUp = grounded ? 0.55 : (verticalVelocity > 0 ? 0.08 : 0.38);
 
   // --- SK ARSHAN ALIF TOWER (35 Haji Mohsin Road) ---
   const inSkArshanZone = pos.x >= -19.85 && pos.x <= -2.85 && pos.z >= 14.28 && pos.z <= 28.55;
   if (inSkArshanZone) {
-    // Ground-floor Car Ramp (z = 19.1..22.9, x = -4.65..-3.15) & South Steps (z = 26.5..28.5)
+    // 1) Inside the 3D Moving Elevator Cabin (x ∈ [-13.28, -11.52], z ∈ [18.78, 20.32])
+    if (environment?.tower?.isInsideLift(pos)) {
+      const liftY = environment.tower.state.liftY;
+      if (Math.abs(footY - liftY) < 2.4) {
+        return liftY;
+      }
+    }
+
+    // 2) Ground-floor Car Ramp (z = 19.1..22.9, x = -4.65..-3.15) & South Steps (z = 26.5..28.5)
     if (footY < 1.8 && pos.x > -4.6) {
       if ((pos.z >= 19.1 && pos.z <= 22.9) || (pos.z >= 26.5 && pos.z <= 28.5)) {
         const rampT = THREE.MathUtils.clamp((-3.25 - pos.x) / 1.3, 0, 1);
@@ -997,113 +1293,114 @@ function computeGroundHeight(pos) {
       return 0.0;
     }
 
-    // Continuous Walkable Marble Staircase inside Sk Arshan Tower (x = -14.25..-9.55, z = 21.50..22.85)
-    const inTowerStairs = pos.x >= -14.25 && pos.x <= -9.55 && pos.z >= 21.50 && pos.z <= 22.85;
     const L = (k) => (k === 0 ? 0.50 : 4.0 + (k - 1) * 3.0);
+    let bestGroundY = 0.0;
+
+    // 3) Continuous Walkable Marble Staircase inside Sk Arshan Tower (x = -14.25..-9.55, z = 21.50..22.85)
+    const inTowerStairs = pos.x >= -14.25 && pos.x <= -9.55 && pos.z >= 21.50 && pos.z <= 22.85;
+    const inMiddleOfTowerStairHole = pos.x > -13.92 && pos.x < -9.78 && pos.z >= 21.55 && pos.z <= 22.80;
     if (inTowerStairs) {
       const t = THREE.MathUtils.clamp((-9.65 - pos.x) / 4.45, 0, 1);
-      let bestY = 0.50;
-      let bestDiff = Infinity;
       for (let k = 0; k <= 9; k++) {
         const y0 = L(k);
         const y1 = L(k + 1);
         const rampY = y0 + t * (y1 - y0);
-        const diff = Math.abs(footY - rampY);
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          bestY = rampY;
+        if (rampY <= footY + maxStepUp) {
+          bestGroundY = Math.max(bestGroundY, rampY);
         }
       }
-      if (bestDiff < 1.65) {
-        return bestY;
-      }
     }
 
-    // Nearest floor slab inside Sk Arshan Tower (k = 0..10 -> 0.5m, 4.0m, 7.0m, ..., 31.0m)
-    let nearestK = 0;
-    let nearestY = 0.50;
-    let minDiff = Infinity;
+    // 4) Floor slabs k = 0..10 (with stairwell cutout on k >= 1 so jumping on stairs never snaps to a slab!)
     for (let k = 0; k <= 10; k++) {
       const fy = L(k);
-      const d = Math.abs(footY - fy);
-      if (d < minDiff) {
-        minDiff = d;
-        nearestY = fy;
-        nearestK = k;
+      if (fy > footY + maxStepUp) continue;
+
+      let onSlab = true;
+      if (k >= 10) {
+        if (pos.x > -3.65 || pos.z < 14.30 || pos.z > 28.55) onSlab = false;
+      } else if (k >= 1) {
+        let maxBalconyX = -3.65;
+        if (pos.z < 18.60) maxBalconyX = -2.85; // Bay A corner balcony
+        else if (pos.z < 23.55) maxBalconyX = -3.75; // Bay B recessed balcony
+        else maxBalconyX = k % 2 === 0 ? -3.65 : -4.30; // Bay C stepped balcony
+        if (pos.x > maxBalconyX) onSlab = false;
+      } else {
+        if (pos.x > -3.25) onSlab = false;
+      }
+      if (!onSlab) continue;
+
+      if (k >= 1 && inMiddleOfTowerStairHole) continue;
+
+      bestGroundY = Math.max(bestGroundY, fy);
+
+      // 5) Check if player is standing or landing on top of any furniture/commode/bed/sofa/table/car on this floor
+      if (!inTowerStairs) {
+        const boxes = getFurnitureBoxesForFloor('tower', fy);
+        for (const box of boxes) {
+          if (
+            pos.x >= box.minX - 0.16 && pos.x <= box.maxX + 0.16 &&
+            pos.z >= box.minZ - 0.16 && pos.z <= box.maxZ + 0.16
+          ) {
+            const boxTop = fy + box.h;
+            if (boxTop <= footY + maxStepUp && footY >= fy + box.h * 0.42) {
+              bestGroundY = Math.max(bestGroundY, boxTop);
+            }
+          }
+        }
       }
     }
-
-    // Check if player jumped outside the front balcony/rooftop slab edge so they fall to the street!
-    if (nearestK >= 10) {
-      if (pos.x > -3.65 || pos.z < 14.30 || pos.z > 28.55) return 0.0;
-    } else if (nearestK >= 1) {
-      let maxBalconyX = -3.65;
-      if (pos.z < 18.60) maxBalconyX = -2.85; // Bay A corner balcony
-      else if (pos.z < 23.55) maxBalconyX = -3.75; // Bay B recessed balcony
-      else maxBalconyX = nearestK % 2 === 0 ? -3.65 : -4.30; // Bay C stepped balcony
-      if (pos.x > maxBalconyX) return 0.0;
-    }
-
-    // Check if player is standing or landing on top of any furniture/commode/bed/sofa/table/car on this floor!
-    const boxes = getFurnitureBoxesForFloor('tower', nearestY);
-    let topY = nearestY;
-    for (const box of boxes) {
-      if (
-        pos.x >= box.minX - 0.16 && pos.x <= box.maxX + 0.16 &&
-        pos.z >= box.minZ - 0.16 && pos.z <= box.maxZ + 0.16 &&
-        footY >= nearestY + box.h * 0.45 &&
-        footY <= nearestY + box.h + 1.45
-      ) {
-        topY = Math.max(topY, nearestY + box.h);
-      }
-    }
-    return topY;
+    return bestGroundY;
   }
 
   // --- 5-STORY TALTOLA HOUSE ---
-  const lvl = THREE.MathUtils.clamp(Math.round(footY / 3.05), 0, 5);
-  const fy = lvl * 3.05;
   const insideMainSlab = pos.x >= 5.95 && pos.x <= 14.38 && Math.abs(pos.z) <= 5.42;
-  const onFrontBalcony = lvl >= 1 && lvl <= 4 && pos.x >= 4.74 && pos.x <= 6.08 &&
+  const inFrontBalconyZone = pos.x >= 4.74 && pos.x <= 6.08 &&
     ((pos.z >= -5.12 && pos.z <= -1.48) || (pos.z >= 1.52 && pos.z <= 5.12));
 
-  if (!insideMainSlab && !onFrontBalcony) {
+  if (!insideMainSlab && !inFrontBalconyZone) {
     return 0.0;
   }
 
-  // Check if player is walking on the continuous interior staircase (x = 7.65..12.15, z = 0.16..1.16)
+  let bestHouseY = 0.0;
   const inStairLane = pos.x >= 7.62 && pos.x <= 12.18 && pos.z >= 0.16 && pos.z <= 1.16;
+  const inMiddleOfHouseStairHole = pos.x > 7.82 && pos.x < 11.96 && pos.z >= 0.16 && pos.z <= 1.16;
+
   if (inStairLane) {
     const t = THREE.MathUtils.clamp((pos.x - 7.75) / (12.05 - 7.75), 0, 1);
-    let bestY = 0;
-    let bestDiff = Infinity;
     for (let sLvl = 0; sLvl < 5; sLvl++) {
       const rampY = sLvl * 3.05 + t * 3.05;
-      const diff = Math.abs(footY - rampY);
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        bestY = rampY;
+      if (rampY <= footY + maxStepUp) {
+        bestHouseY = Math.max(bestHouseY, rampY);
       }
-    }
-    if (bestDiff < 1.35) {
-      return bestY;
     }
   }
 
-  // Check if player is standing or landing on top of any bed, commode, sofa, chair, table, or counter on this floor!
-  const boxes = getFurnitureBoxesForFloor('house', fy);
-  let topY = fy;
-  for (const box of boxes) {
-    if (
-      pos.x >= box.minX - 0.16 && pos.x <= box.maxX + 0.16 &&
-      pos.z >= box.minZ - 0.16 && pos.z <= box.maxZ + 0.16 &&
-      footY >= fy + box.h * 0.45 &&
-      footY <= fy + box.h + 1.45
-    ) {
-      topY = Math.max(topY, fy + box.h);
+  for (let sLvl = 0; sLvl <= 5; sLvl++) {
+    const fy = sLvl * 3.05;
+    if (fy > footY + maxStepUp) continue;
+    const onBalcony = sLvl >= 1 && sLvl <= 4 && inFrontBalconyZone;
+    if (!insideMainSlab && !onBalcony) continue;
+    if (sLvl >= 1 && inMiddleOfHouseStairHole) continue;
+
+    bestHouseY = Math.max(bestHouseY, fy);
+
+    if (!inStairLane && sLvl <= 4) {
+      const boxes = getFurnitureBoxesForFloor('house', fy);
+      for (const box of boxes) {
+        if (
+          pos.x >= box.minX - 0.16 && pos.x <= box.maxX + 0.16 &&
+          pos.z >= box.minZ - 0.16 && pos.z <= box.maxZ + 0.16
+        ) {
+          const boxTop = fy + box.h;
+          if (boxTop <= footY + maxStepUp && footY >= fy + box.h * 0.42) {
+            bestHouseY = Math.max(bestHouseY, boxTop);
+          }
+        }
+      }
     }
   }
-  return topY;
+  return bestHouseY;
 }
 
 function applyWorldCollisions(pos) {
@@ -1115,7 +1412,10 @@ function applyWorldCollisions(pos) {
   pos.z = THREE.MathUtils.clamp(pos.z, -40, 40);
 
   const footY = pos.y - EYE_HEIGHT;
-  const currentLevel = THREE.MathUtils.clamp(Math.round(footY / 3.05), 0, 5);
+  let currentLevel = 0;
+  for (let sLvl = 0; sLvl <= 5; sLvl++) {
+    if (sLvl * 3.05 <= footY + 0.55) currentLevel = sLvl;
+  }
   const onStairs = pos.x >= 7.68 && pos.x <= 12.12 && pos.z >= 0.16 && pos.z <= 1.16;
 
   for (let iter = 0; iter < 2; iter++) {
@@ -1133,14 +1433,11 @@ function applyWorldCollisions(pos) {
       const L = (k) => (k === 0 ? 0.50 : 4.0 + (k - 1) * 3.0);
       let towerK = 0;
       let towerFy = 0.50;
-      let minDiff = Infinity;
       for (let k = 0; k <= 10; k++) {
         const y = L(k);
-        const d = Math.abs(footY - y);
-        if (d < minDiff) {
-          minDiff = d;
-          towerFy = y;
+        if (y <= footY + 0.55) {
           towerK = k;
+          towerFy = y;
         }
       }
       const inTowerStairLane = pos.x >= -14.25 && pos.x <= -9.55 && pos.z >= 21.50 && pos.z <= 22.85;
@@ -1148,12 +1445,19 @@ function applyWorldCollisions(pos) {
       // Rear wall (x = -19.8) & South party wall (z = 28.5)
       resolveCircleAABB(pos, PLAYER_RADIUS, -20.2, -19.65, 14.2, 28.7);
       resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -3.5, 28.42, 28.8);
-      // Elevator & Reception marble core wall (x = -12.15..-11.52, z = 18.65..20.55)
-      if (towerK < 10) {
-        resolveCircleAABB(pos, PLAYER_RADIUS, -12.15, -11.52, 18.65, 20.55);
+
+      // Hollow 3D Elevator Shaft & Sliding Doorway (x ∈ [-13.38, -11.55], z ∈ [18.70, 20.40], open doorway at x = -11.55, z ∈ [18.96, 20.14])
+      resolveCircleAABB(pos, 0.22, -13.44, -13.24, 18.68, 20.42); // Rear West shaft wall
+      resolveCircleAABB(pos, 0.22, -13.44, -11.50, 18.68, 18.82); // North shaft wall
+      resolveCircleAABB(pos, 0.22, -13.44, -11.50, 20.28, 20.42); // South shaft wall
+      resolveCircleAABB(pos, 0.18, -11.66, -11.48, 18.68, 18.96); // North door jamb
+      resolveCircleAABB(pos, 0.18, -11.66, -11.48, 20.14, 20.42); // South door jamb
+      if (!environment?.tower?.isLiftOpenAtY(footY)) {
+        // When elevator is moving or on another floor or doors are closed, block doorway so player cannot fall into shaft or walk out mid-flight!
+        resolveCircleAABB(pos, 0.24, -11.66, -11.48, 18.94, 20.16);
       }
 
-      if (footY < 2.2) {
+      if (towerK === 0 && footY < 2.6) {
         // Ground-floor lane-side shop shutters wall (z = 14.48..14.75, x = -19.85..-4.45)
         resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -4.45, 14.42, 14.76);
         // Plinth stainless railings along road (leaving Car Ramp z=19.15..22.95 & South Steps z=26.55..28.45 open!)
@@ -1168,7 +1472,7 @@ function applyWorldCollisions(pos) {
         }
         resolveCircleAABB(pos, PLAYER_RADIUS, -4.55, -4.02, 21.92, 26.58);
         resolveCircleAABB(pos, PLAYER_RADIUS, -4.55, -4.02, 27.82, 28.60);
-      } else if (footY < 29.5) {
+      } else if (towerK >= 1 && towerK <= 9 && footY < 29.8) {
         // UPPER FLOORS (k = 1..9):
         // 1) Lane-side exterior wall (z = 14.48..14.74)
         resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -4.25, 14.42, 14.74);
@@ -1186,12 +1490,12 @@ function applyWorldCollisions(pos) {
         resolveCircleAABB(pos, PLAYER_RADIUS, -5.22, -4.94, 23.58, 24.10);
         resolveCircleAABB(pos, PLAYER_RADIUS, -5.22, -4.94, 25.30, 28.50);
 
-        // 3) Interior Partition Walls (100% solid with exact doorway openings so player NEVER walks through walls!)
+        // 3) Interior Partition Walls (100% solid with exact doorway openings & wide-open stairwell landing!)
         if (!inTowerStairLane) {
-          // North Lobby / Flat A Wall (z = 18.63): open Flat A door at x = -8.60..-7.20 & Bathroom door at x = -15.10..-14.10
+          // North Lobby / Flat A Wall (z = 18.63): open Flat A door at x = -8.60..-7.20 & West Bathroom door at x = -18.30..-17.10
           resolveCircleAABB(pos, PLAYER_RADIUS, -7.20, -5.50, 18.53, 18.74);
-          resolveCircleAABB(pos, PLAYER_RADIUS, -14.10, -8.60, 18.53, 18.74);
-          resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -15.10, 18.53, 18.74);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -17.10, -8.60, 18.53, 18.74);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -18.30, 18.53, 18.74);
 
           // South Lobby / Flat B Wall (z = 23.26): open Flat B door at x = -8.60..-7.20
           resolveCircleAABB(pos, PLAYER_RADIUS, -7.20, -5.05, 23.16, 23.37);
@@ -1201,20 +1505,21 @@ function applyWorldCollisions(pos) {
           resolveCircleAABB(pos, PLAYER_RADIUS, -13.40, -13.20, 14.68, 16.00);
           resolveCircleAABB(pos, PLAYER_RADIUS, -13.40, -13.20, 17.30, 18.63);
 
-          // Attached Luxury Bathroom Walls (x = -13.32, x = -16.32, z = 21.32, plus shower glass at x = -14.98)
-          resolveCircleAABB(pos, PLAYER_RADIUS, -13.42, -13.22, 18.63, 21.40);
-          resolveCircleAABB(pos, PLAYER_RADIUS, -16.42, -16.22, 18.63, 21.40);
-          resolveCircleAABB(pos, PLAYER_RADIUS, -16.42, -13.22, 21.22, 21.42);
-          resolveCircleAABB(pos, PLAYER_RADIUS, -15.05, -14.90, 18.65, 19.65);
+          // West En-Suite Attached Luxury Bathroom Walls (x = -16.65, x = -19.65, z = 21.32, plus shower glass at x = -18.32)
+          // Leaves x = -16.55..-14.10 completely open in front of the top stair landing!
+          resolveCircleAABB(pos, PLAYER_RADIUS, -16.75, -16.56, 18.63, 21.40);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -19.75, -19.55, 18.63, 21.40);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -19.75, -16.56, 21.22, 21.42);
+          resolveCircleAABB(pos, 0.20, -18.38, -18.24, 18.65, 19.60);
 
           // South Wing: Dining Room / RGB Gaming Suite Wall (x = -13.30, open doorway at z = 24.90..26.30)
           resolveCircleAABB(pos, PLAYER_RADIUS, -13.40, -13.20, 23.26, 24.90);
           resolveCircleAABB(pos, PLAYER_RADIUS, -13.40, -13.20, 26.30, 28.50);
         }
 
-        // Stairwell handrails along z = 21.58 & z = 22.78 (keep player from stepping sideways off stairs)
-        resolveCircleAABB(pos, PLAYER_RADIUS, -13.95, -9.80, 21.50, 21.64);
-        resolveCircleAABB(pos, PLAYER_RADIUS, -13.95, -9.80, 22.72, 22.86);
+        // Stairwell handrails along z = 21.58 & z = 22.78 (slim 0.15m radius so stairs are wide and never snag at landings)
+        resolveCircleAABB(pos, 0.15, -13.90, -9.85, 21.55, 21.61);
+        resolveCircleAABB(pos, 0.15, -13.90, -9.85, 22.75, 22.81);
 
         // 4) Balcony Outer Railings — only block horizontally when not jumping over them (footY - towerFy < 0.68)!
         if (footY - towerFy < 0.68) {
@@ -1226,12 +1531,12 @@ function applyWorldCollisions(pos) {
         }
       } else {
         // ROOFTOP SKY LOUNGE (y = 31.0m):
-        // Rooftop Lift & Stair Penthouse Room walls (x = -14.5..-9.4, z = 18.2..23.1, open door at x = -9.4, z = 19.3..20.8)
-        resolveCircleAABB(pos, PLAYER_RADIUS, -14.55, -14.20, 18.20, 23.10);
-        resolveCircleAABB(pos, PLAYER_RADIUS, -14.50, -9.40, 18.18, 18.48);
-        resolveCircleAABB(pos, PLAYER_RADIUS, -14.50, -9.40, 22.82, 23.12);
-        resolveCircleAABB(pos, PLAYER_RADIUS, -9.68, -9.38, 18.20, 19.30);
-        resolveCircleAABB(pos, PLAYER_RADIUS, -9.68, -9.38, 20.80, 23.10);
+        // Rooftop Lift & Stair Penthouse Room walls (x = -16.45..-9.4, z = 18.2..23.1, open door at x = -9.4, z = 18.9..21.4)
+        resolveCircleAABB(pos, PLAYER_RADIUS, -16.62, -16.30, 18.20, 23.10);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -16.55, -9.40, 18.18, 18.48);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -16.55, -9.40, 22.82, 23.12);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -9.68, -9.38, 18.20, 18.90);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -9.68, -9.38, 21.40, 23.10);
         // Rooftop Parapet Walls — only block horizontally when not jumping over them (footY - 31.0 < 0.68)!
         if (footY - 31.0 < 0.68) {
           resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -3.65, 14.25, 14.55);
@@ -1240,7 +1545,7 @@ function applyWorldCollisions(pos) {
       }
 
       // 5) Furniture Horizontal Colliders inside Sk Arshan Tower (only block when footY is below 50% of furniture height so player can jump onto any bed/commode/sofa/chair/table/car!)
-      if (!inTowerStairLane) {
+      if (!inTowerStairLane && !environment?.tower?.isInsideLift(pos)) {
         const fBoxes = getFurnitureBoxesForFloor('tower', towerFy);
         for (const box of fBoxes) {
           if (footY < towerFy + box.h * 0.50) {
@@ -1276,7 +1581,7 @@ function applyWorldCollisions(pos) {
     // Rooftop Parapet & Mumty Collisions (Level 5: y ≈ 15.25)
     if (footY >= 14.1) {
       // Stairwell guardrail & Mumty walls on roof
-      resolveCircleAABB(pos, PLAYER_RADIUS, 7.82, 11.98, 0.08, 0.24);
+      resolveCircleAABB(pos, 0.14, 7.86, 11.94, 0.14, 0.20);
       resolveCircleAABB(pos, PLAYER_RADIUS, 7.50, 13.65, -1.30, -1.12);
       resolveCircleAABB(pos, PLAYER_RADIUS, 7.50, 13.65, 1.15, 1.32);
       resolveCircleAABB(pos, PLAYER_RADIUS, 13.45, 13.68, -1.25, 1.25);
@@ -1327,8 +1632,8 @@ function applyWorldCollisions(pos) {
     resolveCircleAABB(pos, PLAYER_RADIUS, 5.96, 14.40, -5.50, -5.22);
     resolveCircleAABB(pos, PLAYER_RADIUS, 5.96, 14.40, 5.22, 5.50);
 
-    // Stairwell Handrail Divider (z = 0.18, x = 7.82..11.98) so player enters/exits stairs at ends
-    resolveCircleAABB(pos, PLAYER_RADIUS, 7.82, 11.98, 0.10, 0.24);
+    // Stairwell Handrail Divider (z = 0.17, x = 7.86..11.94, slim 0.14m radius so stair lane has generous width)
+    resolveCircleAABB(pos, 0.14, 7.86, 11.94, 0.14, 0.20);
 
     // Left Corridor Wall (z = -1.18):
     // Doorway 1 at x = 7.18..8.30 (Flat A Main Door), Doorway 2 at x = 12.10..13.20
@@ -1381,7 +1686,7 @@ const FLOOR_NAMES_BN = ['নিচতলা (1st Floor)', '২য় তলা (2nd
 function updateHUDPrompt() {
   if (!house || !interactPrompt) return;
   let promptText = null;
-  if (controls.isLocked) {
+  if (controls.isLocked || liftKeypadOpen) {
     if (sittingState.active) {
       promptText = `[E / F / SPACE] উঠে দাঁড়ান — ${sittingState.seat?.label || 'আসন'} (Stand Up)`;
     } else {
@@ -1420,13 +1725,16 @@ function updateHUDPrompt() {
       zone = 'HAJI MOHSIN RD SHOPS · হাজী মহসিন রোড মার্কেট ও দোকানপাট';
     } else if (x <= -2.8 && x >= -19.9 && z >= 14.25 && z <= 28.6) {
       const towerFl = footY < 2.2 ? 0 : Math.min(10, Math.round((footY - 4.0) / 3.0) + 1);
-      if (towerFl === 0) {
+      if (environment?.tower?.isInsideLift(playerPos)) {
+        const stopName = environment.tower.stops?.[environment.tower.state.liftFloorIndex]?.nameBn || `${towerFl + 1} তলা`;
+        zone = `SK ARSHAN TOWER · ভিআইপি প্যাসেঞ্জার লিফট কেবিন (${stopName})`;
+      } else if (towerFl === 0) {
         zone = 'SK ARSHAN ALIF TOWER · গ্র্যান্ড পার্কিং ও রিসেপশন লবি (নিচতলা)';
       } else if (towerFl >= 10 || footY >= 29.8) {
         zone = 'SK ARSHAN ALIF TOWER · ছাদের স্কাই লাউঞ্জ ও গার্ডেন (Rooftop)';
       } else if (x > -4.35 || (x > -5.55 && z >= 18.6 && z <= 23.5)) {
         zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · সামনের বারান্দা (Balcony View)`;
-      } else if (x <= -13.3 && x >= -16.4 && z >= 18.63 && z <= 21.4) {
+      } else if (x <= -16.55 && x >= -19.75 && z >= 18.63 && z <= 21.4) {
         zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · অ্যাটাচড লাক্সারি বাথরুম (Attached Bathroom)`;
       } else if (z >= 18.55 && z <= 23.3) {
         zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · হাই-স্পিড লিফট ও সিঁড়ি লবি`;
@@ -1601,6 +1909,19 @@ function updateMovement(delta) {
 
   applyWorldCollisions(playerPos);
 
+  const insideLiftNow = Boolean(environment?.tower?.isInsideLift(playerPos));
+  // Auto-open the interactive floor keypad when the player steps inside the 3D Elevator Cabin!
+  if (insideLiftNow && !wasInsideLift) {
+    openLiftKeypad();
+  } else if (!insideLiftNow && wasInsideLift && liftKeypadOpen) {
+    closeLiftKeypad(true);
+  }
+  wasInsideLift = insideLiftNow;
+
+  if (liftKeypadOpen) {
+    syncLiftKeypadUI();
+  }
+
   const targetEyeY = computeGroundHeight(playerPos) + EYE_HEIGHT;
 
   if (grounded) coyoteTimer = 0.12;
@@ -1608,14 +1929,18 @@ function updateMovement(delta) {
 
   if (jumpBuffer > 0) jumpBuffer = Math.max(0, jumpBuffer - delta);
 
-  if (jumpBuffer > 0 && coyoteTimer > 0) {
+  if (jumpBuffer > 0 && coyoteTimer > 0 && !(insideLiftNow && environment?.tower?.state?.liftPhase === 'moving')) {
     verticalVelocity = 6.25;
     grounded = false;
     coyoteTimer = 0;
     jumpBuffer = 0;
   }
 
-  if (grounded && Math.abs(playerPos.y - targetEyeY) <= 0.95) {
+  if (insideLiftNow && grounded) {
+    // Lock player directly to the 3D moving elevator cabin floor so riding up/down 10 floors is 100% smooth
+    playerPos.y = targetEyeY;
+    verticalVelocity = 0;
+  } else if (grounded && Math.abs(playerPos.y - targetEyeY) <= 0.95) {
     // Smoothly climb or descend stairs and floor transitions
     playerPos.y += (targetEyeY - playerPos.y) * Math.min(1, delta * 22.0);
     verticalVelocity = 0;
@@ -1623,7 +1948,7 @@ function updateMovement(delta) {
     grounded = false;
     verticalVelocity -= 14.8 * delta;
     playerPos.y += verticalVelocity * delta;
-    if (playerPos.y <= targetEyeY) {
+    if (verticalVelocity <= 0 && playerPos.y <= targetEyeY) {
       playerPos.y = targetEyeY;
       verticalVelocity = 0;
       grounded = true;
@@ -1659,12 +1984,12 @@ function updateMovement(delta) {
   }
 
   if (playerCharacter && playerCharacter.state.cameraMode === 'back') {
-    const followDist = insideHouse ? 1.15 : 1.95;
+    const followDist = insideLiftNow ? 0.72 : (insideHouse ? 1.15 : 1.95);
     camTargetPos.copy(playerPos).addScaledVector(forwardVec, -followDist);
     camTargetPos.y = playerPos.y + (insideHouse ? 0.12 : 0.22);
     camera.position.copy(camTargetPos);
   } else if (playerCharacter && playerCharacter.state.cameraMode === 'front') {
-    camTargetPos.copy(playerPos).addScaledVector(forwardVec, 1.15);
+    camTargetPos.copy(playerPos).addScaledVector(forwardVec, insideLiftNow ? 0.72 : 1.15);
     camTargetPos.y = playerPos.y - 0.08;
     camera.position.copy(camTargetPos);
   } else {
@@ -1684,11 +2009,14 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  bloomPass.resolution.set(window.innerWidth, window.innerHeight);
 });
 
 let fpsFrames = 0;
 let fpsTime = performance.now();
 function animate() {
+  if (!ready) return;
   const delta = Math.min(clock.getDelta(), 0.05);
   const elapsed = clock.elapsedTime;
   const isLow = quality === 'low';
@@ -1697,27 +2025,27 @@ function animate() {
     updateStudioCamera(delta);
     renderer.render(scene, camera);
   } else {
+    if (environment?.tower) environment.tower.update(delta, playerPos, isLow);
     updateMovement(delta);
     if (house) house.update(delta, playerPos, isLow);
-    if (environment?.tower) environment.tower.update(delta, playerPos, isLow);
     if (environment && !isLow) environment.update(elapsed);
 
     if (!started) {
       camera.position.z = 10.5 + Math.sin(elapsed * 0.12) * 0.25;
       camera.lookAt(4.6, 4.4, 0);
-      renderer.render(scene, camera);
+      renderActiveScene();
     } else if (sittingState.active && sittingState.seat && playerCharacter && playerCharacter.state.cameraMode !== 'first') {
       savedCameraQuat.copy(camera.quaternion);
       camera.lookAt(sittingState.seat.seatX, sittingState.seat.fy + 0.92, sittingState.seat.seatZ);
-      renderer.render(scene, camera);
+      renderActiveScene();
       camera.quaternion.copy(savedCameraQuat);
     } else if (playerCharacter && playerCharacter.state.cameraMode === 'front') {
       savedCameraQuat.copy(camera.quaternion);
       camera.lookAt(playerPos.x, playerPos.y - 0.12, playerPos.z);
-      renderer.render(scene, camera);
+      renderActiveScene();
       camera.quaternion.copy(savedCameraQuat);
     } else {
-      renderer.render(scene, camera);
+      renderActiveScene();
     }
   }
 

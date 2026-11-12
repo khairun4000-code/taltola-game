@@ -99,43 +99,99 @@ function createSmartTVTexture() {
   return tex;
 }
 
+function drawLiftDisplayCanvas(canvas, code = 'GF', arrow = '●', statusText = 'DOOR OPEN · দরজা খোলা', targetIdx = 0) {
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#070b14';
+  ctx.fillRect(0, 0, 256, 512);
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(8, 8, 240, 496);
+
+  // Digital 7-segment style LED screen at top
+  ctx.fillStyle = '#03050a';
+  ctx.fillRect(20, 22, 216, 92);
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(20, 22, 216, 92);
+
+  ctx.fillStyle = arrow === '●' ? '#22c55e' : '#f59e0b';
+  ctx.font = '900 48px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(arrow, 68, 84);
+
+  ctx.fillStyle = '#ef4444';
+  ctx.font = '900 58px monospace';
+  ctx.fillText(code, 158, 86);
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 20px Arial';
+  ctx.fillText('HIGH-SPEED LIFT · লিফট', 128, 138);
+  ctx.fillStyle = '#fde68a';
+  ctx.font = 'bold 16px Arial';
+  ctx.fillText(statusText, 128, 162);
+
+  // 2-column circular elevator floor buttons (R, 9..1, G)
+  const btns = [
+    ['R', 10], ['9', 9],
+    ['8', 8], ['7', 7],
+    ['6', 6], ['5', 5],
+    ['4', 4], ['3', 3],
+    ['2', 2], ['1', 1],
+    ['G', 0],
+  ];
+  btns.forEach(([label, idx], i) => {
+    const col = label === 'G' ? 0.5 : (i % 2);
+    const row = label === 'G' ? 5 : Math.floor(i / 2);
+    const cx = label === 'G' ? 128 : (col === 0 ? 78 : 178);
+    const cy = 198 + row * 48;
+    const isTarget = idx === targetIdx;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 19, 0, Math.PI * 2);
+    ctx.fillStyle = isTarget ? '#d97706' : '#1e293b';
+    ctx.fill();
+    ctx.lineWidth = isTarget ? 4 : 2.5;
+    ctx.strokeStyle = isTarget ? '#fde047' : '#94a3b8';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 19px Arial';
+    ctx.fillText(label, cx, cy + 7);
+  });
+
+  ctx.fillStyle = '#22c55e';
+  ctx.font = 'bold 17px Arial';
+  ctx.fillText('CLICK OR PRESS [E / L]', 128, 490);
+}
+
 function createLiftDisplayTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 512;
+  drawLiftDisplayCanvas(canvas, 'GF', '●', 'DOOR OPEN · দরজা খোলা', 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.userData.canvas = canvas;
+  return tex;
+}
+
+function createFloorPlaqueTexture(floorNum, titleBn, subtitleEn) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 160;
   const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#090d16';
-  ctx.fillRect(0, 0, 256, 512);
-  ctx.strokeStyle = '#38bdf8';
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0, 0, 512, 160);
+  ctx.strokeStyle = '#fbbf24';
   ctx.lineWidth = 6;
-  ctx.strokeRect(8, 8, 240, 496);
-
-  ctx.fillStyle = '#ef4444';
-  ctx.font = '900 68px monospace';
+  ctx.strokeRect(8, 8, 496, 144);
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = '900 44px Arial';
   ctx.textAlign = 'center';
-  ctx.fillText('▲ G-10', 128, 92);
-
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 26px Arial';
-  ctx.fillText('HIGH-SPEED LIFT', 128, 145);
-  ctx.fillStyle = '#f8fafc';
+  ctx.fillText(`${floorNum} · ${titleBn}`, 256, 68);
+  ctx.fillStyle = '#e2e8f0';
   ctx.font = 'bold 24px Arial';
-  ctx.fillText('লিফট চালু আছে', 128, 185);
-
-  const floors = ['R · ছাদ (Sky Lounge)', '9F · Penthouse', '7F · Sky Suite', '4F · Duplex Flat', '2F · Model Flat', '1F · Coaching & Flat', 'GF · Grand Lobby'];
-  ctx.font = 'bold 20px Arial';
-  floors.forEach((f, i) => {
-    ctx.fillStyle = i % 2 === 0 ? '#1e293b' : '#0f172a';
-    ctx.fillRect(22, 210 + i * 38, 212, 32);
-    ctx.fillStyle = '#fde68a';
-    ctx.fillText(f, 128, 233 + i * 38);
-  });
-
-  ctx.fillStyle = '#22c55e';
-  ctx.font = 'bold 22px Arial';
-  ctx.fillText('PRESS [E] TO RIDE', 128, 492);
-
+  ctx.fillText(subtitleEn, 256, 118);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
@@ -443,65 +499,77 @@ function addScreenPlane(parent, width, height, pos, rotY, mat) {
 }
 
 /** Builds a detailed luxury apartment interior for floor k (y = L(k)). */
-function buildApartmentFloorInterior(parent, screenParent, hm, y) {
+function buildApartmentFloorInterior(parent, screenParent, hm, y, levelIndex = 1) {
   const B = makeB(parent);
   const fy = y + 0.02; // top of floor slab
 
-  // 1. Central Elevator & Stair Lobby (z = 18.6 .. 23.2, x = -5.6 .. -14.5)
-  // Swirl-marble elevator front wall at x = -11.8, z = 18.7 .. 20.6
-  B(-11.6, -12.1, fy, y + 2.74, 18.7, 20.6, hm.marble);
-  // Brushed stainless-steel elevator doors
-  B(-11.55, -11.6, fy + 0.02, y + 2.25, 19.05, 19.62, hm.steel);
-  B(-11.55, -11.6, fy + 0.02, y + 2.25, 19.65, 20.22, hm.steel);
-  B(-11.53, -11.62, y + 2.25, y + 2.42, 18.98, 20.30, hm.dark);
-  // Digital Lift Panel beside elevator door (crisp PlaneGeometry facing +X)
-  addScreenPlane(screenParent, 0.36, 0.78, [-11.52, fy + 1.35, 18.85], Math.PI / 2, hm.liftDisplay);
-  // Ceiling LED panels in lobby
+  // 1. Central Elevator & Stair Lobby (z = 18.65 .. 23.18, x = -5.6 .. -16.65)
+  // Hollow Elevator Shaft Walls (x = -11.55 .. -13.38, z = 18.70 .. 20.40) with open doorway z = 18.96 .. 20.14!
+  B(-13.26, -13.40, fy, y + 2.74, 18.70, 20.40, hm.marble); // rear shaft wall
+  B(-11.55, -13.40, fy, y + 2.74, 18.68, 18.80, hm.marble); // north shaft wall
+  B(-11.55, -13.40, fy, y + 2.74, 20.28, 20.40, hm.marble); // south shaft wall
+  // Front elevator portal jambs & header at x = -11.55 (leaving z = 18.96 .. 20.14 open to walk inside!)
+  B(-11.52, -11.68, fy, y + 2.74, 18.70, 18.96, hm.granite);
+  B(-11.52, -11.68, fy, y + 2.74, 20.14, 20.40, hm.granite);
+  B(-11.52, -11.68, fy + 2.28, y + 2.74, 18.96, 20.14, hm.marble);
+  // Golden portal arch trim around elevator doorway
+  B(-11.49, -11.55, fy, fy + 2.32, 18.92, 18.97, hm.gold);
+  B(-11.49, -11.55, fy, fy + 2.32, 20.13, 20.18, hm.gold);
+  B(-11.49, -11.55, fy + 2.27, fy + 2.33, 18.92, 20.18, hm.gold);
+  // Digital Lift Call & Floor Panel beside elevator door (crisp PlaneGeometry facing +X)
+  addScreenPlane(screenParent, 0.36, 0.78, [-11.48, fy + 1.35, 18.82], Math.PI / 2, hm.liftDisplay);
+  // Ceiling LED panels in lobby & stair hallway
   B(-7.0, -8.5, y + 2.71, y + 2.74, 20.0, 21.2, hm.ledWarm);
   B(-9.5, -11.0, y + 2.71, y + 2.74, 19.2, 20.4, hm.ledWarm);
+  B(-14.3, -15.8, y + 2.71, y + 2.74, 20.2, 21.4, hm.ledWarm);
 
-  // Partition walls separating Central Lobby from North Flat A (z = 18.6) & South Flat B (z = 23.2)
-  // North Flat A entrance doorway is open at x = -7.2 .. -8.6, and Bathroom doorway is open at x = -14.1 .. -15.1!
+  // Partition walls separating Central Lobby from North Flat A (z = 18.63) & South Flat B (z = 23.26)
+  // North Flat A entrance doorway is open at x = -7.2 .. -8.6, and En-Suite Bathroom doorway is open at x = -17.1 .. -18.3!
   B(-5.6, -7.2, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
-  B(-8.6, -14.1, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
-  B(-15.1, -19.7, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
+  B(-8.6, -17.1, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
+  B(-18.3, -19.7, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
   B(-7.2, -8.6, y + 2.22, y + 2.74, 18.55, 18.72, hm.wallCream);
-  B(-14.1, -15.1, y + 2.22, y + 2.74, 18.55, 18.72, hm.wallCream);
-  // Open wooden door leaf swung into Flat A
+  B(-17.1, -18.3, y + 2.22, y + 2.74, 18.55, 18.72, hm.wallCream);
+  // Walnut door frames & open wooden door leaf swung into Flat A
+  B(-7.16, -7.24, fy, y + 2.24, 18.52, 18.75, hm.woodWalnut);
+  B(-8.56, -8.64, fy, y + 2.24, 18.52, 18.75, hm.woodWalnut);
   B(-8.55, -8.65, fy, y + 2.2, 17.35, 18.55, hm.woodWalnut);
 
-  // ATTACHED LUXURY BATHROOM (অ্যাটাচড বাথরুম: x = -13.3 .. -16.4, z = 18.65 .. 21.35)
-  // Entered via open doorway at z = 18.63, x = -14.1 .. -15.1 (from Master Bedroom / North Wing)
-  B(-13.3, -16.4, fy, fy + 0.03, 18.65, 21.35, hm.bathTile);
-  B(-13.25, -13.4, fy, y + 2.74, 18.65, 21.35, hm.bathTile);
-  B(-16.25, -16.4, fy, y + 2.74, 18.65, 21.35, hm.bathTile);
-  B(-13.3, -16.4, fy, y + 2.74, 21.25, 21.40, hm.bathTile);
-  // 1) Western Porcelain Commode / Toilet (কমোড) at x = -15.65, z = 20.65 (facing +X)
-  cylinder(parent, 0.19, 0.15, 0.38, [-15.62, fy + 0.20, 20.65], hm.porcelain, 14);
-  cylinder(parent, 0.24, 0.20, 0.08, [-15.58, fy + 0.42, 20.65], hm.porcelain, 14);
-  cylinder(parent, 0.16, 0.16, 0.02, [-15.56, fy + 0.45, 20.65], hm.waterBlue, 12);
+  // ATTACHED LUXURY BATHROOM (অ্যাটাচড বাথরুম: x = -16.65 .. -19.65, z = 18.65 .. 21.35)
+  // Positioned on the West En-Suite side so the Staircase Top Landing (x = -14.1 .. -16.5) is 100% open!
+  // Entered via open doorway at z = 18.63, x = -17.1 .. -18.3 (from Master Bedroom)
+  B(-16.65, -19.65, fy, fy + 0.03, 18.65, 21.35, hm.bathTile);
+  B(-16.60, -16.75, fy, y + 2.74, 18.65, 21.35, hm.bathTile);
+  B(-19.50, -19.65, fy, y + 2.74, 18.65, 21.35, hm.bathTile);
+  B(-16.65, -19.65, fy, y + 2.74, 21.25, 21.40, hm.bathTile);
+  // 1) Western Porcelain Commode / Toilet (কমোড) at x = -19.00, z = 20.65 (facing +X)
+  cylinder(parent, 0.19, 0.15, 0.38, [-18.97, fy + 0.20, 20.65], hm.porcelain, 14);
+  cylinder(parent, 0.24, 0.20, 0.08, [-18.93, fy + 0.42, 20.65], hm.porcelain, 14);
+  cylinder(parent, 0.16, 0.16, 0.02, [-18.91, fy + 0.45, 20.65], hm.waterBlue, 12);
   // Raised white toilet lid & cistern tank with chrome flush button
-  B(-15.82, -15.76, fy + 0.46, fy + 0.86, 20.44, 20.86, hm.porcelain);
-  B(-16.12, -15.84, fy + 0.44, fy + 0.88, 20.42, 20.88, hm.porcelain);
-  cylinder(parent, 0.035, 0.035, 0.03, [-15.98, fy + 0.90, 20.65], hm.chrome, 10);
-  // 2) Vanity Washbasin & Backlit LED Mirror at x = -13.65, z = 20.0
-  B(-13.42, -13.95, fy + 0.02, fy + 0.78, 19.60, 20.45, hm.woodWalnut);
-  B(-13.40, -13.98, fy + 0.78, fy + 0.86, 19.56, 20.48, hm.marble);
-  cylinder(parent, 0.18, 0.14, 0.12, [-13.68, fy + 0.92, 20.02], hm.porcelain, 14);
-  cylinder(parent, 0.02, 0.02, 0.16, [-13.48, fy + 1.02, 20.02], hm.chrome, 8);
-  B(-13.42, -13.46, fy + 1.18, fy + 2.05, 19.65, 20.40, hm.ledCyan);
-  B(-13.46, -13.49, fy + 1.22, fy + 2.01, 19.69, 20.36, hm.mirrorMat);
-  // 3) Walk-in Rain Shower & Glass Partition at x = -15.65, z = 19.15
-  B(-14.95, -15.0, fy + 0.02, fy + 2.15, 18.70, 19.65, hm.clearGlass);
-  rodBetween(parent, [-16.18, fy + 1.05, 19.15], [-16.18, fy + 2.25, 19.15], 0.018, hm.chrome, 8);
-  rodBetween(parent, [-16.18, fy + 2.25, 19.15], [-15.75, fy + 2.20, 19.15], 0.018, hm.chrome, 8);
-  cylinder(parent, 0.14, 0.12, 0.03, [-15.75, fy + 2.17, 19.15], hm.chrome, 12);
-  B(-14.4, -15.4, y + 2.70, y + 2.74, 19.7, 20.3, hm.ledWarm);
+  B(-19.17, -19.11, fy + 0.46, fy + 0.86, 20.44, 20.86, hm.porcelain);
+  B(-19.47, -19.19, fy + 0.44, fy + 0.88, 20.42, 20.88, hm.porcelain);
+  cylinder(parent, 0.035, 0.035, 0.03, [-19.33, fy + 0.90, 20.65], hm.chrome, 10);
+  // 2) Vanity Washbasin & Backlit LED Mirror at x = -17.00, z = 20.02 (against east bathroom wall)
+  B(-16.77, -17.30, fy + 0.02, fy + 0.78, 19.60, 20.45, hm.woodWalnut);
+  B(-16.75, -17.33, fy + 0.78, fy + 0.86, 19.56, 20.48, hm.marble);
+  cylinder(parent, 0.18, 0.14, 0.12, [-17.03, fy + 0.92, 20.02], hm.porcelain, 14);
+  cylinder(parent, 0.02, 0.02, 0.16, [-16.83, fy + 1.02, 20.02], hm.chrome, 8);
+  B(-16.77, -16.81, fy + 1.18, fy + 2.05, 19.65, 20.40, hm.ledCyan);
+  B(-16.81, -16.84, fy + 1.22, fy + 2.01, 19.69, 20.36, hm.mirrorMat);
+  // 3) Walk-in Rain Shower & Glass Partition at x = -19.00, z = 19.15
+  B(-18.30, -18.35, fy + 0.02, fy + 2.15, 18.70, 19.65, hm.clearGlass);
+  rodBetween(parent, [-19.48, fy + 1.05, 19.15], [-19.48, fy + 2.25, 19.15], 0.018, hm.chrome, 8);
+  rodBetween(parent, [-19.48, fy + 2.25, 19.15], [-19.05, fy + 2.20, 19.15], 0.018, hm.chrome, 8);
+  cylinder(parent, 0.14, 0.12, 0.03, [-19.05, fy + 2.17, 19.15], hm.chrome, 12);
+  B(-17.7, -18.7, y + 2.70, y + 2.74, 19.7, 20.3, hm.ledWarm);
 
   // South Flat B entrance doorway is open at x = -7.2 .. -8.6!
   B(-5.6, -7.2, fy, y + 2.74, 23.18, 23.35, hm.wallCream);
   B(-8.6, -19.7, fy, y + 2.74, 23.18, 23.35, hm.wallCream);
   B(-7.2, -8.6, y + 2.22, y + 2.74, 23.18, 23.35, hm.wallCream);
+  B(-7.16, -7.24, fy, y + 2.24, 23.15, 23.38, hm.woodWalnut);
+  B(-8.56, -8.64, fy, y + 2.24, 23.15, 23.38, hm.woodWalnut);
   B(-8.55, -8.65, fy, y + 2.2, 23.35, 24.55, hm.woodWalnut);
 
   // 2. NORTH WING (FLAT A): Grand Living Lounge (x = -4.3 .. -13.3, z = 14.8 .. 18.55)
@@ -509,6 +577,8 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y) {
   B(-13.22, -13.38, fy, y + 2.74, 14.8, 16.0, hm.wallCream);
   B(-13.22, -13.38, fy, y + 2.74, 17.3, 18.55, hm.wallCream);
   B(-13.22, -13.38, y + 2.22, y + 2.74, 16.0, 17.3, hm.wallCream);
+  B(-13.19, -13.41, fy, y + 2.24, 15.96, 16.04, hm.woodWalnut);
+  B(-13.19, -13.41, fy, y + 2.24, 17.26, 17.34, hm.woodWalnut);
 
   // Designer Persian Rug & Tufted Royal Blue Velvet L-Sofa in Living Lounge
   B(-6.5, -10.8, fy, fy + 0.025, 15.3, 18.1, hm.rugPattern);
@@ -553,27 +623,27 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y) {
 
   // 3. NORTH WING MASTER BEDROOM (x = -13.4 .. -19.6, z = 14.8 .. 18.55)
   // King-size luxury bed against west wall (x = -19.5) with quilted mattress & silk duvet
-  B(-16.6, -19.5, fy + 0.02, fy + 0.38, 15.55, 17.75, hm.woodWalnut);
-  B(-16.68, -19.25, fy + 0.38, fy + 0.62, 15.65, 17.65, hm.bedSheet);
-  B(-16.66, -18.25, fy + 0.62, fy + 0.68, 15.63, 17.67, hm.bedBlanket);
-  B(-19.22, -19.55, fy + 0.38, fy + 1.58, 15.50, 17.80, hm.woodWalnut);
-  B(-19.16, -19.24, fy + 0.55, fy + 1.48, 15.62, 17.68, hm.velvetCream); // tufted padded headboard
-  // 4 Plump Pillows & Bedside Nightstands with Warm Lamps
-  B(-18.55, -19.12, fy + 0.62, fy + 0.78, 15.80, 16.55, hm.velvetCream);
-  B(-18.55, -19.12, fy + 0.62, fy + 0.78, 16.75, 17.50, hm.velvetCream);
-  for (const nz of [15.18, 18.12]) {
-    B(-18.85, -19.50, fy + 0.02, fy + 0.54, nz - 0.26, nz + 0.26, hm.woodWalnut);
-    cylinder(parent, 0.12, 0.16, 0.26, [-19.15, fy + 0.72, nz], hm.ledWarm, 12);
-  }
-  // Full-height Walnut & Mirror Wardrobe along south wall (z = 18.0 .. 18.52, x = -15.3 .. -17.8)
-  B(-15.3, -17.8, fy + 0.02, fy + 2.45, 17.95, 18.52, hm.woodWalnut);
-  B(-15.45, -17.65, fy + 0.22, fy + 2.25, 17.92, 17.95, hm.mirrorMat);
+  B(-16.6, -19.5, fy + 0.02, fy + 0.38, 15.25, 17.45, hm.woodWalnut);
+  B(-16.68, -19.25, fy + 0.38, fy + 0.62, 15.35, 17.35, hm.bedSheet);
+  B(-16.66, -18.25, fy + 0.62, fy + 0.68, 15.33, 17.37, hm.bedBlanket);
+  B(-19.22, -19.55, fy + 0.38, fy + 1.58, 15.20, 17.50, hm.woodWalnut);
+  B(-19.16, -19.24, fy + 0.55, fy + 1.48, 15.32, 17.38, hm.velvetCream); // tufted padded headboard
+  // Plump Pillows & Bedside Nightstand with Warm Lamp
+  B(-18.55, -19.12, fy + 0.62, fy + 0.78, 15.50, 16.25, hm.velvetCream);
+  B(-18.55, -19.12, fy + 0.62, fy + 0.78, 16.45, 17.20, hm.velvetCream);
+  B(-18.85, -19.50, fy + 0.02, fy + 0.54, 14.82, 15.18, hm.woodWalnut);
+  cylinder(parent, 0.12, 0.16, 0.26, [-19.15, fy + 0.72, 15.00], hm.ledWarm, 12);
+  // Full-height Walnut & Mirror Wardrobe along south wall (z = 17.95 .. 18.52, x = -14.0 .. -16.5)
+  B(-14.0, -16.5, fy + 0.02, fy + 2.45, 17.95, 18.52, hm.woodWalnut);
+  B(-14.15, -16.35, fy + 0.22, fy + 2.25, 17.92, 17.95, hm.mirrorMat);
   B(-15.5, -18.5, y + 2.70, y + 2.74, 16.3, 16.9, hm.ledWarm);
 
   // 4. SOUTH WING (FLAT B): Formal Dining & Modular Kitchen (x = -5.1 .. -13.3, z = 23.35 .. 28.3)
   B(-13.22, -13.38, fy, y + 2.74, 23.35, 24.9, hm.wallCream);
   B(-13.22, -13.38, fy, y + 2.74, 26.3, 28.3, hm.wallCream);
   B(-13.22, -13.38, y + 2.22, y + 2.74, 24.9, 26.3, hm.wallCream);
+  B(-13.19, -13.41, fy, y + 2.24, 24.86, 24.94, hm.woodWalnut);
+  B(-13.19, -13.41, fy, y + 2.24, 26.26, 26.34, hm.woodWalnut);
 
   // 6-Seater Swirl-Marble Dining Table with Porcelain Dinnerware (x = -7.0 .. -9.8, z = 24.6 .. 26.2)
   B(-6.6, -10.2, fy, fy + 0.02, 24.0, 26.8, hm.rugPattern);
@@ -638,11 +708,90 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   const FLOORS = 9;
   const ROOF = L(FLOORS + 1); // 31.0 m
 
+  // All 11 stops of the High-Speed Elevator (0 = Ground, 1..9 = Apartment Floors, 10 = Rooftop)
+  const LIFT_STOPS = [
+    { index: 0, code: 'GF', btn: 'G', y: 0.5, label: 'নিচতলা · গ্র্যান্ড লবি ও পার্কিং (Ground Floor)' },
+    { index: 1, code: '1F', btn: '1', y: 4.0, label: '২য় তলা · কোচিং ও ফ্ল্যাট ১ (1st Floor)' },
+    { index: 2, code: '2F', btn: '2', y: 7.0, label: '৩য় তলা · মডেল ফ্ল্যাট ২ (2nd Floor)' },
+    { index: 3, code: '3F', btn: '3', y: 10.0, label: '৪র্থ তলা · লাক্সারি ফ্ল্যাট ৩ (3rd Floor)' },
+    { index: 4, code: '4F', btn: '4', y: 13.0, label: '৫ম তলা · ডুপ্লেক্স ফ্ল্যাট ৪ (4th Floor)' },
+    { index: 5, code: '5F', btn: '5', y: 16.0, label: '৬ষ্ঠ তলা · লাক্সারি ফ্ল্যাট ৫ (5th Floor)' },
+    { index: 6, code: '6F', btn: '6', y: 19.0, label: '৭ম তলা · লাক্সারি ফ্ল্যাট ৬ (6th Floor)' },
+    { index: 7, code: '7F', btn: '7', y: 22.0, label: '৮ম তলা · স্কাই স্যুট ৭ (7th Floor)' },
+    { index: 8, code: '8F', btn: '8', y: 25.0, label: '৯ম তলা · লাক্সারি ফ্ল্যাট ৮ (8th Floor)' },
+    { index: 9, code: '9F', btn: '9', y: 28.0, label: '১০ম তলা · ভিআইপি পেন্টহাউস ৯ (9th Floor)' },
+    { index: 10, code: 'RF', btn: 'R', y: 31.0, label: 'ছাদ · স্কাই লাউঞ্জ ও গার্ডেন (Rooftop)' },
+  ];
+
   const state = {
     gateOpen: true,      // Main parking gate open by default so player can drive/walk straight inside!
     gateSlide: 1.0,      // 0 = closed, 1 = slid open
-    liftFloorIndex: 0,
+    liftFloorIndex: 0,   // Current nearest floor index (0..10)
+    liftTargetIndex: 0,  // Destination floor index (0..10)
+    liftY: PL,           // Live elevator cabin floor elevation (0.5m .. 31.0m)
+    liftDoorOpen: 1.0,   // 0.0 = closed, 1.0 = open (starts open at Ground Lobby!)
+    liftPhase: 'open',   // 'open' | 'closing' | 'moving' | 'opening'
+    liftDirection: 0,    // -1 = down, 0 = idle, 1 = up
   };
+
+  // Web Audio Synthesizer for authentic Elevator Button Beep & Two-Tone Arrival Chime ("Ding-Dong!")
+  let audioCtx = null;
+  function playLiftSound(type = 'beep') {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtx) audioCtx = new Ctx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const now = audioCtx.currentTime;
+      if (type === 'beep') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1046.5, now);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.095);
+      } else if (type === 'tick') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(587.3, now);
+        gain.gain.setValueAtTime(0.035, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.055);
+      } else if (type === 'chime') {
+        // Classic luxury hotel elevator two-tone chime (E5 -> C5)
+        const notes = [[659.25, 0, 0.38], [523.25, 0.22, 0.55]];
+        for (const [freq, delay, dur] of notes) {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + delay);
+          gain.gain.setValueAtTime(0.11, now + delay);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + delay + dur);
+          osc.connect(gain).connect(audioCtx.destination);
+          osc.start(now + delay);
+          osc.stop(now + delay + dur + 0.02);
+        }
+      }
+    } catch {}
+  }
+
+  // Helper to build a floor slab with cutouts for BOTH the Elevator Shaft (x ∈ [-13.38, -11.55], z ∈ [18.70, 20.40])
+  // and the Stairwell Opening (x ∈ [-14.20, -9.60], z ∈ [21.55, 22.80])
+  function buildSlabWithShaftCutouts(xEast, xWest, y0, y1, zNorth, zSouth, mat) {
+    B(xEast, xWest, y0, y1, zNorth, 18.70, mat);          // North of elevator shaft
+    B(xEast, -11.55, y0, y1, 18.70, 20.40, mat);          // East of elevator shaft (lobby in front of lift)
+    B(-13.38, xWest, y0, y1, 18.70, 20.40, mat);          // West of elevator shaft
+    B(xEast, xWest, y0, y1, 20.40, 21.55, mat);           // Hallway between elevator shaft & stairwell
+    B(xEast, -9.60, y0, y1, 21.55, 22.80, mat);           // East of stairwell
+    B(-14.20, xWest, y0, y1, 21.55, 22.80, mat);          // West of stairwell (top landing)
+    B(xEast, xWest, y0, y1, 22.80, zSouth, mat);          // South of stairwell
+  }
 
   // ==========================================================================
   // 1. RAISED BLACK-GRANITE PLINTH, CAR RAMP, STEPS & STAINLESS RAILINGS
@@ -664,14 +813,11 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   // ==========================================================================
   // 2. GROUND FLOOR GRAND PARKING & RECEPTION LOBBY (y = 0.50m .. 3.85m)
   // ==========================================================================
-  // Perimeter Rear & South Walls of Ground Floor (instead of solid dark box!)
+  // Perimeter Rear & South Walls of Ground Floor
   B(BX, BX + 0.32, PL, 3.85, 14.6, EZ, hm.stucco);
   B(-4.2, BX, PL, 3.85, EZ - 0.32, EZ, hm.stucco);
-  // 1st-floor ceiling / slab with stairwell opening at x ∈ [-14.2, -9.6], z ∈ [21.5, 22.85]
-  B(-3.95, BX, 3.82, 4.02, SZ - 0.05, 21.5, hm.stucco);
-  B(-3.95, BX, 3.82, 4.02, 22.85, EZ, hm.stucco);
-  B(-3.95, -9.6, 3.82, 4.02, 21.5, 22.85, hm.stucco);
-  B(-14.2, BX, 3.82, 4.02, 21.5, 22.85, hm.stucco);
+  // 1st-floor ceiling / slab with cutouts for BOTH Elevator Shaft & Stairwell
+  buildSlabWithShaftCutouts(-3.95, BX, 3.82, 4.02, SZ - 0.05, EZ, hm.stucco);
 
   // Glowing LED Tube Lights on Ground Floor Ceiling + Yellow Parking Bay Lines
   for (const lx of [-6.8, -10.5, -14.8, -18.0]) {
@@ -746,20 +892,27 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
     wheel.rotation.x = Math.PI / 2;
   }
 
-  // 3) Grand Reception & Concierge Desk + Illuminated Golden Nameplate + Lift Entrance (x = -11.5, z = 18.6..20.8)
+  // 3) Grand Reception & Concierge Desk + Illuminated Golden Nameplate + Hollow Lift Shaft Entrance (x = -11.55, z = 18.7..20.4)
   B(-9.2, -10.8, PL, PL + 1.12, 17.2, 18.5, hm.marble);
   B(-9.1, -10.9, PL + 1.12, PL + 1.20, 17.1, 18.6, hm.granite);
   B(-9.15, -10.85, PL + 0.04, PL + 0.14, 17.18, 18.52, hm.gold);
   // Dual CCTV Security Monitors on Reception Desk
   B(-9.8, -9.92, PL + 1.20, PL + 1.68, 17.5, 18.2, hm.dark);
   addScreenPlane(dynamicParent, 0.68, 0.44, [-9.79, PL + 1.44, 17.85], Math.PI / 2, hm.smartTv);
-  // Illuminated Golden Building Signboard on Lobby Wall (x = -11.52, z = 16.2 .. 18.5)
-  B(-11.55, -12.1, PL, 3.82, 16.0, 20.8, hm.marble);
+  // Illuminated Golden Building Signboard on Lobby Wall (x = -11.52, z = 16.0 .. 18.7)
+  B(-11.55, -12.1, PL, 3.82, 16.0, 18.72, hm.marble);
   B(-11.50, -11.56, PL + 1.82, PL + 2.78, 16.12, 18.58, hm.gold);
   addScreenPlane(dynamicParent, 2.38, 0.88, [-11.48, PL + 2.30, 17.35], Math.PI / 2, hm.lobbySign);
-  // Ground-Floor High-Speed Lift Doors & Digital Call Panel (x = -11.52, z = 18.95 .. 20.3)
-  B(-11.50, -11.56, PL + 0.02, PL + 2.35, 19.05, 19.62, hm.steel);
-  B(-11.50, -11.56, PL + 0.02, PL + 2.35, 19.65, 20.22, hm.steel);
+  // Ground-Floor Hollow Elevator Shaft Walls & Open Portal (doorway open at z = 18.96 .. 20.14!)
+  B(-13.26, -13.40, PL, 3.82, 18.70, 20.40, hm.marble); // rear shaft wall
+  B(-11.55, -13.40, PL, 3.82, 18.68, 18.80, hm.marble); // north shaft wall
+  B(-11.55, -13.40, PL, 3.82, 20.28, 20.40, hm.marble); // south shaft wall
+  B(-11.52, -11.68, PL, 3.82, 18.70, 18.96, hm.granite);
+  B(-11.52, -11.68, PL, 3.82, 20.14, 20.40, hm.granite);
+  B(-11.52, -11.68, PL + 2.28, 3.82, 18.96, 20.14, hm.marble);
+  B(-11.49, -11.55, PL, PL + 2.32, 18.92, 18.97, hm.gold);
+  B(-11.49, -11.55, PL, PL + 2.32, 20.13, 20.18, hm.gold);
+  B(-11.49, -11.55, PL + 2.27, PL + 2.33, 18.92, 20.18, hm.gold);
   addScreenPlane(dynamicParent, 0.36, 0.82, [-11.48, PL + 1.46, 18.80], Math.PI / 2, hm.liftDisplay);
 
   // Lane-side ground floor (facade z = 14.6), from the corner westwards
@@ -776,8 +929,8 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
 
   // ==========================================================================
   // 3. CONTINUOUS WALKABLE MARBLE STAIRCASE (Ground -> All 9 Floors -> Rooftop)
-  //    Stair lane: x ∈ [-14.2, -9.6], z ∈ [21.55, 22.80]
-  //    Climbing in -X direction (from x = -9.6 up to x = -14.1)
+  //    Stair lane: x ∈ [-14.2, -9.6], z ∈ [21.58, 22.78]
+  //    Climbing in -X direction (from x = -9.65 up to x = -14.10)
   // ==========================================================================
   for (let k = 0; k <= FLOORS; k++) {
     const y0 = L(k);
@@ -803,13 +956,10 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   B(BX, BX + 0.28, 4.0, ROOF, 14.6, EZ, hm.stucco);
   B(-5.6, BX, 4.0, ROOF, EZ - 0.28, EZ, hm.stucco);
 
-  // Per-floor floor slabs (with stairwell opening at x ∈ [-14.2, -9.6], z ∈ [21.55, 22.80])
+  // Per-floor floor slabs (with cutouts for BOTH Elevator Shaft & Stairwell)
   for (let k = 1; k <= FLOORS; k++) {
     const y = L(k);
-    B(-5.5, BX + 0.25, y - 0.24, y + 0.02, 14.7, 21.55, hm.creamTile);
-    B(-5.5, BX + 0.25, y - 0.24, y + 0.02, 22.80, EZ - 0.25, hm.creamTile);
-    B(-5.5, -9.6, y - 0.24, y + 0.02, 21.55, 22.80, hm.creamTile);
-    B(-14.2, BX + 0.25, y - 0.24, y + 0.02, 21.55, 22.80, hm.creamTile);
+    buildSlabWithShaftCutouts(-5.5, BX + 0.25, y - 0.24, y + 0.02, 14.7, EZ - 0.25, hm.creamTile);
   }
 
   // ==========================================================================
@@ -911,11 +1061,8 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   // ==========================================================================
   // 9. ROOFTOP SKY LOUNGE & INFINITY GARDEN (ROOF = 31.0m)
   // ==========================================================================
-  // Roof slab with stairwell opening at x ∈ [-14.2, -9.6], z ∈ [21.55, 22.80]
-  B(-3.65, BX, ROOF - 0.24, ROOF + 0.04, 14.3, 21.55, hm.stucco);
-  B(-3.65, BX, ROOF - 0.24, ROOF + 0.04, 22.80, EZ, hm.stucco);
-  B(-3.65, -9.6, ROOF - 0.24, ROOF + 0.04, 21.55, 22.80, hm.stucco);
-  B(-14.2, BX, ROOF - 0.24, ROOF + 0.04, 21.55, 22.80, hm.stucco);
+  // Roof slab with cutouts for BOTH Elevator Shaft & Stairwell
+  buildSlabWithShaftCutouts(-3.65, BX, ROOF - 0.24, ROOF + 0.04, 14.3, EZ, hm.stucco);
 
   // Rooftop Parapet Walls
   B(-3.65, -3.9, ROOF + 0.04, ROOF + 1.15, 14.3, EZ, hm.stucco);
@@ -926,15 +1073,22 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   B(-3.75, -5.6, ROOF + 2.65, ROOF + 2.95, 18.6, 28.6, hm.darkGrey);
   for (const z of [18.75, 23.45, 28.45]) B(-3.8, -4.1, ROOF + 0.04, ROOF + 2.65, z - 0.15, z + 0.15, hm.darkGrey);
 
-  // Stair & Lift Penthouse Room on Roof (x = -9.4 .. -14.5, z = 18.2 .. 23.1) with open door at x = -9.4, z = 19.3..20.8
-  B(-9.4, -14.5, ROOF + 3.0, ROOF + 3.25, 18.2, 23.1, hm.stucco);
-  B(-14.25, -14.5, ROOF + 0.04, ROOF + 3.0, 18.2, 23.1, hm.stucco);
-  B(-9.4, -14.5, ROOF + 0.04, ROOF + 3.0, 18.2, 18.45, hm.stucco);
-  B(-9.4, -14.5, ROOF + 0.04, ROOF + 3.0, 22.85, 23.1, hm.stucco);
-  B(-9.4, -9.65, ROOF + 0.04, ROOF + 3.0, 18.2, 19.3, hm.stucco);
-  B(-9.4, -9.65, ROOF + 0.04, ROOF + 3.0, 20.8, 23.1, hm.stucco);
-  B(-11.0, -13.5, ROOF + 3.25, ROOF + 4.5, 18.8, 21.6, hm.darkGrey); // overhead water tank
-  addScreenPlane(dynamicParent, 0.42, 0.85, [-9.38, ROOF + 1.45, 18.85], Math.PI / 2, hm.liftDisplay); // rooftop lift panel
+  // Stair & Lift Penthouse Room on Roof (x = -9.4 .. -16.6, z = 18.2 .. 23.1) with wide landing & open door at x = -9.4, z = 18.9..21.4
+  B(-9.4, -16.6, ROOF + 3.0, ROOF + 3.25, 18.2, 23.1, hm.stucco);
+  B(-16.35, -16.6, ROOF + 0.04, ROOF + 3.0, 18.2, 23.1, hm.stucco);
+  B(-9.4, -16.6, ROOF + 0.04, ROOF + 3.0, 18.2, 18.45, hm.stucco);
+  B(-9.4, -16.6, ROOF + 0.04, ROOF + 3.0, 22.85, 23.1, hm.stucco);
+  B(-9.4, -9.65, ROOF + 0.04, ROOF + 3.0, 18.2, 18.9, hm.stucco);
+  B(-9.4, -9.65, ROOF + 0.04, ROOF + 3.0, 21.4, 23.1, hm.stucco);
+  // Rooftop Elevator Shaft Portal inside Penthouse Room
+  B(-13.26, -13.40, ROOF + 0.04, ROOF + 2.98, 18.70, 20.40, hm.marble);
+  B(-11.55, -13.40, ROOF + 0.04, ROOF + 2.98, 18.68, 18.80, hm.marble);
+  B(-11.55, -13.40, ROOF + 0.04, ROOF + 2.98, 20.28, 20.40, hm.marble);
+  B(-11.52, -11.68, ROOF + 0.04, ROOF + 2.98, 18.70, 18.96, hm.granite);
+  B(-11.52, -11.68, ROOF + 0.04, ROOF + 2.98, 20.14, 20.40, hm.granite);
+  B(-11.52, -11.68, ROOF + 2.30, ROOF + 2.98, 18.96, 20.14, hm.marble);
+  B(-11.0, -13.8, ROOF + 3.25, ROOF + 4.5, 18.8, 21.6, hm.darkGrey); // overhead water tank
+  addScreenPlane(dynamicParent, 0.38, 0.82, [-11.48, ROOF + 1.45, 18.82], Math.PI / 2, hm.liftDisplay); // rooftop lift panel
 
   // Rooftop Sky Lounge Turf, Wooden Deck, Outdoor Sofas & Warm Lanterns
   B(-4.2, -8.8, ROOF + 0.04, ROOF + 0.08, 15.0, 22.5, hm.turfGreen);
@@ -949,7 +1103,67 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   mergeStaticMeshes(g);
 
   // ==========================================================================
-  // 10. PER-FLOOR HIGH-FI APARTMENT INTERIORS (Culled dynamically by player Y)
+  // 10. ANIMATED SLIDING LANDING DOORS ON EVERY FLOOR (k = 0..10)
+  //     + 3D MOVING LUXURY ELEVATOR CABIN (elevatorCabGroup)
+  // ==========================================================================
+  const landingDoors = [];
+  for (let k = 0; k <= 10; k++) {
+    const fy = L(k) + 0.02;
+    const dg = new THREE.Group();
+    dg.name = `LiftLandingDoors_${k}`;
+    dynamicParent.add(dg);
+
+    const leftDoor = box(dg, [0.045, 2.26, 0.60], [-11.54, fy + 1.13, 19.25], hm.steel);
+    const rightDoor = box(dg, [0.045, 2.26, 0.60], [-11.54, fy + 1.13, 19.85], hm.steel);
+    const initOpen = k === 0 ? 1.0 : 0.0;
+    leftDoor.position.z = 19.25 - initOpen * 0.56;
+    rightDoor.position.z = 19.85 + initOpen * 0.56;
+    landingDoors.push({ level: k, y: L(k), leftDoor, rightDoor, open: initOpen });
+  }
+
+  // 3D Walk-In Luxury Elevator Cabin (rides smoothly from y = 0.5m to y = 31.0m!)
+  const elevatorCabGroup = new THREE.Group();
+  elevatorCabGroup.name = 'SkArshanElevatorCabin';
+  elevatorCabGroup.position.set(0, state.liftY, 0);
+  dynamicParent.add(elevatorCabGroup);
+  const BC = makeB(elevatorCabGroup);
+
+  // Cabin Swirl-Marble Floor & Gold Border Inlay (x = -11.58 .. -13.32, z = 18.74 .. 20.36)
+  BC(-11.56, -13.34, -0.04, 0.022, 18.74, 20.36, hm.marble);
+  BC(-11.60, -13.30, 0.022, 0.028, 18.78, 18.84, hm.gold);
+  BC(-11.60, -13.30, 0.022, 0.028, 20.26, 20.32, hm.gold);
+  BC(-13.24, -13.30, 0.022, 0.028, 18.78, 20.32, hm.gold);
+
+  // Cabin Walnut & Brushed Gold Interior Walls
+  BC(-13.26, -13.34, 0.02, 2.42, 18.74, 20.36, hm.woodWalnut); // rear cabin wall
+  BC(-11.58, -13.34, 0.02, 2.42, 18.72, 18.79, hm.woodWalnut); // north cabin wall
+  BC(-11.58, -13.34, 0.02, 2.42, 20.31, 20.38, hm.woodWalnut); // south cabin wall
+  // Beveled Rear Mirror & Brushed Gold Handrails inside Cabin
+  BC(-13.22, -13.26, 0.94, 2.16, 18.90, 20.20, hm.mirrorMat);
+  BC(-13.21, -13.25, 0.90, 0.94, 18.88, 20.22, hm.gold);
+  BC(-13.21, -13.25, 2.16, 2.20, 18.88, 20.22, hm.gold);
+  rodBetween(elevatorCabGroup, [-13.16, 0.86, 18.86], [-13.16, 0.86, 20.24], 0.024, hm.gold, 10);
+  rodBetween(elevatorCabGroup, [-11.72, 0.86, 18.84], [-13.16, 0.86, 18.84], 0.022, hm.gold, 10);
+  rodBetween(elevatorCabGroup, [-11.72, 0.86, 20.26], [-13.16, 0.86, 20.26], 0.022, hm.gold, 10);
+
+  // Cabin Coffered Warm LED Ceiling
+  BC(-11.58, -13.34, 2.38, 2.45, 18.74, 20.36, hm.granite);
+  BC(-11.82, -13.10, 2.35, 2.38, 18.96, 20.14, hm.ledWarm);
+
+  // Cabin Front Return Jambs & Sliding Inner Doors
+  BC(-11.58, -11.65, 0.02, 2.42, 18.74, 18.96, hm.steel);
+  BC(-11.58, -11.65, 0.02, 2.42, 20.14, 20.36, hm.steel);
+  BC(-11.58, -11.65, 2.28, 2.42, 18.96, 20.14, hm.steel);
+  const cabLeftDoor = box(elevatorCabGroup, [0.04, 2.26, 0.60], [-11.60, 1.15, 19.25 - state.liftDoorOpen * 0.56], hm.steel);
+  const cabRightDoor = box(elevatorCabGroup, [0.04, 2.26, 0.60], [-11.60, 1.15, 19.85 + state.liftDoorOpen * 0.56], hm.steel);
+
+  // 3D Interactive Button Column inside the Elevator Cabin (on south wall z = 20.29 & front jamb)
+  BC(-12.02, -12.48, 0.92, 1.82, 20.27, 20.31, hm.gold);
+  addScreenPlane(elevatorCabGroup, 0.42, 0.84, [-12.25, 1.37, 20.26], Math.PI, hm.liftDisplay);
+  addScreenPlane(elevatorCabGroup, 0.36, 0.72, [-11.95, 1.37, 18.81], 0, hm.liftDisplay);
+
+  // ==========================================================================
+  // 11. PER-FLOOR HIGH-FI APARTMENT INTERIORS (Culled dynamically by player Y)
   // ==========================================================================
   const floorInteriors = [];
   for (let k = 1; k <= FLOORS; k++) {
@@ -958,38 +1172,150 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
     const staticPart = new THREE.Group();
     const screenPart = new THREE.Group();
     fg.add(staticPart, screenPart);
-    buildApartmentFloorInterior(staticPart, screenPart, hm, L(k));
+    buildApartmentFloorInterior(staticPart, screenPart, hm, L(k), k);
+    // Add Floor Number Plaque on the stair/lobby wall opposite the elevator so player clearly sees floor number!
+    const stopInfo = LIFT_STOPS[k];
+    const plaqueMat = new THREE.MeshBasicMaterial({
+      map: createFloorPlaqueTexture(stopInfo.code, `${k + 1} তলা লবি`, `FLOOR ${k} · LUXURY APARTMENTS`),
+    });
+    addScreenPlane(screenPart, 1.35, 0.42, [-9.55, L(k) + 1.72, 21.48], 0, plaqueMat);
     mergeStaticMeshes(staticPart);
     dynamicParent.add(fg);
     floorInteriors.push({ level: k, y: L(k), group: fg });
   }
 
-  // Lift stop elevations: Ground(0.5), 1st(4.0), 2nd(7.0), 4th(13.0), 7th(22.0), 9th(28.0), Roof(31.0)
-  const LIFT_STOPS = [
-    { y: 0.5, label: 'নিচতলা লবি (Ground Lobby)' },
-    { y: 4.0, label: '২য় তলা ফ্ল্যাট ও কোচিং (1st Floor)' },
-    { y: 7.0, label: '৩য় তলা মডেল ফ্ল্যাট (2nd Floor)' },
-    { y: 13.0, label: '৫ম তলা লাক্সারি ডুপ্লেক্স (4th Floor)' },
-    { y: 22.0, label: '৮ম তলা স্কাই স্যুট (7th Floor)' },
-    { y: 28.0, label: '১০ম তলা ভিআইপি পেন্টহাউস (9th Floor)' },
-    { y: 31.0, label: 'ছাদের স্কাই লাউঞ্জ (Rooftop Garden)' },
-  ];
+  function updateLiftDisplayCanvas() {
+    const canvas = hm.liftDisplay?.map?.userData?.canvas;
+    if (!canvas) return;
+    const stop = LIFT_STOPS[state.liftFloorIndex] || LIFT_STOPS[0];
+    let arrow = '●';
+    let statusText = 'DOOR OPEN · দরজা খোলা';
+    if (state.liftPhase === 'closing') {
+      arrow = state.liftDirection > 0 ? '▲' : (state.liftDirection < 0 ? '▼' : '►◄');
+      statusText = 'CLOSING · দরজা বন্ধ হচ্ছে';
+    } else if (state.liftPhase === 'moving') {
+      arrow = state.liftDirection >= 0 ? '▲' : '▼';
+      const targetStop = LIFT_STOPS[state.liftTargetIndex] || stop;
+      statusText = `GOING TO ${targetStop.code} · চলমান`;
+    } else if (state.liftPhase === 'opening') {
+      arrow = '◄►';
+      statusText = 'ARRIVED · দরজা খুলছে';
+    } else if (state.liftDoorOpen < 0.2) {
+      arrow = '■';
+      statusText = 'READY · প্রেস করুন';
+    }
+    drawLiftDisplayCanvas(canvas, stop.code, arrow, statusText, state.liftTargetIndex);
+    hm.liftDisplay.map.needsUpdate = true;
+  }
 
   function isNearGate(pos) {
     return pos.x >= -6.5 && pos.x <= -2.2 && pos.z >= 18.2 && pos.z <= 22.6 && (pos.y - 1.68) < 2.2;
   }
 
-  function isNearLift(pos) {
-    return pos.x >= -13.2 && pos.x <= -9.2 && pos.z >= 18.0 && pos.z <= 21.4;
+  function isInsideLift(pos) {
+    return pos.x >= -13.38 && pos.x <= -11.52 && pos.z >= 18.72 && pos.z <= 20.38;
+  }
+
+  function isNearLiftLobby(pos) {
+    return pos.x >= -13.45 && pos.x <= -9.15 && pos.z >= 18.10 && pos.z <= 21.25;
+  }
+
+  function getNearestFloorIndex(footY) {
+    let bestIdx = 0;
+    let bestDiff = Infinity;
+    for (let i = 0; i < LIFT_STOPS.length; i++) {
+      const d = Math.abs(footY - LIFT_STOPS[i].y);
+      if (d < bestDiff) {
+        bestDiff = d;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
+  function goToFloor(targetIdx, playerPos = null) {
+    const idx = THREE.MathUtils.clamp(Math.round(targetIdx), 0, LIFT_STOPS.length - 1);
+    playLiftSound('beep');
+    state.liftTargetIndex = idx;
+
+    // If the player clicked a floor button while standing just outside the lift door, step them cleanly inside the cabin!
+    if (playerPos && isNearLiftLobby(playerPos) && !isInsideLift(playerPos)) {
+      const playerFloorIdx = getNearestFloorIndex(playerPos.y - 1.68);
+      if (Math.abs(state.liftY - LIFT_STOPS[playerFloorIdx].y) < 0.35) {
+        playerPos.x = -12.38;
+        playerPos.z = 19.55;
+        playerPos.y = state.liftY + 1.68;
+      }
+    }
+
+    const targetY = LIFT_STOPS[idx].y;
+    if (Math.abs(state.liftY - targetY) < 0.04) {
+      state.liftFloorIndex = idx;
+      state.liftDirection = 0;
+      state.liftPhase = 'opening';
+      updateLiftDisplayCanvas();
+      return true;
+    }
+
+    state.liftDirection = targetY > state.liftY ? 1 : -1;
+    state.liftPhase = state.liftDoorOpen > 0.05 ? 'closing' : 'moving';
+    updateLiftDisplayCanvas();
+    return true;
+  }
+
+  function openDoors(playerPos = null) {
+    playLiftSound('beep');
+    if (playerPos && !isInsideLift(playerPos)) {
+      const playerFloorIdx = getNearestFloorIndex(playerPos.y - 1.68);
+      if (Math.abs(state.liftY - LIFT_STOPS[playerFloorIdx].y) > 0.1) {
+        return goToFloor(playerFloorIdx, null);
+      }
+    }
+    if (state.liftPhase !== 'moving') {
+      state.liftPhase = 'opening';
+      updateLiftDisplayCanvas();
+    }
+    return true;
+  }
+
+  function closeDoors() {
+    playLiftSound('beep');
+    if (state.liftPhase === 'open' || state.liftPhase === 'opening') {
+      state.liftPhase = 'closing';
+      updateLiftDisplayCanvas();
+    }
+    return true;
   }
 
   return {
     group: g,
     state,
+    stops: LIFT_STOPS,
+    nearestFloorIndex: getNearestFloorIndex,
+    isInsideLift,
+    isNearLiftLobby,
+    isLiftOpenAtY(footY) {
+      return Math.abs(footY - state.liftY) < 1.35 && state.liftDoorOpen > 0.55;
+    },
+    goToFloor,
+    openDoors,
+    closeDoors,
     getPrompt(playerPos) {
-      if (isNearLift(playerPos)) {
-        const nextIdx = (state.liftFloorIndex + 1) % LIFT_STOPS.length;
-        return `Press E / F or Click · হাই-স্পিড লিফট: ${LIFT_STOPS[nextIdx].label}-এ যান`;
+      if (isInsideLift(playerPos)) {
+        const curStop = LIFT_STOPS[state.liftFloorIndex] || LIFT_STOPS[0];
+        if (state.liftPhase === 'moving' || state.liftPhase === 'closing') {
+          const dst = LIFT_STOPS[state.liftTargetIndex] || curStop;
+          return `লিফট চলছে: ${curStop.code} → ${dst.label} ...`;
+        }
+        return `[E / L / Click] লিফটের ফ্লোর নাম্বার বাটন প্যানেল খুলুন (বর্তমান: ${curStop.code})`;
+      }
+      if (isNearLiftLobby(playerPos)) {
+        const playerFloorIdx = getNearestFloorIndex(playerPos.y - 1.68);
+        const atThisFloor = Math.abs(state.liftY - LIFT_STOPS[playerFloorIdx].y) < 0.25;
+        if (atThisFloor && state.liftDoorOpen > 0.7) {
+          return `[ভিতরে হাঁটুন অথবা E / L চাপুন] হাই-স্পিড লিফটে ঢুকুন ও নাম্বার ক্লিক করুন`;
+        }
+        return `[E / F / Click] হাই-স্পিড লিফট ডাকুন ও দরজা খুলুন (Call Lift)`;
       }
       if (isNearGate(playerPos)) {
         return state.gateOpen
@@ -999,13 +1325,15 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
       return null;
     },
     interact(playerPos) {
-      if (isNearLift(playerPos)) {
-        state.liftFloorIndex = (state.liftFloorIndex + 1) % LIFT_STOPS.length;
-        const stop = LIFT_STOPS[state.liftFloorIndex];
-        playerPos.x = -10.4;
-        playerPos.z = 19.6;
-        playerPos.y = stop.y + 1.68;
-        return true;
+      if (isInsideLift(playerPos) || isNearLiftLobby(playerPos)) {
+        const playerFloorIdx = getNearestFloorIndex(playerPos.y - 1.68);
+        if (!isInsideLift(playerPos) && Math.abs(state.liftY - LIFT_STOPS[playerFloorIdx].y) > 0.2) {
+          goToFloor(playerFloorIdx, null);
+        } else if (state.liftDoorOpen < 0.8 && state.liftPhase !== 'moving') {
+          state.liftPhase = 'opening';
+          updateLiftDisplayCanvas();
+        }
+        return 'lift_panel';
       }
       if (isNearGate(playerPos)) {
         state.gateOpen = !state.gateOpen;
@@ -1019,7 +1347,86 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
         state.gateSlide += (targetSlide - state.gateSlide) * Math.min(1, delta * 6.0);
         slidingGateGroup.position.z = state.gateSlide * -2.85;
       }
+
+      // Auto-call / auto-open lift doors when player walks right up to the lift lobby
       const footY = playerPos.y - 1.68;
+      if (state.liftPhase === 'open' && !isInsideLift(playerPos) && isNearLiftLobby(playerPos)) {
+        const playerFloorIdx = getNearestFloorIndex(footY);
+        if (Math.abs(state.liftY - LIFT_STOPS[playerFloorIdx].y) > 0.25) {
+          state.liftTargetIndex = playerFloorIdx;
+          state.liftDirection = LIFT_STOPS[playerFloorIdx].y > state.liftY ? 1 : -1;
+          state.liftPhase = state.liftDoorOpen > 0.05 ? 'closing' : 'moving';
+          updateLiftDisplayCanvas();
+        } else if (state.liftDoorOpen < 0.95) {
+          state.liftPhase = 'opening';
+        }
+      }
+
+      // Elevator State Machine: closing -> moving -> opening -> open
+      const playerInCab = isInsideLift(playerPos) && Math.abs(footY - state.liftY) < 1.85;
+      if (state.liftPhase === 'closing') {
+        state.liftDoorOpen = Math.max(0, state.liftDoorOpen - delta * 2.4);
+        if (state.liftDoorOpen <= 0.01) {
+          state.liftDoorOpen = 0;
+          const targetY = LIFT_STOPS[state.liftTargetIndex].y;
+          if (Math.abs(targetY - state.liftY) > 0.04) {
+            state.liftPhase = 'moving';
+            state.liftDirection = targetY > state.liftY ? 1 : -1;
+          } else {
+            state.liftPhase = 'open';
+            state.liftDirection = 0;
+          }
+          updateLiftDisplayCanvas();
+        }
+      } else if (state.liftPhase === 'moving') {
+        const targetY = LIFT_STOPS[state.liftTargetIndex].y;
+        const diff = targetY - state.liftY;
+        const speed = 7.8; // High-speed smooth luxury lift (7.8 m/s)
+        const step = Math.sign(diff) * Math.min(Math.abs(diff), speed * delta);
+        const prevFloorIdx = state.liftFloorIndex;
+        state.liftY += step;
+        if (playerInCab) {
+          playerPos.y = state.liftY + 1.68;
+        }
+        const curFloorIdx = getNearestFloorIndex(state.liftY);
+        if (curFloorIdx !== prevFloorIdx) {
+          state.liftFloorIndex = curFloorIdx;
+          playLiftSound('tick');
+          updateLiftDisplayCanvas();
+        }
+        if (Math.abs(targetY - state.liftY) <= 0.02) {
+          state.liftY = targetY;
+          if (playerInCab) playerPos.y = state.liftY + 1.68;
+          state.liftFloorIndex = state.liftTargetIndex;
+          state.liftDirection = 0;
+          state.liftPhase = 'opening';
+          playLiftSound('chime');
+          updateLiftDisplayCanvas();
+        }
+      } else if (state.liftPhase === 'opening') {
+        state.liftDoorOpen = Math.min(1, state.liftDoorOpen + delta * 2.4);
+        if (state.liftDoorOpen >= 0.99) {
+          state.liftDoorOpen = 1.0;
+          state.liftPhase = 'open';
+          updateLiftDisplayCanvas();
+        }
+      }
+
+      // Sync 3D Elevator Cabin Y & Sliding Cabin Doors + Current Floor Landing Doors
+      elevatorCabGroup.position.y = state.liftY;
+      cabLeftDoor.position.z = 19.25 - state.liftDoorOpen * 0.56;
+      cabRightDoor.position.z = 19.85 + state.liftDoorOpen * 0.56;
+
+      for (const ld of landingDoors) {
+        const isCurrentFloor = Math.abs(state.liftY - ld.y) < 0.18;
+        const targetOpen = isCurrentFloor ? state.liftDoorOpen : 0.0;
+        if (Math.abs(ld.open - targetOpen) > 0.001) {
+          ld.open += (targetOpen - ld.open) * Math.min(1, delta * 14.0);
+          ld.leftDoor.position.z = 19.25 - ld.open * 0.56;
+          ld.rightDoor.position.z = 19.85 + ld.open * 0.56;
+        }
+      }
+
       const insideTower = playerPos.x <= -2.8 && playerPos.x >= -20.2 && playerPos.z >= 14.2 && playerPos.z <= 28.8;
       for (const fl of floorInteriors) {
         if (isLow && !insideTower) {
