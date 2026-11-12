@@ -141,6 +141,135 @@ function createLiftDisplayTexture() {
   return tex;
 }
 
+function createWoodGrainTexture(baseHex = '#5c3a21', grainHex = '#3d2412') {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = baseHex;
+  ctx.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 140; i++) {
+    const y = (i / 140) * 512;
+    ctx.strokeStyle = i % 3 === 0 ? grainHex : 'rgba(255,235,205,0.06)';
+    ctx.lineWidth = 1 + (i % 3);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(170, y + Math.sin(i) * 10, 340, y - Math.cos(i) * 10, 512, y);
+    ctx.stroke();
+  }
+  // Plank seams
+  ctx.strokeStyle = 'rgba(20,10,5,0.35)';
+  ctx.lineWidth = 2;
+  for (let y = 64; y < 512; y += 64) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(512, y);
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createTuftedFabricTexture(baseHex = '#1e40af', stitchHex = '#172554', highlightHex = 'rgba(255,255,255,0.12)') {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = baseHex;
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Subtle woven threads
+  ctx.fillStyle = highlightHex;
+  for (let y = 0; y < 256; y += 4) ctx.fillRect(0, y, 256, 1);
+  for (let x = 0; x < 256; x += 4) ctx.fillRect(x, 0, 1, 256);
+
+  // Diamond quilting / tufting seams & buttons
+  ctx.strokeStyle = stitchHex;
+  ctx.lineWidth = 3;
+  const step = 64;
+  for (let y = 0; y <= 256; y += step) {
+    for (let x = 0; x <= 256; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(x, y - step / 2);
+      ctx.lineTo(x + step / 2, y);
+      ctx.lineTo(x, y + step / 2);
+      ctx.lineTo(x - step / 2, y);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.fillStyle = stitchHex;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createPersianRugTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#7f1d1d';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Ornate concentric borders
+  const borders = [
+    [16, '#fbbf24', 10],
+    [34, '#1e3a8a', 18],
+    [58, '#fde68a', 6],
+    [72, '#991b1b', 8],
+  ];
+  for (const [pad, col, lw] of borders) {
+    ctx.strokeStyle = col;
+    ctx.lineWidth = lw;
+    ctx.strokeRect(pad, pad, 512 - pad * 2, 512 - pad * 2);
+  }
+  // Center medallion
+  ctx.fillStyle = '#1e3a8a';
+  ctx.beginPath();
+  ctx.ellipse(256, 256, 110, 75, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  ctx.fillStyle = '#fef08a';
+  ctx.beginPath();
+  ctx.ellipse(256, 256, 52, 34, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createBathTileTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#e0f2fe';
+  ctx.fillRect(0, 0, 256, 256);
+  const sz = 32;
+  for (let y = 0; y < 256; y += sz) {
+    for (let x = 0; x < 256; x += sz) {
+      ctx.fillStyle = (x / sz + y / sz) % 2 === 0 ? '#bae6fd' : '#e0f2fe';
+      ctx.fillRect(x + 2, y + 2, sz - 4, sz - 4);
+      ctx.strokeStyle = '#7dd3fc';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, sz - 2, sz - 2);
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
 export function createHajiMaterials() {
   const lam = (opts, uvScale) => {
     const mat = new THREE.MeshLambertMaterial(opts);
@@ -193,18 +322,45 @@ export function createHajiMaterials() {
     banner: lam({ map: loadTex('balcony-banner.jpg'), side: THREE.DoubleSide }),
     signMcsk: lam({ map: loadTex('sign-mcsk.jpg'), side: THREE.DoubleSide }),
     signShetu: lam({ map: loadTex('sign-shetu.jpg'), side: THREE.DoubleSide }),
-    // High-Fi Interior Luxury Materials
-    creamTile: std({ map: stuccoMap, color: 0xf5f2eb, roughness: 0.18, metalness: 0.05 }, 2.5),
-    wallCream: lam({ color: 0xfbf9f5 }),
-    wallAccent: lam({ color: 0xe2e8f0 }),
-    woodWalnut: std({ color: 0x5c3a21, roughness: 0.42, metalness: 0.06 }),
-    woodOak: std({ color: 0xa47551, roughness: 0.48 }),
-    velvetBlue: lam({ color: 0x1d4ed8 }),
-    velvetCream: lam({ color: 0xe5e0d8 }),
-    velvetEmerald: lam({ color: 0x047857 }),
-    rugPattern: lam({ color: 0x7c2d12 }),
-    bedSheet: lam({ color: 0xf8fafc }),
-    bedBlanket: lam({ color: 0x0284c7 }),
+    // High-Fi Interior Luxury Materials (with rich procedural PBR textures & bump detail!)
+    creamTile: std({ map: stuccoMap, color: 0xf5f2eb, roughness: 0.16, metalness: 0.06 }, 2.5),
+    wallCream: std({ map: stuccoMap, color: 0xfbf9f5, roughness: 0.72 }, 3.0),
+    wallAccent: std({ map: stuccoMap, color: 0xe2e8f0, roughness: 0.65 }, 3.0),
+    woodWalnut: (() => {
+      const t = createWoodGrainTexture('#5c3a21', '#3b2210');
+      return std({ map: t, bumpMap: t, bumpScale: 0.008, roughness: 0.34, metalness: 0.08 }, 1.6);
+    })(),
+    woodOak: (() => {
+      const t = createWoodGrainTexture('#a47551', '#7c5333');
+      return std({ map: t, bumpMap: t, bumpScale: 0.006, roughness: 0.40, metalness: 0.05 }, 1.6);
+    })(),
+    velvetBlue: (() => {
+      const t = createTuftedFabricTexture('#1d4ed8', '#1e3a8a');
+      return std({ map: t, bumpMap: t, bumpScale: 0.012, roughness: 0.62, metalness: 0.04 }, 1.2);
+    })(),
+    velvetCream: (() => {
+      const t = createTuftedFabricTexture('#ece6dc', '#c7bfb1');
+      return std({ map: t, bumpMap: t, bumpScale: 0.010, roughness: 0.58, metalness: 0.03 }, 1.2);
+    })(),
+    velvetEmerald: (() => {
+      const t = createTuftedFabricTexture('#047857', '#064e3b');
+      return std({ map: t, bumpMap: t, bumpScale: 0.010, roughness: 0.58, metalness: 0.04 }, 1.2);
+    })(),
+    rugPattern: std({ map: createPersianRugTexture(), roughness: 0.82 }, 3.2),
+    bedSheet: (() => {
+      const t = createTuftedFabricTexture('#f8fafc', '#cbd5e1');
+      return std({ map: t, bumpMap: t, bumpScale: 0.008, roughness: 0.68 }, 1.5);
+    })(),
+    bedBlanket: (() => {
+      const t = createTuftedFabricTexture('#0284c7', '#0369a1');
+      return std({ map: t, bumpMap: t, bumpScale: 0.010, roughness: 0.62 }, 1.4);
+    })(),
+    bathTile: std({ map: createBathTileTexture(), roughness: 0.18, metalness: 0.08 }, 1.4),
+    porcelain: std({ color: 0xffffff, roughness: 0.10, metalness: 0.08 }),
+    chrome: std({ color: 0xe2e8f0, roughness: 0.12, metalness: 0.85 }),
+    mirrorMat: std({ color: 0xdbeafe, roughness: 0.03, metalness: 0.92 }),
+    waterBlue: std({ color: 0x38bdf8, roughness: 0.08, metalness: 0.1, emissive: 0x0284c7, emissiveIntensity: 0.25 }),
+    curtainGold: std({ color: 0xd97706, roughness: 0.65 }),
     ledWarm: new THREE.MeshBasicMaterial({ color: 0xfffbeb }),
     ledCyan: new THREE.MeshBasicMaterial({ color: 0x22d3ee }),
     ledMagenta: new THREE.MeshBasicMaterial({ color: 0xe879f9 }),
@@ -305,12 +461,42 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y) {
   B(-9.5, -11.0, y + 2.71, y + 2.74, 19.2, 20.4, hm.ledWarm);
 
   // Partition walls separating Central Lobby from North Flat A (z = 18.6) & South Flat B (z = 23.2)
-  // North Flat A entrance doorway is open at x = -7.2 .. -8.6!
+  // North Flat A entrance doorway is open at x = -7.2 .. -8.6, and Bathroom doorway is open at x = -14.1 .. -15.1!
   B(-5.6, -7.2, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
-  B(-8.6, -19.7, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
+  B(-8.6, -14.1, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
+  B(-15.1, -19.7, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
   B(-7.2, -8.6, y + 2.22, y + 2.74, 18.55, 18.72, hm.wallCream);
+  B(-14.1, -15.1, y + 2.22, y + 2.74, 18.55, 18.72, hm.wallCream);
   // Open wooden door leaf swung into Flat A
   B(-8.55, -8.65, fy, y + 2.2, 17.35, 18.55, hm.woodWalnut);
+
+  // ATTACHED LUXURY BATHROOM (অ্যাটাচড বাথরুম: x = -13.3 .. -16.4, z = 18.65 .. 21.35)
+  // Entered via open doorway at z = 18.63, x = -14.1 .. -15.1 (from Master Bedroom / North Wing)
+  B(-13.3, -16.4, fy, fy + 0.03, 18.65, 21.35, hm.bathTile);
+  B(-13.25, -13.4, fy, y + 2.74, 18.65, 21.35, hm.bathTile);
+  B(-16.25, -16.4, fy, y + 2.74, 18.65, 21.35, hm.bathTile);
+  B(-13.3, -16.4, fy, y + 2.74, 21.25, 21.40, hm.bathTile);
+  // 1) Western Porcelain Commode / Toilet (কমোড) at x = -15.65, z = 20.65 (facing +X)
+  cylinder(parent, 0.19, 0.15, 0.38, [-15.62, fy + 0.20, 20.65], hm.porcelain, 14);
+  cylinder(parent, 0.24, 0.20, 0.08, [-15.58, fy + 0.42, 20.65], hm.porcelain, 14);
+  cylinder(parent, 0.16, 0.16, 0.02, [-15.56, fy + 0.45, 20.65], hm.waterBlue, 12);
+  // Raised white toilet lid & cistern tank with chrome flush button
+  B(-15.82, -15.76, fy + 0.46, fy + 0.86, 20.44, 20.86, hm.porcelain);
+  B(-16.12, -15.84, fy + 0.44, fy + 0.88, 20.42, 20.88, hm.porcelain);
+  cylinder(parent, 0.035, 0.035, 0.03, [-15.98, fy + 0.90, 20.65], hm.chrome, 10);
+  // 2) Vanity Washbasin & Backlit LED Mirror at x = -13.65, z = 20.0
+  B(-13.42, -13.95, fy + 0.02, fy + 0.78, 19.60, 20.45, hm.woodWalnut);
+  B(-13.40, -13.98, fy + 0.78, fy + 0.86, 19.56, 20.48, hm.marble);
+  cylinder(parent, 0.18, 0.14, 0.12, [-13.68, fy + 0.92, 20.02], hm.porcelain, 14);
+  cylinder(parent, 0.02, 0.02, 0.16, [-13.48, fy + 1.02, 20.02], hm.chrome, 8);
+  B(-13.42, -13.46, fy + 1.18, fy + 2.05, 19.65, 20.40, hm.ledCyan);
+  B(-13.46, -13.49, fy + 1.22, fy + 2.01, 19.69, 20.36, hm.mirrorMat);
+  // 3) Walk-in Rain Shower & Glass Partition at x = -15.65, z = 19.15
+  B(-14.95, -15.0, fy + 0.02, fy + 2.15, 18.70, 19.65, hm.clearGlass);
+  rodBetween(parent, [-16.18, fy + 1.05, 19.15], [-16.18, fy + 2.25, 19.15], 0.018, hm.chrome, 8);
+  rodBetween(parent, [-16.18, fy + 2.25, 19.15], [-15.75, fy + 2.20, 19.15], 0.018, hm.chrome, 8);
+  cylinder(parent, 0.14, 0.12, 0.03, [-15.75, fy + 2.17, 19.15], hm.chrome, 12);
+  B(-14.4, -15.4, y + 2.70, y + 2.74, 19.7, 20.3, hm.ledWarm);
 
   // South Flat B entrance doorway is open at x = -7.2 .. -8.6!
   B(-5.6, -7.2, fy, y + 2.74, 23.18, 23.35, hm.wallCream);
@@ -324,41 +510,64 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y) {
   B(-13.22, -13.38, fy, y + 2.74, 17.3, 18.55, hm.wallCream);
   B(-13.22, -13.38, y + 2.22, y + 2.74, 16.0, 17.3, hm.wallCream);
 
-  // Designer Persian Rug & L-Shaped Velvet Sofa in Living Lounge
-  B(-6.5, -10.8, fy, fy + 0.02, 15.3, 18.1, hm.rugPattern);
-  // Sofa back along north/lane wall (z = 15.0 .. 15.85) + L-chaise along x = -10.2 .. -11.1
-  B(-6.6, -11.0, fy + 0.02, fy + 0.44, 15.05, 15.95, hm.velvetBlue);
-  B(-6.6, -11.0, fy + 0.44, fy + 0.88, 15.02, 15.28, hm.velvetBlue);
-  B(-10.1, -11.0, fy + 0.02, fy + 0.44, 15.95, 17.65, hm.velvetBlue);
-  B(-10.75, -11.0, fy + 0.44, fy + 0.88, 15.28, 17.65, hm.velvetBlue);
-  // Accent cushions
-  for (const cz of [15.4, 16.2, 17.1]) {
-    B(-10.45, -10.72, fy + 0.45, fy + 0.72, cz - 0.2, cz + 0.2, hm.velvetCream);
+  // Designer Persian Rug & Tufted Royal Blue Velvet L-Sofa in Living Lounge
+  B(-6.5, -10.8, fy, fy + 0.025, 15.3, 18.1, hm.rugPattern);
+  // Sofa wooden base trim + plush seat cushions + tufted backrest + armrests
+  B(-6.58, -11.02, fy + 0.02, fy + 0.12, 15.04, 15.96, hm.woodWalnut);
+  B(-6.6, -11.0, fy + 0.12, fy + 0.46, 15.05, 15.95, hm.velvetBlue);
+  B(-6.6, -11.0, fy + 0.46, fy + 0.92, 15.00, 15.28, hm.velvetBlue);
+  B(-6.45, -6.68, fy + 0.12, fy + 0.66, 15.02, 15.98, hm.velvetBlue); // right armrest
+  B(-10.08, -11.02, fy + 0.02, fy + 0.12, 15.95, 17.68, hm.woodWalnut);
+  B(-10.1, -11.0, fy + 0.12, fy + 0.46, 15.95, 17.65, hm.velvetBlue);
+  B(-10.75, -11.0, fy + 0.46, fy + 0.92, 15.28, 17.65, hm.velvetBlue);
+  B(-10.08, -11.02, fy + 0.12, fy + 0.66, 17.55, 17.75, hm.velvetBlue); // chaise armrest
+  // Throw pillows along both sofa backs
+  for (const cz of [15.5, 16.3, 17.1]) {
+    B(-10.42, -10.72, fy + 0.46, fy + 0.76, cz - 0.22, cz + 0.22, hm.velvetCream);
   }
-  // Marble & Gold Coffee Table
-  B(-7.5, -9.3, fy + 0.38, fy + 0.44, 16.35, 17.25, hm.marble);
-  B(-7.6, -9.2, fy + 0.02, fy + 0.38, 16.45, 17.15, hm.gold);
+  for (const cx of [-7.3, -8.4, -9.5]) {
+    B(cx - 0.24, cx + 0.24, fy + 0.46, fy + 0.76, 15.28, 15.52, hm.velvetCream);
+  }
+  // Swirl-Marble & Gold Coffee Table with Porcelain Tea Service
+  B(-7.5, -9.3, fy + 0.40, fy + 0.47, 16.35, 17.25, hm.marble);
+  B(-7.6, -9.2, fy + 0.02, fy + 0.40, 16.45, 17.15, hm.gold);
+  cylinder(parent, 0.08, 0.06, 0.14, [-8.1, fy + 0.54, 16.75], hm.porcelain, 12);
+  cylinder(parent, 0.045, 0.035, 0.07, [-8.45, fy + 0.50, 16.65], hm.porcelain, 10);
+  cylinder(parent, 0.045, 0.035, 0.07, [-8.45, fy + 0.50, 16.90], hm.porcelain, 10);
+  // Pleated Gold Curtains beside lane windows
+  for (const wx of [-6.1, -7.3, -8.6, -9.8]) {
+    B(wx - 0.12, wx + 0.12, fy + 0.55, fy + 2.45, 14.78, 14.92, hm.curtainGold);
+  }
 
-  // 75-Inch Wall-Mounted 4K Smart TV & Walnut Media Console on South Wall (z = 18.48, facing -Z)
-  B(-6.8, -10.2, fy + 0.02, fy + 0.52, 18.05, 18.52, hm.woodWalnut);
+  // 75-Inch Wall-Mounted 4K Smart TV, Soundbar & Walnut Media Console on South Wall (z = 18.48, facing -Z)
+  B(-6.8, -10.2, fy + 0.02, fy + 0.52, 18.02, 18.52, hm.woodWalnut);
+  B(-6.78, -10.22, fy + 0.52, fy + 0.56, 18.00, 18.53, hm.marble);
+  B(-7.8, -9.2, fy + 0.56, fy + 0.64, 18.18, 18.35, hm.dark); // Dolby Atmos Soundbar
   B(-7.2, -9.8, fy + 0.92, fy + 2.12, 18.46, 18.53, hm.dark);
   addScreenPlane(screenParent, 2.48, 1.12, [-8.5, fy + 1.52, 18.44], Math.PI, hm.smartTv);
-  // Warm false-ceiling cove light strips
+  // Warm false-ceiling cove light strips & Chandelier
   B(-6.0, -11.8, y + 2.70, y + 2.74, 15.4, 15.55, hm.ledWarm);
   B(-6.0, -11.8, y + 2.70, y + 2.74, 17.9, 18.05, hm.ledWarm);
+  cylinder(parent, 0.45, 0.45, 0.08, [-8.4, y + 2.62, 16.8], hm.gold, 16);
+  cylinder(parent, 0.38, 0.38, 0.06, [-8.4, y + 2.56, 16.8], hm.ledWarm, 16);
 
   // 3. NORTH WING MASTER BEDROOM (x = -13.4 .. -19.6, z = 14.8 .. 18.55)
-  // King-size luxury bed against west wall (x = -19.5)
-  B(-16.6, -19.5, fy + 0.02, fy + 0.52, 15.6, 17.7, hm.woodWalnut);
-  B(-16.7, -19.2, fy + 0.52, fy + 0.68, 15.7, 17.6, hm.bedSheet);
-  B(-16.7, -18.2, fy + 0.68, fy + 0.73, 15.72, 17.58, hm.bedBlanket);
-  B(-19.25, -19.55, fy + 0.52, fy + 1.48, 15.55, 17.75, hm.velvetCream); // tufted headboard
-  // Pillows
-  B(-18.6, -19.15, fy + 0.68, fy + 0.82, 15.85, 16.55, hm.wallCream);
-  B(-18.6, -19.15, fy + 0.68, fy + 0.82, 16.75, 17.45, hm.wallCream);
-  // Full-height Walnut & Mirror Wardrobe along south wall (z = 18.0 .. 18.52)
-  B(-14.2, -16.4, fy + 0.02, fy + 2.45, 17.95, 18.52, hm.woodWalnut);
-  B(-14.35, -16.25, fy + 0.25, fy + 2.25, 17.92, 17.95, hm.clearGlass);
+  // King-size luxury bed against west wall (x = -19.5) with quilted mattress & silk duvet
+  B(-16.6, -19.5, fy + 0.02, fy + 0.38, 15.55, 17.75, hm.woodWalnut);
+  B(-16.68, -19.25, fy + 0.38, fy + 0.62, 15.65, 17.65, hm.bedSheet);
+  B(-16.66, -18.25, fy + 0.62, fy + 0.68, 15.63, 17.67, hm.bedBlanket);
+  B(-19.22, -19.55, fy + 0.38, fy + 1.58, 15.50, 17.80, hm.woodWalnut);
+  B(-19.16, -19.24, fy + 0.55, fy + 1.48, 15.62, 17.68, hm.velvetCream); // tufted padded headboard
+  // 4 Plump Pillows & Bedside Nightstands with Warm Lamps
+  B(-18.55, -19.12, fy + 0.62, fy + 0.78, 15.80, 16.55, hm.velvetCream);
+  B(-18.55, -19.12, fy + 0.62, fy + 0.78, 16.75, 17.50, hm.velvetCream);
+  for (const nz of [15.18, 18.12]) {
+    B(-18.85, -19.50, fy + 0.02, fy + 0.54, nz - 0.26, nz + 0.26, hm.woodWalnut);
+    cylinder(parent, 0.12, 0.16, 0.26, [-19.15, fy + 0.72, nz], hm.ledWarm, 12);
+  }
+  // Full-height Walnut & Mirror Wardrobe along south wall (z = 18.0 .. 18.52, x = -15.3 .. -17.8)
+  B(-15.3, -17.8, fy + 0.02, fy + 2.45, 17.95, 18.52, hm.woodWalnut);
+  B(-15.45, -17.65, fy + 0.22, fy + 2.25, 17.92, 17.95, hm.mirrorMat);
   B(-15.5, -18.5, y + 2.70, y + 2.74, 16.3, 16.9, hm.ledWarm);
 
   // 4. SOUTH WING (FLAT B): Formal Dining & Modular Kitchen (x = -5.1 .. -13.3, z = 23.35 .. 28.3)
@@ -366,20 +575,32 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y) {
   B(-13.22, -13.38, fy, y + 2.74, 26.3, 28.3, hm.wallCream);
   B(-13.22, -13.38, y + 2.22, y + 2.74, 24.9, 26.3, hm.wallCream);
 
-  // 6-Seater Marble Dining Table (x = -7.0 .. -9.8, z = 24.6 .. 26.2)
+  // 6-Seater Swirl-Marble Dining Table with Porcelain Dinnerware (x = -7.0 .. -9.8, z = 24.6 .. 26.2)
+  B(-6.6, -10.2, fy, fy + 0.02, 24.0, 26.8, hm.rugPattern);
   B(-7.0, -9.8, fy + 0.74, fy + 0.82, 24.6, 26.2, hm.marble);
   for (const [lx, lz] of [[-7.2, 24.8], [-9.6, 24.8], [-7.2, 26.0], [-9.6, 26.0]]) {
     B(lx - 0.06, lx + 0.06, fy + 0.02, fy + 0.74, lz - 0.06, lz + 0.06, hm.gold);
   }
   for (const cx of [-7.5, -8.4, -9.3]) {
+    cylinder(parent, 0.14, 0.11, 0.025, [cx, fy + 0.835, 24.9], hm.porcelain, 12);
+    cylinder(parent, 0.14, 0.11, 0.025, [cx, fy + 0.835, 25.9], hm.porcelain, 12);
     for (const [cz, backZ] of [[24.25, 24.02], [26.55, 26.78]]) {
       B(cx - 0.24, cx + 0.24, fy + 0.02, fy + 0.46, cz - 0.22, cz + 0.22, hm.velvetEmerald);
-      B(cx - 0.24, cx + 0.24, fy + 0.46, fy + 0.94, backZ - 0.05, backZ + 0.05, hm.velvetEmerald);
+      B(cx - 0.24, cx + 0.24, fy + 0.46, fy + 0.96, backZ - 0.05, backZ + 0.05, hm.velvetEmerald);
     }
   }
-  // Modular Kitchen Counter & Double-Door Smart Fridge along south wall (z = 27.5 .. 28.25)
+  // Modular Kitchen Counter, Gas Burner, Range Hood, Sink & Smart Fridge (z = 27.5 .. 28.25)
   B(-7.2, -12.2, fy + 0.02, fy + 0.88, 27.55, 28.25, hm.woodOak);
   B(-7.15, -12.25, fy + 0.88, fy + 0.94, 27.50, 28.26, hm.granite);
+  // Gas Stove + Glowing Blue Burners + Stainless Pot + Range Hood
+  B(-8.2, -9.1, fy + 0.94, fy + 0.98, 27.65, 28.15, hm.dark);
+  cylinder(parent, 0.10, 0.10, 0.02, [-8.45, fy + 0.99, 27.90], hm.ledCyan, 12);
+  cylinder(parent, 0.10, 0.10, 0.02, [-8.85, fy + 0.99, 27.90], hm.ledCyan, 12);
+  cylinder(parent, 0.13, 0.11, 0.16, [-8.45, fy + 1.08, 27.90], hm.chrome, 12);
+  B(-8.15, -9.15, fy + 1.65, fy + 1.78, 27.60, 28.25, hm.steel);
+  // Stainless Sink & Faucet
+  B(-10.1, -10.9, fy + 0.93, fy + 0.96, 27.65, 28.15, hm.chrome);
+  rodBetween(parent, [-10.5, fy + 0.96, 28.18], [-10.5, fy + 1.24, 28.02], 0.018, hm.chrome, 8);
   B(-7.2, -11.2, fy + 1.55, fy + 2.35, 27.75, 28.25, hm.woodWalnut); // overhead cabinets
   B(-12.25, -13.15, fy + 0.02, fy + 1.95, 27.45, 28.25, hm.steel);   // Smart Refrigerator
   B(-7.2, -11.8, y + 2.70, y + 2.74, 25.1, 25.7, hm.ledWarm);

@@ -553,6 +553,7 @@ export function createPlayerCharacter(scene, manager) {
       combo: 2.6,
       flex: 3.6,
       pocket: 35.0,
+      sit: 3600.0,
     };
     state.emoteTimer = durations[emoteName] || 4.0;
     if (cameraYaw !== null && state.cameraMode === 'back') {
@@ -628,8 +629,8 @@ export function createPlayerCharacter(scene, manager) {
       root.position.set(position.x, position.y - 1.68, position.z);
       root.visible = state.thirdPerson;
 
-      // Cancel emote if player starts walking/running or jumping
-      if (speed > 0.45 || !grounded) {
+      // Cancel emote if player starts walking/running or jumping (unless locked in seated pose)
+      if ((speed > 0.45 || !grounded) && activeEmote !== 'sit') {
         state.emote = null;
         state.emoteTimer = 0;
         activeEmote = null;
@@ -681,6 +682,40 @@ export function createPlayerCharacter(scene, manager) {
           rightForeArm.rotation.z = -0.32 * amount;
         }
       };
+
+      if (activeEmote === 'sit') {
+        // Seated Pose on Chair, Sofa, Bed, or Toilet Commode (বসার পোজ)
+        const blend = smoothstep(0.0, 0.28, t);
+        const breathe = Math.sin(t * 2.2);
+
+        hipsBone.position.y = -0.32 - 0.42 * blend + breathe * 0.004;
+        hipsBone.position.z = -0.05 * blend;
+        spineBone.rotation.x = 0.04 * blend + breathe * 0.008;
+
+        // Thighs horizontal forward (~86 deg), knees bent so feet rest flat on the floor
+        leftUpLeg.rotation.x = -1.48 * blend;
+        leftUpLeg.rotation.z = 0.06 * blend;
+        leftLeg.rotation.x = 1.48 * blend;
+
+        rightUpLeg.rotation.x = -1.48 * blend;
+        rightUpLeg.rotation.z = -0.06 * blend;
+        rightLeg.rotation.x = 1.48 * blend;
+
+        // Hands resting naturally on thighs/lap
+        leftArmBone.rotation.x = -0.26 * blend;
+        leftArmBone.rotation.z = -0.08 * blend;
+        leftForeArm.rotation.x = -0.96 * blend;
+        leftForeArm.rotation.z = 0.28 * blend;
+
+        rightArmBone.rotation.x = -0.26 * blend;
+        rightArmBone.rotation.z = 0.08 * blend;
+        rightForeArm.rotation.x = -0.96 * blend;
+        rightForeArm.rotation.z = -0.28 * blend;
+
+        headBone.rotation.y = baseHeadYaw + Math.sin(t * 0.9) * 0.05;
+        headBone.rotation.x = baseHeadPitch + breathe * 0.01;
+        return;
+      }
 
       if (activeEmote === 'pocket') {
         // [P] / [7] Hands in Pockets Cool Style Pose (হাত পকেটে স্টাইল)

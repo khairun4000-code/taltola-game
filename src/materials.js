@@ -196,6 +196,81 @@ function createWallArtTexture() {
   return texture;
 }
 
+function createFurnitureWoodTexture(baseHex = '#6e4023', darkHex = '#432512') {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = baseHex;
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 80; i++) {
+    const y = (i / 80) * 256;
+    ctx.strokeStyle = i % 2 === 0 ? darkHex : 'rgba(255,225,190,0.08)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(85, y + Math.sin(i) * 6, 170, y - Math.cos(i) * 6, 256, y);
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createQuiltedClothTexture(baseHex = '#1e5666', seamHex = '#11333d') {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = baseHex;
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = seamHex;
+  ctx.lineWidth = 3;
+  for (let y = 0; y <= 256; y += 64) {
+    for (let x = 0; x <= 256; x += 64) {
+      ctx.beginPath();
+      ctx.moveTo(x, y - 32);
+      ctx.lineTo(x + 32, y);
+      ctx.lineTo(x, y + 32);
+      ctx.lineTo(x - 32, y);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fillStyle = seamHex;
+      ctx.beginPath();
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function createCarpetRugTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#8c2d27';
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(12, 12, 232, 232);
+  ctx.strokeStyle = '#1e3a8a';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(26, 26, 204, 204);
+  ctx.fillStyle = '#1e3a8a';
+  ctx.beginPath();
+  ctx.ellipse(128, 128, 55, 38, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#fde68a';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
 export function createMaterials(renderer, manager) {
   const loader = new THREE.TextureLoader(manager);
   const anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
@@ -235,17 +310,17 @@ export function createMaterials(renderer, manager) {
     hallWall: tiledMaterial(plaster, { color: 0xfdf9f0, emissive: 0x4e493e, uvScale: 2.5 }),
     roomWall: tiledMaterial(plaster, { color: 0xfaf3e6, emissive: 0x4a453b, uvScale: 2.5 }),
     ceilingMat: new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x5c5a54 }),
-    wood: new THREE.MeshLambertMaterial({ color: 0x6e4023, emissive: 0x180d06 }),
-    darkWood: new THREE.MeshLambertMaterial({ color: 0x3d2314, emissive: 0x0f0804 }),
-    porcelain: new THREE.MeshLambertMaterial({ color: 0xf8fafc, emissive: 0x464a4d }),
-    chrome: new THREE.MeshLambertMaterial({ color: 0xe2e8f0, emissive: 0x33383d }),
-    sofaFabric: new THREE.MeshLambertMaterial({ color: 0x1e5666, emissive: 0x0c242b }),
-    cushionMat: new THREE.MeshLambertMaterial({ color: 0xe09f3e, emissive: 0x2e1f09 }),
-    rugMat: new THREE.MeshLambertMaterial({ color: 0x8c2d27, emissive: 0x240a08 }),
-    mattressMat: new THREE.MeshLambertMaterial({ color: 0xf8f6f0, emissive: 0x3b3935 }),
-    blanketMat: new THREE.MeshLambertMaterial({ color: 0x9e2a3b, emissive: 0x26090e }),
-    curtainMat: new THREE.MeshLambertMaterial({ color: 0xc89d66, emissive: 0x291f12, side: THREE.DoubleSide }),
-    bucketMat: new THREE.MeshLambertMaterial({ color: 0x0284c7, emissive: 0x05263b }),
+    wood: new THREE.MeshStandardMaterial({ map: createFurnitureWoodTexture('#6e4023', '#432512'), roughness: 0.38, metalness: 0.05 }),
+    darkWood: new THREE.MeshStandardMaterial({ map: createFurnitureWoodTexture('#3d2314', '#221209'), roughness: 0.42 }),
+    porcelain: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.12, metalness: 0.08, emissive: 0x26292b }),
+    chrome: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.14, metalness: 0.82 }),
+    sofaFabric: new THREE.MeshStandardMaterial({ map: createQuiltedClothTexture('#1e5666', '#0f313b'), roughness: 0.58 }),
+    cushionMat: new THREE.MeshStandardMaterial({ map: createQuiltedClothTexture('#e09f3e', '#9c6818'), roughness: 0.55 }),
+    rugMat: new THREE.MeshStandardMaterial({ map: createCarpetRugTexture(), roughness: 0.80 }),
+    mattressMat: new THREE.MeshStandardMaterial({ map: createQuiltedClothTexture('#f8f6f0', '#cbd5e1'), roughness: 0.65 }),
+    blanketMat: new THREE.MeshStandardMaterial({ map: createQuiltedClothTexture('#9e2a3b', '#631420'), roughness: 0.60 }),
+    curtainMat: new THREE.MeshStandardMaterial({ color: 0xc89d66, roughness: 0.65, side: THREE.DoubleSide }),
+    bucketMat: new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.35 }),
     tvScreen: new THREE.MeshBasicMaterial({ map: tvScreen }),
     wallArt: new THREE.MeshBasicMaterial({ map: wallArt }),
     blueTarp: new THREE.MeshLambertMaterial({ color: 0x0570a8, side: THREE.DoubleSide }),
@@ -253,7 +328,7 @@ export function createMaterials(renderer, manager) {
     ledGreen: new THREE.MeshBasicMaterial({ color: 0x22c55e }),
     ledRed: new THREE.MeshBasicMaterial({ color: 0xef4444 }),
     stoveFlame: new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
-    mirrorMat: new THREE.MeshLambertMaterial({ color: 0xcbe8f6, emissive: 0x45606e }),
+    mirrorMat: new THREE.MeshStandardMaterial({ color: 0xdbeafe, roughness: 0.04, metalness: 0.90 }),
     drainWater: new THREE.MeshLambertMaterial({ color: 0x203a33 }),
     moss: new THREE.MeshLambertMaterial({ color: 0x385239 }),
     grass: tiledMaterial(concrete, { color: 0x456934, uvScale: 2.2 }),

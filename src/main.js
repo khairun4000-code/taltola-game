@@ -106,6 +106,7 @@ let ambientLight;
 let hemisphereLight;
 let studioKeyLight;
 let fillDirLight;
+let indoorLight;
 let ready = false;
 let lastHudDoorOpen = null;
 let lastHudCameraMode = null;
@@ -114,6 +115,11 @@ let lastPromptText = null;
 let lastZoneText = null;
 let lastSyncedEmote = undefined;
 const camTargetPos = new THREE.Vector3();
+const sittingState = {
+  active: false,
+  seat: null,
+  prevCameraMode: null,
+};
 
 function buildStudioEnvironment() {
   const group = new THREE.Group();
@@ -283,6 +289,11 @@ function setupLighting() {
   fillDirLight.position.set(-8, 6, -6);
   scene.add(fillDirLight);
 
+  // Dynamic warm indoor point light that illuminates room furniture, PBR velvet/wood & ceramic tiles when indoors
+  indoorLight = new THREE.PointLight(0xfff3d8, 1.45, 11.5, 1.35);
+  indoorLight.visible = false;
+  scene.add(indoorLight);
+
   applyQuality(quality);
 }
 
@@ -326,14 +337,77 @@ function toggleRunMode() {
   syncHUDButtons(runModeToggle, true);
 }
 
+function standUpFromSeat() {
+  if (!sittingState.active) return false;
+  const seat = sittingState.seat;
+  sittingState.active = false;
+  sittingState.seat = null;
+  if (playerCharacter) {
+    playerCharacter.state.emote = null;
+    if (sittingState.prevCameraMode) {
+      playerCharacter.state.cameraMode = sittingState.prevCameraMode;
+      sittingState.prevCameraMode = null;
+    }
+  }
+  if (seat) {
+    // Step slightly forward from the seat when standing up so the player is clear
+    const stepDist = 0.42;
+    playerPos.x = seat.seatX + Math.sin(seat.yaw) * stepDist;
+    playerPos.z = seat.seatZ + Math.cos(seat.yaw) * stepDist;
+    playerPos.y = seat.fy + EYE_HEIGHT;
+  }
+  syncEmoteUI(null);
+  syncHUDButtons(false, true);
+  return true;
+}
+
+function sitOnSeat(seat) {
+  if (!seat) return false;
+  sittingState.active = true;
+  sittingState.seat = seat;
+  horizontalVelocity.set(0, 0);
+  verticalVelocity = 0;
+  grounded = true;
+  playerPos.x = seat.seatX;
+  playerPos.z = seat.seatZ;
+  playerPos.y = seat.fy + seat.seatY + EYE_HEIGHT - 0.42;
+  if (playerCharacter) {
+    if (playerCharacter.state.cameraMode === 'first') {
+      sittingState.prevCameraMode = 'first';
+      playerCharacter.state.cameraMode = 'back';
+    }
+    playerCharacter.state.emote = 'sit';
+    playerCharacter.state.emoteClock = 0;
+    playerCharacter.state.facingYaw = seat.yaw;
+  }
+  syncHUDButtons(false, true);
+  return true;
+}
+
 function handleDoorInteraction() {
+  if (sittingState.active) {
+    standUpFromSeat();
+    return;
+  }
+  const nearSeat = findNearestSeat(playerPos);
+  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos));
+  // If near a seat and either no door/lift is active or seat is very close (< 1.25m), sit down!
+  if (nearSeat && (!hasDoorOrLiftPrompt || nearSeat.dist < 1.25)) {
+    sitOnSeat(nearSeat);
+    return;
+  }
   if (environment?.tower?.interact(playerPos)) {
     syncHUDButtons(false, true);
     return;
   }
-  if (!house) return;
-  house.toggleNearestDoor(playerPos);
-  syncHUDButtons(false, true);
+  if (house?.getPrompt(playerPos)) {
+    house.toggleNearestDoor(playerPos);
+    syncHUDButtons(false, true);
+    return;
+  }
+  if (nearSeat) {
+    sitOnSeat(nearSeat);
+  }
 }
 
 function toggleCameraView() {
@@ -375,7 +449,22 @@ async function initialize() {
   loadingBar.style.width = '100%';
   loadingStatus.textContent = '3D Human Character Ready.';
   ready = true;
-  window.__TALTOLA__ = { scene, camera, renderer, controls, house, playerCharacter, playerPos, setMode, ready };
+  window.__TALTOLA__ = {
+    scene,
+    camera,
+    renderer,
+    controls,
+    house,
+    environment,
+    playerCharacter,
+    playerPos,
+    sittingState,
+    sitOnSeat,
+    standUpFromSeat,
+    findNearestSeat,
+    setMode,
+    ready,
+  };
   renderer.render(scene, camera);
   loading.classList.add('complete');
   header.classList.remove('hidden');
@@ -449,7 +538,7 @@ canvas.addEventListener('pointerdown', (event) => {
     return;
   }
   if (event.button === 0 && controls.pointerLocked) {
-    if (environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos)) {
+    if (sittingState.active || findNearestSeat(playerPos) || environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos)) {
       handleDoorInteraction();
     } else {
       playerCharacter?.triggerAttack();
@@ -696,15 +785,204 @@ function resolveCircleAABB(pos, radius, minX, maxX, minZ, maxZ) {
 }
 
 /**
- * Computes exact floor or staircase ground elevation under playerPos across both buildings:
- *  1) 5-Story Taltola House + Rooftop (x = 5.95..14.38, z = -5.42..5.42)
- *  2) 10-Story Sk Arshan Alif Tower + Rooftop Sky Lounge (x = -19.85..-2.85, z = 14.25..28.55)
+ * Returns all jumpable & sittable furniture / bathroom fixtures on a floor (`fy`)
+ * for either `'tower'` (Sk Arshan Alif Tower) or `'house'` (5-Story Taltola House).
+ */
+function getFurnitureBoxesForFloor(building, fy) {
+  if (building === 'tower') {
+    if (fy < 2.0) {
+      // Ground-floor Parking & Reception Lobby (fy = 0.50)
+      return [
+        { minX: -9.20, maxX: -5.00, minZ: 24.55, maxZ: 26.25, h: 1.44, seat: false }, // Red Sedan Car
+        { minX: -18.80, maxX: -14.50, minZ: 15.60, maxZ: 17.60, h: 1.82, seat: false }, // Black Prado SUV
+        { minX: -10.90, maxX: -9.10, minZ: 17.10, maxZ: 18.60, h: 1.20, seat: false }, // Reception Desk
+      ];
+    }
+    if (fy >= 30.0) {
+      // Rooftop Sky Lounge (fy = 31.0)
+      return [
+        {
+          minX: -7.80, maxX: -4.80, minZ: 15.80, maxZ: 16.50, h: 0.52,
+          seat: true, seatX: -6.25, seatZ: 16.18, seatY: 0.50, yaw: 0,
+          label: 'ছাদের স্কাই লাউঞ্জ সোফা (Rooftop Sofa)',
+        },
+        {
+          minX: -7.80, maxX: -7.10, minZ: 16.50, maxZ: 19.20, h: 0.52,
+          seat: true, seatX: -7.42, seatZ: 17.85, seatY: 0.50, yaw: Math.PI / 2,
+          label: 'ছাদের স্কাই লাউঞ্জ সোফা (Rooftop Sofa)',
+        },
+        { minX: -6.80, maxX: -5.40, minZ: 17.20, maxZ: 18.60, h: 0.44, seat: false },
+      ];
+    }
+    // Apartment Floors 1..9 (fy = 4.0, 7.0, ..., 28.0)
+    const items = [
+      // 1) Attached Luxury Bathroom — Western Porcelain Commode (কমোড) & Vanity Basin
+      {
+        minX: -16.12, maxX: -15.32, minZ: 20.38, maxZ: 20.92, h: 0.48,
+        seat: true, seatX: -15.56, seatZ: 20.65, seatY: 0.46, yaw: Math.PI / 2,
+        label: 'বাথরুমের কমোড (Toilet Commode)',
+      },
+      { minX: -13.98, maxX: -13.40, minZ: 19.56, maxZ: 20.48, h: 0.88, seat: false },
+      // 2) Master Bedroom — King-Size Luxury Bed & Wardrobe
+      {
+        minX: -19.50, maxX: -16.60, minZ: 15.55, maxZ: 17.75, h: 0.68,
+        seat: true, seatX: -17.35, seatZ: 16.65, seatY: 0.64, yaw: Math.PI / 2,
+        label: 'মাস্টার বেডরুমের খাট (King Bed)',
+      },
+      { minX: -17.80, maxX: -15.30, minZ: 17.92, maxZ: 18.52, h: 2.45, seat: false }, // Wardrobe
+      // 3) Living Lounge — Royal Blue Tufted Velvet L-Sofa, Marble Coffee Table & TV Console
+      {
+        minX: -11.02, maxX: -6.58, minZ: 15.02, maxZ: 15.98, h: 0.48,
+        seat: true, seatX: -8.40, seatZ: 15.55, seatY: 0.46, yaw: 0,
+        label: 'ড্রয়িং রুমের ভেলভেট সোফা (Velvet Sofa)',
+      },
+      {
+        minX: -11.02, maxX: -10.08, minZ: 15.95, maxZ: 17.70, h: 0.48,
+        seat: true, seatX: -10.45, seatZ: 16.75, seatY: 0.46, yaw: Math.PI / 2,
+        label: 'ড্রয়িং রুমের কর্নার সোফা (L-Sofa)',
+      },
+      { minX: -9.35, maxX: -7.45, minZ: 16.32, maxZ: 17.28, h: 0.48, seat: false }, // Coffee Table
+      { minX: -10.22, maxX: -6.78, minZ: 18.00, maxZ: 18.53, h: 0.56, seat: false }, // TV Console
+      // 4) Dining & Modular Kitchen — 6-Seater Marble Dining Table, Kitchen Counter & Fridge
+      { minX: -9.80, maxX: -7.00, minZ: 24.60, maxZ: 26.20, h: 0.84, seat: false }, // Dining Table
+      { minX: -12.25, maxX: -7.15, minZ: 27.50, maxZ: 28.26, h: 0.96, seat: false }, // Kitchen Counter
+      { minX: -13.15, maxX: -12.25, minZ: 27.45, maxZ: 28.25, h: 1.95, seat: false }, // Smart Fridge
+      // 5) VIP RGB Gaming & Study Suite — Ergonomic Gaming Chair & L-Desk
+      {
+        minX: -18.42, maxX: -17.70, minZ: 25.48, maxZ: 26.12, h: 0.54,
+        seat: true, seatX: -18.08, seatZ: 25.80, seatY: 0.52, yaw: -Math.PI / 2,
+        label: 'আরজিবি গেমিং চেয়ার (Gaming Chair)',
+      },
+      { minX: -19.55, maxX: -18.60, minZ: 24.20, maxZ: 27.60, h: 0.80, seat: false },
+    ];
+    // Add all 6 Emerald Velvet Dining Chairs
+    for (const cx of [-7.5, -8.4, -9.3]) {
+      items.push(
+        {
+          minX: cx - 0.26, maxX: cx + 0.26, minZ: 24.00, maxZ: 24.48, h: 0.48,
+          seat: true, seatX: cx, seatZ: 24.25, seatY: 0.46, yaw: 0,
+          label: 'ডাইনিং চেয়ার (Dining Chair)',
+        },
+        {
+          minX: cx - 0.26, maxX: cx + 0.26, minZ: 26.32, maxZ: 26.80, h: 0.48,
+          seat: true, seatX: cx, seatZ: 26.55, seatY: 0.46, yaw: Math.PI,
+          label: 'ডাইনিং চেয়ার (Dining Chair)',
+        }
+      );
+    }
+    return items;
+  }
+
+  // --- 5-STORY TALTOLA HOUSE (levels 0..4, fy = 0, 3.05, 6.10, 9.15, 12.20) ---
+  if (fy > 13.5) return [];
+  return [
+    // Unit A Drawing Room Sofa & Coffee Table
+    {
+      minX: 6.80, maxX: 8.90, minZ: -5.18, maxZ: -4.40, h: 0.48,
+      seat: true, seatX: 7.85, seatZ: -4.68, seatY: 0.46, yaw: 0,
+      label: 'বসার ঘরের সোফা (Living Room Sofa)',
+    },
+    { minX: 7.28, maxX: 8.42, minZ: -3.86, maxZ: -3.24, h: 0.48, seat: false },
+    // Unit A Master Bedroom King Bed & Almirah
+    {
+      minX: 11.88, maxX: 13.82, minZ: -5.08, maxZ: -3.28, h: 0.56,
+      seat: true, seatX: 12.85, seatZ: -3.95, seatY: 0.54, yaw: 0,
+      label: 'মাস্টার বেডরুমের খাট (Master Bed)',
+    },
+    { minX: 11.55, maxX: 12.10, minZ: -3.74, maxZ: -2.56, h: 2.02, seat: false },
+    // Unit A & Unit B Attached Bathroom Western Toilet Commodes (কমোড)
+    {
+      minX: 9.72, maxX: 10.32, minZ: -4.98, maxZ: -4.46, h: 0.52,
+      seat: true, seatX: 10.06, seatZ: -4.72, seatY: 0.50, yaw: Math.PI / 2,
+      label: 'বাথরুমের কমোড (Toilet Commode)',
+    },
+    {
+      minX: 9.72, maxX: 10.32, minZ: 4.46, maxZ: 4.98, h: 0.52,
+      seat: true, seatX: 10.06, seatZ: 4.72, seatY: 0.50, yaw: Math.PI / 2,
+      label: 'বাথরুমের কমোড (Toilet Commode)',
+    },
+    // Unit B Dining Table & 4 Dining Chairs
+    { minX: 7.10, maxX: 8.60, minZ: 3.04, maxZ: 4.06, h: 0.79, seat: false },
+    {
+      minX: 7.28, maxX: 7.72, minZ: 2.56, maxZ: 3.00, h: 0.48,
+      seat: true, seatX: 7.50, seatZ: 2.78, seatY: 0.46, yaw: 0,
+      label: 'ডাইনিং চেয়ার (Dining Chair)',
+    },
+    {
+      minX: 7.98, maxX: 8.42, minZ: 2.56, maxZ: 3.00, h: 0.48,
+      seat: true, seatX: 8.20, seatZ: 2.78, seatY: 0.46, yaw: 0,
+      label: 'ডাইনিং চেয়ার (Dining Chair)',
+    },
+    {
+      minX: 7.28, maxX: 7.72, minZ: 4.10, maxZ: 4.54, h: 0.48,
+      seat: true, seatX: 7.50, seatZ: 4.32, seatY: 0.46, yaw: Math.PI,
+      label: 'ডাইনিং চেয়ার (Dining Chair)',
+    },
+    {
+      minX: 7.98, maxX: 8.42, minZ: 4.10, maxZ: 4.54, h: 0.48,
+      seat: true, seatX: 8.20, seatZ: 4.32, seatY: 0.46, yaw: Math.PI,
+      label: 'ডাইনিং চেয়ার (Dining Chair)',
+    },
+    // Unit B Kitchen Counter & Fridge
+    { minX: 11.60, maxX: 14.10, minZ: 4.58, maxZ: 5.26, h: 0.95, seat: false },
+    { minX: 11.55, maxX: 12.22, minZ: 2.72, maxZ: 3.38, h: 1.76, seat: false },
+  ];
+}
+
+/**
+ * Finds the nearest interactive seat (chair, sofa, bed, or toilet commode) near `pos`.
+ */
+function findNearestSeat(pos) {
+  const footY = pos.y - EYE_HEIGHT;
+  let building = null;
+  let fy = 0;
+
+  if (pos.x >= -19.85 && pos.x <= -2.85 && pos.z >= 14.25 && pos.z <= 28.55) {
+    building = 'tower';
+    const L = (k) => (k === 0 ? 0.50 : 4.0 + (k - 1) * 3.0);
+    let bestDiff = Infinity;
+    for (let k = 0; k <= 10; k++) {
+      const y = L(k);
+      const d = Math.abs(footY - y);
+      if (d < bestDiff) {
+        bestDiff = d;
+        fy = y;
+      }
+    }
+  } else if (pos.x >= 5.95 && pos.x <= 14.38 && Math.abs(pos.z) <= 5.42) {
+    building = 'house';
+    const lvl = THREE.MathUtils.clamp(Math.round(footY / 3.05), 0, 5);
+    fy = lvl * 3.05;
+  } else {
+    return null;
+  }
+
+  const boxes = getFurnitureBoxesForFloor(building, fy);
+  let bestSeat = null;
+  let bestDist = 1.65;
+  for (const item of boxes) {
+    if (!item.seat) continue;
+    const cx = THREE.MathUtils.clamp(pos.x, item.minX, item.maxX);
+    const cz = THREE.MathUtils.clamp(pos.z, item.minZ, item.maxZ);
+    const dist = Math.hypot(pos.x - cx, pos.z - cz);
+    if (dist < bestDist && Math.abs(footY - fy) < 1.35) {
+      bestDist = dist;
+      bestSeat = { ...item, fy, dist };
+    }
+  }
+  return bestSeat;
+}
+
+/**
+ * Computes exact floor, staircase, or furniture top elevation under playerPos across both buildings:
+ *  1) 5-Story Taltola House + Balconies + Rooftop (x = 4.72..14.38, z = -5.42..5.42)
+ *  2) 10-Story Sk Arshan Alif Tower + Balconies + Rooftop Sky Lounge (x = -19.85..-2.85, z = 14.25..28.55)
  */
 function computeGroundHeight(pos) {
   const footY = pos.y - EYE_HEIGHT;
 
   // --- SK ARSHAN ALIF TOWER (35 Haji Mohsin Road) ---
-  const inSkArshanZone = pos.x >= -19.85 && pos.x <= -2.85 && pos.z >= 14.25 && pos.z <= 28.55;
+  const inSkArshanZone = pos.x >= -19.85 && pos.x <= -2.85 && pos.z >= 14.28 && pos.z <= 28.55;
   if (inSkArshanZone) {
     // Ground-floor Car Ramp (z = 19.1..22.9, x = -4.65..-3.15) & South Steps (z = 26.5..28.5)
     if (footY < 1.8 && pos.x > -4.6) {
@@ -739,6 +1017,7 @@ function computeGroundHeight(pos) {
     }
 
     // Nearest floor slab inside Sk Arshan Tower (k = 0..10 -> 0.5m, 4.0m, 7.0m, ..., 31.0m)
+    let nearestK = 0;
     let nearestY = 0.50;
     let minDiff = Infinity;
     for (let k = 0; k <= 10; k++) {
@@ -747,14 +1026,45 @@ function computeGroundHeight(pos) {
       if (d < minDiff) {
         minDiff = d;
         nearestY = fy;
+        nearestK = k;
       }
     }
-    return nearestY;
+
+    // Check if player jumped outside the front balcony/rooftop slab edge so they fall to the street!
+    if (nearestK >= 10) {
+      if (pos.x > -3.65 || pos.z < 14.30 || pos.z > 28.55) return 0.0;
+    } else if (nearestK >= 1) {
+      let maxBalconyX = -3.65;
+      if (pos.z < 18.60) maxBalconyX = -2.85; // Bay A corner balcony
+      else if (pos.z < 23.55) maxBalconyX = -3.75; // Bay B recessed balcony
+      else maxBalconyX = nearestK % 2 === 0 ? -3.65 : -4.30; // Bay C stepped balcony
+      if (pos.x > maxBalconyX) return 0.0;
+    }
+
+    // Check if player is standing or landing on top of any furniture/commode/bed/sofa/table/car on this floor!
+    const boxes = getFurnitureBoxesForFloor('tower', nearestY);
+    let topY = nearestY;
+    for (const box of boxes) {
+      if (
+        pos.x >= box.minX - 0.16 && pos.x <= box.maxX + 0.16 &&
+        pos.z >= box.minZ - 0.16 && pos.z <= box.maxZ + 0.16 &&
+        footY >= nearestY + box.h * 0.45 &&
+        footY <= nearestY + box.h + 1.45
+      ) {
+        topY = Math.max(topY, nearestY + box.h);
+      }
+    }
+    return topY;
   }
 
   // --- 5-STORY TALTOLA HOUSE ---
-  const insideBuilding = pos.x >= 5.95 && pos.x <= 14.38 && Math.abs(pos.z) <= 5.42;
-  if (!insideBuilding) {
+  const lvl = THREE.MathUtils.clamp(Math.round(footY / 3.05), 0, 5);
+  const fy = lvl * 3.05;
+  const insideMainSlab = pos.x >= 5.95 && pos.x <= 14.38 && Math.abs(pos.z) <= 5.42;
+  const onFrontBalcony = lvl >= 1 && lvl <= 4 && pos.x >= 4.74 && pos.x <= 6.08 &&
+    ((pos.z >= -5.12 && pos.z <= -1.48) || (pos.z >= 1.52 && pos.z <= 5.12));
+
+  if (!insideMainSlab && !onFrontBalcony) {
     return 0.0;
   }
 
@@ -764,8 +1074,8 @@ function computeGroundHeight(pos) {
     const t = THREE.MathUtils.clamp((pos.x - 7.75) / (12.05 - 7.75), 0, 1);
     let bestY = 0;
     let bestDiff = Infinity;
-    for (let lvl = 0; lvl < 5; lvl++) {
-      const rampY = lvl * 3.05 + t * 3.05;
+    for (let sLvl = 0; sLvl < 5; sLvl++) {
+      const rampY = sLvl * 3.05 + t * 3.05;
       const diff = Math.abs(footY - rampY);
       if (diff < bestDiff) {
         bestDiff = diff;
@@ -777,9 +1087,20 @@ function computeGroundHeight(pos) {
     }
   }
 
-  // Otherwise player is on a floor slab (levels 0..5 -> y = 0, 3.05, 6.10, 9.15, 12.20, 15.25)
-  const lvl = THREE.MathUtils.clamp(Math.round(footY / 3.05), 0, 5);
-  return lvl * 3.05;
+  // Check if player is standing or landing on top of any bed, commode, sofa, chair, table, or counter on this floor!
+  const boxes = getFurnitureBoxesForFloor('house', fy);
+  let topY = fy;
+  for (const box of boxes) {
+    if (
+      pos.x >= box.minX - 0.16 && pos.x <= box.maxX + 0.16 &&
+      pos.z >= box.minZ - 0.16 && pos.z <= box.maxZ + 0.16 &&
+      footY >= fy + box.h * 0.45 &&
+      footY <= fy + box.h + 1.45
+    ) {
+      topY = Math.max(topY, fy + box.h);
+    }
+  }
+  return topY;
 }
 
 function applyWorldCollisions(pos) {
@@ -806,18 +1127,37 @@ function applyWorldCollisions(pos) {
 
     // --- SK ARSHAN ALIF TOWER COLLISIONS (x ∈ [-19.85, -2.85], z ∈ [14.25, 28.58]) ---
     if (pos.x < -2.6 && pos.z >= 14.1 && pos.z <= 28.8) {
-      // Rear wall (x = -19.8) & South wall (z = 28.5)
+      const L = (k) => (k === 0 ? 0.50 : 4.0 + (k - 1) * 3.0);
+      let towerK = 0;
+      let towerFy = 0.50;
+      let minDiff = Infinity;
+      for (let k = 0; k <= 10; k++) {
+        const y = L(k);
+        const d = Math.abs(footY - y);
+        if (d < minDiff) {
+          minDiff = d;
+          towerFy = y;
+          towerK = k;
+        }
+      }
+      const inTowerStairLane = pos.x >= -14.25 && pos.x <= -9.55 && pos.z >= 21.50 && pos.z <= 22.85;
+
+      // Rear wall (x = -19.8) & South party wall (z = 28.5)
       resolveCircleAABB(pos, PLAYER_RADIUS, -20.2, -19.65, 14.2, 28.7);
       resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -3.5, 28.42, 28.8);
-      // Elevator & Reception marble core wall (x = -11.55..-12.15, z = 18.6..20.6)
-      resolveCircleAABB(pos, PLAYER_RADIUS, -12.15, -11.52, 18.65, 20.55);
+      // Elevator & Reception marble core wall (x = -12.15..-11.52, z = 18.65..20.55)
+      if (towerK < 10) {
+        resolveCircleAABB(pos, PLAYER_RADIUS, -12.15, -11.52, 18.65, 20.55);
+      }
 
       if (footY < 2.2) {
         // Ground-floor lane-side shop shutters wall (z = 14.48..14.75, x = -19.85..-4.45)
         resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -4.45, 14.42, 14.76);
         // Plinth stainless railings along road (leaving Car Ramp z=19.15..22.95 & South Steps z=26.55..28.45 open!)
-        resolveCircleAABB(pos, PLAYER_RADIUS, -3.42, -3.22, 14.30, 19.15);
-        resolveCircleAABB(pos, PLAYER_RADIUS, -3.42, -3.22, 22.95, 26.55);
+        if (footY - 0.50 < 0.68) {
+          resolveCircleAABB(pos, PLAYER_RADIUS, -3.42, -3.22, 14.30, 19.15);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -3.42, -3.22, 22.95, 26.55);
+        }
         // Front ground-floor piers & closed gates (leaving Bay B z=18.9..21.9 open when gateOpen, and South Entry z=26.6..27.8 open!)
         resolveCircleAABB(pos, PLAYER_RADIUS, -4.55, -4.02, 14.55, 18.88);
         if (environment?.tower && !environment.tower.state.gateOpen) {
@@ -825,36 +1165,103 @@ function applyWorldCollisions(pos) {
         }
         resolveCircleAABB(pos, PLAYER_RADIUS, -4.55, -4.02, 21.92, 26.58);
         resolveCircleAABB(pos, PLAYER_RADIUS, -4.55, -4.02, 27.82, 28.60);
-        // Parked Red Car & Black SUV colliders on ground floor
-        resolveCircleAABB(pos, PLAYER_RADIUS, -9.2, -5.0, 24.55, 26.25);
-        resolveCircleAABB(pos, PLAYER_RADIUS, -18.8, -14.5, 15.6, 17.6);
       } else if (footY < 29.5) {
-        // Upper floors (k = 1..9): Lane-side wall (z = 14.48) & Front balcony outer railings
-        resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -4.25, 14.42, 14.72);
-        resolveCircleAABB(pos, PLAYER_RADIUS, -3.02, -2.82, 14.30, 18.60); // Bay A balcony front rail
-        resolveCircleAABB(pos, PLAYER_RADIUS, -4.25, -2.85, 14.28, 14.44); // Bay A balcony north rail
-        resolveCircleAABB(pos, PLAYER_RADIUS, -3.92, -3.72, 18.60, 23.55); // Bay B balcony front rail
-        resolveCircleAABB(pos, PLAYER_RADIUS, -3.75, -3.55, 23.55, 28.55); // Bay C balcony front rail
+        // UPPER FLOORS (k = 1..9):
+        // 1) Lane-side exterior wall (z = 14.48..14.74)
+        resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -4.25, 14.42, 14.74);
+
+        // 2) Front walls between rooms and balconies (with open sliding glass doorways!)
+        // Bay A front wall (x = -4.32, open balcony doorway at z = 15.20..16.35)
+        resolveCircleAABB(pos, PLAYER_RADIUS, -4.46, -4.18, 14.58, 15.20);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -4.46, -4.18, 16.35, 18.60);
+        // Bay B front wall (x = -5.60, open balcony doorway at z = 19.30..20.45) & side walls of recessed balcony
+        resolveCircleAABB(pos, PLAYER_RADIUS, -5.62, -3.75, 18.58, 18.90);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -5.62, -3.75, 23.30, 23.60);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -5.72, -5.48, 18.88, 19.30);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -5.72, -5.48, 20.45, 23.32);
+        // Bay C front wall (x = -5.08, open balcony doorway at z = 24.10..25.30)
+        resolveCircleAABB(pos, PLAYER_RADIUS, -5.22, -4.94, 23.58, 24.10);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -5.22, -4.94, 25.30, 28.50);
+
+        // 3) Interior Partition Walls (100% solid with exact doorway openings so player NEVER walks through walls!)
+        if (!inTowerStairLane) {
+          // North Lobby / Flat A Wall (z = 18.63): open Flat A door at x = -8.60..-7.20 & Bathroom door at x = -15.10..-14.10
+          resolveCircleAABB(pos, PLAYER_RADIUS, -7.20, -5.50, 18.53, 18.74);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -14.10, -8.60, 18.53, 18.74);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -15.10, 18.53, 18.74);
+
+          // South Lobby / Flat B Wall (z = 23.26): open Flat B door at x = -8.60..-7.20
+          resolveCircleAABB(pos, PLAYER_RADIUS, -7.20, -5.05, 23.16, 23.37);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -8.60, 23.16, 23.37);
+
+          // North Wing: Living Lounge / Master Bedroom Wall (x = -13.30, open doorway at z = 16.00..17.30)
+          resolveCircleAABB(pos, PLAYER_RADIUS, -13.40, -13.20, 14.68, 16.00);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -13.40, -13.20, 17.30, 18.63);
+
+          // Attached Luxury Bathroom Walls (x = -13.32, x = -16.32, z = 21.32, plus shower glass at x = -14.98)
+          resolveCircleAABB(pos, PLAYER_RADIUS, -13.42, -13.22, 18.63, 21.40);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -16.42, -16.22, 18.63, 21.40);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -16.42, -13.22, 21.22, 21.42);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -15.05, -14.90, 18.65, 19.65);
+
+          // South Wing: Dining Room / RGB Gaming Suite Wall (x = -13.30, open doorway at z = 24.90..26.30)
+          resolveCircleAABB(pos, PLAYER_RADIUS, -13.40, -13.20, 23.26, 24.90);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -13.40, -13.20, 26.30, 28.50);
+        }
+
+        // Stairwell handrails along z = 21.58 & z = 22.78 (keep player from stepping sideways off stairs)
+        resolveCircleAABB(pos, PLAYER_RADIUS, -13.95, -9.80, 21.50, 21.64);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -13.95, -9.80, 22.72, 22.86);
+
+        // 4) Balcony Outer Railings — only block horizontally when not jumping over them (footY - towerFy < 0.68)!
+        if (footY - towerFy < 0.68) {
+          resolveCircleAABB(pos, PLAYER_RADIUS, -3.02, -2.82, 14.30, 18.60); // Bay A balcony front rail
+          resolveCircleAABB(pos, PLAYER_RADIUS, -4.25, -2.85, 14.28, 14.44); // Bay A balcony north rail
+          resolveCircleAABB(pos, PLAYER_RADIUS, -3.92, -3.72, 18.60, 23.55); // Bay B balcony front rail
+          const bayCRailX = towerK % 2 === 0 ? -3.75 : -4.40;
+          resolveCircleAABB(pos, PLAYER_RADIUS, bayCRailX - 0.10, bayCRailX + 0.10, 23.55, 28.55); // Bay C balcony front rail
+        }
       } else {
-        // Rooftop Sky Lounge parapet walls (y = 31.0m)
-        resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -3.65, 14.25, 14.55);
-        resolveCircleAABB(pos, PLAYER_RADIUS, -3.92, -3.62, 14.30, 28.55);
+        // ROOFTOP SKY LOUNGE (y = 31.0m):
+        // Rooftop Lift & Stair Penthouse Room walls (x = -14.5..-9.4, z = 18.2..23.1, open door at x = -9.4, z = 19.3..20.8)
+        resolveCircleAABB(pos, PLAYER_RADIUS, -14.55, -14.20, 18.20, 23.10);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -14.50, -9.40, 18.18, 18.48);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -14.50, -9.40, 22.82, 23.12);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -9.68, -9.38, 18.20, 19.30);
+        resolveCircleAABB(pos, PLAYER_RADIUS, -9.68, -9.38, 20.80, 23.10);
+        // Rooftop Parapet Walls — only block horizontally when not jumping over them (footY - 31.0 < 0.68)!
+        if (footY - 31.0 < 0.68) {
+          resolveCircleAABB(pos, PLAYER_RADIUS, -19.85, -3.65, 14.25, 14.55);
+          resolveCircleAABB(pos, PLAYER_RADIUS, -3.92, -3.62, 14.30, 28.55);
+        }
+      }
+
+      // 5) Furniture Horizontal Colliders inside Sk Arshan Tower (only block when footY is below 50% of furniture height so player can jump onto any bed/commode/sofa/chair/table/car!)
+      if (!inTowerStairLane) {
+        const fBoxes = getFurnitureBoxesForFloor('tower', towerFy);
+        for (const box of fBoxes) {
+          if (footY < towerFy + box.h * 0.50) {
+            resolveCircleAABB(pos, PLAYER_RADIUS * 0.85, box.minX, box.maxX, box.minZ, box.maxZ);
+          }
+        }
       }
       continue;
     }
 
     // East Side Yard & Street Boundary Walls (North of Taltola House & Taltola House Front Wall)
-    resolveCircleAABB(pos, PLAYER_RADIUS, 2.06, 2.86, -42, -2.06);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 2.06, 2.86, 2.06, 7.36);
+    if (footY < 2.2) {
+      resolveCircleAABB(pos, PLAYER_RADIUS, 2.06, 2.86, -42, -2.06);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 2.06, 2.86, 2.06, 7.36);
 
-    if (house && !house.state.gateOpen) {
-      resolveCircleAABB(pos, PLAYER_RADIUS, 2.36, 2.66, -2.06, 2.06);
+      if (house && !house.state.gateOpen) {
+        resolveCircleAABB(pos, PLAYER_RADIUS, 2.36, 2.66, -2.06, 2.06);
+      }
+
+      // Taltola House North & South Side Compound Walls (z = -7.28 and z = +7.28)
+      resolveCircleAABB(pos, PLAYER_RADIUS, 2.4, 22.0, -20.0, -7.08);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 2.4, 22.0, 7.08, 7.48);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 21.25, 24.0, -15.0, 15.0);
     }
-
-    // Taltola House North & South Side Compound Walls (z = -7.28 and z = +7.28)
-    resolveCircleAABB(pos, PLAYER_RADIUS, 2.4, 22.0, -20.0, -7.08);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 2.4, 22.0, 7.08, 7.48);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 21.25, 24.0, -15.0, 15.0);
 
     // Haji Mohsin Road East Side: Planter Box (z = 7.5..11.2), 4 Shutter Shops (z = 11.3..20.7),
     // Open ASB Gate Entrance (z = 23.7..26.5 lets player walk inside x = 3.0..7.2!), and Milk Vita Shops (z = 26.8..42.0)
@@ -865,14 +1272,22 @@ function applyWorldCollisions(pos) {
 
     // Rooftop Parapet & Mumty Collisions (Level 5: y ≈ 15.25)
     if (footY >= 14.1) {
-      resolveCircleAABB(pos, PLAYER_RADIUS, 5.75, 6.02, -5.50, 5.50);
-      resolveCircleAABB(pos, PLAYER_RADIUS, 14.15, 14.42, -5.50, 5.50);
-      resolveCircleAABB(pos, PLAYER_RADIUS, 5.85, 14.35, -5.55, -5.28);
-      resolveCircleAABB(pos, PLAYER_RADIUS, 5.85, 14.35, 5.28, 5.55);
-      // Stairwell guardrail on roof
+      // Stairwell guardrail & Mumty walls on roof
       resolveCircleAABB(pos, PLAYER_RADIUS, 7.82, 11.98, 0.08, 0.24);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 7.50, 13.65, -1.30, -1.12);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 7.50, 13.65, 1.15, 1.32);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 13.45, 13.68, -1.25, 1.25);
+      // Rooftop Parapet Walls — only block horizontally when not jumping over them (footY - 15.25 < 0.68)!
+      if (footY - 15.25 < 0.68) {
+        resolveCircleAABB(pos, PLAYER_RADIUS, 5.75, 6.02, -5.50, 5.50);
+        resolveCircleAABB(pos, PLAYER_RADIUS, 14.15, 14.42, -5.50, 5.50);
+        resolveCircleAABB(pos, PLAYER_RADIUS, 5.85, 14.35, -5.55, -5.28);
+        resolveCircleAABB(pos, PLAYER_RADIUS, 5.85, 14.35, 5.28, 5.55);
+      }
       continue;
     }
+
+    const houseFy = currentLevel * 3.05;
 
     // Building Exterior Front & Back Walls (x = 6.08 and x = 14.28)
     if (currentLevel === 0 && footY < 1.6) {
@@ -887,10 +1302,22 @@ function applyWorldCollisions(pos) {
       if (house && !house.state.backDoorOpen) {
         resolveCircleAABB(pos, PLAYER_RADIUS, 14.16, 14.48, -0.64, 0.64);
       }
-    } else {
-      // Upper floors: keep player inside front/back exterior walls
-      resolveCircleAABB(pos, PLAYER_RADIUS, 5.90, 6.22, -5.48, 5.48);
+    } else if (currentLevel >= 1 && currentLevel <= 4 && pos.x >= 4.5 && pos.x <= 14.6 && Math.abs(pos.z) <= 5.55) {
+      // Upper floors: Front wall (x = 6.08) has open balcony doorways at z ∈ [-3.25, -1.90] (Unit A) and z ∈ [1.90, 3.25] (Unit B)!
+      resolveCircleAABB(pos, PLAYER_RADIUS, 5.94, 6.22, -5.48, -3.25);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 5.94, 6.22, -1.90, 1.90);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 5.94, 6.22, 3.25, 5.48);
+      // Back wall
       resolveCircleAABB(pos, PLAYER_RADIUS, 14.14, 14.46, -5.48, 5.48);
+      // Front balcony side walls & jumpable front railing (x = 4.77)
+      resolveCircleAABB(pos, PLAYER_RADIUS, 4.72, 6.08, -5.20, -5.02);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 4.72, 6.08, -1.56, -1.38);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 4.72, 6.08, 1.44, 1.62);
+      resolveCircleAABB(pos, PLAYER_RADIUS, 4.72, 6.08, 5.02, 5.20);
+      if (footY - houseFy < 0.68) {
+        resolveCircleAABB(pos, PLAYER_RADIUS, 4.68, 4.86, -5.15, -1.45);
+        resolveCircleAABB(pos, PLAYER_RADIUS, 4.68, 4.86, 1.50, 5.15);
+      }
     }
 
     // Left & Right Exterior Side Walls (z = -5.36 and z = +5.36)
@@ -934,12 +1361,15 @@ function applyWorldCollisions(pos) {
       resolveCircleAABB(pos, PLAYER_RADIUS, 11.00, 11.45, bz - 0.08, bz + 0.08);
     }
 
-    // Major Room Furniture Colliders (Sofa, Coffee Table, Bed, Dining Table, Kitchen Counter)
-    resolveCircleAABB(pos, PLAYER_RADIUS, 6.80, 8.90, -5.20, -4.40);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 7.30, 8.40, -3.85, -3.25);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 11.90, 13.80, -5.15, -3.30);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 7.15, 8.55, 2.95, 4.15);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 11.60, 14.10, 4.55, 5.30);
+    // Furniture Horizontal Colliders inside Taltola House (only block when footY < houseFy + box.h * 0.50 so player can jump onto any bed, commode, sofa, chair, table, or counter!)
+    if (pos.x >= 5.95 && pos.x <= 14.38 && Math.abs(pos.z) <= 5.42) {
+      const fBoxes = getFurnitureBoxesForFloor('house', houseFy);
+      for (const box of fBoxes) {
+        if (footY < houseFy + box.h * 0.50) {
+          resolveCircleAABB(pos, PLAYER_RADIUS * 0.85, box.minX, box.maxX, box.minZ, box.maxZ);
+        }
+      }
+    }
   }
 }
 
@@ -947,9 +1377,20 @@ const FLOOR_NAMES_BN = ['নিচতলা (1st Floor)', '২য় তলা (2nd
 
 function updateHUDPrompt() {
   if (!house || !interactPrompt) return;
-  const promptText = controls.isLocked
-    ? (environment?.tower?.getPrompt(playerPos) || house.getPrompt(playerPos))
-    : null;
+  let promptText = null;
+  if (controls.isLocked) {
+    if (sittingState.active) {
+      promptText = `[E / F / SPACE] উঠে দাঁড়ান — ${sittingState.seat?.label || 'আসন'} (Stand Up)`;
+    } else {
+      const nearSeat = findNearestSeat(playerPos);
+      const doorOrLiftPrompt = environment?.tower?.getPrompt(playerPos) || house.getPrompt(playerPos);
+      if (nearSeat && (!doorOrLiftPrompt || nearSeat.dist < 1.25)) {
+        promptText = `[E / F] এখানে বসুন: ${nearSeat.label} (Sit Down)`;
+      } else {
+        promptText = doorOrLiftPrompt || (nearSeat ? `[E / F] এখানে বসুন: ${nearSeat.label} (Sit Down)` : null);
+      }
+    }
+  }
   if (promptText !== lastPromptText) {
     lastPromptText = promptText;
     if (promptText) {
@@ -980,8 +1421,10 @@ function updateHUDPrompt() {
         zone = 'SK ARSHAN ALIF TOWER · গ্র্যান্ড পার্কিং ও রিসেপশন লবি (নিচতলা)';
       } else if (towerFl >= 10 || footY >= 29.8) {
         zone = 'SK ARSHAN ALIF TOWER · ছাদের স্কাই লাউঞ্জ ও গার্ডেন (Rooftop)';
-      } else if (x > -4.35) {
+      } else if (x > -4.35 || (x > -5.55 && z >= 18.6 && z <= 23.5)) {
         zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · সামনের বারান্দা (Balcony View)`;
+      } else if (x <= -13.3 && x >= -16.4 && z >= 18.63 && z <= 21.4) {
+        zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · অ্যাটাচড লাক্সারি বাথরুম (Attached Bathroom)`;
       } else if (z >= 18.55 && z <= 23.3) {
         zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · হাই-স্পিড লিফট ও সিঁড়ি লবি`;
       } else if (z < 18.55) {
@@ -999,6 +1442,8 @@ function updateHUDPrompt() {
       zone = `ROOFTOP · বাড়ির ছাদ (${flName})`;
     } else if (x > 14.4) {
       zone = 'HOUSE BACKYARD · ঘরের পিছনের উঠান';
+    } else if (lvl >= 1 && lvl <= 4 && x >= 4.72 && x < 6.08 && Math.abs(z) <= 5.2) {
+      zone = `FLAT ${lvl + 1}${z < 0 ? 'A' : 'B'} · সামনের বারান্দা (Front Balcony · ${flName})`;
     } else if (x >= 6.08 && x <= 14.28 && z < -1.2 && z > -5.3 && Math.abs(z) < 7.2) {
       if (x < 9.65) zone = `FLAT ${lvl + 1}A · বসার ঘর ও টিভি রুম (${flName})`;
       else if (x < 11.45 && z < -2.5) zone = `FLAT ${lvl + 1}A · অ্যাটাচড বাথরুম (${flName})`;
@@ -1067,6 +1512,54 @@ function updateMovement(delta) {
   const forwardInput = Number(keys.has('KeyW') || keys.has('ArrowUp')) - Number(keys.has('KeyS') || keys.has('ArrowDown'));
   const rightInput = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft'));
 
+  // If currently seated on a chair, sofa, bed, or toilet commode:
+  if (sittingState.active && sittingState.seat) {
+    if (forwardInput !== 0 || rightInput !== 0 || jumpBuffer > 0) {
+      jumpBuffer = 0;
+      standUpFromSeat();
+    } else {
+      const seat = sittingState.seat;
+      playerPos.x = seat.seatX;
+      playerPos.z = seat.seatZ;
+      playerPos.y = seat.fy + seat.seatY + EYE_HEIGHT - 0.42;
+      controls.getHorizontalVectors(forwardVec, rightVec);
+      controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
+
+      if (playerCharacter) {
+        playerCharacter.state.emote = 'sit';
+        playerCharacter.state.facingYaw = seat.yaw;
+        playerCharacter.update(delta, {
+          position: { x: seat.seatX, y: seat.fy + seat.seatY - 0.42 + EYE_HEIGHT, z: seat.seatZ },
+          yaw: controls.euler.y,
+          speed: 0,
+          maxSpeed: 3.45,
+          grounded: true,
+          isSprinting: false,
+          inStudio: false,
+        });
+      }
+
+      if (indoorLight) {
+        indoorLight.visible = quality !== 'low';
+        indoorLight.position.set(playerPos.x, playerPos.y + 0.65, playerPos.z);
+      }
+
+      if (playerCharacter && playerCharacter.state.cameraMode === 'back') {
+        camTargetPos.copy(playerPos).addScaledVector(forwardVec, -1.25);
+        camTargetPos.y = playerPos.y + 0.18;
+        camera.position.copy(camTargetPos);
+      } else if (playerCharacter && playerCharacter.state.cameraMode === 'front') {
+        camTargetPos.copy(playerPos).addScaledVector(forwardVec, 1.25);
+        camTargetPos.y = playerPos.y + 0.05;
+        camera.position.copy(camTargetPos);
+      } else {
+        camera.position.copy(playerPos);
+      }
+      updateHUDPrompt();
+      return;
+    }
+  }
+
   controls.getHorizontalVectors(forwardVec, rightVec);
   wishDir.set(0, 0, 0)
     .addScaledVector(forwardVec, forwardInput)
@@ -1110,7 +1603,7 @@ function updateMovement(delta) {
   if (jumpBuffer > 0) jumpBuffer = Math.max(0, jumpBuffer - delta);
 
   if (jumpBuffer > 0 && coyoteTimer > 0) {
-    verticalVelocity = 5.65;
+    verticalVelocity = 6.25;
     grounded = false;
     coyoteTimer = 0;
     jumpBuffer = 0;
@@ -1149,9 +1642,17 @@ function updateMovement(delta) {
     syncEmoteUI(playerCharacter.state.emote);
   }
 
+  const insideHouse = (playerPos.x > 4.7 && playerPos.x < 14.6 && Math.abs(playerPos.z) < 5.3)
+    || (playerPos.x < -2.8 && playerPos.x > -19.9 && playerPos.z > 14.3 && playerPos.z < 28.6);
+
+  if (indoorLight) {
+    indoorLight.visible = insideHouse && quality !== 'low';
+    if (indoorLight.visible) {
+      indoorLight.position.set(playerPos.x, playerPos.y + 0.55, playerPos.z);
+    }
+  }
+
   if (playerCharacter && playerCharacter.state.cameraMode === 'back') {
-    const insideHouse = (playerPos.x > 5.7 && playerPos.x < 14.6 && Math.abs(playerPos.z) < 5.3)
-      || (playerPos.x < -3.6 && playerPos.x > -19.9 && playerPos.z > 14.3 && playerPos.z < 28.6);
     const followDist = insideHouse ? 1.15 : 1.95;
     camTargetPos.copy(playerPos).addScaledVector(forwardVec, -followDist);
     camTargetPos.y = playerPos.y + (insideHouse ? 0.12 : 0.22);

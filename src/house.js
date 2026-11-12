@@ -511,12 +511,14 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
       box(staticGroup, [0.22, 0.50, 2.85], [6.08, fy + 2.71, 3.28], m.warmPlaster);
       box(staticGroup, [0.22, 0.62, 1.32], [6.08, fy + 2.67, 0], m.warmPlaster);
     } else {
-      // Upper floors have balcony access & front corridor wall
+      // Upper floors have walkable balcony doorway at inner half (z = ±2.55) & window at outer half (z = ±4.02)
       box(staticGroup, [0.22, wallH, 0.66], [6.08, midY, -5.03], m.plaster);
       box(staticGroup, [0.22, wallH, 3.78], [6.08, midY, 0.03], m.plaster);
       box(staticGroup, [0.22, wallH, 0.64], [6.08, midY, 5.08], m.plaster);
-      for (const wz of [-3.28, 3.35]) {
-        box(staticGroup, [0.22, 0.45, 2.88], [6.08, fy + 0.225, wz], m.plaster);
+      for (const side of [-1, 1]) {
+        const wz = side === -1 ? -3.28 : 3.35;
+        // Sill only under the outer window half so the inner half (z = side * 2.55) is a walk-through balcony doorway!
+        box(staticGroup, [0.22, 0.45, 1.44], [6.08, fy + 0.225, side * 4.02], m.plaster);
         box(staticGroup, [0.22, 0.48, 2.88], [6.08, fy + 2.72, wz], m.plaster);
       }
     }
@@ -1061,7 +1063,8 @@ export function buildHouse(scene, m) {
       box(staticGroup, [1.58, 0.24, width + 0.14], [5.46, floorY, zCenter], m.whiteBand);
       box(staticGroup, [0.18, 0.44, width + 0.12], [4.77, floorY - 0.09, zCenter], side === 1 ? m.whiteBand : m.plaster);
       box(staticGroup, [1.45, 2.85, 0.16], [5.48, floorY + 1.47, zCenter + side * (width / 2)], m.plaster);
-      frontWindow(staticGroup, m, { y: floorY + 1.42, z: zCenter, width: 2.85, height: 2.05, grill: false, openable: true });
+      // Half-open sliding glass door/window on outer half (side * 4.02), leaving inner half (side * 2.55) open to walk onto balcony!
+      frontWindow(staticGroup, m, { y: floorY + 1.42, z: side * 4.02, width: 1.42, height: 2.05, grill: false, openable: true });
 
       if (level === 0 && side === -1) {
         securityGrill(staticGroup, m, floorY, -4.18, 1.82, 4.78);
