@@ -540,7 +540,7 @@ export function createHajiMaterials() {
   };
   const stuccoMap = loadTex('white-stucco.jpg');
   const WALL_W = 2.95;
-  return {
+  const mats = {
     stucco: lam({ map: stuccoMap }, 3.2),
     stuccoShade: lam({ map: stuccoMap, color: 0xdedcd6 }, 3.2),
     grey: lam({ map: loadTex('grey-cement.jpg'), color: 0xe2e4e4 }, 2.6),
@@ -609,6 +609,21 @@ export function createHajiMaterials() {
     gamingScreen: new THREE.MeshBasicMaterial({ map: createGamingScreenTexture() }),
     turfGreen: lam({ color: 0x15803d }),
   };
+  mats.setQualityMode = (quality) => {
+    const isLow = quality === 'low';
+    for (const mat of Object.values(mats)) {
+      if (!mat || typeof mat !== 'object' || !mat.map) continue;
+      if (mat.userData.origAniso === undefined) {
+        mat.userData.origAniso = mat.map.anisotropy || 8;
+      }
+      const nextAniso = isLow ? 1 : mat.userData.origAniso;
+      if (mat.map.anisotropy !== nextAniso) {
+        mat.map.anisotropy = nextAniso;
+        mat.map.needsUpdate = true;
+      }
+    }
+  };
+  return mats;
 }
 
 /** Axis-aligned box from min/max extents. */
@@ -1526,6 +1541,7 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
     group: g,
     state,
     stops: LIFT_STOPS,
+    setQualityMode: hm.setQualityMode,
     nearestFloorIndex: getNearestFloorIndex,
     isInsideLift,
     isNearLiftLobby,

@@ -136,10 +136,25 @@ const camTargetPos = new THREE.Vector3();
 const camDesiredPos = new THREE.Vector3();
 const camPivotPos = new THREE.Vector3();
 const camRayDelta = new THREE.Vector3();
+const camSlideCandPos = new THREE.Vector3();
+const camBestPos = new THREE.Vector3();
+const camTmpPos = new THREE.Vector3();
+const camSideVec = new THREE.Vector3();
+const camUpVec = new THREE.Vector3(0, 1, 0);
+const camSpreadDir = new THREE.Vector3();
+const camLookAtQuat = new THREE.Quaternion();
+const camLookTarget = new THREE.Vector3();
+let baseCamNear = 0;
 let smoothedCamDist = 1.95;
+let camSlideOffsetX = 0;
+let camSlideOffsetZ = 0;
+let prevSlideSign = 0;
+let camLookAtPlayerAlpha = 0;
 let camHideMeshState = false;
 let isThirdPersonEyeFallback = false;
 let lastResolvedCamMode = null;
+let ultraFastMode = false;
+let lowFpsStreak = 0;
 
 const MAX_CAM_BOXES = 128;
 const camBoxData = new Float32Array(MAX_CAM_BOXES * 6);
@@ -205,7 +220,7 @@ function collectCameraObstacleBoxes(pivot, footY) {
     }
 
     // Perimeter outer walls (West rear, South party wall, North lane facade)
-    pushCamBox(-19.85, -19.50, 0, 31.1, 14.25, 28.60);
+    pushCamBox(-19.85, -19.43, 0, 31.1, 14.25, 28.60);
     pushCamBox(-19.85, -3.65, 0, 31.1, 28.22, 28.60);
     pushCamBox(-19.85, -4.25, 0, 31.1, 14.28, 14.76);
 
@@ -279,16 +294,18 @@ function collectCameraObstacleBoxes(pivot, footY) {
         pushCamBox(-5.22, -4.94, fy + 2.30, wTop, 24.10, 25.30);
 
         // North Lobby / Flat A Wall (z = 18.63, open Flat A door x=-8.60..-7.20 & West Bath door x=-18.30..-17.10)
-        pushCamBox(-7.20, -5.50, fy, wTop, 18.53, 18.74);
-        pushCamBox(-17.10, -8.60, fy, wTop, 18.53, 18.74);
-        pushCamBox(-19.85, -18.30, fy, wTop, 18.53, 18.74);
-        pushCamBox(-8.60, -7.20, fy + 2.22, wTop, 18.53, 18.74);
-        pushCamBox(-18.30, -17.10, fy + 2.22, wTop, 18.53, 18.74);
+        pushCamBox(-7.20, -5.50, fy, wTop, 18.50, 18.76);
+        pushCamBox(-17.10, -8.60, fy, wTop, 18.50, 18.76);
+        pushCamBox(-19.85, -18.30, fy, wTop, 18.50, 18.76);
+        pushCamBox(-8.60, -7.20, fy + 2.22, wTop, 18.50, 18.76);
+        pushCamBox(-18.30, -17.10, fy + 2.22, wTop, 18.50, 18.76);
+        pushCamBox(-8.67, -8.53, fy, fy + 2.22, 17.35, 18.55);
 
         // South Lobby / Flat B Wall (z = 23.26, open Flat B door x=-8.60..-7.20)
-        pushCamBox(-7.20, -5.05, fy, wTop, 23.16, 23.37);
-        pushCamBox(-19.85, -8.60, fy, wTop, 23.16, 23.37);
-        pushCamBox(-8.60, -7.20, fy + 2.22, wTop, 23.16, 23.37);
+        pushCamBox(-7.20, -5.05, fy, wTop, 23.13, 23.40);
+        pushCamBox(-19.85, -8.60, fy, wTop, 23.13, 23.40);
+        pushCamBox(-8.60, -7.20, fy + 2.22, wTop, 23.13, 23.40);
+        pushCamBox(-8.67, -8.53, fy, fy + 2.22, 23.35, 24.55);
 
         // North Wing Living / Bedroom Wall (x = -13.30, open door z=16.00..17.30)
         pushCamBox(-13.40, -13.20, fy, wTop, 14.68, 16.00);
@@ -301,10 +318,10 @@ function collectCameraObstacleBoxes(pivot, footY) {
         pushCamBox(-13.40, -13.20, fy + 2.22, wTop, 24.90, 26.30);
 
         // West En-Suite Attached Bathroom Walls (open door x=-18.30..-17.20) + shower glass
-        pushCamBox(-16.75, -16.56, fy, wTop, 18.63, 21.40);
-        pushCamBox(-17.20, -16.56, fy, wTop, 21.22, 21.42);
-        pushCamBox(-19.75, -18.30, fy, wTop, 21.22, 21.42);
-        pushCamBox(-18.30, -17.20, fy + 2.22, wTop, 21.22, 21.42);
+        pushCamBox(-16.75, -16.50, fy, wTop, 18.63, 21.40);
+        pushCamBox(-17.20, -16.50, fy, wTop, 21.20, 21.44);
+        pushCamBox(-19.80, -18.30, fy, wTop, 21.20, 21.44);
+        pushCamBox(-18.30, -17.20, fy + 2.22, wTop, 21.20, 21.44);
         pushCamBox(-18.38, -18.24, fy, fy + 2.15, 18.65, 19.65);
 
         // Landing lintel above elevator door
@@ -455,23 +472,8 @@ function collectCameraObstacleBoxes(pivot, footY) {
   }
 }
 
-function resolveThirdPersonCamera(pivot, desiredPos, footY, delta, bypassSmoothing = false, allowEyeFallback = true) {
-  collectCameraObstacleBoxes(pivot, footY);
-  camRayDelta.subVectors(desiredPos, pivot);
-  const desiredDist = camRayDelta.length();
-  if (desiredDist < 0.001) {
-    isThirdPersonEyeFallback = false;
-    return { camPos: desiredPos, hidePlayerMesh: false };
-  }
-
-  let minT = 1.0;
-  const ox = pivot.x;
-  const oy = pivot.y;
-  const oz = pivot.z;
-  const dx = camRayDelta.x;
-  const dy = camRayDelta.y;
-  const dz = camRayDelta.z;
-
+function castCamRaySingle(ox, oy, oz, dx, dy, dz, basePad, maxT = 1.0) {
+  let minT = maxT;
   for (let i = 0; i < camBoxCount; i++) {
     const idx = i * 6;
     const bMinX = camBoxData[idx];
@@ -481,12 +483,11 @@ function resolveThirdPersonCamera(pivot, desiredPos, footY, delta, bypassSmoothi
     const bMinZ = camBoxData[idx + 4];
     const bMaxZ = camBoxData[idx + 5];
 
-    // Keep pivot strictly outside padded AABB so parallel walls never stall the spring-arm at t = 0
     const cx = ox < bMinX ? bMinX - ox : (ox > bMaxX ? ox - bMaxX : 0);
     const cy = oy < bMinY ? bMinY - oy : (oy > bMaxY ? oy - bMaxY : 0);
     const cz = oz < bMinZ ? bMinZ - oz : (oz > bMaxZ ? oz - bMaxZ : 0);
     const dPivot = Math.hypot(cx, cy, cz);
-    const pad = dPivot > 0.025 ? Math.min(0.22, dPivot - 0.02) : 0.0;
+    const pad = dPivot > 0.025 ? Math.min(basePad, dPivot - 0.02) : 0.0;
 
     const x0 = bMinX - pad;
     const x1 = bMaxX + pad;
@@ -538,16 +539,246 @@ function resolveThirdPersonCamera(pivot, desiredPos, footY, delta, bypassSmoothi
       minT = tMin;
     }
   }
+  return minT;
+}
 
-  const hitDist = desiredDist * minT;
+function castCamFrustumRay(ox, oy, oz, tx, ty, tz, basePad) {
+  const dx = tx - ox;
+  const dy = ty - oy;
+  const dz = tz - oz;
+  const dist = Math.hypot(dx, dy, dz);
+  if (dist < 0.001) return 1.0;
+
+  let minT = castCamRaySingle(ox, oy, oz, dx, dy, dz, basePad, 1.0);
+  camSpreadDir.set(dx, dy, dz).divideScalar(dist);
+  camSideVec.crossVectors(camSpreadDir, camUpVec);
+  if (camSideVec.lengthSq() > 1e-4) {
+    camSideVec.normalize();
+    const spreadPad = Math.max(0.14, basePad - 0.07);
+    const sx = camSideVec.x * 0.22;
+    const sz = camSideVec.z * 0.22;
+    const sy = 0.13;
+    minT = Math.min(minT, castCamRaySingle(ox, oy, oz, dx + sx, dy + sy, dz + sz, spreadPad, minT));
+    minT = Math.min(minT, castCamRaySingle(ox, oy, oz, dx - sx, dy + sy, dz - sz, spreadPad, minT));
+    minT = Math.min(minT, castCamRaySingle(ox, oy, oz, dx + sx, dy - sy, dz + sz, spreadPad, minT));
+    minT = Math.min(minT, castCamRaySingle(ox, oy, oz, dx - sx, dy - sy, dz - sz, spreadPad, minT));
+  }
+  return minT;
+}
+
+function minWallClearDist(pos, refY) {
+  let minD = 99;
+  for (let i = 0; i < camBoxCount; i++) {
+    const idx = i * 6;
+    const bMinY = camBoxData[idx + 2];
+    const bMaxY = camBoxData[idx + 3];
+    if (bMaxY - bMinY < 1.10 || refY < bMinY - 0.18 || refY > bMaxY + 0.18) continue;
+    const bMinX = camBoxData[idx];
+    const bMaxX = camBoxData[idx + 1];
+    const bMinZ = camBoxData[idx + 4];
+    const bMaxZ = camBoxData[idx + 5];
+    const clx = pos.x < bMinX ? bMinX - pos.x : (pos.x > bMaxX ? pos.x - bMaxX : 0);
+    const clz = pos.z < bMinZ ? bMinZ - pos.z : (pos.z > bMaxZ ? pos.z - bMaxZ : 0);
+    const d = Math.hypot(clx, clz);
+    if (d < minD) minD = d;
+  }
+  return minD;
+}
+
+function resolveCamXZClearance(pos, clearDist, refY, pivot) {
+  const startX = pos.x;
+  const startY = pos.y;
+  const startZ = pos.z;
+
+  for (let pass = 0; pass < 2; pass++) {
+    let pushPosX = 0;
+    let pushNegX = 0;
+    let pushPosZ = 0;
+    let pushNegZ = 0;
+
+    for (let i = 0; i < camBoxCount; i++) {
+      const idx = i * 6;
+      const bMinY = camBoxData[idx + 2];
+      const bMaxY = camBoxData[idx + 3];
+      if (bMaxY - bMinY < 1.10 || refY < bMinY - 0.18 || refY > bMaxY + 0.18) continue;
+      const exMinX = camBoxData[idx] - clearDist;
+      const exMaxX = camBoxData[idx + 1] + clearDist;
+      const exMinZ = camBoxData[idx + 4] - clearDist;
+      const exMaxZ = camBoxData[idx + 5] + clearDist;
+      if (pos.x <= exMinX || pos.x >= exMaxX || pos.z <= exMinZ || pos.z >= exMaxZ) continue;
+
+      const dxL = pos.x - exMinX;
+      const dxR = exMaxX - pos.x;
+      const dzN = pos.z - exMinZ;
+      const dzF = exMaxZ - pos.z;
+      const minPen = Math.min(dxL, dxR, dzN, dzF);
+
+      if (minPen === dxL) {
+        if (dxL > pushNegX) pushNegX = dxL;
+      } else if (minPen === dxR) {
+        if (dxR > pushPosX) pushPosX = dxR;
+      } else if (minPen === dzN) {
+        if (dzN > pushNegZ) pushNegZ = dzN;
+      } else {
+        if (dzF > pushPosZ) pushPosZ = dzF;
+      }
+    }
+
+    pos.x += (pushPosX > 0 && pushNegX > 0) ? (pushPosX - pushNegX) * 0.5 : (pushPosX - pushNegX);
+    pos.z += (pushPosZ > 0 && pushNegZ > 0) ? (pushPosZ - pushNegZ) * 0.5 : (pushPosZ - pushNegZ);
+  }
+
+  if (pivot && (pos.x !== startX || pos.z !== startZ)) {
+    const los = castCamRaySingle(
+      pivot.x, pivot.y, pivot.z,
+      pos.x - pivot.x, pos.y - pivot.y, pos.z - pivot.z,
+      0.02, 1.0,
+    );
+    if (los < 0.998) {
+      pos.set(startX, startY, startZ);
+    }
+  }
+}
+
+function syncCameraNear(targetNear) {
+  if (Math.abs(camera.near - targetNear) > 0.002) {
+    camera.near = targetNear;
+    camera.updateProjectionMatrix();
+  }
+}
+
+const CAM_ESCAPE_ANGLES = [
+  Math.PI / 6, -Math.PI / 6,
+  Math.PI / 3, -Math.PI / 3,
+  Math.PI * 0.48, -Math.PI * 0.48,
+  Math.PI * 0.64, -Math.PI * 0.64,
+];
+
+function resolveThirdPersonCamera(pivot, desiredPos, footY, delta, bypassSmoothing = false, allowEyeFallback = true, canSlide = false) {
+  if (baseCamNear === 0) baseCamNear = camera.near;
+  collectCameraObstacleBoxes(pivot, footY);
+  camRayDelta.subVectors(desiredPos, pivot);
+  const desiredDist = camRayDelta.length();
+  if (desiredDist < 0.001) {
+    isThirdPersonEyeFallback = false;
+    camLookAtPlayerAlpha = 0;
+    syncCameraNear(baseCamNear);
+    return { camPos: desiredPos, hidePlayerMesh: false };
+  }
+
+  if (bypassSmoothing) {
+    camSlideOffsetX = 0;
+    camSlideOffsetZ = 0;
+    prevSlideSign = 0;
+    camLookAtPlayerAlpha = 0;
+  }
+
+  const ox = pivot.x;
+  const oy = pivot.y;
+  const oz = pivot.z;
+  const dx = camRayDelta.x;
+  const dy = camRayDelta.y;
+  const dz = camRayDelta.z;
+
+  // Keep target endpoint clear of parallel side walls BEFORE casting so narrow corridors don't false-clip
+  camSlideCandPos.copy(desiredPos);
+  resolveCamXZClearance(camSlideCandPos, 0.39, oy, pivot);
+  const rawT = castCamFrustumRay(ox, oy, oz, desiredPos.x, desiredPos.y, desiredPos.z, 0.22);
+  const adjT = castCamFrustumRay(ox, oy, oz, camSlideCandPos.x, camSlideCandPos.y, camSlideCandPos.z, 0.22);
+
+  camBestPos.set(
+    ox + (camSlideCandPos.x - ox) * adjT,
+    oy + (camSlideCandPos.y - oy) * adjT,
+    oz + (camSlideCandPos.z - oz) * adjT,
+  );
+  resolveCamXZClearance(camBestPos, 0.38, oy, pivot);
+
+  camTmpPos.set(ox + dx * rawT, oy + dy * rawT, oz + dz * rawT);
+  resolveCamXZClearance(camTmpPos, 0.38, oy, pivot);
+
+  let chosenDist = camBestPos.distanceTo(pivot);
+  const rawPostDist = camTmpPos.distanceTo(pivot);
+  if (rawPostDist > chosenDist + 0.05 && minWallClearDist(camTmpPos, oy) >= minWallClearDist(camBestPos, oy) - 0.03) {
+    camBestPos.copy(camTmpPos);
+    chosenDist = rawPostDist;
+  }
+
+  let chosenAngle = 0;
+  let chosenScore = chosenDist + Math.min(minWallClearDist(camBestPos, oy), 0.55) * 0.7;
+
+  // Tangential corner escape: find clear shoulder/corridor angle before collapsing to eye fallback
+  if (canSlide && chosenDist < 0.62) {
+    for (let i = 0; i < CAM_ESCAPE_ANGLES.length; i++) {
+      const ang = CAM_ESCAPE_ANGLES[i];
+      const cosA = Math.cos(ang);
+      const sinA = Math.sin(ang);
+      const rx = dx * cosA - dz * sinA;
+      const rz = dx * sinA + dz * cosA;
+      camSlideCandPos.set(ox + rx, oy + dy * 0.7, oz + rz);
+      resolveCamXZClearance(camSlideCandPos, 0.39, oy, pivot);
+
+      const candT = castCamFrustumRay(ox, oy, oz, camSlideCandPos.x, camSlideCandPos.y, camSlideCandPos.z, 0.20);
+      camTmpPos.set(
+        ox + (camSlideCandPos.x - ox) * candT,
+        oy + (camSlideCandPos.y - oy) * candT,
+        oz + (camSlideCandPos.z - oz) * candT,
+      );
+      resolveCamXZClearance(camTmpPos, 0.36, oy, pivot);
+      const dCand = camTmpPos.distanceTo(pivot);
+      if (dCand < Math.max(0.56, chosenDist + 0.14)) continue;
+
+      const cClear = minWallClearDist(camTmpPos, oy);
+      if (cClear < 0.24) continue;
+      const signPenalty = prevSlideSign !== 0 && Math.sign(ang) !== prevSlideSign ? 0.18 : 0;
+      const score = dCand + Math.min(cClear, 0.55) * 0.7 - Math.abs(ang) * 0.14 - signPenalty;
+      if (score > chosenScore) {
+        chosenScore = score;
+        chosenAngle = ang;
+        camBestPos.copy(camTmpPos);
+        chosenDist = dCand;
+      }
+    }
+  }
+
+  prevSlideSign = chosenAngle !== 0 ? Math.sign(chosenAngle) : 0;
+  const targetLookAlpha = chosenAngle !== 0 ? Math.min(1, Math.abs(chosenAngle) / 1.15 + 0.22) : 0;
+  camLookAtPlayerAlpha += (targetLookAlpha - camLookAtPlayerAlpha) * (bypassSmoothing ? 1 : Math.min(1, delta * 12));
+
+  const hitDist = camBestPos.distanceTo(pivot);
   if (bypassSmoothing || hitDist <= smoothedCamDist) {
     smoothedCamDist = hitDist;
   } else {
-    smoothedCamDist = Math.min(hitDist, smoothedCamDist + Math.max(0.05, (hitDist - smoothedCamDist) * Math.min(1, delta * 9.5)));
+    const recoverRate = chosenAngle !== 0 ? 15.0 : 9.5;
+    smoothedCamDist = Math.min(
+      hitDist,
+      Math.max(
+        chosenAngle !== 0 ? Math.min(0.56, hitDist) : 0,
+        smoothedCamDist + Math.max(0.05, (hitDist - smoothedCamDist) * Math.min(1, delta * recoverRate)),
+      ),
+    );
   }
 
-  const finalT = Math.min(minT, smoothedCamDist / desiredDist);
-  camTargetPos.set(ox + dx * finalT, oy + dy * finalT, oz + dz * finalT);
+  const scaleToSmoothed = hitDist > 0.001 ? Math.min(1, smoothedCamDist / hitDist) : 1;
+  const goalRelX = (camBestPos.x - ox) * scaleToSmoothed;
+  const goalRelY = (camBestPos.y - oy) * scaleToSmoothed;
+  const goalRelZ = (camBestPos.z - oz) * scaleToSmoothed;
+
+  if (bypassSmoothing || (camSlideOffsetX === 0 && camSlideOffsetZ === 0 && chosenAngle === 0)) {
+    camSlideOffsetX = goalRelX;
+    camSlideOffsetZ = goalRelZ;
+  } else {
+    const slideRate = Math.min(1, delta * (chosenAngle !== 0 ? 14 : 11));
+    camSlideOffsetX += (goalRelX - camSlideOffsetX) * slideRate;
+    camSlideOffsetZ += (goalRelZ - camSlideOffsetZ) * slideRate;
+    const interpLos = castCamRaySingle(ox, oy, oz, camSlideOffsetX, goalRelY, camSlideOffsetZ, 0.14, 1.0);
+    if (interpLos < 0.995) {
+      camSlideOffsetX = goalRelX;
+      camSlideOffsetZ = goalRelZ;
+    }
+  }
+
+  camTargetPos.set(ox + camSlideOffsetX, oy + goalRelY, oz + camSlideOffsetZ);
+  resolveCamXZClearance(camTargetPos, 0.37, oy, pivot);
 
   // Prevent camera from dipping below staircase flights or sloped ramps
   const groundAtCam = computeGroundHeight(camTargetPos.x, camTargetPos.z, footY - 0.6, 0.8);
@@ -555,15 +786,21 @@ function resolveThirdPersonCamera(pivot, desiredPos, footY, delta, bypassSmoothi
     camTargetPos.y = groundAtCam + 0.24;
   }
 
-  const usedDist = desiredDist * finalT;
+  const usedDist = camTargetPos.distanceTo(pivot);
   if (usedDist < 0.44) camHideMeshState = true;
   else if (usedDist > 0.50) camHideMeshState = false;
 
   const hidePlayerMesh = allowEyeFallback && camHideMeshState;
   isThirdPersonEyeFallback = hidePlayerMesh;
   if (hidePlayerMesh) {
+    camLookAtPlayerAlpha = 0;
     camTargetPos.copy(pivot);
+    resolveCamXZClearance(camTargetPos, 0.34, oy, pivot);
   }
+
+  const finalWallClear = minWallClearDist(camTargetPos, camTargetPos.y);
+  syncCameraNear((hidePlayerMesh || finalWallClear < 0.42) ? 0.045 : baseCamNear);
+
   return { camPos: camTargetPos, hidePlayerMesh };
 }
 const sittingState = {
@@ -654,8 +891,27 @@ function setMode(studioMode) {
   }
 }
 
+function setUltraFastPerf(enabled) {
+  ultraFastMode = enabled;
+  if (!enabled) lowFpsStreak = 0;
+  if (inStudio) return;
+  const dpr = window.devicePixelRatio || 1;
+  const isLow = quality === 'low';
+  if (enabled && isLow) {
+    renderer.setPixelRatio(Math.min(dpr, 0.54));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    if (sun) sun.visible = false;
+    if (hemisphereLight) hemisphereLight.intensity = 1.65;
+    document.body.classList.add('low-perf-ui');
+  }
+}
+
 function applyQuality(nextQuality) {
   quality = nextQuality;
+  if (quality !== 'low') {
+    ultraFastMode = false;
+    lowFpsStreak = 0;
+  }
   try {
     localStorage.setItem('taltola_quality', quality);
   } catch {}
@@ -663,7 +919,7 @@ function applyQuality(nextQuality) {
   const isLow = quality === 'low';
   const isFast = isLow || quality === 'medium';
   const ratios = {
-    low: Math.min(dpr, 0.72),
+    low: Math.min(dpr, ultraFastMode ? 0.54 : 0.62),
     medium: Math.min(dpr, 0.85),
     high: Math.min(dpr, 1.0),
     ultra: Math.min(dpr * 1.15, 1.25),
@@ -679,14 +935,16 @@ function applyQuality(nextQuality) {
   renderer.shadowMap.autoUpdate = false;
   if (useShadows) renderer.shadowMap.needsUpdate = true;
 
+  document.body.classList.toggle('low-perf-ui', isLow);
+
   if (!inStudio) {
-    scene.fog.near = isLow ? 34 : 46;
-    scene.fog.far = isLow ? 82 : 112;
-    camera.far = isLow ? 90 : 145;
+    scene.fog.near = isLow ? 26 : 46;
+    scene.fog.far = isLow ? 60 : 112;
+    camera.far = isLow ? 66 : 145;
     camera.updateProjectionMatrix();
   }
 
-  // Use a lean 2-light rig (Hemisphere + Sun) on low/medium for 60-120 FPS, keeping full 5-light cinematics on high/ultra & Studio
+  // Use a lean 2-light rig (Hemisphere + Sun) on low/medium (single hemisphere if ultraFastMode)
   const useExtraLights = !isFast || inStudio;
   if (studioKeyLight) studioKeyLight.visible = useExtraLights;
   if (fillDirLight) {
@@ -699,11 +957,12 @@ function applyQuality(nextQuality) {
   }
   if (hemisphereLight) {
     hemisphereLight.visible = true;
-    hemisphereLight.intensity = isFast && !inStudio ? 1.14 : 0.58;
+    hemisphereLight.intensity = ultraFastMode && !inStudio ? 1.65 : (isFast && !inStudio ? 1.14 : 0.58);
     hemisphereLight.color.setHex(isFast && !inStudio ? 0xf6f2ea : 0xdcebf2);
     hemisphereLight.groundColor.setHex(isFast && !inStudio ? 0x857868 : 0x5c5346);
   }
   if (sun) {
+    sun.visible = !ultraFastMode || inStudio;
     sun.intensity = isFast && !inStudio ? 1.08 : 1.45;
   }
 
@@ -723,7 +982,9 @@ function applyQuality(nextQuality) {
   }
 
   sceneMaterials?.setQualityMode?.(quality);
+  environment?.tower?.setQualityMode?.(quality);
   playerCharacter?.setQualityMode?.(quality);
+  if (environment?.farGroup) environment.farGroup.visible = !isLow;
 
   for (const input of qualityInputs) {
     if (input) input.value = quality;
@@ -2404,21 +2665,31 @@ function updateMovement(delta) {
 
   if (playerCharacter && activeCamMode === 'back') {
     const followDist = insideLiftNow ? 0.72 : (insideHouse ? 1.15 : 1.95);
+    const pitchLift = THREE.MathUtils.clamp(-controls.euler.x * 0.42, -0.32, 0.42);
     camDesiredPos.copy(playerPos).addScaledVector(forwardVec, -followDist);
-    camDesiredPos.y = playerPos.y + (insideHouse ? 0.12 : 0.22);
-    const camRes = resolveThirdPersonCamera(playerPos, camDesiredPos, camFootY, delta, camModeChanged, true);
+    camDesiredPos.y = THREE.MathUtils.clamp(
+      playerPos.y + (insideHouse ? 0.12 : 0.22) + pitchLift,
+      camFootY + 0.40,
+      camFootY + (insideHouse ? 2.26 : 2.85),
+    );
+    const camRes = resolveThirdPersonCamera(playerPos, camDesiredPos, camFootY, delta, camModeChanged, true, !sittingState.active);
     hidePlayerMesh = camRes.hidePlayerMesh;
     camera.position.copy(camRes.camPos);
   } else if (playerCharacter && activeCamMode === 'front') {
     camDesiredPos.copy(playerPos).addScaledVector(forwardVec, insideLiftNow ? 0.72 : 1.15);
     camDesiredPos.y = playerPos.y - 0.08;
-    const camRes = resolveThirdPersonCamera(playerPos, camDesiredPos, camFootY, delta, camModeChanged, true);
+    const camRes = resolveThirdPersonCamera(playerPos, camDesiredPos, camFootY, delta, camModeChanged, true, false);
     hidePlayerMesh = camRes.hidePlayerMesh;
     camera.position.copy(camRes.camPos);
   } else {
     isThirdPersonEyeFallback = false;
     smoothedCamDist = 0.0;
     camHideMeshState = false;
+    camLookAtPlayerAlpha = 0;
+    camSlideOffsetX = 0;
+    camSlideOffsetZ = 0;
+    prevSlideSign = 0;
+    if (baseCamNear > 0) syncCameraNear(baseCamNear);
     if (grounded && speedMag > 0.35) {
       bobPhase += delta * (isSprinting ? 13.5 : 9.5);
       const bobOffset = Math.sin(bobPhase) * 0.036 * Math.min(1, speedMag / maxSpeed);
@@ -2467,7 +2738,7 @@ function animate() {
   } else {
     if (environment?.tower) environment.tower.update(delta, playerPos, isLow);
     updateMovement(delta);
-    // Smart indoor building & exterior foliage culling for steady 60-120 FPS inside upper rooms
+    // Smart indoor building & exterior culling for steady 60-120 FPS inside upper rooms
     const fyNow = playerPos.y - EYE_HEIGHT;
     const deepInTowerUpper = fyNow >= 3.2 && playerPos.x < -5.8 && playerPos.z > 14.7;
     if (house?.group && house.group.visible === deepInTowerUpper) {
@@ -2476,6 +2747,25 @@ function animate() {
     const deepInTowerRoom = fyNow >= 3.2 && fyNow < 29.8 && playerPos.x < -7.0 && playerPos.z > 15.0;
     if (environment?.detailsGroup && environment.detailsGroup.visible === deepInTowerRoom) {
       environment.detailsGroup.visible = !deepInTowerRoom;
+    }
+    const inTowerUpperSpan = fyNow >= 3.2 && fyNow < 29.8;
+    const inEnclosedLobbyX = (isLow || ultraFastMode) ? -9.2 : -11.6;
+    const inWindowlessTower = inTowerUpperSpan && (
+      (playerPos.x <= inEnclosedLobbyX && playerPos.z >= 18.72 && playerPos.z <= 23.12) ||
+      (playerPos.x <= -16.65 && playerPos.z >= 18.72 && playerPos.z <= 21.30) ||
+      (ultraFastMode && playerPos.x <= -13.5 && playerPos.z >= 23.45 && playerPos.z <= 28.10)
+    );
+    if (environment?.tower?.exteriorStaticGroup && environment.tower.exteriorStaticGroup.visible === inWindowlessTower) {
+      environment.tower.exteriorStaticGroup.visible = !inWindowlessTower;
+    }
+    if (environment?.roadBaseGroup && environment.roadBaseGroup.visible === inWindowlessTower) {
+      environment.roadBaseGroup.visible = !inWindowlessTower;
+    }
+    if (environment?.farGroup) {
+      const wantFar = !isLow && !inWindowlessTower;
+      if (environment.farGroup.visible !== wantFar) {
+        environment.farGroup.visible = wantFar;
+      }
     }
     if (house && !deepInTowerUpper) house.update(delta, playerPos, isLow);
     if (environment && !isLow && !deepInTowerUpper) environment.update(elapsed);
@@ -2494,6 +2784,14 @@ function animate() {
       camera.lookAt(playerPos.x, playerPos.y - 0.12, playerPos.z);
       renderActiveScene();
       camera.quaternion.copy(savedCameraQuat);
+    } else if (playerCharacter && playerCharacter.state.cameraMode === 'back' && !isThirdPersonEyeFallback && camLookAtPlayerAlpha > 0.02) {
+      savedCameraQuat.copy(camera.quaternion);
+      camLookTarget.set(playerPos.x + forwardVec.x * 0.18, playerPos.y - 0.12, playerPos.z + forwardVec.z * 0.18);
+      camera.lookAt(camLookTarget);
+      camLookAtQuat.copy(camera.quaternion);
+      camera.quaternion.copy(savedCameraQuat).slerp(camLookAtQuat, camLookAtPlayerAlpha);
+      renderActiveScene();
+      camera.quaternion.copy(savedCameraQuat);
     } else {
       renderActiveScene();
     }
@@ -2504,9 +2802,20 @@ function animate() {
   if (now - fpsTime > 800) {
     const currentFps = Math.round((fpsFrames * 1000) / (now - fpsTime));
     fpsLabel.textContent = `${currentFps} FPS`;
-    // Auto-adapt to Low / Fast 60-120 FPS mode if FPS drops below 54 FPS
-    if (ready && currentFps < 54 && quality !== 'low') {
-      applyQuality('low');
+    // Auto-adapt to Low / Fast 60-120 FPS mode if FPS drops below 54 FPS, and single-light mode if still < 34 FPS (e.g. software WebGL)
+    if (ready && !inStudio) {
+      if (currentFps < 54 && quality !== 'low') {
+        applyQuality('low');
+      } else if (quality === 'low' && !ultraFastMode) {
+        if (currentFps < 34) {
+          lowFpsStreak++;
+          if (lowFpsStreak >= 2) {
+            setUltraFastPerf(true);
+          }
+        } else {
+          lowFpsStreak = 0;
+        }
+      }
     }
     fpsFrames = 0;
     fpsTime = now;

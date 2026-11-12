@@ -353,12 +353,19 @@ export function createMaterials(renderer, manager) {
   const allMaterials = Object.values(materials);
   materials.setQualityMode = (quality) => {
     const useBump = quality === 'ultra';
+    const nextAniso = quality === 'low' ? 1 : anisotropy;
     for (const mat of allMaterials) {
-      if (!mat || !mat.userData || !mat.userData.origBumpMap) continue;
-      const nextBump = useBump ? mat.userData.origBumpMap : null;
-      if (mat.bumpMap !== nextBump) {
-        mat.bumpMap = nextBump;
-        mat.needsUpdate = true;
+      if (!mat) continue;
+      if (mat.userData && mat.userData.origBumpMap) {
+        const nextBump = useBump ? mat.userData.origBumpMap : null;
+        if (mat.bumpMap !== nextBump) {
+          mat.bumpMap = nextBump;
+          mat.needsUpdate = true;
+        }
+      }
+      if (mat.map && mat.map.anisotropy !== nextAniso) {
+        mat.map.anisotropy = nextAniso;
+        mat.map.needsUpdate = true;
       }
     }
   };
