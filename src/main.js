@@ -133,6 +133,439 @@ let lastPromptText = null;
 let lastZoneText = null;
 let lastSyncedEmote = undefined;
 const camTargetPos = new THREE.Vector3();
+const camDesiredPos = new THREE.Vector3();
+const camPivotPos = new THREE.Vector3();
+const camRayDelta = new THREE.Vector3();
+let smoothedCamDist = 1.95;
+let camHideMeshState = false;
+let isThirdPersonEyeFallback = false;
+let lastResolvedCamMode = null;
+
+const MAX_CAM_BOXES = 128;
+const camBoxData = new Float32Array(MAX_CAM_BOXES * 6);
+let camBoxCount = 0;
+
+function pushCamBox(x0, x1, y0, y1, z0, z1) {
+  if (camBoxCount >= MAX_CAM_BOXES) return;
+  const idx = camBoxCount * 6;
+  camBoxData[idx] = x0 < x1 ? x0 : x1;
+  camBoxData[idx + 1] = x0 > x1 ? x0 : x1;
+  camBoxData[idx + 2] = y0 < y1 ? y0 : y1;
+  camBoxData[idx + 3] = y0 > y1 ? y0 : y1;
+  camBoxData[idx + 4] = z0 < z1 ? z0 : z1;
+  camBoxData[idx + 5] = z0 > z1 ? z0 : z1;
+  camBoxCount++;
+}
+
+function pushTowerSlabCutouts(xWest, xEast, y0, y1, zNorth, zSouth) {
+  pushCamBox(xWest, xEast, y0, y1, zNorth, 18.70);
+  pushCamBox(-11.55, xEast, y0, y1, 18.70, 20.40);
+  pushCamBox(xWest, -13.38, y0, y1, 18.70, 20.40);
+  pushCamBox(xWest, xEast, y0, y1, 20.40, 21.55);
+  pushCamBox(-9.60, xEast, y0, y1, 21.55, 22.80);
+  pushCamBox(xWest, -14.20, y0, y1, 21.55, 22.80);
+  pushCamBox(xWest, xEast, y0, y1, 22.80, zSouth);
+}
+
+function pushHouseSlabCutouts(y0, y1) {
+  pushCamBox(6.0, 14.35, y0, y1, -5.40, 0.16);
+  pushCamBox(6.0, 14.35, y0, y1, 1.16, 5.40);
+  pushCamBox(6.0, 7.65, y0, y1, 0.16, 1.16);
+  pushCamBox(12.10, 14.35, y0, y1, 0.16, 1.16);
+}
+
+function collectCameraObstacleBoxes(pivot, footY) {
+  camBoxCount = 0;
+
+  // 0. Outdoor street ground plane so camera never dips under roads/earth
+  pushCamBox(-60, 40, -1.5, -0.02, -50, 50);
+
+  // 1. Outdoor roadside structures & compound boundaries (when below rooftop elevation)
+  if (footY < 16.0) {
+    pushCamBox(-46.0, -2.92, 0, 2.2, -42.0, 10.22);
+    pushCamBox(-46.0, -19.85, 0, 14.0, 14.26, 42.0);
+    pushCamBox(-19.85, -3.22, 0, 15.0, 28.58, 42.0);
+    pushCamBox(-46.0, -42.45, 0, 12.0, 9.0, 15.5);
+    pushCamBox(3.02, 22.0, 0, 7.0, 7.45, 20.85);
+    pushCamBox(7.20, 22.0, 0, 8.5, 20.85, 26.80);
+    pushCamBox(3.05, 22.0, 0, 12.5, 26.55, 42.0);
+  }
+
+  // 2. SK Arshan Alif Tower (active whenever player is inside or nearby)
+  if (pivot.x < 3.5 && pivot.z > 8.5 && pivot.z < 34.5) {
+    const L = (k) => (k === 0 ? 0.50 : 4.0 + (k - 1) * 3.0);
+    let towerK = 0;
+    let towerFy = 0.50;
+    for (let k = 0; k <= 10; k++) {
+      const y = L(k);
+      if (y <= footY + 0.55) {
+        towerK = k;
+        towerFy = y;
+      }
+    }
+
+    // Perimeter outer walls (West rear, South party wall, North lane facade)
+    pushCamBox(-19.85, -19.50, 0, 31.1, 14.25, 28.60);
+    pushCamBox(-19.85, -3.65, 0, 31.1, 28.22, 28.60);
+    pushCamBox(-19.85, -4.25, 0, 31.1, 14.28, 14.76);
+
+    // Full-height 3D Elevator Shaft walls
+    pushCamBox(-13.40, -13.25, 0.4, 34.0, 18.68, 20.42);
+    pushCamBox(-13.40, -11.52, 0.4, 34.0, 18.68, 18.80);
+    pushCamBox(-13.40, -11.52, 0.4, 34.0, 20.28, 20.42);
+    pushCamBox(-11.68, -11.52, 0.4, 34.0, 18.68, 18.96);
+    pushCamBox(-11.68, -11.52, 0.4, 34.0, 20.14, 20.42);
+
+    const towerSt = environment?.tower?.state;
+    const inLift = Boolean(environment?.tower?.isInsideLift(pivot));
+    const liftDoorClear = Boolean(environment?.tower?.isLiftOpenAtY(footY)) && (!towerSt || towerSt.liftDoorOpen > 0.72);
+    if (inLift && towerSt) {
+      pushCamBox(-13.34, -11.56, towerSt.liftY - 0.16, towerSt.liftY + 0.025, 18.74, 20.36);
+      pushCamBox(-13.34, -11.58, towerSt.liftY + 2.35, towerSt.liftY + 2.58, 18.74, 20.36);
+      if (!liftDoorClear) {
+        pushCamBox(-11.66, -11.54, towerSt.liftY, towerSt.liftY + 2.42, 18.74, 20.36);
+      }
+    } else if (!liftDoorClear) {
+      pushCamBox(-11.68, -11.52, 0.4, 34.0, 18.94, 20.16);
+    }
+
+    if (towerK === 0 && footY < 3.4) {
+      // Ground floor plinth, front piers, closed gate & ceiling slab
+      pushCamBox(-19.85, -3.25, 0.0, 0.50, 14.25, 28.60);
+      pushTowerSlabCutouts(-19.85, -3.95, 3.74, 4.02, 14.25, 28.60);
+      pushCamBox(-4.55, -4.02, 0.50, 4.0, 14.55, 18.88);
+      pushCamBox(-4.55, -4.02, 0.50, 4.0, 21.92, 26.58);
+      pushCamBox(-4.55, -4.02, 0.50, 4.0, 27.82, 28.60);
+      if (towerSt && !towerSt.gateOpen) {
+        pushCamBox(-4.45, -4.05, 0.50, 3.80, 18.88, 21.92);
+      }
+    } else if (towerK >= 1 && towerK <= 9 && footY < 29.8) {
+      // Floor & ceiling slabs (with shaft + stairwell cutouts) + cantilever balcony slabs
+      pushTowerSlabCutouts(-19.85, -5.50, towerFy - 0.26, towerFy + 0.02, 14.65, 28.35);
+      pushCamBox(-4.45, -2.85, towerFy - 0.26, towerFy + 0.02, 14.30, 18.60);
+      pushCamBox(-5.60, -3.75, towerFy - 0.26, towerFy + 0.02, 18.90, 23.30);
+      pushCamBox(-5.15, towerK % 2 === 0 ? -3.65 : -4.30, towerFy - 0.26, towerFy + 0.02, 23.60, 28.25);
+
+      const ceilY = towerFy + 3.0;
+      const nextK = towerK + 1;
+      if (nextK <= 9) {
+        pushTowerSlabCutouts(-19.85, -5.50, ceilY - 0.26, ceilY + 0.02, 14.65, 28.35);
+        pushCamBox(-4.45, -2.85, ceilY - 0.26, ceilY + 0.02, 14.30, 18.60);
+        pushCamBox(-5.60, -3.75, ceilY - 0.26, ceilY + 0.02, 18.90, 23.30);
+        pushCamBox(-5.15, nextK % 2 === 0 ? -3.65 : -4.30, ceilY - 0.26, ceilY + 0.02, 23.60, 28.25);
+      } else {
+        pushTowerSlabCutouts(-19.85, -3.65, 30.76, 31.04, 14.30, 28.60);
+      }
+
+      // Interior partition & facade walls for current floor (and next floor if climbing stairs)
+      const maxK = (footY - towerFy > 1.35 && towerK < 9) ? towerK + 1 : towerK;
+      for (let fk = towerK; fk <= maxK; fk++) {
+        const fy = L(fk);
+        const wTop = fy + 2.98;
+
+        // Front balcony walls (with open walkable doorways)
+        pushCamBox(-4.46, -4.18, fy, wTop, 14.58, 15.20);
+        pushCamBox(-4.46, -4.18, fy, wTop, 16.35, 18.60);
+        pushCamBox(-4.46, -4.18, fy + 2.32, wTop, 15.20, 16.35);
+
+        pushCamBox(-5.62, -3.75, fy, wTop, 18.58, 18.90);
+        pushCamBox(-5.62, -3.75, fy, wTop, 23.30, 23.60);
+        pushCamBox(-5.72, -5.48, fy, wTop, 18.88, 19.30);
+        pushCamBox(-5.72, -5.48, fy, wTop, 20.45, 23.32);
+        pushCamBox(-5.72, -5.48, fy + 2.30, wTop, 19.30, 20.45);
+
+        pushCamBox(-5.22, -4.94, fy, wTop, 23.58, 24.10);
+        pushCamBox(-5.22, -4.94, fy, wTop, 25.30, 28.50);
+        pushCamBox(-5.22, -4.94, fy + 2.30, wTop, 24.10, 25.30);
+
+        // North Lobby / Flat A Wall (z = 18.63, open Flat A door x=-8.60..-7.20 & West Bath door x=-18.30..-17.10)
+        pushCamBox(-7.20, -5.50, fy, wTop, 18.53, 18.74);
+        pushCamBox(-17.10, -8.60, fy, wTop, 18.53, 18.74);
+        pushCamBox(-19.85, -18.30, fy, wTop, 18.53, 18.74);
+        pushCamBox(-8.60, -7.20, fy + 2.22, wTop, 18.53, 18.74);
+        pushCamBox(-18.30, -17.10, fy + 2.22, wTop, 18.53, 18.74);
+
+        // South Lobby / Flat B Wall (z = 23.26, open Flat B door x=-8.60..-7.20)
+        pushCamBox(-7.20, -5.05, fy, wTop, 23.16, 23.37);
+        pushCamBox(-19.85, -8.60, fy, wTop, 23.16, 23.37);
+        pushCamBox(-8.60, -7.20, fy + 2.22, wTop, 23.16, 23.37);
+
+        // North Wing Living / Bedroom Wall (x = -13.30, open door z=16.00..17.30)
+        pushCamBox(-13.40, -13.20, fy, wTop, 14.68, 16.00);
+        pushCamBox(-13.40, -13.20, fy, wTop, 17.30, 18.63);
+        pushCamBox(-13.40, -13.20, fy + 2.22, wTop, 16.00, 17.30);
+
+        // South Wing Dining / RGB Gaming Wall (x = -13.30, open door z=24.90..26.30)
+        pushCamBox(-13.40, -13.20, fy, wTop, 23.26, 24.90);
+        pushCamBox(-13.40, -13.20, fy, wTop, 26.30, 28.50);
+        pushCamBox(-13.40, -13.20, fy + 2.22, wTop, 24.90, 26.30);
+
+        // West En-Suite Attached Bathroom Walls (open door x=-18.30..-17.20) + shower glass
+        pushCamBox(-16.75, -16.56, fy, wTop, 18.63, 21.40);
+        pushCamBox(-17.20, -16.56, fy, wTop, 21.22, 21.42);
+        pushCamBox(-19.75, -18.30, fy, wTop, 21.22, 21.42);
+        pushCamBox(-18.30, -17.20, fy + 2.22, wTop, 21.22, 21.42);
+        pushCamBox(-18.38, -18.24, fy, fy + 2.15, 18.65, 19.65);
+
+        // Landing lintel above elevator door
+        pushCamBox(-11.68, -11.52, fy + 2.28, wTop, 18.96, 20.14);
+
+        // Tall furniture (>= 1.75m like Fridges & Wardrobes) so camera stays cleanly in front
+        const fBoxes = getFurnitureBoxesForFloor('tower', fy);
+        for (const box of fBoxes) {
+          if (box.h >= 1.75) {
+            pushCamBox(box.minX, box.maxX, fy, fy + box.h, box.minZ, box.maxZ);
+          }
+        }
+      }
+    } else if (footY >= 29.8) {
+      // Rooftop Sky Lounge & Penthouse Mumty Room
+      pushTowerSlabCutouts(-19.85, -3.65, 30.76, 31.04, 14.30, 28.60);
+      pushCamBox(-16.62, -16.30, 31.0, 34.0, 18.20, 23.10);
+      pushCamBox(-16.55, -9.40, 31.0, 34.0, 18.18, 18.48);
+      pushCamBox(-16.55, -9.40, 31.0, 34.0, 22.82, 23.12);
+      pushCamBox(-9.68, -9.38, 31.0, 34.0, 18.20, 18.90);
+      pushCamBox(-9.68, -9.38, 31.0, 34.0, 21.40, 23.10);
+      pushCamBox(-9.68, -9.38, 33.2, 34.0, 18.90, 21.40);
+      pushCamBox(-16.62, -9.38, 33.8, 34.2, 18.18, 23.12);
+    }
+  }
+
+  // 3. 5-Story Taltola House (active whenever player is inside or nearby)
+  if (pivot.x > 0.2 && Math.abs(pivot.z) < 12.0) {
+    let currentLevel = 0;
+    for (let sLvl = 0; sLvl <= 5; sLvl++) {
+      if (sLvl * 3.05 <= footY + 0.55) currentLevel = sLvl;
+    }
+
+    if (footY < 3.4) {
+      pushCamBox(2.36, 2.66, 0, 2.35, -42, -2.06);
+      pushCamBox(2.36, 2.66, 0, 2.35, 2.06, 7.36);
+      if (house && !house.state.gateOpen) {
+        pushCamBox(2.36, 2.66, 0, 2.35, -2.06, 2.06);
+      }
+      pushCamBox(2.4, 22.0, 0, 2.45, -20.0, -7.08);
+      pushCamBox(2.4, 22.0, 0, 2.45, 7.08, 7.48);
+    }
+
+    if (footY < 15.6) {
+      // Side walls & Back wall across all 5 floors
+      pushCamBox(5.96, 14.40, 0, 15.30, -5.50, -5.22);
+      pushCamBox(5.96, 14.40, 0, 15.30, 5.22, 5.50);
+      pushCamBox(14.12, 14.46, 3.05, 15.30, -5.48, 5.48);
+
+      // Ground floor front & back walls with openable doors
+      pushCamBox(5.92, 6.24, 0, 3.05, -5.48, -0.60);
+      pushCamBox(5.92, 6.24, 0, 3.05, 0.60, 5.48);
+      pushCamBox(5.92, 6.24, 2.30, 3.05, -0.64, 0.64);
+      if (house && !house.state.frontDoorOpen) {
+        pushCamBox(5.88, 6.20, 0, 2.35, -0.64, 0.64);
+      }
+      pushCamBox(14.12, 14.44, 0, 3.05, -5.48, -0.60);
+      pushCamBox(14.12, 14.44, 0, 3.05, 0.60, 5.48);
+      pushCamBox(14.12, 14.44, 2.30, 3.05, -0.64, 0.64);
+      if (house && !house.state.backDoorOpen) {
+        pushCamBox(14.16, 14.48, 0, 2.35, -0.64, 0.64);
+      }
+
+      if (currentLevel === 0) {
+        pushCamBox(6.0, 14.35, -0.05, 0.08, -5.40, 5.40);
+      } else if (currentLevel >= 1 && currentLevel <= 4) {
+        const floorY = currentLevel * 3.05;
+        pushHouseSlabCutouts(floorY - 0.14, floorY + 0.09);
+        pushCamBox(4.72, 6.08, floorY - 0.14, floorY + 0.09, -5.20, -1.38);
+        pushCamBox(4.72, 6.08, floorY - 0.14, floorY + 0.09, 1.44, 5.20);
+      }
+      if (currentLevel <= 4) {
+        const ceilY = (currentLevel + 1) * 3.05;
+        pushHouseSlabCutouts(ceilY - 0.14, ceilY + 0.09);
+        if (currentLevel < 4) {
+          pushCamBox(4.72, 6.08, ceilY - 0.14, ceilY + 0.09, -5.20, -1.38);
+          pushCamBox(4.72, 6.08, ceilY - 0.14, ceilY + 0.09, 1.44, 5.20);
+        }
+      }
+
+      const maxLvl = Math.min(4, (footY - currentLevel * 3.05 > 1.35) ? currentLevel + 1 : currentLevel);
+      for (let lvl = Math.min(4, currentLevel); lvl <= maxLvl; lvl++) {
+        const fy = lvl * 3.05;
+        const wTop = fy + 3.05;
+
+        if (lvl >= 1) {
+          // Upper floor front exterior wall with open balcony doorways
+          pushCamBox(5.94, 6.22, fy, wTop, -5.48, -3.25);
+          pushCamBox(5.94, 6.22, fy, wTop, -1.90, 1.90);
+          pushCamBox(5.94, 6.22, fy, wTop, 3.25, 5.48);
+          pushCamBox(5.94, 6.22, fy + 2.32, wTop, -3.25, -1.90);
+          pushCamBox(5.94, 6.22, fy + 2.32, wTop, 1.90, 3.25);
+          pushCamBox(4.72, 6.08, fy, wTop, -5.20, -5.02);
+          pushCamBox(4.72, 6.08, fy, wTop, -1.56, -1.38);
+          pushCamBox(4.72, 6.08, fy, wTop, 1.44, 1.62);
+          pushCamBox(4.72, 6.08, fy, wTop, 5.02, 5.20);
+        }
+
+        // Corridor walls (with doorways & openable flat doors)
+        pushCamBox(6.05, 7.18, fy, wTop, -1.27, -1.09);
+        pushCamBox(8.30, 12.10, fy, wTop, -1.27, -1.09);
+        pushCamBox(13.20, 14.32, fy, wTop, -1.27, -1.09);
+        pushCamBox(7.18, 8.30, fy + 2.24, wTop, -1.27, -1.09);
+        pushCamBox(12.10, 13.20, fy + 2.24, wTop, -1.27, -1.09);
+        if (house && !house.isFlatDoorOpen(lvl, -1)) {
+          pushCamBox(7.18, 8.30, fy, fy + 2.26, -1.27, -1.09);
+        }
+
+        pushCamBox(6.05, 6.38, fy, wTop, 1.09, 1.27);
+        pushCamBox(7.50, 12.20, fy, wTop, 1.09, 1.27);
+        pushCamBox(13.30, 14.32, fy, wTop, 1.09, 1.27);
+        pushCamBox(6.38, 7.50, fy + 2.24, wTop, 1.09, 1.27);
+        pushCamBox(12.20, 13.30, fy + 2.24, wTop, 1.09, 1.27);
+        if (house && !house.isFlatDoorOpen(lvl, 1)) {
+          pushCamBox(6.38, 7.50, fy, fy + 2.26, 1.09, 1.27);
+        }
+
+        // Interior room & bathroom partitions
+        for (const side of [-1, 1]) {
+          const zMin = side === -1 ? -5.36 : 2.40;
+          const zMax = side === -1 ? -2.40 : 5.36;
+          const bz = side * 2.55;
+          pushCamBox(9.56, 9.74, fy, wTop, zMin, zMax);
+          pushCamBox(11.36, 11.54, fy, wTop, zMin, zMax);
+          pushCamBox(9.56, 9.74, fy + 2.28, wTop, side * 1.27, side * 2.40);
+          pushCamBox(11.36, 11.54, fy + 2.28, wTop, side * 1.27, side * 2.40);
+          pushCamBox(9.65, 10.10, fy, wTop, bz - 0.08, bz + 0.08);
+          pushCamBox(11.00, 11.45, fy, wTop, bz - 0.08, bz + 0.08);
+          pushCamBox(10.10, 11.00, fy + 2.24, wTop, bz - 0.08, bz + 0.08);
+        }
+
+        const fBoxes = getFurnitureBoxesForFloor('house', fy);
+        for (const box of fBoxes) {
+          if (box.h >= 1.75) {
+            pushCamBox(box.minX, box.maxX, fy, fy + box.h, box.minZ, box.maxZ);
+          }
+        }
+      }
+    }
+
+    // House rooftop slab & mumty room
+    if (footY >= 14.0) {
+      pushHouseSlabCutouts(15.11, 15.34);
+      pushCamBox(7.50, 13.65, 15.25, 18.0, -1.30, -1.12);
+      pushCamBox(7.50, 13.65, 15.25, 18.0, 1.15, 1.32);
+      pushCamBox(13.45, 13.68, 15.25, 18.0, -1.25, 1.25);
+    }
+  }
+}
+
+function resolveThirdPersonCamera(pivot, desiredPos, footY, delta, bypassSmoothing = false, allowEyeFallback = true) {
+  collectCameraObstacleBoxes(pivot, footY);
+  camRayDelta.subVectors(desiredPos, pivot);
+  const desiredDist = camRayDelta.length();
+  if (desiredDist < 0.001) {
+    isThirdPersonEyeFallback = false;
+    return { camPos: desiredPos, hidePlayerMesh: false };
+  }
+
+  let minT = 1.0;
+  const ox = pivot.x;
+  const oy = pivot.y;
+  const oz = pivot.z;
+  const dx = camRayDelta.x;
+  const dy = camRayDelta.y;
+  const dz = camRayDelta.z;
+
+  for (let i = 0; i < camBoxCount; i++) {
+    const idx = i * 6;
+    const bMinX = camBoxData[idx];
+    const bMaxX = camBoxData[idx + 1];
+    const bMinY = camBoxData[idx + 2];
+    const bMaxY = camBoxData[idx + 3];
+    const bMinZ = camBoxData[idx + 4];
+    const bMaxZ = camBoxData[idx + 5];
+
+    // Keep pivot strictly outside padded AABB so parallel walls never stall the spring-arm at t = 0
+    const cx = ox < bMinX ? bMinX - ox : (ox > bMaxX ? ox - bMaxX : 0);
+    const cy = oy < bMinY ? bMinY - oy : (oy > bMaxY ? oy - bMaxY : 0);
+    const cz = oz < bMinZ ? bMinZ - oz : (oz > bMaxZ ? oz - bMaxZ : 0);
+    const dPivot = Math.hypot(cx, cy, cz);
+    const pad = dPivot > 0.025 ? Math.min(0.22, dPivot - 0.02) : 0.0;
+
+    const x0 = bMinX - pad;
+    const x1 = bMaxX + pad;
+    const y0 = bMinY - pad;
+    const y1 = bMaxY + pad;
+    const z0 = bMinZ - pad;
+    const z1 = bMaxZ + pad;
+
+    let tMin = 0.0;
+    let tMax = minT;
+
+    if (Math.abs(dx) < 1e-6) {
+      if (ox < x0 || ox > x1) continue;
+    } else {
+      const inv = 1 / dx;
+      let t1 = (x0 - ox) * inv;
+      let t2 = (x1 - ox) * inv;
+      if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+      if (t1 > tMin) tMin = t1;
+      if (t2 < tMax) tMax = t2;
+      if (tMin > tMax) continue;
+    }
+
+    if (Math.abs(dy) < 1e-6) {
+      if (oy < y0 || oy > y1) continue;
+    } else {
+      const inv = 1 / dy;
+      let t1 = (y0 - oy) * inv;
+      let t2 = (y1 - oy) * inv;
+      if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+      if (t1 > tMin) tMin = t1;
+      if (t2 < tMax) tMax = t2;
+      if (tMin > tMax) continue;
+    }
+
+    if (Math.abs(dz) < 1e-6) {
+      if (oz < z0 || oz > z1) continue;
+    } else {
+      const inv = 1 / dz;
+      let t1 = (z0 - oz) * inv;
+      let t2 = (z1 - oz) * inv;
+      if (t1 > t2) { const tmp = t1; t1 = t2; t2 = tmp; }
+      if (t1 > tMin) tMin = t1;
+      if (t2 < tMax) tMax = t2;
+      if (tMin > tMax) continue;
+    }
+
+    if (tMin >= 0 && tMin < minT) {
+      minT = tMin;
+    }
+  }
+
+  const hitDist = desiredDist * minT;
+  if (bypassSmoothing || hitDist <= smoothedCamDist) {
+    smoothedCamDist = hitDist;
+  } else {
+    smoothedCamDist = Math.min(hitDist, smoothedCamDist + Math.max(0.05, (hitDist - smoothedCamDist) * Math.min(1, delta * 9.5)));
+  }
+
+  const finalT = Math.min(minT, smoothedCamDist / desiredDist);
+  camTargetPos.set(ox + dx * finalT, oy + dy * finalT, oz + dz * finalT);
+
+  // Prevent camera from dipping below staircase flights or sloped ramps
+  const groundAtCam = computeGroundHeight(camTargetPos.x, camTargetPos.z, footY - 0.6, 0.8);
+  if (groundAtCam > -10 && camTargetPos.y < groundAtCam + 0.24 && Math.abs(groundAtCam - footY) < 2.2) {
+    camTargetPos.y = groundAtCam + 0.24;
+  }
+
+  const usedDist = desiredDist * finalT;
+  if (usedDist < 0.44) camHideMeshState = true;
+  else if (usedDist > 0.50) camHideMeshState = false;
+
+  const hidePlayerMesh = allowEyeFallback && camHideMeshState;
+  isThirdPersonEyeFallback = hidePlayerMesh;
+  if (hidePlayerMesh) {
+    camTargetPos.copy(pivot);
+  }
+  return { camPos: camTargetPos, hidePlayerMesh };
+}
 const sittingState = {
   active: false,
   seat: null,
@@ -228,9 +661,10 @@ function applyQuality(nextQuality) {
   } catch {}
   const dpr = window.devicePixelRatio || 1;
   const isLow = quality === 'low';
+  const isFast = isLow || quality === 'medium';
   const ratios = {
-    low: Math.min(dpr, 0.78),
-    medium: Math.min(dpr, 0.92),
+    low: Math.min(dpr, 0.72),
+    medium: Math.min(dpr, 0.85),
     high: Math.min(dpr, 1.0),
     ultra: Math.min(dpr * 1.15, 1.25),
   };
@@ -246,21 +680,32 @@ function applyQuality(nextQuality) {
   if (useShadows) renderer.shadowMap.needsUpdate = true;
 
   if (!inStudio) {
-    scene.fog.near = isLow ? 36 : 48;
-    scene.fog.far = isLow ? 88 : 115;
-    camera.far = isLow ? 95 : 145;
+    scene.fog.near = isLow ? 34 : 46;
+    scene.fog.far = isLow ? 82 : 112;
+    camera.far = isLow ? 90 : 145;
     camera.updateProjectionMatrix();
   }
 
-  // Keep directional fill light active in all modes so walls, corners & the character's hair/back have true 3D shading without white washout
-  const useExtraLights = !isLow || inStudio;
+  // Use a lean 2-light rig (Hemisphere + Sun) on low/medium for 60-120 FPS, keeping full 5-light cinematics on high/ultra & Studio
+  const useExtraLights = !isFast || inStudio;
   if (studioKeyLight) studioKeyLight.visible = useExtraLights;
   if (fillDirLight) {
-    fillDirLight.visible = true;
-    fillDirLight.intensity = isLow && !inStudio ? 0.58 : 0.68;
+    fillDirLight.visible = useExtraLights;
+    fillDirLight.intensity = 0.68;
   }
-  if (ambientLight) ambientLight.intensity = isLow && !inStudio ? 0.68 : 0.62;
-  if (hemisphereLight) hemisphereLight.intensity = isLow && !inStudio ? 0.64 : 0.58;
+  if (ambientLight) {
+    ambientLight.visible = useExtraLights;
+    ambientLight.intensity = 0.62;
+  }
+  if (hemisphereLight) {
+    hemisphereLight.visible = true;
+    hemisphereLight.intensity = isFast && !inStudio ? 1.14 : 0.58;
+    hemisphereLight.color.setHex(isFast && !inStudio ? 0xf6f2ea : 0xdcebf2);
+    hemisphereLight.groundColor.setHex(isFast && !inStudio ? 0x857868 : 0x5c5346);
+  }
+  if (sun) {
+    sun.intensity = isFast && !inStudio ? 1.08 : 1.45;
+  }
 
   if (sun) {
     sun.castShadow = useShadows;
@@ -1809,6 +2254,30 @@ function updateMovement(delta) {
       controls.getHorizontalVectors(forwardVec, rightVec);
       controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
 
+      let sitHideMesh = false;
+      if (playerCharacter && playerCharacter.state.cameraMode !== 'first') {
+        // Place camera in front of the seat (into the open room) and clamp against any nearby walls!
+        const angleOffset = playerCharacter.state.cameraMode === 'front' ? 0.16 : -0.36;
+        const camAngle = seat.yaw + angleOffset;
+        const camDist = 1.48;
+        camPivotPos.set(seat.seatX, seat.fy + 1.38, seat.seatZ);
+        camDesiredPos.set(
+          seat.seatX + Math.sin(camAngle) * camDist,
+          seat.fy + 1.38,
+          seat.seatZ + Math.cos(camAngle) * camDist
+        );
+        const camRes = resolveThirdPersonCamera(camPivotPos, camDesiredPos, seat.fy, delta, true, false);
+        sitHideMesh = camPivotPos.distanceTo(camRes.camPos) < 0.34;
+        if (sitHideMesh) camRes.camPos.set(seat.seatX, seat.fy + 1.28, seat.seatZ);
+        isThirdPersonEyeFallback = sitHideMesh;
+        lastResolvedCamMode = playerCharacter.state.cameraMode;
+        camera.position.copy(camRes.camPos);
+      } else {
+        isThirdPersonEyeFallback = false;
+        lastResolvedCamMode = 'first';
+        camera.position.copy(playerPos);
+      }
+
       if (playerCharacter) {
         playerCharacter.state.emote = 'sit';
         playerCharacter.state.facingYaw = seat.yaw;
@@ -1820,27 +2289,13 @@ function updateMovement(delta) {
           grounded: true,
           isSprinting: false,
           inStudio: false,
+          hideMesh: sitHideMesh,
         });
       }
 
       if (indoorLight) {
-        indoorLight.visible = quality !== 'low';
+        indoorLight.visible = quality !== 'low' && quality !== 'medium';
         indoorLight.position.set(playerPos.x, playerPos.y + 0.65, playerPos.z);
-      }
-
-      if (playerCharacter && playerCharacter.state.cameraMode !== 'first') {
-        // Place camera in front of the seat (into the open room) so it never clips into the wall behind the seat!
-        const angleOffset = playerCharacter.state.cameraMode === 'front' ? 0.16 : -0.36;
-        const camAngle = seat.yaw + angleOffset;
-        const camDist = 1.48;
-        camTargetPos.set(
-          seat.seatX + Math.sin(camAngle) * camDist,
-          seat.fy + 1.38,
-          seat.seatZ + Math.cos(camAngle) * camDist
-        );
-        camera.position.copy(camTargetPos);
-      } else {
-        camera.position.copy(playerPos);
       }
       updateHUDPrompt();
       return;
@@ -1931,6 +2386,48 @@ function updateMovement(delta) {
   const speedMag = horizontalVelocity.length();
   controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
 
+  const camFootY = playerPos.y - EYE_HEIGHT;
+  const insideHouse = (playerPos.x > 4.7 && playerPos.x < 14.6 && Math.abs(playerPos.z) < 5.3)
+    || (playerPos.x < -2.8 && playerPos.x > -19.9 && playerPos.z > 14.3 && playerPos.z < 28.6);
+
+  if (indoorLight) {
+    indoorLight.visible = insideHouse && quality !== 'low' && quality !== 'medium';
+    if (indoorLight.visible) {
+      indoorLight.position.set(playerPos.x, playerPos.y + 0.55, playerPos.z);
+    }
+  }
+
+  const activeCamMode = playerCharacter ? playerCharacter.state.cameraMode : 'first';
+  const camModeChanged = activeCamMode !== lastResolvedCamMode;
+  lastResolvedCamMode = activeCamMode;
+  let hidePlayerMesh = false;
+
+  if (playerCharacter && activeCamMode === 'back') {
+    const followDist = insideLiftNow ? 0.72 : (insideHouse ? 1.15 : 1.95);
+    camDesiredPos.copy(playerPos).addScaledVector(forwardVec, -followDist);
+    camDesiredPos.y = playerPos.y + (insideHouse ? 0.12 : 0.22);
+    const camRes = resolveThirdPersonCamera(playerPos, camDesiredPos, camFootY, delta, camModeChanged, true);
+    hidePlayerMesh = camRes.hidePlayerMesh;
+    camera.position.copy(camRes.camPos);
+  } else if (playerCharacter && activeCamMode === 'front') {
+    camDesiredPos.copy(playerPos).addScaledVector(forwardVec, insideLiftNow ? 0.72 : 1.15);
+    camDesiredPos.y = playerPos.y - 0.08;
+    const camRes = resolveThirdPersonCamera(playerPos, camDesiredPos, camFootY, delta, camModeChanged, true);
+    hidePlayerMesh = camRes.hidePlayerMesh;
+    camera.position.copy(camRes.camPos);
+  } else {
+    isThirdPersonEyeFallback = false;
+    smoothedCamDist = 0.0;
+    camHideMeshState = false;
+    if (grounded && speedMag > 0.35) {
+      bobPhase += delta * (isSprinting ? 13.5 : 9.5);
+      const bobOffset = Math.sin(bobPhase) * 0.036 * Math.min(1, speedMag / maxSpeed);
+      camera.position.set(playerPos.x, playerPos.y + bobOffset, playerPos.z);
+    } else {
+      camera.position.copy(playerPos);
+    }
+  }
+
   if (playerCharacter) {
     playerCharacter.update(delta, {
       position: playerPos,
@@ -1942,37 +2439,9 @@ function updateMovement(delta) {
       moveDirX: wishDir.x,
       moveDirZ: wishDir.z,
       inStudio: false,
+      hideMesh: hidePlayerMesh,
     });
     syncEmoteUI(playerCharacter.state.emote);
-  }
-
-  const insideHouse = (playerPos.x > 4.7 && playerPos.x < 14.6 && Math.abs(playerPos.z) < 5.3)
-    || (playerPos.x < -2.8 && playerPos.x > -19.9 && playerPos.z > 14.3 && playerPos.z < 28.6);
-
-  if (indoorLight) {
-    indoorLight.visible = insideHouse && quality !== 'low';
-    if (indoorLight.visible) {
-      indoorLight.position.set(playerPos.x, playerPos.y + 0.55, playerPos.z);
-    }
-  }
-
-  if (playerCharacter && playerCharacter.state.cameraMode === 'back') {
-    const followDist = insideLiftNow ? 0.72 : (insideHouse ? 1.15 : 1.95);
-    camTargetPos.copy(playerPos).addScaledVector(forwardVec, -followDist);
-    camTargetPos.y = playerPos.y + (insideHouse ? 0.12 : 0.22);
-    camera.position.copy(camTargetPos);
-  } else if (playerCharacter && playerCharacter.state.cameraMode === 'front') {
-    camTargetPos.copy(playerPos).addScaledVector(forwardVec, insideLiftNow ? 0.72 : 1.15);
-    camTargetPos.y = playerPos.y - 0.08;
-    camera.position.copy(camTargetPos);
-  } else {
-    if (grounded && speedMag > 0.35) {
-      bobPhase += delta * (isSprinting ? 13.5 : 9.5);
-      const bobOffset = Math.sin(bobPhase) * 0.036 * Math.min(1, speedMag / maxSpeed);
-      camera.position.set(playerPos.x, playerPos.y + bobOffset, playerPos.z);
-    } else {
-      camera.position.copy(playerPos);
-    }
   }
 
   updateHUDPrompt();
@@ -1998,10 +2467,15 @@ function animate() {
   } else {
     if (environment?.tower) environment.tower.update(delta, playerPos, isLow);
     updateMovement(delta);
-    // Smart indoor building culling: hide distant Taltola House when deep inside an upper floor of Sk Arshan Tower
-    const deepInTowerUpper = (playerPos.y - EYE_HEIGHT) >= 3.2 && playerPos.x < -5.8 && playerPos.z > 14.7;
+    // Smart indoor building & exterior foliage culling for steady 60-120 FPS inside upper rooms
+    const fyNow = playerPos.y - EYE_HEIGHT;
+    const deepInTowerUpper = fyNow >= 3.2 && playerPos.x < -5.8 && playerPos.z > 14.7;
     if (house?.group && house.group.visible === deepInTowerUpper) {
       house.group.visible = !deepInTowerUpper;
+    }
+    const deepInTowerRoom = fyNow >= 3.2 && fyNow < 29.8 && playerPos.x < -7.0 && playerPos.z > 15.0;
+    if (environment?.detailsGroup && environment.detailsGroup.visible === deepInTowerRoom) {
+      environment.detailsGroup.visible = !deepInTowerRoom;
     }
     if (house && !deepInTowerUpper) house.update(delta, playerPos, isLow);
     if (environment && !isLow && !deepInTowerUpper) environment.update(elapsed);
@@ -2010,12 +2484,12 @@ function animate() {
       camera.position.z = 10.5 + Math.sin(elapsed * 0.12) * 0.25;
       camera.lookAt(4.6, 4.4, 0);
       renderActiveScene();
-    } else if (sittingState.active && sittingState.seat && playerCharacter && playerCharacter.state.cameraMode !== 'first') {
+    } else if (sittingState.active && sittingState.seat && playerCharacter && playerCharacter.state.cameraMode !== 'first' && !isThirdPersonEyeFallback) {
       savedCameraQuat.copy(camera.quaternion);
       camera.lookAt(sittingState.seat.seatX, sittingState.seat.fy + 0.92, sittingState.seat.seatZ);
       renderActiveScene();
       camera.quaternion.copy(savedCameraQuat);
-    } else if (playerCharacter && playerCharacter.state.cameraMode === 'front') {
+    } else if (playerCharacter && playerCharacter.state.cameraMode === 'front' && !isThirdPersonEyeFallback) {
       savedCameraQuat.copy(camera.quaternion);
       camera.lookAt(playerPos.x, playerPos.y - 0.12, playerPos.z);
       renderActiveScene();
@@ -2030,8 +2504,8 @@ function animate() {
   if (now - fpsTime > 800) {
     const currentFps = Math.round((fpsFrames * 1000) / (now - fpsTime));
     fpsLabel.textContent = `${currentFps} FPS`;
-    // Auto-adapt to Low / Fast 60-120 FPS mode if FPS drops below 48 FPS
-    if (ready && currentFps < 48 && quality !== 'low') {
+    // Auto-adapt to Low / Fast 60-120 FPS mode if FPS drops below 54 FPS
+    if (ready && currentFps < 54 && quality !== 'low') {
       applyQuality('low');
     }
     fpsFrames = 0;

@@ -902,7 +902,7 @@ function buildBoundaryAndBackyard(staticGroup, m) {
   rodBetween(staticGroup, [17.6, 2.15, -4.8], [17.6, 2.15, -1.6], 0.012, m.rail, 6);
   const backyardClothes = [0xd94f43, 0x2d7a9c, 0xf2c94c, 0x4b9363];
   for (let i = 0; i < 4; i++) {
-    const clothMat = new THREE.MeshStandardMaterial({ color: backyardClothes[i], roughness: 0.9, side: THREE.DoubleSide });
+    const clothMat = new THREE.MeshLambertMaterial({ color: backyardClothes[i], side: THREE.DoubleSide });
     const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.88 + (i % 2) * 0.2, 4, 4), clothMat);
     cloth.geometry.rotateY(Math.PI / 2);
     cloth.position.set(17.6, 1.68, -4.2 + i * 0.78);
@@ -946,7 +946,7 @@ function buildBoundaryAndBackyard(staticGroup, m) {
   ctx.fillText('TO-LET', 256, 94);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  const signMaterial = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.55, side: THREE.DoubleSide });
+  const signMaterial = new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide });
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 0.44), signMaterial);
   sign.geometry.rotateY(-Math.PI / 2);
   sign.position.set(2.37, 2.66, 6.12);
@@ -1007,7 +1007,7 @@ function buildSideAndRearElevations(staticGroup, m, floors) {
 
   const rearClothColors = [0x2b6cb0, 0xc53030, 0xd69e2e, 0x319795];
   for (let i = 0; i < 4; i++) {
-    const mat = new THREE.MeshStandardMaterial({ color: rearClothColors[i], roughness: 0.9, side: THREE.DoubleSide });
+    const mat = new THREE.MeshLambertMaterial({ color: rearClothColors[i], side: THREE.DoubleSide });
     const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.85, 3, 4), mat);
     cloth.geometry.rotateY(Math.PI / 2);
     cloth.position.set(15.22, 4.85 + (i % 2) * 3.05, -2.55 - i * 0.45);
@@ -1084,8 +1084,9 @@ export function buildHouse(scene, m) {
 
   addBlueTarp(staticGroup, m);
   const clothColors = [0x9b3d36, 0x386b68, 0xe0d6c5, 0x7b2940];
+  const clothMats = clothColors.map((color) => new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide }));
   for (let i = 0; i < 5; i++) {
-    const clothMaterial = new THREE.MeshStandardMaterial({ color: clothColors[i % clothColors.length], roughness: 0.92, side: THREE.DoubleSide });
+    const clothMaterial = clothMats[i % clothMats.length];
     const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.82 + (i % 2) * 0.3, 3, 5), clothMaterial);
     cloth.geometry.rotateY(-Math.PI / 2);
     cloth.position.set(5.65, 4.88, 2.25 + i * 0.48);

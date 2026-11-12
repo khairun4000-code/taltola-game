@@ -44,12 +44,15 @@ function leafClusterTexture() {
   return texture;
 }
 
+const sharedBarkMat = new THREE.MeshLambertMaterial({ color: 0x625c46 });
+const sharedDarkBarkMat = new THREE.MeshLambertMaterial({ color: 0x57523e });
+
 function createBroadleafTree(parent, position, height, seed, material) {
   const random = seededRandom(seed);
   const group = new THREE.Group();
   group.position.set(...position);
   parent.add(group);
-  cylinder(group, 0.11, 0.23, height * 0.68, [0, height * 0.34, 0], new THREE.MeshStandardMaterial({ color: 0x625c46, roughness: 1 }), 9);
+  cylinder(group, 0.11, 0.23, height * 0.68, [0, height * 0.34, 0], sharedBarkMat, 9);
   const clusterCount = 24;
   const clusters = [];
   for (let i = 0; i < clusterCount; i++) {
@@ -58,7 +61,7 @@ function createBroadleafTree(parent, position, height, seed, material) {
     const y = height * (0.55 + random() * 0.4);
     const center = new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
     clusters.push({ center, scale: 1.2 + random() * 1.35 });
-    if (i < 10) rodBetween(group, [0, height * 0.43, 0], [center.x * 0.83, center.y - 0.35, center.z * 0.83], 0.035 + random() * 0.025, group.children[0].material, 6);
+    if (i < 10) rodBetween(group, [0, height * 0.43, 0], [center.x * 0.83, center.y - 0.35, center.z * 0.83], 0.035 + random() * 0.025, sharedBarkMat, 6);
   }
   mergeStaticMeshes(group);
   const geometry = new THREE.PlaneGeometry(2.2, 2.0);
@@ -102,7 +105,7 @@ function createPalm(parent, position, height, seed, m, animated) {
   const leanX = (random() - 0.5) * 1.3;
   const leanZ = (random() - 0.5) * 1.3;
   const segments = 15;
-  const darkBark = new THREE.MeshStandardMaterial({ color: 0x595642, roughness: 1 });
+  const darkBark = sharedDarkBarkMat;
   let previous = [0, 0, 0];
   for (let i = 1; i <= segments; i++) {
     const t = i / segments;
@@ -195,7 +198,7 @@ function buildRoad(parent, m) {
   }
   const random = seededRandom(8182);
   const leafGeometry = new THREE.PlaneGeometry(0.09, 0.18);
-  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x776a37, roughness: 1, side: THREE.DoubleSide });
+  const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x776a37, side: THREE.DoubleSide });
   const debris = new THREE.InstancedMesh(leafGeometry, leafMaterial, 95);
   const dummy = new THREE.Object3D();
   for (let i = 0; i < 95; i++) {
@@ -226,13 +229,13 @@ function buildNeighbourhood(parent, m) {
   }
   box(parent, [0.4, 0.13, 34], [2.78, 1.71, center], m.darkConcrete);
 
-  const distant = new THREE.MeshStandardMaterial({ color: 0xc8c3af, roughness: 0.95 });
+  const distant = new THREE.MeshLambertMaterial({ color: 0xc8c3af });
   box(parent, [9, 8, 13], [10, 3.7, -35], distant);
   box(parent, [8, 5, 12], [-9, 2.2, -35], distant);
 }
 
-function buildUtilities(parent, m) {
-  const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x9a998b, roughness: 0.93 });
+function buildUtilities(parent, m, wireParent = parent) {
+  const poleMaterial = new THREE.MeshLambertMaterial({ color: 0x9a998b });
   for (const z of [-16, 17]) {
     cylinder(parent, 0.105, 0.17, 9.6, [-2.42, 4.45, z], poleMaterial, 12);
     box(parent, [0.14, 0.12, 2.0], [-2.42, 8.65, z], m.darkMetal);
@@ -246,14 +249,14 @@ function buildUtilities(parent, m) {
   for (let i = 0; i < 5; i++) {
     const x = -2.47 + i * 0.065;
     const y = 8.72 + i * 0.11;
-    createWire(parent, [[x, y, -43], [x + 0.2, y - 0.85, -16], [x - 0.1, y - 1.0, 17], [x, y - 0.2, 43]], 0.012, m.wire);
+    createWire(wireParent, [[x, y, -43], [x + 0.2, y - 0.85, -16], [x - 0.1, y - 1.0, 17], [x, y - 0.2, 43]], 0.012, m.wire);
   }
   for (let i = 0; i < 4; i++) {
-    createWire(parent, [[-2.42, 8.5 + i * 0.15, -16], [0.5, 7.45 + i * 0.1, -9], [5.65, 6.3 + i * 0.12, -3.4]], 0.011, m.wire);
-    createWire(parent, [[-2.42, 8.55 + i * 0.13, 17], [0.8, 7.6 + i * 0.1, 11], [5.65, 6.9 + i * 0.12, 3.5]], 0.011, m.wire);
+    createWire(wireParent, [[-2.42, 8.5 + i * 0.15, -16], [0.5, 7.45 + i * 0.1, -9], [5.65, 6.3 + i * 0.12, -3.4]], 0.011, m.wire);
+    createWire(wireParent, [[-2.42, 8.55 + i * 0.13, 17], [0.8, 7.6 + i * 0.1, 11], [5.65, 6.9 + i * 0.12, 3.5]], 0.011, m.wire);
     // Overhead criss-cross fiber/electric cables across Haji Mohsin Road (connecting ASB pole z=23.8 & corner poles z=9.5..21.8)
-    createWire(parent, [[-2.26, 7.1 + i * 0.14, 9.95], [0.0, 6.5 + i * 0.12, 16.8], [2.28, 7.2 + i * 0.14, 23.8]], 0.012, m.wire);
-    createWire(parent, [[2.28, 6.8 + i * 0.15, 23.8], [0.2, 6.3 + i * 0.1, 22.8], [-2.95, 7.0 + i * 0.14, 21.8]], 0.012, m.wire);
+    createWire(wireParent, [[-2.26, 7.1 + i * 0.14, 9.95], [0.0, 6.5 + i * 0.12, 16.8], [2.28, 7.2 + i * 0.14, 23.8]], 0.012, m.wire);
+    createWire(wireParent, [[2.28, 6.8 + i * 0.15, 23.8], [0.2, 6.3 + i * 0.1, 22.8], [-2.95, 7.0 + i * 0.14, 21.8]], 0.012, m.wire);
   }
 }
 
@@ -261,9 +264,12 @@ export function buildEnvironment(scene, m) {
   const group = new THREE.Group();
   group.name = 'Lane and tropical surroundings';
   scene.add(group);
+  const detailsGroup = new THREE.Group();
+  detailsGroup.name = 'ExteriorFoliageAndWires';
+  group.add(detailsGroup);
   buildRoad(group, m);
   buildNeighbourhood(group, m);
-  buildUtilities(group, m);
+  buildUtilities(group, m, detailsGroup);
   mergeStaticMeshes(group);
   const tower = buildHajiMohsinRoad(group, m);
   const animated = [];
@@ -271,21 +277,22 @@ export function buildEnvironment(scene, m) {
     [-5.4, -9, 11.8, 41], [-5.2, 7.8, 12.7, 53], [-12.5, 8.2, 11.6, 65], [-5.6, -27, 12.2, 77],
     [4.9, -6.4, 10.8, 89], [5.3, 6.5, 11.5, 101], [12.5, 19.5, 13.1, 113], [9.5, -18, 12.1, 125],
   ];
-  for (const [x, z, height, seed] of palms) createPalm(group, [x, 0, z], height, seed, m, animated);
-  const foliageMaterial = new THREE.MeshStandardMaterial({
+  for (const [x, z, height, seed] of palms) createPalm(detailsGroup, [x, 0, z], height, seed, m, animated);
+  const foliageMaterial = new THREE.MeshLambertMaterial({
     map: leafClusterTexture(),
     alphaTest: 0.38,
     side: THREE.DoubleSide,
-    roughness: 0.88,
+    transparent: false,
     color: 0xffffff,
   });
   const trees = [
     [-5.0, -1, 8.0, 211], [-5.4, 6.2, 8.8, 223], [-5.3, -17, 8.8, 227], [-14.0, 8.5, 9.5, 229],
     [-6.7, -33, 9.2, 233], [9.5, 16.0, 8.5, 239], [6.3, -11, 7.4, 241], [12.0, 35, 9.5, 251],
   ];
-  for (const [x, z, height, seed] of trees) createBroadleafTree(group, [x, 0, z], height, seed, foliageMaterial);
+  for (const [x, z, height, seed] of trees) createBroadleafTree(detailsGroup, [x, 0, z], height, seed, foliageMaterial);
   return {
     tower,
+    detailsGroup,
     update(time) {
       for (const item of animated) {
         item.object.rotation.x = Math.sin(time * 0.55 + item.phase) * item.strength;

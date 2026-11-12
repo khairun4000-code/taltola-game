@@ -223,9 +223,9 @@ function buildSeamlessTrouserGeometry(sourceGeo) {
  */
 function buildSculptedSneakers(leftCenter, rightCenter) {
   const shoeGroup = new THREE.Group();
-  const upperMat = new THREE.MeshStandardMaterial({ color: 0x191b1f, roughness: 0.55, metalness: 0.08 });
-  const accentMat = new THREE.MeshStandardMaterial({ color: 0x2c3038, roughness: 0.48 });
-  const soleMat = new THREE.MeshStandardMaterial({ color: 0xefede8, roughness: 0.65 });
+  const upperMat = new THREE.MeshLambertMaterial({ color: 0x191b1f });
+  const accentMat = new THREE.MeshLambertMaterial({ color: 0x2c3038 });
+  const soleMat = new THREE.MeshLambertMaterial({ color: 0xefede8 });
 
   for (const [cx, cz] of [[leftCenter.x, leftCenter.z], [rightCenter.x, rightCenter.z]]) {
     // Ankle sock/collar tucking smoothly inside trouser hem
@@ -455,10 +455,10 @@ export function createPlayerCharacter(scene, manager) {
   function setQualityMode(nextQuality) {
     currentQuality = nextQuality;
     if (!charSkinnedMesh || !stdMat || !lowMat) return;
-    const isLow = nextQuality === 'low';
-    charSkinnedMesh.material = isLow ? lowMat : stdMat;
-    charSkinnedMesh.castShadow = !isLow;
-    charSkinnedMesh.receiveShadow = !isLow;
+    const isFast = nextQuality === 'low' || nextQuality === 'medium';
+    charSkinnedMesh.material = isFast ? lowMat : stdMat;
+    charSkinnedMesh.castShadow = !isFast;
+    charSkinnedMesh.receiveShadow = !isFast;
   }
 
   const loader = new GLTFLoader(manager);
@@ -484,7 +484,7 @@ export function createPlayerCharacter(scene, manager) {
     if (mat.map) {
       mat.map.wrapS = THREE.RepeatWrapping;
       mat.map.wrapT = THREE.RepeatWrapping;
-      mat.map.anisotropy = 16;
+      mat.map.anisotropy = 4;
       mat.map.minFilter = THREE.LinearMipmapLinearFilter;
       mat.map.magFilter = THREE.LinearFilter;
       mat.map.needsUpdate = true;
@@ -589,6 +589,7 @@ export function createPlayerCharacter(scene, manager) {
     moveDirX = 0,
     moveDirZ = 0,
     inStudio = false,
+    hideMesh = false,
   }) {
     resetPoseBones();
 
@@ -628,7 +629,7 @@ export function createPlayerCharacter(scene, manager) {
     } else {
       root.position.set(position.x, position.y - 1.68, position.z);
       state.thirdPerson = state.cameraMode !== 'first';
-      root.visible = state.thirdPerson;
+      root.visible = state.thirdPerson && !hideMesh;
 
       // Cancel emote if player starts walking/running or jumping (unless locked in seated pose)
       if ((speed > 0.45 || !grounded) && activeEmote !== 'sit') {

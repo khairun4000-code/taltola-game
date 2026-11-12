@@ -175,6 +175,50 @@ function createLiftDisplayTexture() {
   return tex;
 }
 
+function createGamingScreenTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 288;
+  const ctx = canvas.getContext('2d');
+  const bg = ctx.createLinearGradient(0, 0, 512, 288);
+  bg.addColorStop(0, '#090d16');
+  bg.addColorStop(1, '#1e1b4b');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 512, 288);
+  // Cyberpunk neon radar + code editor panels
+  ctx.strokeStyle = 'rgba(34, 211, 238, 0.25)';
+  ctx.lineWidth = 1;
+  for (let x = 24; x < 512; x += 32) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 288); ctx.stroke();
+  }
+  for (let y = 24; y < 288; y += 32) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke();
+  }
+  ctx.strokeStyle = '#22d3ee';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(18, 18, 290, 252);
+  ctx.fillStyle = '#06b6d4';
+  ctx.font = 'bold 20px Consolas, monospace';
+  ctx.fillText('TALTOLA ENGINE · 120 FPS', 34, 52);
+  ctx.fillStyle = '#a5f3fc';
+  ctx.font = '15px Consolas, monospace';
+  const lines = ['GPU: WebGL2 Fast Lambert', 'Shaders: 1-Tap Optimized', 'Draw Calls: < 60', 'Shadow Cache: ACTIVE', 'Spring-Arm: ZERO CLIP'];
+  lines.forEach((l, i) => ctx.fillText(l, 34, 88 + i * 28));
+  // Neon waveform on right panel
+  ctx.strokeStyle = '#e879f9';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(326, 18, 168, 252);
+  ctx.beginPath();
+  for (let x = 340; x <= 480; x += 10) {
+    const y = 148 + Math.sin(x * 0.08) * 44;
+    if (x === 340) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 function createFloorPlaqueTexture(floorNum, titleBn, subtitleEn) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -511,11 +555,11 @@ export function createHajiMaterials() {
     oldCream: lam({ map: stuccoMap, color: 0xd6c08e }, 3.2),
     oldPink: lam({ map: stuccoMap, color: 0xcf9484 }, 3.2),
     oldYellow: lam({ map: stuccoMap, color: 0xe0c87a }, 3.2),
-    glass: std({ color: 0x2a5a80, roughness: 0.08, metalness: 0.3, emissive: 0x08141e, transparent: true, opacity: 0.72 }),
-    clearGlass: std({ color: 0x99d5ff, roughness: 0.06, metalness: 0.2, transparent: true, opacity: 0.38 }),
+    glass: lam({ color: 0x3b76a3, emissive: 0x0a1c2a, transparent: true, opacity: 0.68 }),
+    clearGlass: lam({ color: 0x99d5ff, transparent: true, opacity: 0.34 }),
     frame: lam({ color: 0x50565a }),
-    steel: std({ color: 0xc7cbcf, roughness: 0.28, metalness: 0.55 }),
-    gold: std({ color: 0xf59e0b, roughness: 0.25, metalness: 0.7, emissive: 0x3b2506 }),
+    steel: lam({ color: 0xc7cbcf }),
+    gold: lam({ color: 0xf59e0b, emissive: 0x3b2506 }),
     railGrey: lam({ color: 0x8f969b }),
     grilleBar: lam({ color: 0xa3a9ad }),
     dark: lam({ color: 0x17191b }),
@@ -524,9 +568,9 @@ export function createHajiMaterials() {
     acFan: lam({ color: 0x33373a }),
     plant: lam({ color: 0x2e7d32 }),
     terracotta: lam({ color: 0x9c4a2d }),
-    redCar: std({ color: 0xb91c1c, roughness: 0.25, metalness: 0.35 }),
-    blackSuv: std({ color: 0x1e293b, roughness: 0.22, metalness: 0.45 }),
-    carGlass: std({ color: 0x0f172a, roughness: 0.1, metalness: 0.5 }),
+    redCar: lam({ color: 0xc81e1e, emissive: 0x1a0303 }),
+    blackSuv: lam({ color: 0x243044, emissive: 0x06090f }),
+    carGlass: lam({ color: 0x132036 }),
     headlight: new THREE.MeshBasicMaterial({ color: 0xfef08a }),
     taillight: new THREE.MeshBasicMaterial({ color: 0xef4444 }),
     tyre: lam({ color: 0x141414 }),
@@ -552,7 +596,7 @@ export function createHajiMaterials() {
     bathTile: lam({ map: createBathTileTexture() }, 1.4),
     porcelain: lam({ color: 0xf8fafc }),
     chrome: lam({ color: 0xcbd5e1 }),
-    mirrorMat: std({ color: 0x93c5fd, roughness: 0.05, metalness: 0.85 }),
+    mirrorMat: lam({ color: 0xaad4f5, emissive: 0x1e3a5f }),
     waterBlue: new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
     curtainGold: lam({ color: 0xd97706 }),
     ledWarm: new THREE.MeshBasicMaterial({ color: 0xfffbeb }),
@@ -562,6 +606,7 @@ export function createHajiMaterials() {
     lobbySign: new THREE.MeshBasicMaterial({ map: createLobbySignTexture() }),
     smartTv: new THREE.MeshBasicMaterial({ map: createSmartTVTexture() }),
     liftDisplay: new THREE.MeshBasicMaterial({ map: createLiftDisplayTexture() }),
+    gamingScreen: new THREE.MeshBasicMaterial({ map: createGamingScreenTexture() }),
     turfGreen: lam({ color: 0x15803d }),
   };
 }
@@ -852,15 +897,21 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y, levelIndex = 1
   B(-7.2, -11.8, y + 2.70, y + 2.74, 25.1, 25.7, hm.ledWarm);
 
   // 5. SOUTH-WEST VIP RGB GAMING & STUDY SUITE (x = -13.4 .. -19.6, z = 23.35 .. 28.3)
-  // L-Shaped Gaming Desk along west/south corner
+  // L-Shaped Gaming Desk with sturdy legs & RGB neon trim
   B(-18.6, -19.55, fy + 0.72, fy + 0.78, 24.2, 27.6, hm.dark);
   B(-18.65, -19.55, fy + 0.78, fy + 0.80, 24.2, 24.26, hm.ledCyan);
   B(-18.6, -18.66, fy + 0.78, fy + 0.80, 24.2, 27.6, hm.ledMagenta);
-  // Dual curved gaming monitors + RGB PC Tower
+  for (const [lx, lz] of [[-18.68, 24.28], [-19.45, 24.28], [-18.68, 27.52], [-19.45, 27.52]]) {
+    B(lx - 0.04, lx + 0.04, fy + 0.02, fy + 0.72, lz - 0.04, lz + 0.04, hm.dark);
+  }
+  // Dual curved gaming monitors + monitor stand + Sleek Tempered-Glass RGB PC Tower
+  B(-19.22, -19.30, fy + 0.78, fy + 0.94, 25.95, 26.15, hm.dark);
   B(-19.15, -19.25, fy + 0.92, fy + 1.42, 25.0, 27.1, hm.dark);
   addScreenPlane(screenParent, 0.98, 0.48, [-19.13, fy + 1.17, 25.5], Math.PI / 2, hm.smartTv);
-  addScreenPlane(screenParent, 0.98, 0.48, [-19.13, fy + 1.17, 26.6], Math.PI / 2, hm.liftDisplay);
-  B(-18.8, -19.4, fy + 0.78, fy + 1.32, 24.35, 24.75, hm.ledCyan); // RGB PC case
+  addScreenPlane(screenParent, 0.98, 0.48, [-19.13, fy + 1.17, 26.6], Math.PI / 2, hm.gamingScreen);
+  B(-18.80, -19.40, fy + 0.78, fy + 1.32, 24.35, 24.75, hm.dark); // dark chassis
+  B(-18.78, -18.82, fy + 0.82, fy + 1.28, 24.38, 24.72, hm.ledCyan); // front RGB strip
+  B(-18.92, -19.32, fy + 0.84, fy + 1.26, 24.74, 24.77, hm.ledMagenta); // side tempered-glass glow
   // Ergonomic Gaming Chair
   B(-17.8, -18.4, fy + 0.02, fy + 0.52, 25.5, 26.1, hm.redCar);
   B(-17.7, -17.82, fy + 0.52, fy + 1.25, 25.5, 26.1, hm.redCar);
