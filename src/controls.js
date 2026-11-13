@@ -123,6 +123,7 @@ export class FirstPersonControls extends EventTarget {
     const movementY = this.fallback ? event.clientY - this.lastY : event.movementY;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
+    if (Math.abs(movementX) > 260 || Math.abs(movementY) > 260) return;
     this.euler.setFromQuaternion(this.camera.quaternion, 'YXZ');
     this.euler.y -= movementX * 0.0022;
     this.euler.x = THREE.MathUtils.clamp(this.euler.x - movementY * 0.0022, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05);
