@@ -455,10 +455,10 @@ export function createPlayerCharacter(scene, manager) {
   function setQualityMode(nextQuality) {
     currentQuality = nextQuality;
     if (!charSkinnedMesh || !stdMat || !lowMat) return;
-    const isFast = nextQuality === 'low' || nextQuality === 'medium';
-    charSkinnedMesh.material = isFast ? lowMat : stdMat;
-    charSkinnedMesh.castShadow = !isFast;
-    charSkinnedMesh.receiveShadow = !isFast;
+    const isLow = nextQuality === 'low';
+    charSkinnedMesh.material = isLow ? lowMat : stdMat;
+    charSkinnedMesh.castShadow = !isLow;
+    charSkinnedMesh.receiveShadow = !isLow;
   }
 
   const loader = new GLTFLoader(manager);

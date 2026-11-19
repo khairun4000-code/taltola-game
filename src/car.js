@@ -115,34 +115,45 @@ function splitMergedWheelMeshByQuadrant(mesh, q) {
   subGeom.setIndex(newIndices);
 
   const subMesh = new THREE.Mesh(subGeom, mesh.material);
-  subMesh.castShadow = false;
+  subMesh.castShadow = true;
   subMesh.receiveShadow = true;
   return subMesh;
 }
 
 function createBodyMaterial(source, colorHex) {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshPhysicalMaterial({
+    name: source.name,
+    color: new THREE.Color(colorHex),
+    map: source.map || null,
+    normalMap: source.normalMap || null,
+    normalScale: source.normalScale ? source.normalScale.clone() : new THREE.Vector2(1, 1),
+    aoMap: source.aoMap || null,
+    side: source.side,
+    transparent: source.transparent,
+    opacity: source.opacity,
+    alphaTest: source.alphaTest,
+    metalness: 0.72,
+    roughness: 0.16,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.05,
+    ior: 1.52,
+    reflectivity: 1.0,
+    envMapIntensity: 1.65,
+  });
+}
+
+function createWheelMaterial(source, colorHex = '#d8ebff') {
+  return new THREE.MeshPhysicalMaterial({
     name: source.name,
     color: new THREE.Color(colorHex),
     map: source.map || null,
     normalMap: source.normalMap || null,
     side: source.side,
-    transparent: source.transparent,
-    opacity: source.opacity,
-    alphaTest: source.alphaTest,
-    metalness: 0.58,
-    roughness: 0.24,
-  });
-}
-
-function createWheelMaterial(source, colorHex = '#c2dfff') {
-  return new THREE.MeshStandardMaterial({
-    name: source.name,
-    color: new THREE.Color(colorHex),
-    map: source.map || null,
-    side: source.side,
-    metalness: 0.82,
-    roughness: 0.24,
+    metalness: 0.90,
+    roughness: 0.14,
+    clearcoat: 0.85,
+    clearcoatRoughness: 0.08,
+    envMapIntensity: 1.75,
   });
 }
 
@@ -183,8 +194,11 @@ export function createDrivableBMW(scene, manager) {
 
   let riggedWheels = [];
   let paintMaterials = [];
+  let glossyMaterials = [];
+  let carShadowMeshes = [];
   let tailMat = null;
   let drlMat = null;
+  let currentQuality = 'high';
 
   // Web Audio BMW inline-6 Engine + Horn
   let audioCtx = null;
@@ -302,8 +316,11 @@ export function createDrivableBMW(scene, manager) {
         const isArray = Array.isArray(child.material);
         const srcMats = isArray ? child.material : [child.material];
 
-        child.castShadow = false;
+        const firstName = srcMats[0]?.name || '';
+        const shouldCast = firstName !== 'Meshesheadlight51Mtl' && firstName !== 'Mesheswindows1Mtl';
+        child.castShadow = shouldCast && currentQuality !== 'low';
         child.receiveShadow = true;
+        if (shouldCast) carShadowMeshes.push(child);
 
         const outMats = srcMats.map((mat) => {
           const mName = mat.name || '';
@@ -311,32 +328,38 @@ export function createDrivableBMW(scene, manager) {
           if (BODY_PAINT_MATS.includes(mName)) {
             const pMat = createBodyMaterial(mat, paintColorHex);
             paintMaterials.push(pMat);
+            glossyMaterials.push(pMat);
             return pMat;
           }
           if (mName === 'Mesheslivery1Mtl') {
             const lMat = createBodyMaterial(mat, paintColorHex);
             lMat.map = null;
             paintMaterials.push(lMat);
+            glossyMaterials.push(lMat);
             return lMat;
           }
           if (mName === 'Meshesheadlight51Mtl') {
-            return new THREE.MeshStandardMaterial({
+            const hlMat = new THREE.MeshPhysicalMaterial({
               name: mName,
               color: new THREE.Color('#10151e'),
               transparent: true,
-              opacity: 0.22,
+              opacity: 0.18,
               depthWrite: false,
-              roughness: 0.08,
-              metalness: 0.2,
+              roughness: 0.03,
+              metalness: 0.15,
+              clearcoat: 1.0,
+              envMapIntensity: 1.6,
             });
+            glossyMaterials.push(hlMat);
+            return hlMat;
           }
           if (mName === 'Meshesled111Mtl') {
             const dMat = new THREE.MeshStandardMaterial({
               name: mName,
               color: new THREE.Color('#ffee22'),
               emissive: new THREE.Color('#ffdd00'),
-              emissiveIntensity: 3.5,
-              roughness: 0.12,
+              emissiveIntensity: 4.5,
+              roughness: 0.08,
             });
             drlMat = dMat;
             return dMat;
@@ -344,7 +367,8 @@ export function createDrivableBMW(scene, manager) {
           if (mName === 'Mesheslight51Mtl') {
             const pLightMat = mat.clone();
             pLightMat.emissive = new THREE.Color('#d8eeff');
-            pLightMat.emissiveIntensity = 1.2;
+            pLightMat.emissiveIntensity = 1.4;
+            pLightMat.envMapIntensity = 1.4;
             return pLightMat;
           }
           if (mName === 'Meshesredlight1Mtl' || mName === 'Meshestail71Mtl') {
@@ -352,8 +376,8 @@ export function createDrivableBMW(scene, manager) {
               name: mName,
               color: new THREE.Color('#ff1128'),
               emissive: new THREE.Color('#ff0820'),
-              emissiveIntensity: 2.2,
-              roughness: 0.14,
+              emissiveIntensity: 3.4,
+              roughness: 0.10,
             });
             if (mName === 'Meshesredlight1Mtl') tailMat = tMat;
             return tMat;
@@ -361,39 +385,50 @@ export function createDrivableBMW(scene, manager) {
           if (mName === 'Meshesled11Mtl') {
             const ledMat = mat.clone();
             ledMat.emissive = new THREE.Color('#ffffff');
-            ledMat.emissiveIntensity = 1.6;
+            ledMat.emissiveIntensity = 1.8;
             return ledMat;
           }
           if (mName === 'Mesheswindows1Mtl') {
-            return new THREE.MeshStandardMaterial({
+            const winMat = new THREE.MeshPhysicalMaterial({
               name: mName,
-              color: new THREE.Color('#0c1624'),
+              color: new THREE.Color('#0a1524'),
               side: THREE.DoubleSide,
               transparent: true,
-              opacity: 0.52,
+              opacity: 0.48,
               depthWrite: false,
               metalness: 0.45,
-              roughness: 0.12,
+              roughness: 0.06,
+              clearcoat: 1.0,
+              clearcoatRoughness: 0.04,
+              reflectivity: 1.0,
+              envMapIntensity: 1.8,
             });
+            glossyMaterials.push(winMat);
+            return winMat;
           }
           if (WHEEL_RIM_MATS.includes(mName)) {
-            return createWheelMaterial(mat, '#c2dfff');
+            const rMat = createWheelMaterial(mat, '#d8ebff');
+            glossyMaterials.push(rMat);
+            return rMat;
           }
           if (TIRE_MATS.includes(mName)) {
             return new THREE.MeshStandardMaterial({
               name: mName,
-              color: new THREE.Color('#22252a'),
+              color: new THREE.Color('#1d2025'),
               map: mat.map || null,
-              roughness: 0.82,
-              metalness: 0.05,
+              normalMap: mat.normalMap || null,
+              roughness: 0.76,
+              metalness: 0.06,
+              envMapIntensity: 0.6,
               side: mat.side,
             });
           }
           if (mName === 'Caliper1Mtl') {
             const cMat = mat.clone();
             cMat.color.set('#087fd7');
-            cMat.metalness = 0.35;
-            cMat.roughness = 0.3;
+            cMat.metalness = 0.42;
+            cMat.roughness = 0.24;
+            cMat.envMapIntensity = 1.1;
             return cMat;
           }
           if (
@@ -402,17 +437,24 @@ export function createDrivableBMW(scene, manager) {
             || mName === 'Meshespillars1Mtl'
             || mName === 'Meshesblack161Mtl'
           ) {
-            return new THREE.MeshStandardMaterial({
+            const trimMat = new THREE.MeshPhysicalMaterial({
               name: mName,
-              color: mName === 'Meshespillars1Mtl' ? new THREE.Color('#16191e') : new THREE.Color('#e8edf2'),
+              color: mName === 'Meshespillars1Mtl' ? new THREE.Color('#15181d') : new THREE.Color('#eef2f6'),
               map: mat.map || null,
-              roughness: 0.28,
-              metalness: 0.4,
+              roughness: 0.18,
+              metalness: 0.50,
+              clearcoat: 0.9,
+              clearcoatRoughness: 0.10,
+              envMapIntensity: 1.4,
               side: mat.side,
             });
+            glossyMaterials.push(trimMat);
+            return trimMat;
           }
 
-          return mat.clone();
+          const cloned = mat.clone();
+          cloned.envMapIntensity = 1.15;
+          return cloned;
         });
 
         if (!child.geometry.attributes.normal) {
@@ -439,8 +481,13 @@ export function createDrivableBMW(scene, manager) {
 
           const spinPivot = new THREE.Group();
           steerPivot.add(spinPivot);
-          spinPivot.add(splitMergedWheelMeshByQuadrant(rimMeshObj, q));
-          spinPivot.add(splitMergedWheelMeshByQuadrant(tireMeshObj, q));
+          const subRim = splitMergedWheelMeshByQuadrant(rimMeshObj, q);
+          const subTire = splitMergedWheelMeshByQuadrant(tireMeshObj, q);
+          subRim.castShadow = currentQuality !== 'low';
+          subTire.castShadow = currentQuality !== 'low';
+          carShadowMeshes.push(subRim, subTire);
+          spinPivot.add(subRim);
+          spinPivot.add(subTire);
 
           builtWheels.push({
             wheelRoot: steerPivot,
@@ -702,6 +749,24 @@ export function createDrivableBMW(scene, manager) {
     syncTransform();
   }
 
+  function setQualityMode(nextQuality) {
+    currentQuality = nextQuality;
+    const castShadows = nextQuality !== 'low';
+    const envIntensity = nextQuality === 'ultra' ? 2.1 : (nextQuality === 'high' ? 1.7 : (nextQuality === 'medium' ? 1.25 : 0.85));
+    const clearcoatVal = nextQuality === 'low' ? 0.3 : 1.0;
+
+    for (const mesh of carShadowMeshes) {
+      mesh.castShadow = castShadows;
+      mesh.receiveShadow = castShadows;
+    }
+    for (const mat of glossyMaterials) {
+      if ('envMapIntensity' in mat) mat.envMapIntensity = envIntensity;
+      if ('clearcoat' in mat) mat.clearcoat = clearcoatVal;
+      mat.needsUpdate = true;
+    }
+    contactShadow.visible = nextQuality === 'low' || nextQuality === 'medium';
+  }
+
   return {
     group: root,
     state,
@@ -712,6 +777,7 @@ export function createDrivableBMW(scene, manager) {
     cyclePaintColor,
     cycleCameraMode,
     playHorn,
+    setQualityMode,
     update,
   };
 }

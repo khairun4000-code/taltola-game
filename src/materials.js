@@ -308,9 +308,9 @@ export function createMaterials(renderer, manager) {
     orange: new THREE.MeshLambertMaterial({ color: 0xb85224 }),
     rail: new THREE.MeshLambertMaterial({ color: 0xdce3df }),
     darkMetal: new THREE.MeshLambertMaterial({ color: 0x1e2423 }),
-    aluminum: new THREE.MeshLambertMaterial({ color: 0xd6ded9, emissive: 0x1e2220 }),
-    glass: new THREE.MeshLambertMaterial({ color: 0x528c78, transparent: true, opacity: 0.42 }),
-    frostedGlass: new THREE.MeshLambertMaterial({ color: 0x9db6ba, transparent: true, opacity: 0.65 }),
+    aluminum: new THREE.MeshStandardMaterial({ color: 0xd6ded9, metalness: 0.65, roughness: 0.25, envMapIntensity: 1.2 }),
+    glass: new THREE.MeshPhysicalMaterial({ color: 0x3f7b6e, transparent: true, opacity: 0.44, roughness: 0.08, metalness: 0.25, clearcoat: 1.0, envMapIntensity: 1.4 }),
+    frostedGlass: new THREE.MeshStandardMaterial({ color: 0x9db6ba, transparent: true, opacity: 0.65, roughness: 0.35, metalness: 0.15, envMapIntensity: 0.8 }),
     interior: new THREE.MeshLambertMaterial({ color: 0x26322d }),
     // Bright, warm, self-lit residential interior walls & ceilings (never looks like a dark bunker!)
     hallWall: tiledMaterial(plaster, { color: 0xfdf9f0, emissive: 0x4e493e, uvScale: 2.5 }),
@@ -319,7 +319,7 @@ export function createMaterials(renderer, manager) {
     wood: new THREE.MeshLambertMaterial({ map: createFurnitureWoodTexture('#6e4023', '#432512') }),
     darkWood: new THREE.MeshLambertMaterial({ map: createFurnitureWoodTexture('#3d2314', '#221209') }),
     porcelain: new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x26292b }),
-    chrome: new THREE.MeshLambertMaterial({ color: 0xe2e8f0 }),
+    chrome: new THREE.MeshStandardMaterial({ color: 0xe8eef5, metalness: 0.88, roughness: 0.14, envMapIntensity: 1.5 }),
     sofaFabric: new THREE.MeshLambertMaterial({ map: createQuiltedClothTexture('#1e5666', '#0f313b') }),
     cushionMat: new THREE.MeshLambertMaterial({ map: createQuiltedClothTexture('#e09f3e', '#9c6818') }),
     rugMat: new THREE.MeshLambertMaterial({ map: createCarpetRugTexture() }),
@@ -334,7 +334,7 @@ export function createMaterials(renderer, manager) {
     ledGreen: new THREE.MeshBasicMaterial({ color: 0x22c55e }),
     ledRed: new THREE.MeshBasicMaterial({ color: 0xef4444 }),
     stoveFlame: new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
-    mirrorMat: new THREE.MeshLambertMaterial({ color: 0xbfdbfe }),
+    mirrorMat: new THREE.MeshStandardMaterial({ color: 0xdbeafe, metalness: 0.92, roughness: 0.06, envMapIntensity: 1.6 }),
     drainWater: new THREE.MeshLambertMaterial({ color: 0x203a33 }),
     moss: new THREE.MeshLambertMaterial({ color: 0x385239 }),
     grass: tiledMaterial(concrete, { color: 0x456934, uvScale: 2.2 }),
@@ -352,14 +352,16 @@ export function createMaterials(renderer, manager) {
 
   const allMaterials = Object.values(materials);
   materials.setQualityMode = (quality) => {
-    const useBump = quality === 'ultra';
-    const nextAniso = quality === 'low' ? 1 : anisotropy;
+    const useBump = quality === 'high' || quality === 'ultra';
+    const nextBumpScale = quality === 'ultra' ? 0.022 : 0.012;
+    const nextAniso = quality === 'low' ? 1 : (quality === 'medium' ? Math.min(4, anisotropy) : anisotropy);
     for (const mat of allMaterials) {
       if (!mat) continue;
       if (mat.userData && mat.userData.origBumpMap) {
         const nextBump = useBump ? mat.userData.origBumpMap : null;
-        if (mat.bumpMap !== nextBump) {
+        if (mat.bumpMap !== nextBump || mat.bumpScale !== nextBumpScale) {
           mat.bumpMap = nextBump;
+          mat.bumpScale = nextBumpScale;
           mat.needsUpdate = true;
         }
       }
