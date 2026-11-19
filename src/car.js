@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const BODY_PAINT_MATS = ['Mesheszx1Mtl', 'Meshesbody151Mtl'];
-const WHEEL_RIM_MATS = ['Meshesm8rim1Mtl'];
-const TIRE_MATS = ['Meshesm8rim0011Mtl'];
+const BMW_BODY_PAINT_MATS = ['Mesheszx1Mtl', 'Meshesbody151Mtl'];
+const BMW_WHEEL_RIM_MATS = ['Meshesm8rim1Mtl'];
+const BMW_TIRE_MATS = ['Meshesm8rim0011Mtl'];
 
-const WHEEL_QUADRANTS = [
+const BMW_WHEEL_QUADRANTS = [
   { key: 'FL', isFront: true, side: 1, cx: 288.9585, cy: -159.0625, cz: -1.5731 },
   { key: 'FR', isFront: true, side: -1, cx: 282.4390, cy: -159.0625, cz: -1.5731 },
   { key: 'RL', isFront: false, side: 1, cx: 289.0730, cy: -170.8565, cz: -1.5335 },
@@ -19,6 +19,106 @@ export const BMW_PAINT_PRESETS = [
   { name: 'Sao Paulo Yellow', hex: '#d9c61e' },
   { name: 'Alpine White', hex: '#eef2f6' },
   { name: 'Jet Black', hex: '#16181c' },
+];
+
+export const ALPHARD_PAINT_PRESETS = [
+  { name: 'Platinum White', hex: '#f2f5f8' },
+  { name: 'Burning Black', hex: '#15171c' },
+  { name: 'Precious Gold', hex: '#b89b6a' },
+  { name: 'Dark Emerald', hex: '#12352c' },
+  { name: 'Silver Metallic', hex: '#b6bcc4' },
+  { name: 'Royal Red', hex: '#8a1622' },
+];
+
+export const COROLLA_PAINT_PRESETS = [
+  { name: 'Super White', hex: '#f1f4f7' },
+  { name: 'Classic Silver', hex: '#aeb5bd' },
+  { name: 'Black Sand', hex: '#181a1f' },
+  { name: 'Barcelona Red', hex: '#a81622' },
+  { name: 'Blueprint Blue', hex: '#1b3d7a' },
+  { name: 'Slate Gray', hex: '#4b535e' },
+];
+
+export const CAR_FLEET_CONFIGS = [
+  {
+    id: 'bmw_m3',
+    name: 'BMW M3',
+    badge: 'BMW M3 COMPETITION',
+    assetUrl: './assets/bmw_m3.glb',
+    targetLength: 4.35,
+    width: 1.88,
+    rotateY: 0,
+    spawnPos: [-0.35, 0.01, 4.8],
+    spawnHeading: 0.0,
+    paintPresets: BMW_PAINT_PRESETS,
+    maxSpeed: 26.5,
+    boostMaxSpeed: 37.5,
+    engineForce: 15.5,
+    engineBaseFreq: 32,
+    engineRangeFreq: 155,
+    hornFreqs: [415, 520],
+    camBack: 5.4,
+    camHeight: 2.15,
+    hoodHeight: 1.28,
+    hoodForward: 0.65,
+    isBMW: true,
+  },
+  {
+    id: 'toyota_alphard',
+    name: 'Toyota Alphard 2025',
+    badge: 'TOYOTA ALPHARD 2025',
+    assetUrl: './assets/toyota_alphard.glb',
+    targetLength: 4.92,
+    width: 1.92,
+    rotateY: -Math.PI / 2, // Raw Alphard faces +X; rotate -90 deg Y so it faces +Z
+    spawnPos: [-0.35, 0.01, -4.8],
+    spawnHeading: 0.0,
+    paintPresets: ALPHARD_PAINT_PRESETS,
+    bodyPaintMats: ['C_089'],
+    glassMats: ['C_ClearGlass', 'C_PV_Glass', 'C_IR_GreenGlass__1', 'C_SmokeGlass_GR003', 'C_SuriGlass'],
+    tailMats: ['C_red_glass'],
+    headlightMats: ['C_13TR01__headlight_3'],
+    maxSpeed: 23.5,
+    boostMaxSpeed: 32.0,
+    engineForce: 13.5,
+    engineBaseFreq: 28,
+    engineRangeFreq: 120,
+    hornFreqs: [370, 466],
+    camBack: 5.9,
+    camHeight: 2.48,
+    hoodHeight: 1.56,
+    hoodForward: 0.95,
+    isBMW: false,
+    shadowOnlyExterior: true,
+  },
+  {
+    id: 'toyota_corolla',
+    name: 'Toyota Corolla 2017',
+    badge: 'TOYOTA COROLLA 2017',
+    assetUrl: './assets/toyota_corolla.glb',
+    targetLength: 4.55,
+    width: 1.82,
+    rotateY: 0, // Raw Corolla already faces +Z
+    spawnPos: [0.35, 0.01, -12.0],
+    spawnHeading: 0.0,
+    paintPresets: COROLLA_PAINT_PRESETS,
+    bodyPaintMats: ['e180body'],
+    glassMats: ['e180_glass', 'e180_glass_out'],
+    tailMats: ['e180_tails', 'e180_RL', 'e180_tail'],
+    headlightMats: ['e180_fog', 'e180_short', 'e180_long'],
+    wheelNameRegex: /wheel|brakedisc/i,
+    maxSpeed: 24.5,
+    boostMaxSpeed: 33.5,
+    engineForce: 14.2,
+    engineBaseFreq: 36,
+    engineRangeFreq: 140,
+    hornFreqs: [440, 554],
+    camBack: 5.5,
+    camHeight: 2.15,
+    hoodHeight: 1.28,
+    hoodForward: 0.72,
+    isBMW: false,
+  },
 ];
 
 function createUnderbodyContactShadow(width, length) {
@@ -158,28 +258,110 @@ function createWheelMaterial(source, colorHex = '#d8ebff') {
 }
 
 /**
- * Builds the full 30-mesh drivable 3D BMW M3/M4 Competition (imported from shutoko-car-sim)
- * with 4-wheel spin & steer rigging, paint color cycling, engine/horn audio, and Taltola street collisions.
+ * Automatically groups named wheel meshes (e.g. Toyota Corolla e180_wheel* & e180_brakedisc_*)
+ * into 4 steering/spinning pivots (FL, FR, RL, RR) in normalized car space (+Z forward, +Y up).
  */
-export function createDrivableBMW(scene, manager) {
+function rigGenericCarWheels(orientedWrapper, wheelRegex) {
+  if (!wheelRegex) return [];
+  orientedWrapper.updateMatrixWorld(true);
+
+  const wheelMeshes = [];
+  orientedWrapper.traverse((child) => {
+    if (!child.isMesh) return;
+    let cur = child;
+    let matched = false;
+    while (cur && cur !== orientedWrapper) {
+      if (wheelRegex.test(cur.name || '')) {
+        matched = true;
+        break;
+      }
+      cur = cur.parent;
+    }
+    if (matched) wheelMeshes.push(child);
+  });
+
+  if (wheelMeshes.length === 0) return [];
+
+  const buckets = {
+    FL: { isFront: true, meshes: [], box: new THREE.Box3() },
+    FR: { isFront: true, meshes: [], box: new THREE.Box3() },
+    RL: { isFront: false, meshes: [], box: new THREE.Box3() },
+    RR: { isFront: false, meshes: [], box: new THREE.Box3() },
+  };
+
+  const tmpBox = new THREE.Box3();
+  const tmpCenter = new THREE.Vector3();
+  const invWrapper = new THREE.Matrix4().copy(orientedWrapper.matrixWorld).invert();
+
+  for (const mesh of wheelMeshes) {
+    tmpBox.setFromObject(mesh);
+    if (tmpBox.isEmpty()) continue;
+    tmpBox.applyMatrix4(invWrapper);
+    tmpBox.getCenter(tmpCenter);
+    // Ignore spare wheel or center hub meshes that sit on x ≈ 0
+    if (Math.abs(tmpCenter.x) < 0.35 || tmpCenter.y > 0.85) continue;
+
+    const isFront = tmpCenter.z >= 0;
+    const isLeft = tmpCenter.x >= 0;
+    const key = (isFront ? 'F' : 'R') + (isLeft ? 'L' : 'R');
+    buckets[key].meshes.push(mesh);
+    buckets[key].box.union(tmpBox);
+  }
+
+  const builtWheels = [];
+  for (const b of Object.values(buckets)) {
+    if (b.meshes.length === 0) continue;
+    const center = b.box.getCenter(new THREE.Vector3());
+
+    const steerPivot = new THREE.Group();
+    steerPivot.position.copy(center);
+    orientedWrapper.add(steerPivot);
+
+    const spinPivot = new THREE.Group();
+    steerPivot.add(spinPivot);
+    orientedWrapper.updateMatrixWorld(true);
+
+    for (const mesh of b.meshes) {
+      spinPivot.attach(mesh);
+    }
+
+    builtWheels.push({
+      wheelRoot: steerPivot,
+      spinGroup: spinPivot,
+      isFront: b.isFront,
+      steerAxis: 'y',
+      spinAxis: 'x',
+    });
+  }
+
+  return builtWheels;
+}
+
+/**
+ * Creates a drivable 3D car (BMW M3, Toyota Alphard 2025, Toyota Corolla 2017, etc.)
+ * with 4-wheel rigging, clearcoat reflections, engine/horn audio, and Khulna street collisions.
+ */
+export function createDrivableCar(scene, manager, config) {
+  const paintPresets = config.paintPresets || BMW_PAINT_PRESETS;
   const root = new THREE.Group();
-  root.name = 'DrivableBMWM3';
+  root.name = `DrivableCar_${config.id}`;
   scene.add(root);
 
   const bodyTiltGroup = new THREE.Group();
   root.add(bodyTiltGroup);
 
-  // Soft contact shadow so the BMW looks grounded at 60-120 FPS even when shadows are off
-  const contactShadow = createUnderbodyContactShadow(1.88, 4.35);
+  const contactShadow = createUnderbodyContactShadow(config.width || 1.88, config.targetLength || 4.4);
   root.add(contactShadow);
 
-  // Spawn right on Taltola / Haji Mohsin Road in front of the house, facing South (+Z)
   const state = {
+    id: config.id,
+    name: config.name,
+    badge: config.badge || config.name.toUpperCase(),
     loaded: false,
     driving: false,
     cameraMode: 'chase', // 'chase' | 'hood' | 'front'
-    pos: new THREE.Vector3(-0.35, 0.01, 4.8),
-    heading: 0.0, // 0 faces +Z (down Haji Mohsin Road)
+    pos: new THREE.Vector3(...(config.spawnPos || [-0.35, 0.01, 4.8])),
+    heading: config.spawnHeading ?? 0.0,
     speed: 0,
     lateralVel: 0,
     steerAngle: 0,
@@ -189,18 +371,24 @@ export function createDrivableBMW(scene, manager) {
     pitch: 0,
     roll: 0,
     paintIndex: 0,
-    paintName: BMW_PAINT_PRESETS[0].name,
+    paintName: paintPresets[0].name,
+    halfWidth: (config.width || 1.88) * 0.48,
+    halfLength: (config.targetLength || 4.4) * 0.48,
+    camBack: config.camBack || 5.4,
+    camHeight: config.camHeight || 2.15,
+    hoodHeight: config.hoodHeight || 1.28,
+    hoodForward: config.hoodForward || 0.65,
   };
 
   let riggedWheels = [];
   let paintMaterials = [];
   let glossyMaterials = [];
   let carShadowMeshes = [];
-  let tailMat = null;
-  let drlMat = null;
+  let tailMats = [];
+  let drlMats = [];
   let currentQuality = 'high';
 
-  // Web Audio BMW inline-6 Engine + Horn
+  // Web Audio Engine + Horn
   let audioCtx = null;
   let osc1 = null;
   let osc2 = null;
@@ -246,10 +434,10 @@ export function createDrivableBMW(scene, manager) {
       engineGain.gain.setTargetAtTime(0.0, now, 0.08);
       return;
     }
-    const baseFreq = 32 + (rpm / 7500) * 155;
+    const baseFreq = (config.engineBaseFreq || 32) + (rpm / 7500) * (config.engineRangeFreq || 150);
     osc1.frequency.setTargetAtTime(baseFreq, now, 0.04);
     osc2.frequency.setTargetAtTime(baseFreq * 1.5, now, 0.04);
-    const targetGain = 0.032 + throttle * 0.048;
+    const targetGain = 0.030 + throttle * 0.045;
     engineGain.gain.setTargetAtTime(targetGain, now, 0.06);
   }
 
@@ -264,7 +452,7 @@ export function createDrivableBMW(scene, manager) {
       g.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
       g.connect(audioCtx.destination);
 
-      for (const freq of [415, 520]) {
+      for (const freq of (config.hornFreqs || [415, 520])) {
         const o = audioCtx.createOscillator();
         o.type = 'sawtooth';
         o.frequency.value = freq;
@@ -279,20 +467,27 @@ export function createDrivableBMW(scene, manager) {
     } catch {}
   }
 
-  // Load the real 30-mesh BMW M3/M4 Competition GLB asynchronously so startup stays instant
-  const loader = new GLTFLoader(manager);
+  // Load GLB asynchronously so startup stays fast (do not pass LoadingManager for optional extra cars so loading screen doesn't hang on 84MB Alphard)
+  const loader = new GLTFLoader(config.isBMW ? manager : undefined);
   loader.load(
-    './assets/bmw_m3.glb',
+    config.assetUrl,
     (gltf) => {
       const model = gltf.scene;
       model.updateMatrixWorld(true);
 
-      const bounds = new THREE.Box3().setFromObject(model);
+      const orientedWrapper = new THREE.Group();
+      orientedWrapper.add(model);
+
+      if (config.rotateY) {
+        model.rotation.y = config.rotateY;
+        model.updateMatrixWorld(true);
+      }
+
+      const bounds = new THREE.Box3().setFromObject(orientedWrapper);
       const center = bounds.getCenter(new THREE.Vector3());
       const size = bounds.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-      // Scale to 4.35m length so it matches real 1.76m human scale & fits Taltola lane cleanly
-      const scale = 4.35 / maxDim;
+      const scale = (config.targetLength || 4.35) / maxDim;
 
       model.scale.setScalar(scale);
       model.position.set(
@@ -300,215 +495,301 @@ export function createDrivableBMW(scene, manager) {
         -bounds.min.y * scale,
         -center.z * scale,
       );
+      orientedWrapper.updateMatrixWorld(true);
 
-      const paintColorHex = BMW_PAINT_PRESETS[state.paintIndex].hex;
-      let caliperMeshObj = null;
-      let rimMeshObj = null;
-      let tireMeshObj = null;
-      let wheelsParentNode = null;
+      const paintColorHex = paintPresets[state.paintIndex].hex;
 
-      model.traverse((child) => {
-        if (child.name === 'WHeelsandrims_2') {
-          wheelsParentNode = child;
-        }
-        if (!child.isMesh || !child.material) return;
+      if (config.isBMW) {
+        let caliperMeshObj = null;
+        let rimMeshObj = null;
+        let tireMeshObj = null;
+        let wheelsParentNode = null;
 
-        const isArray = Array.isArray(child.material);
-        const srcMats = isArray ? child.material : [child.material];
+        model.traverse((child) => {
+          if (child.name === 'WHeelsandrims_2') {
+            wheelsParentNode = child;
+          }
+          if (!child.isMesh || !child.material) return;
 
-        const firstName = srcMats[0]?.name || '';
-        const shouldCast = firstName !== 'Meshesheadlight51Mtl' && firstName !== 'Mesheswindows1Mtl';
-        child.castShadow = shouldCast && currentQuality !== 'low';
-        child.receiveShadow = true;
-        if (shouldCast) carShadowMeshes.push(child);
+          const isArray = Array.isArray(child.material);
+          const srcMats = isArray ? child.material : [child.material];
 
-        const outMats = srcMats.map((mat) => {
-          const mName = mat.name || '';
+          const firstName = srcMats[0]?.name || '';
+          const shouldCast = firstName !== 'Meshesheadlight51Mtl' && firstName !== 'Mesheswindows1Mtl';
+          child.castShadow = shouldCast && currentQuality !== 'low';
+          child.receiveShadow = true;
+          if (shouldCast) carShadowMeshes.push(child);
 
-          if (BODY_PAINT_MATS.includes(mName)) {
-            const pMat = createBodyMaterial(mat, paintColorHex);
-            paintMaterials.push(pMat);
-            glossyMaterials.push(pMat);
-            return pMat;
-          }
-          if (mName === 'Mesheslivery1Mtl') {
-            const lMat = createBodyMaterial(mat, paintColorHex);
-            lMat.map = null;
-            paintMaterials.push(lMat);
-            glossyMaterials.push(lMat);
-            return lMat;
-          }
-          if (mName === 'Meshesheadlight51Mtl') {
-            const hlMat = new THREE.MeshPhysicalMaterial({
-              name: mName,
-              color: new THREE.Color('#10151e'),
-              transparent: true,
-              opacity: 0.18,
-              depthWrite: false,
-              roughness: 0.03,
-              metalness: 0.15,
-              clearcoat: 1.0,
-              envMapIntensity: 1.6,
-            });
-            glossyMaterials.push(hlMat);
-            return hlMat;
-          }
-          if (mName === 'Meshesled111Mtl') {
-            const dMat = new THREE.MeshStandardMaterial({
-              name: mName,
-              color: new THREE.Color('#ffee22'),
-              emissive: new THREE.Color('#ffdd00'),
-              emissiveIntensity: 4.5,
-              roughness: 0.08,
-            });
-            drlMat = dMat;
-            return dMat;
-          }
-          if (mName === 'Mesheslight51Mtl') {
-            const pLightMat = mat.clone();
-            pLightMat.emissive = new THREE.Color('#d8eeff');
-            pLightMat.emissiveIntensity = 1.4;
-            pLightMat.envMapIntensity = 1.4;
-            return pLightMat;
-          }
-          if (mName === 'Meshesredlight1Mtl' || mName === 'Meshestail71Mtl') {
-            const tMat = new THREE.MeshStandardMaterial({
-              name: mName,
-              color: new THREE.Color('#ff1128'),
-              emissive: new THREE.Color('#ff0820'),
-              emissiveIntensity: 3.4,
-              roughness: 0.10,
-            });
-            if (mName === 'Meshesredlight1Mtl') tailMat = tMat;
-            return tMat;
-          }
-          if (mName === 'Meshesled11Mtl') {
-            const ledMat = mat.clone();
-            ledMat.emissive = new THREE.Color('#ffffff');
-            ledMat.emissiveIntensity = 1.8;
-            return ledMat;
-          }
-          if (mName === 'Mesheswindows1Mtl') {
-            const winMat = new THREE.MeshPhysicalMaterial({
-              name: mName,
-              color: new THREE.Color('#0a1524'),
-              side: THREE.DoubleSide,
-              transparent: true,
-              opacity: 0.48,
-              depthWrite: false,
-              metalness: 0.45,
-              roughness: 0.06,
-              clearcoat: 1.0,
-              clearcoatRoughness: 0.04,
-              reflectivity: 1.0,
-              envMapIntensity: 1.8,
-            });
-            glossyMaterials.push(winMat);
-            return winMat;
-          }
-          if (WHEEL_RIM_MATS.includes(mName)) {
-            const rMat = createWheelMaterial(mat, '#d8ebff');
-            glossyMaterials.push(rMat);
-            return rMat;
-          }
-          if (TIRE_MATS.includes(mName)) {
-            return new THREE.MeshStandardMaterial({
-              name: mName,
-              color: new THREE.Color('#1d2025'),
-              map: mat.map || null,
-              normalMap: mat.normalMap || null,
-              roughness: 0.76,
-              metalness: 0.06,
-              envMapIntensity: 0.6,
-              side: mat.side,
-            });
-          }
-          if (mName === 'Caliper1Mtl') {
-            const cMat = mat.clone();
-            cMat.color.set('#087fd7');
-            cMat.metalness = 0.42;
-            cMat.roughness = 0.24;
-            cMat.envMapIntensity = 1.1;
-            return cMat;
-          }
-          if (
-            mName === 'Meshesblack151Mtl'
-            || mName === 'Meshesff41Mtl'
-            || mName === 'Meshespillars1Mtl'
-            || mName === 'Meshesblack161Mtl'
-          ) {
-            const trimMat = new THREE.MeshPhysicalMaterial({
-              name: mName,
-              color: mName === 'Meshespillars1Mtl' ? new THREE.Color('#15181d') : new THREE.Color('#eef2f6'),
-              map: mat.map || null,
-              roughness: 0.18,
-              metalness: 0.50,
-              clearcoat: 0.9,
-              clearcoatRoughness: 0.10,
-              envMapIntensity: 1.4,
-              side: mat.side,
-            });
-            glossyMaterials.push(trimMat);
-            return trimMat;
-          }
+          const outMats = srcMats.map((mat) => {
+            const mName = mat.name || '';
 
-          const cloned = mat.clone();
-          cloned.envMapIntensity = 1.15;
-          return cloned;
+            if (BMW_BODY_PAINT_MATS.includes(mName)) {
+              const pMat = createBodyMaterial(mat, paintColorHex);
+              paintMaterials.push(pMat);
+              glossyMaterials.push(pMat);
+              return pMat;
+            }
+            if (mName === 'Mesheslivery1Mtl') {
+              const lMat = createBodyMaterial(mat, paintColorHex);
+              lMat.map = null;
+              paintMaterials.push(lMat);
+              glossyMaterials.push(lMat);
+              return lMat;
+            }
+            if (mName === 'Meshesheadlight51Mtl') {
+              const hlMat = new THREE.MeshPhysicalMaterial({
+                name: mName,
+                color: new THREE.Color('#10151e'),
+                transparent: true,
+                opacity: 0.18,
+                depthWrite: false,
+                roughness: 0.03,
+                metalness: 0.15,
+                clearcoat: 1.0,
+                envMapIntensity: 1.6,
+              });
+              glossyMaterials.push(hlMat);
+              return hlMat;
+            }
+            if (mName === 'Meshesled111Mtl') {
+              const dMat = new THREE.MeshStandardMaterial({
+                name: mName,
+                color: new THREE.Color('#ffee22'),
+                emissive: new THREE.Color('#ffdd00'),
+                emissiveIntensity: 4.5,
+                roughness: 0.08,
+              });
+              drlMats.push(dMat);
+              return dMat;
+            }
+            if (mName === 'Mesheslight51Mtl') {
+              const pLightMat = mat.clone();
+              pLightMat.emissive = new THREE.Color('#d8eeff');
+              pLightMat.emissiveIntensity = 1.4;
+              pLightMat.envMapIntensity = 1.4;
+              return pLightMat;
+            }
+            if (mName === 'Meshesredlight1Mtl' || mName === 'Meshestail71Mtl') {
+              const tMat = new THREE.MeshStandardMaterial({
+                name: mName,
+                color: new THREE.Color('#ff1128'),
+                emissive: new THREE.Color('#ff0820'),
+                emissiveIntensity: 3.4,
+                roughness: 0.10,
+              });
+              if (mName === 'Meshesredlight1Mtl') tailMats.push(tMat);
+              return tMat;
+            }
+            if (mName === 'Meshesled11Mtl') {
+              const ledMat = mat.clone();
+              ledMat.emissive = new THREE.Color('#ffffff');
+              ledMat.emissiveIntensity = 1.8;
+              return ledMat;
+            }
+            if (mName === 'Mesheswindows1Mtl') {
+              const winMat = new THREE.MeshPhysicalMaterial({
+                name: mName,
+                color: new THREE.Color('#0a1524'),
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.48,
+                depthWrite: false,
+                metalness: 0.45,
+                roughness: 0.06,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.04,
+                reflectivity: 1.0,
+                envMapIntensity: 1.8,
+              });
+              glossyMaterials.push(winMat);
+              return winMat;
+            }
+            if (BMW_WHEEL_RIM_MATS.includes(mName)) {
+              const rMat = createWheelMaterial(mat, '#d8ebff');
+              glossyMaterials.push(rMat);
+              return rMat;
+            }
+            if (BMW_TIRE_MATS.includes(mName)) {
+              return new THREE.MeshStandardMaterial({
+                name: mName,
+                color: new THREE.Color('#1d2025'),
+                map: mat.map || null,
+                normalMap: mat.normalMap || null,
+                roughness: 0.76,
+                metalness: 0.06,
+                envMapIntensity: 0.6,
+                side: mat.side,
+              });
+            }
+            if (mName === 'Caliper1Mtl') {
+              const cMat = mat.clone();
+              cMat.color.set('#087fd7');
+              cMat.metalness = 0.42;
+              cMat.roughness = 0.24;
+              cMat.envMapIntensity = 1.1;
+              return cMat;
+            }
+            if (
+              mName === 'Meshesblack151Mtl'
+              || mName === 'Meshesff41Mtl'
+              || mName === 'Meshespillars1Mtl'
+              || mName === 'Meshesblack161Mtl'
+            ) {
+              const trimMat = new THREE.MeshPhysicalMaterial({
+                name: mName,
+                color: mName === 'Meshespillars1Mtl' ? new THREE.Color('#15181d') : new THREE.Color('#eef2f6'),
+                map: mat.map || null,
+                roughness: 0.18,
+                metalness: 0.50,
+                clearcoat: 0.9,
+                clearcoatRoughness: 0.10,
+                envMapIntensity: 1.4,
+                side: mat.side,
+              });
+              glossyMaterials.push(trimMat);
+              return trimMat;
+            }
+
+            const cloned = mat.clone();
+            cloned.envMapIntensity = 1.15;
+            return cloned;
+          });
+
+          if (!child.geometry.attributes.normal) {
+            child.geometry.computeVertexNormals();
+          }
+          child.material = isArray ? outMats : outMats[0];
+
+          const finalMatName = (Array.isArray(child.material) ? child.material[0].name : child.material.name) || '';
+          if (finalMatName === 'Caliper1Mtl') caliperMeshObj = child;
+          if (finalMatName === 'Meshesm8rim1Mtl') rimMeshObj = child;
+          if (finalMatName === 'Meshesm8rim0011Mtl') tireMeshObj = child;
         });
 
-        if (!child.geometry.attributes.normal) {
-          child.geometry.computeVertexNormals();
-        }
-        child.material = isArray ? outMats : outMats[0];
+        if (wheelsParentNode && rimMeshObj && tireMeshObj) {
+          const builtWheels = [];
+          for (const q of BMW_WHEEL_QUADRANTS) {
+            const steerPivot = new THREE.Group();
+            steerPivot.position.set(q.cx, q.cy, q.cz);
+            wheelsParentNode.add(steerPivot);
 
-        const finalMatName = (Array.isArray(child.material) ? child.material[0].name : child.material.name) || '';
-        if (finalMatName === 'Caliper1Mtl') caliperMeshObj = child;
-        if (finalMatName === 'Meshesm8rim1Mtl') rimMeshObj = child;
-        if (finalMatName === 'Meshesm8rim0011Mtl') tireMeshObj = child;
-      });
+            if (caliperMeshObj) {
+              steerPivot.add(splitMergedWheelMeshByQuadrant(caliperMeshObj, q));
+            }
 
-      if (wheelsParentNode && rimMeshObj && tireMeshObj) {
-        const builtWheels = [];
-        for (const q of WHEEL_QUADRANTS) {
-          const steerPivot = new THREE.Group();
-          steerPivot.position.set(q.cx, q.cy, q.cz);
-          wheelsParentNode.add(steerPivot);
+            const spinPivot = new THREE.Group();
+            steerPivot.add(spinPivot);
+            const subRim = splitMergedWheelMeshByQuadrant(rimMeshObj, q);
+            const subTire = splitMergedWheelMeshByQuadrant(tireMeshObj, q);
+            subRim.castShadow = currentQuality !== 'low';
+            subTire.castShadow = currentQuality !== 'low';
+            carShadowMeshes.push(subRim, subTire);
+            spinPivot.add(subRim);
+            spinPivot.add(subTire);
 
-          if (caliperMeshObj) {
-            steerPivot.add(splitMergedWheelMeshByQuadrant(caliperMeshObj, q));
+            builtWheels.push({
+              wheelRoot: steerPivot,
+              spinGroup: spinPivot,
+              isFront: q.isFront,
+              steerAxis: 'z',
+              spinAxis: 'x',
+            });
           }
 
-          const spinPivot = new THREE.Group();
-          steerPivot.add(spinPivot);
-          const subRim = splitMergedWheelMeshByQuadrant(rimMeshObj, q);
-          const subTire = splitMergedWheelMeshByQuadrant(tireMeshObj, q);
-          subRim.castShadow = currentQuality !== 'low';
-          subTire.castShadow = currentQuality !== 'low';
-          carShadowMeshes.push(subRim, subTire);
-          spinPivot.add(subRim);
-          spinPivot.add(subTire);
-
-          builtWheels.push({
-            wheelRoot: steerPivot,
-            spinGroup: spinPivot,
-            isFront: q.isFront,
-          });
+          if (caliperMeshObj) caliperMeshObj.visible = false;
+          rimMeshObj.visible = false;
+          tireMeshObj.visible = false;
+          riggedWheels = builtWheels;
         }
+      } else {
+        // Generic high-detail Sketchfab car setup (Toyota Alphard 2025, Toyota Corolla 2017, etc.)
+        const bodySet = new Set(config.bodyPaintMats || []);
+        const glassSet = new Set(config.glassMats || []);
+        const tailSet = new Set(config.tailMats || []);
+        const hlSet = new Set(config.headlightMats || []);
+        const clonedMatCache = new Map();
 
-        if (caliperMeshObj) caliperMeshObj.visible = false;
-        rimMeshObj.visible = false;
-        tireMeshObj.visible = false;
-        riggedWheels = builtWheels;
+        model.traverse((child) => {
+          if (!child.isMesh || !child.material) return;
+          if (!child.geometry.attributes.normal) {
+            child.geometry.computeVertexNormals();
+          }
+
+          const isArray = Array.isArray(child.material);
+          const srcMats = isArray ? child.material : [child.material];
+          const firstName = srcMats[0]?.name || '';
+
+          const isGlass = glassSet.has(firstName);
+          const isBody = bodySet.has(firstName);
+          const shouldCast = !isGlass && (!config.shadowOnlyExterior || isBody || /chrome|rim|tire|wheel|C_11CR29/i.test(firstName));
+
+          child.castShadow = shouldCast && currentQuality !== 'low';
+          child.receiveShadow = !isGlass;
+          if (shouldCast) carShadowMeshes.push(child);
+
+          const outMats = srcMats.map((mat) => {
+            if (clonedMatCache.has(mat)) return clonedMatCache.get(mat);
+            const mName = mat.name || '';
+            let out;
+
+            if (bodySet.has(mName)) {
+              out = createBodyMaterial(mat, paintColorHex);
+              paintMaterials.push(out);
+              glossyMaterials.push(out);
+            } else if (glassSet.has(mName)) {
+              out = new THREE.MeshPhysicalMaterial({
+                name: mName,
+                color: new THREE.Color('#0c1724'),
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.45,
+                depthWrite: false,
+                metalness: 0.35,
+                roughness: 0.06,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.04,
+                reflectivity: 1.0,
+                envMapIntensity: 1.7,
+              });
+              glossyMaterials.push(out);
+            } else if (tailSet.has(mName)) {
+              out = mat.clone();
+              out.color = new THREE.Color('#d61424');
+              out.emissive = new THREE.Color('#ff1228');
+              out.emissiveIntensity = 1.8;
+              tailMats.push(out);
+            } else if (hlSet.has(mName)) {
+              out = mat.clone();
+              out.emissive = new THREE.Color('#eef6ff');
+              out.emissiveIntensity = 1.6;
+              drlMats.push(out);
+            } else {
+              out = mat.clone();
+              if ('envMapIntensity' in out) {
+                out.envMapIntensity = /chrome|cr|rim|mirror/i.test(mName) ? 1.65 : 1.05;
+              }
+            }
+
+            clonedMatCache.set(mat, out);
+            return out;
+          });
+
+          child.material = isArray ? outMats : outMats[0];
+        });
+
+        if (config.wheelNameRegex) {
+          riggedWheels = rigGenericCarWheels(orientedWrapper, config.wheelNameRegex);
+        }
       }
 
-      bodyTiltGroup.add(model);
+      bodyTiltGroup.add(orientedWrapper);
       state.loaded = true;
+      setQualityMode(currentQuality);
       syncTransform();
     },
     undefined,
     (err) => {
-      console.warn('Could not load BMW M3 model:', err);
+      console.warn(`Could not load car model (${config.name}):`, err);
     },
   );
 
@@ -520,17 +801,20 @@ export function createDrivableBMW(scene, manager) {
 
     for (const w of riggedWheels) {
       if (w.isFront) {
-        w.wheelRoot.rotation.z = -state.steerAngle;
+        if (w.steerAxis === 'y') {
+          w.wheelRoot.rotation.y = state.steerAngle;
+        } else {
+          w.wheelRoot.rotation.z = -state.steerAngle;
+        }
       }
       w.spinGroup.rotation.x = state.wheelSpin;
     }
   }
 
-  function applyCarCollisions(houseRef, envRef) {
+  function applyCarCollisions(houseRef, envRef, allCars = []) {
     const p = state.pos;
     let hitWall = false;
 
-    // Overall drivable street bounds
     if (p.z < -37.2) {
       p.z = -37.2;
       hitWall = true;
@@ -539,7 +823,6 @@ export function createDrivableBMW(scene, manager) {
       hitWall = true;
     }
 
-    // Check which open street/alley corridor the car is currently in
     const inFakirBariLane = p.z >= 10.65 && p.z <= 13.75;
     const houseGateOpen = Boolean(houseRef?.state?.gateOpen);
     const inHouseGateZ = houseGateOpen && p.z >= -1.4 && p.z <= 1.4;
@@ -547,9 +830,7 @@ export function createDrivableBMW(scene, manager) {
     const inTowerRampZ = towerGateOpen && p.z >= 19.3 && p.z <= 22.6;
     const inASBOpenZ = p.z >= 24.0 && p.z <= 26.2;
 
-    // West side (-X) road edge / Fakir Bari Lane / SK Arshan Parking
     const minX = inFakirBariLane ? -39.5 : (inTowerRampZ ? -9.0 : -1.55);
-    // East side (+X) road edge / Taltola House Courtyard / ASB Courtyard
     const maxX = inHouseGateZ ? 4.35 : (inASBOpenZ ? 5.2 : 1.55);
 
     if (p.x < minX) {
@@ -560,7 +841,6 @@ export function createDrivableBMW(scene, manager) {
       hitWall = true;
     }
 
-    // Keep car inside Fakir Bari Lane walls once turned West past x < -2.2
     if (p.x < -2.2 && !inTowerRampZ) {
       if (p.z < 11.15) {
         p.z = 11.15;
@@ -571,7 +851,25 @@ export function createDrivableBMW(scene, manager) {
       }
     }
 
-    // Ground elevation: smoothly climb SK Arshan Parking ramp when driving inside
+    // Car-to-car separation so vehicles don't overlap each other
+    for (const other of allCars) {
+      if (!other || other.state === state) continue;
+      const dx = p.x - other.state.pos.x;
+      const dz = p.z - other.state.pos.z;
+      const minSepX = state.halfWidth + other.state.halfWidth + 0.12;
+      const minSepZ = state.halfLength + other.state.halfLength + 0.15;
+      const overlapX = minSepX - Math.abs(dx);
+      const overlapZ = minSepZ - Math.abs(dz);
+      if (overlapX > 0 && overlapZ > 0) {
+        if (overlapX < overlapZ) {
+          p.x += (dx >= 0 ? 1 : -1) * overlapX;
+        } else {
+          p.z += (dz >= 0 ? 1 : -1) * overlapZ;
+        }
+        hitWall = true;
+      }
+    }
+
     if (inTowerRampZ && p.x < -2.6) {
       const rampT = THREE.MathUtils.clamp((-2.6 - p.x) / 1.75, 0, 1);
       p.y = 0.01 + rampT * 0.50;
@@ -586,8 +884,8 @@ export function createDrivableBMW(scene, manager) {
   }
 
   function cyclePaintColor() {
-    state.paintIndex = (state.paintIndex + 1) % BMW_PAINT_PRESETS.length;
-    const preset = BMW_PAINT_PRESETS[state.paintIndex];
+    state.paintIndex = (state.paintIndex + 1) % paintPresets.length;
+    const preset = paintPresets[state.paintIndex];
     state.paintName = preset.name;
     for (const mat of paintMaterials) {
       mat.color.set(preset.hex);
@@ -605,18 +903,17 @@ export function createDrivableBMW(scene, manager) {
   function enterCar() {
     state.driving = true;
     ensureAudio();
-    if (drlMat) drlMat.emissiveIntensity = 5.0;
+    for (const m of drlMats) m.emissiveIntensity = 4.5;
   }
 
   function exitCar(playerPos) {
     state.driving = false;
     updateEngineAudio(false, 920, 0);
-    if (drlMat) drlMat.emissiveIntensity = 2.6;
-    if (tailMat) tailMat.emissiveIntensity = 1.6;
+    for (const m of drlMats) m.emissiveIntensity = 1.8;
+    for (const m of tailMats) m.emissiveIntensity = 1.6;
 
-    // Place player cleanly next to the left (driver) door or right side if left is tight
     const rightVec = new THREE.Vector3(Math.cos(state.heading), 0, -Math.sin(state.heading));
-    const exitOffset = state.pos.x < -0.6 ? 1.55 : -1.55;
+    const exitOffset = state.pos.x < -0.6 ? 1.60 : -1.60;
     playerPos.set(
       state.pos.x + rightVec.x * exitOffset,
       state.pos.y + 1.68,
@@ -624,17 +921,21 @@ export function createDrivableBMW(scene, manager) {
     );
   }
 
+  function distanceToPlayer(playerPos) {
+    if (playerPos.y - 1.68 > 2.2) return Infinity;
+    return Math.hypot(playerPos.x - state.pos.x, playerPos.z - state.pos.z);
+  }
+
   function isPlayerNear(playerPos) {
-    if (playerPos.y - 1.68 > 2.0) return false;
-    return Math.hypot(playerPos.x - state.pos.x, playerPos.z - state.pos.z) < 3.6;
+    return distanceToPlayer(playerPos) < 3.8;
   }
 
   function getPrompt(playerPos) {
     if (state.driving) {
-      return '[E / T] BMW M3 গাড়ি থেকে নামুন (Exit Car)';
+      return `[E / T] ${state.name} গাড়ি থেকে নামুন (Exit Car)`;
     }
     if (isPlayerNear(playerPos)) {
-      return '[E / F] BMW M3 গাড়িতে উঠুন ও চালান (Drive BMW M3)';
+      return `[E / F] ${state.name} গাড়িতে উঠুন ও চালান (Drive ${state.name})`;
     }
     return null;
   }
@@ -642,17 +943,16 @@ export function createDrivableBMW(scene, manager) {
   const fwd = new THREE.Vector3();
   const rgt = new THREE.Vector3();
 
-  function update(delta, keys, houseRef, envRef) {
+  function update(delta, keys, houseRef, envRef, allCars = []) {
     const dt = Math.min(delta, 0.05);
 
     if (!state.driving) {
-      // Gently coast to a stop if player exited while rolling
       if (Math.abs(state.speed) > 0.05) {
         state.speed *= Math.max(0, 1 - dt * 4.2);
         fwd.set(Math.sin(state.heading), 0, Math.cos(state.heading));
         state.pos.addScaledVector(fwd, state.speed * dt);
         state.wheelSpin += (state.speed / 0.34) * dt;
-        applyCarCollisions(houseRef, envRef);
+        applyCarCollisions(houseRef, envRef, allCars);
       } else {
         state.speed = 0;
       }
@@ -668,11 +968,10 @@ export function createDrivableBMW(scene, manager) {
     const steerInput = (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0)
       - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0);
     const handbrake = keys.has('Space');
-    const boost = (keys.has('ShiftLeft') || keys.has('ShiftRight')) && throttle > 0 ? 1.45 : 1.0;
+    const boost = (keys.has('ShiftLeft') || keys.has('ShiftRight')) && throttle > 0 ? 1.42 : 1.0;
 
-    // Street-tuned BMW M3 speed & responsive cornering for Khulna roads (up to ~135 km/h with boost)
-    const maxForwardSpeed = boost > 1 ? 37.5 : 26.5;
-    const engineForce = 15.5 * boost;
+    const maxForwardSpeed = boost > 1 ? (config.boostMaxSpeed || 35.0) : (config.maxSpeed || 25.0);
+    const engineForce = (config.engineForce || 14.5) * boost;
     const brakeForce = 24.0;
     const drag = 0.012 * state.speed * Math.abs(state.speed) + 0.55 * state.speed;
 
@@ -680,7 +979,7 @@ export function createDrivableBMW(scene, manager) {
     if (throttle > 0) accel += engineForce;
     if (brake > 0) {
       if (state.speed > 0.6) accel -= brakeForce;
-      else accel -= 9.5; // Reverse gear
+      else accel -= 9.5;
     }
     if (handbrake && Math.abs(state.speed) > 0.4) {
       accel -= Math.sign(state.speed) * 14.0;
@@ -714,16 +1013,14 @@ export function createDrivableBMW(scene, manager) {
     state.pos.addScaledVector(fwd, state.speed * dt);
     state.pos.addScaledVector(rgt, state.lateralVel * dt);
 
-    applyCarCollisions(houseRef, envRef);
+    applyCarCollisions(houseRef, envRef, allCars);
 
-    // Wheel spin & suspension pitch/roll
     state.wheelSpin += (state.speed / 0.34) * dt;
     const targetPitch = THREE.MathUtils.clamp(-accel * 0.0022, -0.045, 0.045);
     const targetRoll = THREE.MathUtils.clamp(-turnRate * state.speed * 0.0025, -0.055, 0.055);
     state.pitch = THREE.MathUtils.lerp(state.pitch, targetPitch, Math.min(1, dt * 10));
     state.roll = THREE.MathUtils.lerp(state.roll, targetRoll, Math.min(1, dt * 10));
 
-    // Gear & RPM telemetry
     const absKmh = Math.abs(state.speed) * 3.6;
     const gearThresholds = [0, 26, 52, 78, 104, 130, 165];
     let g = 1;
@@ -733,16 +1030,15 @@ export function createDrivableBMW(scene, manager) {
     state.gear = state.speed < -0.4 ? 'R' : (absKmh < 1 ? 'N' : g);
 
     const gMin = gearThresholds[(typeof g === 'number' ? g : 1) - 1] || 0;
-    const gMax = gearThresholds[typeof g === 'number' ? g : 1] || 30;
+    const gMax = gearThresholds[(typeof g === 'number' ? g : 1)] || 30;
     const gearProgress = (absKmh - gMin) / Math.max(1, gMax - gMin);
     const targetRpm = absKmh < 1
       ? 920 + throttle * 3800
       : THREE.MathUtils.clamp(2000 + gearProgress * 5400, 1100, 7800);
     state.rpm = THREE.MathUtils.lerp(state.rpm, targetRpm, Math.min(1, dt * 12));
 
-    // Brighten brake lights when braking or handbraking
-    if (tailMat) {
-      tailMat.emissiveIntensity = (brake > 0 || handbrake) ? 7.5 : 2.8;
+    for (const m of tailMats) {
+      m.emissiveIntensity = (brake > 0 || handbrake) ? 7.0 : 2.2;
     }
 
     updateEngineAudio(true, state.rpm, throttle);
@@ -772,6 +1068,7 @@ export function createDrivableBMW(scene, manager) {
     state,
     enterCar,
     exitCar,
+    distanceToPlayer,
     isPlayerNear,
     getPrompt,
     cyclePaintColor,
@@ -780,4 +1077,15 @@ export function createDrivableBMW(scene, manager) {
     setQualityMode,
     update,
   };
+}
+
+/**
+ * Builds the entire drivable car fleet (BMW M3, Toyota Alphard 2025, Toyota Corolla 2017).
+ */
+export function createDrivableCarFleet(scene, manager) {
+  return CAR_FLEET_CONFIGS.map((cfg) => createDrivableCar(scene, manager, cfg));
+}
+
+export function createDrivableBMW(scene, manager) {
+  return createDrivableCar(scene, manager, CAR_FLEET_CONFIGS[0]);
 }

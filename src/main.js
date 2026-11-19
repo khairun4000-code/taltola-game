@@ -4,7 +4,7 @@ import { createMaterials } from './materials.js';
 import { buildHouse } from './house.js';
 import { buildEnvironment } from './environment.js';
 import { createPlayerCharacter } from './character.js';
-import { createDrivableBMW } from './car.js';
+import { createDrivableCarFleet } from './car.js';
 import './style.css';
 
 const canvas = document.querySelector('#scene');
@@ -26,6 +26,7 @@ const runToggleButton = document.querySelector('#run-toggle-button');
 const runPillButton = document.querySelector('#run-pill-button');
 const carToggleButton = document.querySelector('#car-toggle-button');
 const carHud = document.querySelector('#car-hud');
+const carBadgeEl = document.querySelector('#car-badge');
 const carSpeedEl = document.querySelector('#car-speed');
 const carGearEl = document.querySelector('#car-gear');
 const carRpmFill = document.querySelector('#car-rpm-fill');
@@ -134,7 +135,27 @@ let studioGroup;
 let skyDome;
 let pmremEnvRT;
 let playerCharacter;
+let cars = [];
 let bmwCar;
+function getDrivingCar() {
+  return cars.find((c) => c.state.driving) || null;
+}
+function findNearestCar(pos) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const c of cars) {
+    const d = c.distanceToPlayer(pos);
+    if (d < bestDist) {
+      bestDist = d;
+      best = c;
+    }
+  }
+  return best;
+}
+function findNearestEnterableCar(pos) {
+  const c = findNearestCar(pos);
+  return c && c.isPlayerNear(pos) ? c : null;
+}
 const carCamDesired = new THREE.Vector3();
 const carCamLookTarget = new THREE.Vector3();
 let sun;
@@ -768,14 +789,17 @@ function setMode(studioMode) {
     camera.fov = 45;
     camera.updateProjectionMatrix();
 
-    if (bmwCar?.state.driving) {
-      bmwCar.exitCar(playerPos);
+    const drivingCar = getDrivingCar();
+    if (drivingCar) {
+      drivingCar.exitCar(playerPos);
       carHud?.classList.add('hidden');
       emoteBar?.classList.remove('hidden');
     }
     if (house?.group) house.group.visible = false;
     if (environment?.group) environment.group.visible = false;
-    if (bmwCar?.group) bmwCar.group.visible = false;
+    for (const c of cars) {
+      if (c?.group) c.group.visible = false;
+    }
     if (skyDome) skyDome.visible = false;
     if (studioGroup) studioGroup.visible = true;
 
@@ -804,7 +828,9 @@ function setMode(studioMode) {
 
     if (house?.group) house.group.visible = true;
     if (environment?.group) environment.group.visible = true;
-    if (bmwCar?.group) bmwCar.group.visible = true;
+    for (const c of cars) {
+      if (c?.group) c.group.visible = true;
+    }
     if (skyDome) skyDome.visible = true;
     if (studioGroup) studioGroup.visible = false;
 
@@ -1031,7 +1057,9 @@ function applyQuality(nextQuality) {
   sceneMaterials?.setQualityMode?.(quality);
   environment?.tower?.setQualityMode?.(quality);
   playerCharacter?.setQualityMode?.(quality);
-  bmwCar?.setQualityMode?.(quality);
+  for (const c of cars) {
+    c?.setQualityMode?.(quality);
+  }
   if (environment?.farGroup) environment.farGroup.visible = !isLow;
   if (skyDome) skyDome.visible = !inStudio;
 
@@ -1274,46 +1302,51 @@ function sitOnSeat(seat) {
 }
 
 function syncCarHUD() {
-  if (!bmwCar) return;
-  const driving = bmwCar.state.driving;
+  if (!cars.length) return;
+  const activeCar = getDrivingCar();
+  const driving = Boolean(activeCar);
   if (carToggleButton) {
-    carToggleButton.innerHTML = driving ? 'EXIT BMW <span>[T]</span>' : 'DRIVE BMW <span>[T]</span>';
+    carToggleButton.innerHTML = driving ? 'EXIT CAR <span>[T]</span>' : 'DRIVE CAR <span>[T]</span>';
   }
   carHud?.classList.toggle('hidden', !driving);
   emoteBar?.classList.toggle('hidden', driving);
-  if (driving) {
-    if (carSpeedEl) carSpeedEl.textContent = String(Math.round(Math.abs(bmwCar.state.speed) * 3.6));
-    if (carGearEl) carGearEl.textContent = String(bmwCar.state.gear);
+  if (driving && activeCar) {
+    if (carBadgeEl) carBadgeEl.textContent = activeCar.state.badge;
+    if (carSpeedEl) carSpeedEl.textContent = String(Math.round(Math.abs(activeCar.state.speed) * 3.6));
+    if (carGearEl) carGearEl.textContent = String(activeCar.state.gear);
     if (carRpmFill) {
-      const pct = THREE.MathUtils.clamp(((bmwCar.state.rpm - 900) / 6900) * 100, 8, 100);
+      const pct = THREE.MathUtils.clamp(((activeCar.state.rpm - 900) / 6900) * 100, 8, 100);
       carRpmFill.style.width = `${pct.toFixed(1)}%`;
     }
     if (carPaintNameEl) {
-      carPaintNameEl.textContent = bmwCar.state.paintName.split(' ').pop();
+      carPaintNameEl.textContent = activeCar.state.paintName.split(' ').pop();
     }
   }
 }
 
-function toggleCarDriving() {
-  if (!bmwCar || inStudio) return;
-  if (bmwCar.state.driving) {
-    bmwCar.exitCar(playerPos);
-    controls.euler.set(-0.04, bmwCar.state.heading + Math.PI, 0, 'YXZ');
+function toggleCarDriving(targetCar = null) {
+  if (!cars.length || inStudio) return;
+  const activeCar = getDrivingCar();
+  if (activeCar) {
+    activeCar.exitCar(playerPos);
+    controls.euler.set(-0.04, activeCar.state.heading + Math.PI, 0, 'YXZ');
     camera.quaternion.setFromEuler(controls.euler);
     syncCarHUD();
     updateHUDPrompt();
     return;
   }
+  const carToEnter = targetCar || findNearestCar(playerPos) || bmwCar;
+  if (!carToEnter) return;
   if (sittingState.active) standUpFromSeat();
   if (liftKeypadOpen) closeLiftKeypad(false);
-  bmwCar.enterCar();
+  carToEnter.enterCar();
   if (!started) beginWalking();
   syncCarHUD();
   updateHUDPrompt();
 }
 
 function handleDoorInteraction() {
-  if (bmwCar?.state.driving) {
+  if (getDrivingCar()) {
     toggleCarDriving();
     return;
   }
@@ -1322,11 +1355,11 @@ function handleDoorInteraction() {
     return;
   }
   const nearSeat = findNearestSeat(playerPos);
-  const nearCar = Boolean(bmwCar?.isPlayerNear(playerPos));
+  const nearCar = findNearestEnterableCar(playerPos);
   const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos));
-  // If near the BMW M3 and no closer seat/door/lift is active, enter & drive the BMW!
+  // If near a drivable car and no closer seat/door/lift is active, enter & drive it!
   if (nearCar && !hasDoorOrLiftPrompt && !nearSeat) {
-    toggleCarDriving();
+    toggleCarDriving(nearCar);
     return;
   }
   // If near a seat and either no door/lift is active or seat is very close (< 1.25m), sit down!
@@ -1350,7 +1383,7 @@ function handleDoorInteraction() {
     return;
   }
   if (nearCar) {
-    toggleCarDriving();
+    toggleCarDriving(nearCar);
     return;
   }
   if (nearSeat) {
@@ -1384,7 +1417,8 @@ async function initialize() {
   // Keep reference to environment group so we can hide/show it cleanly
   environment.group = scene.getObjectByName('Lane and tropical surroundings');
   playerCharacter = createPlayerCharacter(scene, manager);
-  bmwCar = createDrivableBMW(scene, manager);
+  cars = createDrivableCarFleet(scene, manager);
+  bmwCar = cars[0];
 
   await allLoaded;
 
@@ -1419,6 +1453,8 @@ async function initialize() {
     environment,
     playerCharacter,
     bmwCar,
+    cars,
+    getDrivingCar,
     toggleCarDriving,
     playerPos,
     sittingState,
@@ -1509,9 +1545,10 @@ canvas.addEventListener('pointerdown', (event) => {
     return;
   }
   if (event.button === 0 && controls.pointerLocked) {
-    if (bmwCar?.state.driving) {
-      bmwCar.playHorn();
-    } else if (sittingState.active || findNearestSeat(playerPos) || bmwCar?.isPlayerNear(playerPos) || environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos)) {
+    const activeCar = getDrivingCar();
+    if (activeCar) {
+      activeCar.playHorn();
+    } else if (sittingState.active || findNearestSeat(playerPos) || findNearestEnterableCar(playerPos) || environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos)) {
       handleDoorInteraction();
     } else {
       playerCharacter?.triggerAttack();
@@ -1590,20 +1627,20 @@ carToggleButton?.addEventListener('click', (e) => {
 });
 carPaintBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
-  bmwCar?.cyclePaintColor();
+  getDrivingCar()?.cyclePaintColor();
   syncCarHUD();
 });
 carCamBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
-  bmwCar?.cycleCameraMode();
+  getDrivingCar()?.cycleCameraMode();
 });
 carHornBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
-  bmwCar?.playHorn();
+  getDrivingCar()?.playHorn();
 });
 carExitBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
-  if (bmwCar?.state.driving) toggleCarDriving();
+  if (getDrivingCar()) toggleCarDriving();
 });
 liftHudButton?.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -1775,8 +1812,9 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  // Dedicated Driving Controls when inside the BMW M3
-  if (bmwCar?.state.driving) {
+  // Dedicated Driving Controls when inside any drivable car
+  const activeCar = getDrivingCar();
+  if (activeCar) {
     if ((event.code === 'KeyE' || event.code === 'KeyF') && !event.repeat) {
       event.preventDefault();
       toggleCarDriving();
@@ -1784,18 +1822,18 @@ window.addEventListener('keydown', (event) => {
     }
     if (event.code === 'KeyC' && !event.repeat) {
       event.preventDefault();
-      bmwCar.cyclePaintColor();
+      activeCar.cyclePaintColor();
       syncCarHUD();
       return;
     }
     if (event.code === 'KeyH' && !event.repeat) {
       event.preventDefault();
-      bmwCar.playHorn();
+      activeCar.playHorn();
       return;
     }
     if ((event.code === 'KeyV' || event.code === 'KeyB') && !event.repeat) {
       event.preventDefault();
-      bmwCar.cycleCameraMode();
+      activeCar.cycleCameraMode();
       return;
     }
     if (event.code === 'KeyG' && !event.repeat) {
@@ -2287,15 +2325,18 @@ function applyWorldCollisions(pos) {
   const onStairs = pos.x >= 7.68 && pos.x <= 12.12 && pos.z >= 0.16 && pos.z <= 1.16;
 
   for (let iter = 0; iter < 2; iter++) {
-    // Parked BMW M3 body collider when walking on foot
-    if (bmwCar && !bmwCar.state.driving && footY < 1.8) {
-      const cx = bmwCar.state.pos.x;
-      const cz = bmwCar.state.pos.z;
-      const cosH = Math.abs(Math.cos(bmwCar.state.heading));
-      const sinH = Math.abs(Math.sin(bmwCar.state.heading));
-      const halfX = 0.88 * cosH + 2.05 * sinH;
-      const halfZ = 2.05 * cosH + 0.88 * sinH;
-      resolveCircleAABB(pos, PLAYER_RADIUS, cx - halfX, cx + halfX, cz - halfZ, cz + halfZ);
+    // Parked drivable car body colliders when walking on foot
+    if (footY < 1.9) {
+      for (const car of cars) {
+        if (!car || car.state.driving) continue;
+        const cx = car.state.pos.x;
+        const cz = car.state.pos.z;
+        const cosH = Math.abs(Math.cos(car.state.heading));
+        const sinH = Math.abs(Math.sin(car.state.heading));
+        const halfX = car.state.halfWidth * cosH + car.state.halfLength * sinH;
+        const halfZ = car.state.halfLength * cosH + car.state.halfWidth * sinH;
+        resolveCircleAABB(pos, PLAYER_RADIUS, cx - halfX, cx + halfX, cz - halfZ, cz + halfZ);
+      }
     }
 
     // North boundary wall of Fakir Bari Lane (z <= 10.22)
@@ -2567,13 +2608,14 @@ function updateHUDPrompt() {
   if (!house || !interactPrompt) return;
   let promptText = null;
   if (controls.isLocked || liftKeypadOpen) {
-    if (bmwCar?.state.driving) {
+    if (getDrivingCar()) {
       promptText = null;
     } else if (sittingState.active) {
       promptText = `[E / F / SPACE] উঠে দাঁড়ান — ${sittingState.seat?.label || 'আসন'} (Stand Up)`;
     } else {
       const nearSeat = findNearestSeat(playerPos);
-      const carPrompt = bmwCar?.getPrompt(playerPos);
+      const nearCar = findNearestEnterableCar(playerPos);
+      const carPrompt = nearCar ? nearCar.getPrompt(playerPos) : null;
       const doorOrLiftPrompt = environment?.tower?.getPrompt(playerPos) || house.getPrompt(playerPos);
       if (carPrompt && !doorOrLiftPrompt && !nearSeat) {
         promptText = carPrompt;
@@ -2657,8 +2699,9 @@ function updateHUDPrompt() {
     } else if (x > 2.55 && Math.abs(z) <= 7.35) {
       zone = 'FRONT COURTYARD · বাড়ির সামনের উঠান';
     }
-    if (bmwCar?.state.driving) {
-      zone = `BMW M3 DRIVING · ${zone}`;
+    const drivingCar = getDrivingCar();
+    if (drivingCar) {
+      zone = `${drivingCar.state.name.toUpperCase()} DRIVING · ${zone}`;
     }
     if (zone !== lastZoneText) {
       lastZoneText = zone;
@@ -2701,18 +2744,21 @@ function updateStudioCamera(delta) {
 function updateMovement(delta) {
   if (!started || (pause && !pause.classList.contains('hidden'))) return;
 
-  // Always update BMW M3 physics (active driving or gentle coasting when parked)
-  if (bmwCar) {
-    bmwCar.update(delta, keys, house, environment);
-    if (bmwCar.state.driving) {
-      const st = bmwCar.state;
+  // Always update all drivable cars (active driving or gentle coasting when parked)
+  if (cars.length) {
+    for (const car of cars) {
+      car.update(delta, keys, house, environment, cars);
+    }
+    const drivingCar = getDrivingCar();
+    if (drivingCar) {
+      const st = drivingCar.state;
       playerPos.set(st.pos.x, st.pos.y + EYE_HEIGHT, st.pos.z);
 
       const sinH = Math.sin(st.heading);
       const cosH = Math.cos(st.heading);
       const speedKmh = Math.abs(st.speed) * 3.6;
 
-      // Dynamic speed-rush FOV while driving the BMW M3
+      // Dynamic speed-rush FOV while driving
       const targetFov = THREE.MathUtils.clamp(60 + speedKmh * 0.12, 60, 75);
       if (Math.abs(camera.fov - targetFov) > 0.05) {
         camera.fov += (targetFov - camera.fov) * Math.min(1, delta * 7.5);
@@ -2720,20 +2766,20 @@ function updateMovement(delta) {
       }
 
       if (st.cameraMode === 'hood') {
-        carCamDesired.set(st.pos.x + sinH * 0.65, st.pos.y + 1.28, st.pos.z + cosH * 0.65);
-        carCamLookTarget.set(st.pos.x + sinH * 14.0, st.pos.y + 1.05, st.pos.z + cosH * 14.0);
+        carCamDesired.set(st.pos.x + sinH * st.hoodForward, st.pos.y + st.hoodHeight, st.pos.z + cosH * st.hoodForward);
+        carCamLookTarget.set(st.pos.x + sinH * 14.0, st.pos.y + st.hoodHeight - 0.18, st.pos.z + cosH * 14.0);
         camera.position.copy(carCamDesired);
         camera.lookAt(carCamLookTarget);
       } else if (st.cameraMode === 'front') {
-        carCamDesired.set(st.pos.x + sinH * 5.2, st.pos.y + 1.55, st.pos.z + cosH * 5.2);
-        carCamLookTarget.set(st.pos.x, st.pos.y + 0.85, st.pos.z);
+        carCamDesired.set(st.pos.x + sinH * 5.4, st.pos.y + 1.65, st.pos.z + cosH * 5.4);
+        carCamLookTarget.set(st.pos.x, st.pos.y + 0.95, st.pos.z);
         camera.position.lerp(carCamDesired, Math.min(1, delta * 9.0));
         camera.lookAt(carCamLookTarget);
       } else {
-        // Dynamic smooth Chase Cam behind the BMW M3
-        const backDist = 5.4 + Math.min(1.4, speedKmh * 0.014);
-        carCamDesired.set(st.pos.x - sinH * backDist, st.pos.y + 2.15, st.pos.z - cosH * backDist);
-        carCamLookTarget.set(st.pos.x + sinH * 4.5, st.pos.y + 1.0, st.pos.z + cosH * 4.5);
+        // Dynamic smooth Chase Cam behind the active car
+        const backDist = st.camBack + Math.min(1.4, speedKmh * 0.014);
+        carCamDesired.set(st.pos.x - sinH * backDist, st.pos.y + st.camHeight, st.pos.z - cosH * backDist);
+        carCamLookTarget.set(st.pos.x + sinH * 4.5, st.pos.y + 1.05, st.pos.z + cosH * 4.5);
         camera.position.lerp(carCamDesired, Math.min(1, delta * 8.5));
         camera.lookAt(carCamLookTarget);
       }
@@ -3030,7 +3076,8 @@ function animate() {
     }
     if (house && !deepInTowerUpper) house.update(delta, playerPos, isLow);
     if (environment && !isLow && !deepInTowerUpper) environment.update(elapsed);
-    updateSunShadowTarget(bmwCar?.state.driving ? bmwCar.state.pos : playerPos);
+    const activeCar = getDrivingCar();
+    updateSunShadowTarget(activeCar ? activeCar.state.pos : playerPos);
 
     if (!started) {
       camera.position.z = 10.5 + Math.sin(elapsed * 0.12) * 0.25;
@@ -3041,7 +3088,7 @@ function animate() {
       camera.lookAt(sittingState.seat.seatX, sittingState.seat.fy + 0.92, sittingState.seat.seatZ);
       renderActiveScene();
       camera.quaternion.copy(savedCameraQuat);
-    } else if (!bmwCar?.state.driving && playerCharacter && playerCharacter.state.cameraMode === 'front' && !isThirdPersonEyeFallback) {
+    } else if (!activeCar && playerCharacter && playerCharacter.state.cameraMode === 'front' && !isThirdPersonEyeFallback) {
       savedCameraQuat.copy(camera.quaternion);
       camera.lookAt(playerPos.x, playerPos.y - 0.12, playerPos.z);
       renderActiveScene();
