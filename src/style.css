@@ -346,3 +346,111 @@ body.low-perf-ui * {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+
+/* BMW M3 Driving Telemetry HUD */
+.car-hud {
+  position: absolute;
+  right: 28px;
+  bottom: 64px;
+  width: 268px;
+  padding: 14px 16px;
+  border: 1px solid rgba(217, 237, 156, 0.32);
+  border-radius: 12px;
+  background: rgba(15, 24, 20, 0.86);
+  backdrop-filter: blur(12px);
+  color: #f5f3eb;
+  pointer-events: auto;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+}
+.car-hud-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.car-badge {
+  font-family: 'Manrope', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--lime);
+}
+.car-gear-box {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--lime);
+  color: var(--ink);
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+}
+.car-speed-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  line-height: 1;
+}
+#car-speed {
+  font-family: 'Manrope', sans-serif;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.car-speed-row small {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(245, 243, 235, 0.68);
+  letter-spacing: 0.12em;
+}
+.car-rpm-track {
+  width: 100%;
+  height: 6px;
+  margin: 8px 0 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.car-rpm-fill {
+  width: 12%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4ade80 0%, #facc15 68%, #ef4444 100%);
+  transition: width 0.06s linear;
+}
+.car-hud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.car-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f3eb;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.car-chip:hover {
+  border-color: var(--lime);
+  color: var(--ink);
+  background: var(--lime);
+}
+.car-chip-exit {
+  border-color: rgba(248, 113, 113, 0.55);
+  background: rgba(220, 38, 38, 0.22);
+}
+.car-drive-hint {
+  font-size: 9px;
+  color: rgba(245, 243, 235, 0.72);
+  line-height: 1.5;
+}
