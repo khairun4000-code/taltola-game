@@ -1445,53 +1445,93 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
     accent: '#fde047',
   }, [160.2, 3.45, -302.0], Math.PI, 3.8, 1.12);
 
-  // 2) LANE ENTRANCES ONLY: Ispahani Company (ইস্পাহানি কোম্পানি) & Corner Shops at North & South Heads!
-  const ispX = laneCenterX(-504) + 8.8;
-  const ispB = buildDetailedBuilding(staticG, dynamicG, bank, {
-    cx: ispX,
-    cz: -504,
-    widthX: 10.2,
-    lengthZ: 17.5,
-    floors: 4,
-    facing: -1,
-    wallMat: bank.modernWhite,
-    accentMat: bank.creamTrim,
-    shutterMat: bank.shutterBlue,
-    hasShopArcade: true,
-    displayKind: 'clinic',
-    seed: 9001,
-  });
-  addIlluminatedSign(dynamicG, bank, {
-    title: 'ইস্পাহানি কোম্পানি · এম. এম. ইস্পাহানি লি.',
-    subtitle: 'ISPAHANI TEA & FOODS · KHULNA REGIONAL OFFICE',
-    bg: '#991b1b',
-    fg: '#ffffff',
-    accent: '#fef08a',
-    border: '#16a34a',
-  }, [ispX + ispB.frontLocalX - 0.26, ispB.signY + 0.15, -504], -Math.PI / 2, 8.6, 1.25);
+  // 2) NORTH ENTRANCE (29 Upper Jessore Rd Street View Recreation):
+  //    - EAST SIDE: Exact 1-Story "ইস্পাহানি বিক্রয় কেন্দ্র, খুলনা" (3 bright green shutters, bright yellow signboard with green logo & red accents, lush tree behind)
+  //    - WEST SIDE: Exact 6-Story "29 Upper Jessore Rd" Building (red brick ground floor + chocolate brown & mint green upper floors + white horizontal bands & window grills)
+  const ispFrontZ = -516.2;
+  const ispX = laneCenterX(-511) + 7.2;
+  // Black-and-yellow striped corner curb wrapping both sides of the Altapole Lane mouth
+  addBox(staticG, [0.34, 0.24, 5.5], [laneCenterX(-515) + 2.05, 0.12, -515.8], bank.hazardBarrier);
+  addBox(staticG, [4.8, 0.24, 0.34], [laneCenterX(-518) + 4.4, 0.12, -518.4], bank.hazardBarrier);
+  addBox(staticG, [0.34, 0.24, 5.5], [laneCenterX(-515) - 2.05, 0.12, -515.8], bank.hazardBarrier);
+  addBox(staticG, [5.2, 0.24, 0.34], [laneCenterX(-518) - 4.6, 0.12, -518.4], bank.hazardBarrier);
 
-  const nwX = laneCenterX(-503) - 8.4;
-  const nwB = buildDetailedBuilding(staticG, dynamicG, bank, {
-    cx: nwX,
-    cz: -503,
-    widthX: 9.2,
-    lengthZ: 14.5,
-    floors: 3,
-    facing: 1,
-    wallMat: bank.ochrePlaster,
-    accentMat: bank.creamTrim,
-    shutterMat: bank.shutterSteel,
-    hasShopArcade: true,
-    displayKind: 'pharmacy',
-    seed: 9012,
-  });
+  // 1-Story Ispahani Bikroy Kendra (ইস্পাহানি বিক্রয় কেন্দ্র, খুলনা)
+  const ispGreenShutter = new THREE.MeshStandardMaterial({ map: makeCorrugatedShutterTexture('#15803d'), roughness: 0.42, metalness: 0.52 });
+  const ispRedTrim = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.65 });
+  const ispYellowBand = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.38 });
+  addBox(staticG, [10.6, 4.1, 8.6], [ispX, 2.05, -511.5], bank.creamTrim, { uvScale: 2.2 });
+  addBox(staticG, [0.55, 1.05, 0.55], [ispX - 5.15, 0.52, ispFrontZ + 0.5], ispRedTrim);
+  addBox(staticG, [0.55, 2.45, 0.55], [ispX - 5.15, 2.25, ispFrontZ + 0.5], bank.modernWhite);
+  for (const sx of [ispX - 3.3, ispX - 0.1, ispX + 3.1]) {
+    addBox(staticG, [2.75, 2.75, 0.16], [sx, 1.48, ispFrontZ + 0.35], ispGreenShutter, { uvScale: 1.3 });
+    addBox(staticG, [0.22, 2.85, 0.22], [sx - 1.48, 1.50, ispFrontZ + 0.34], bank.modernWhite);
+  }
+  addBox(staticG, [11.2, 1.15, 0.32], [ispX, 3.85, ispFrontZ + 0.22], ispYellowBand);
+  addBox(staticG, [11.2, 0.14, 0.36], [ispX, 3.24, ispFrontZ + 0.22], ispRedTrim);
   addIlluminatedSign(dynamicG, bank, {
-    title: 'আলতাপোল কর্নার ফার্মেসি ও স্টোর',
-    subtitle: 'ALTAPOLE CORNER SHOP · LOWER JESSORE RD',
-    bg: '#065f46',
-    accent: '#fef08a',
-  }, [nwX + nwB.frontLocalX + 0.24, nwB.signY, -503], Math.PI / 2, 6.2, 0.92);
+    title: 'ইস্পাহানি বিক্রয় কেন্দ্র · খুলনা',
+    subtitle: 'ISPAHANI SALES CENTER · 29 UPPER JESSORE RD',
+    bg: '#facc15',
+    fg: '#14532d',
+    accent: '#b91c1c',
+    border: '#15803d',
+  }, [ispX - 0.4, 3.88, ispFrontZ + 0.04], Math.PI, 8.8, 1.08);
+  addIlluminatedSign(dynamicG, bank, {
+    title: 'ইস্পাহানি বিক্রয় কেন্দ্র',
+    subtitle: 'ISPAHANI · ALTAPOLE LN',
+    bg: '#facc15',
+    fg: '#14532d',
+    accent: '#b91c1c',
+    border: '#15803d',
+  }, [ispX - 5.42, 3.85, -511.5], -Math.PI / 2, 5.4, 0.96);
+  helpers.addBroadleafTree?.(treesG, ispX + 1.5, 0, -504.2, 1.35, 9051);
+  helpers.addBroadleafTree?.(treesG, ispX - 2.6, 0, -505.5, 1.22, 9059);
 
+  // West Side of North Entrance: Iconic 6-Story "29 Upper Jessore Rd" Building
+  const bigX = laneCenterX(-509) - 8.6;
+  const bigZ = -509.2;
+  const bigW = 10.6;
+  const bigL = 14.4;
+  const brownWall = new THREE.MeshStandardMaterial({ color: 0x4b342b, roughness: 0.78 });
+  const mintAccent = new THREE.MeshStandardMaterial({ color: 0x52b788, roughness: 0.66 });
+  const redBrickFace = new THREE.MeshStandardMaterial({ color: 0x9b3d2b, roughness: 0.84 });
+  const grillWhite = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.35, metalness: 0.45 });
+
+  addBox(staticG, [bigW, 3.2, bigL], [bigX, 1.6, bigZ], redBrickFace);
+  addBox(staticG, [bigW + 0.25, 0.55, bigL + 0.25], [bigX, 3.45, bigZ], bank.modernWhite);
+  addBox(staticG, [1.8, 1.9, 0.35], [bigX + 2.2, 1.55, bigZ - bigL * 0.5 - 0.12], bank.modernWhite);
+  addBox(dynamicG, [1.25, 1.35, 0.12], [bigX + 2.2, 1.58, bigZ - bigL * 0.5 - 0.30], bank.dispATM, { castShadow: false });
+  const upFloors = 5;
+  const upFloorH = 3.1;
+  const upTotalH = upFloors * upFloorH;
+  addBox(staticG, [bigW, upTotalH, bigL], [bigX, 3.72 + upTotalH * 0.5, bigZ], brownWall);
+  addBox(staticG, [2.6, upTotalH + 0.2, 0.28], [bigX + bigW * 0.5 - 1.3, 3.72 + upTotalH * 0.5, bigZ - bigL * 0.5 - 0.08], mintAccent);
+  addBox(staticG, [0.28, upTotalH + 0.2, 2.8], [bigX + bigW * 0.5 + 0.08, 3.72 + upTotalH * 0.5, bigZ - bigL * 0.5 + 1.4], mintAccent);
+  for (let f = 0; f < upFloors; f++) {
+    const fy = 3.72 + f * upFloorH;
+    addBox(staticG, [bigW + 0.45, 0.26, bigL + 0.45], [bigX, fy + upFloorH, bigZ], bank.modernWhite);
+    for (const wx of [bigX - 2.6, bigX + 1.6]) {
+      addBox(staticG, [3.1, 1.85, 0.16], [wx, fy + 1.52, bigZ - bigL * 0.5 - 0.06], bank.windowGlass);
+      for (let g = -1.2; g <= 1.25; g += 0.6) {
+        addBox(staticG, [0.05, 1.85, 0.06], [wx + g, fy + 1.52, bigZ - bigL * 0.5 - 0.16], grillWhite);
+      }
+      addBox(staticG, [3.15, 0.06, 0.06], [wx, fy + 1.52, bigZ - bigL * 0.5 - 0.16], grillWhite);
+    }
+    for (const wz of [bigZ - 3.6, bigZ + 0.6, bigZ + 4.4]) {
+      addBox(staticG, [0.16, 1.85, 2.9], [bigX + bigW * 0.5 + 0.06, fy + 1.52, wz], bank.windowGlass);
+      for (let g = -1.1; g <= 1.15; g += 0.55) {
+        addBox(staticG, [0.06, 1.85, 0.05], [bigX + bigW * 0.5 + 0.16, fy + 1.52, wz + g], grillWhite);
+      }
+    }
+    if (f <= 2) {
+      addBox(staticG, [0.36, 0.54, 0.78], [bigX + bigW * 0.5 + 0.24, fy + 0.58, bigZ - 0.8], bank.acBox);
+    }
+  }
+  addBox(staticG, [bigW + 0.2, 1.0, bigL + 0.2], [bigX, 3.72 + upTotalH + 0.5, bigZ], bank.modernWhite);
+  addCyl(staticG, 0.72, 0.74, 1.5, [bigX - 2.0, 3.72 + upTotalH + 1.7, bigZ + 1.5], bank.waterTank, 10);
+
+  // South Head Corner Shops (two shops flanking the South Central Rd mouth at z = -310)
   const seX = laneCenterX(-311) + 8.3;
   const seB = buildDetailedBuilding(staticG, dynamicG, bank, {
     cx: seX,
