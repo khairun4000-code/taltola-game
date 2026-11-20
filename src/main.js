@@ -14,36 +14,6 @@ import { createAtmosphericSkyAndPMREM, TIME_OF_DAY_PRESETS } from './aaa-shaders
 import { createDrivableCarFleet } from './car.js';
 import './style.css';
 
-// Private Access Gate (keeps outsiders from opening/playing the live link without passcode)
-const PRIVATE_GATE_KEY = 'taltola_private_unlocked_v1';
-const PRIVATE_PASSCODES = new Set(['taltola2026', 'khulna2026']);
-const privateGateEl = document.querySelector('#private-gate');
-const privateGateForm = document.querySelector('#private-gate-form');
-const privatePassInput = document.querySelector('#private-passcode-input');
-const privateGateErr = document.querySelector('#private-gate-error');
-
-let privateUnlocked = false;
-try {
-  privateUnlocked = localStorage.getItem(PRIVATE_GATE_KEY) === '1';
-} catch {}
-if (privateUnlocked) {
-  privateGateEl?.classList.add('hidden');
-}
-privateGateForm?.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const val = (privatePassInput?.value || '').trim().toLowerCase();
-  if (PRIVATE_PASSCODES.has(val)) {
-    privateUnlocked = true;
-    try { localStorage.setItem(PRIVATE_GATE_KEY, '1'); } catch {}
-    privateGateErr?.classList.add('hidden');
-    privateGateEl?.classList.add('hidden');
-  } else {
-    privateGateErr?.classList.remove('hidden');
-    privatePassInput?.focus();
-    privatePassInput?.select();
-  }
-});
-
 const canvas = document.querySelector('#scene');
 const loading = document.querySelector('#loading');
 const loadingBar = document.querySelector('#loading-bar');
