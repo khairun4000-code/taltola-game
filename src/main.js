@@ -1492,25 +1492,263 @@ function syncCarHUD() {
   }
 }
 
+const vehicleTransition = {
+  active: false,
+  type: null, // 'rickshaw_mount_driver' | 'rickshaw_dismount_driver' | 'rickshaw_mount_passenger' | 'rickshaw_dismount_passenger' | 'car_enter' | 'car_exit'
+  car: null,
+  seatMode: 'driver',
+  elapsed: 0,
+  duration: 0.75,
+  doorOpenedCue: false,
+  doorClosedCue: false,
+  beltCue: false,
+  startPos: new THREE.Vector3(),
+  endPos: new THREE.Vector3(),
+  handTarget: new THREE.Vector3(),
+};
+
+function startVehicleTransition(type, car, seatMode = 'driver') {
+  const st = car.state;
+  const sinH = Math.sin(st.heading);
+  const cosH = Math.cos(st.heading);
+  const rx = cosH;
+  const rz = -sinH;
+
+  vehicleTransition.active = true;
+  vehicleTransition.type = type;
+  vehicleTransition.car = car;
+  vehicleTransition.seatMode = seatMode;
+  vehicleTransition.elapsed = 0;
+  vehicleTransition.doorOpenedCue = false;
+  vehicleTransition.doorClosedCue = false;
+  vehicleTransition.beltCue = false;
+
+  if (type === 'rickshaw_mount_driver') {
+    vehicleTransition.duration = 0.78;
+    vehicleTransition.startPos.set(st.pos.x + rx * 0.78 - sinH * 0.05, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.78 - cosH * 0.05);
+    vehicleTransition.endPos.set(st.pos.x - sinH * 0.05, st.pos.y + 0.16 + EYE_HEIGHT, st.pos.z - cosH * 0.05);
+  } else if (type === 'rickshaw_dismount_driver') {
+    vehicleTransition.duration = 0.68;
+    vehicleTransition.startPos.set(st.pos.x - sinH * 0.05, st.pos.y + 0.16 + EYE_HEIGHT, st.pos.z - cosH * 0.05);
+    vehicleTransition.endPos.set(st.pos.x + rx * 0.92 - sinH * 0.05, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * 0.05);
+  } else if (type === 'rickshaw_mount_passenger') {
+    vehicleTransition.duration = 0.68;
+    vehicleTransition.startPos.set(st.pos.x + rx * 0.95 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.95 - cosH * 0.62);
+    vehicleTransition.endPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.34 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
+  } else if (type === 'rickshaw_dismount_passenger') {
+    vehicleTransition.duration = 0.62;
+    vehicleTransition.startPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.34 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
+    vehicleTransition.endPos.set(st.pos.x + rx * 1.05 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.05 - cosH * 0.62);
+  } else if (type === 'car_enter') {
+    vehicleTransition.duration = 1.85;
+    vehicleTransition.startPos.set(st.pos.x + rx * 1.38 + sinH * 0.10, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.38 + cosH * 0.10);
+    vehicleTransition.endPos.set(st.pos.x + rx * 0.36 + sinH * 0.10, st.pos.y - 0.18 + EYE_HEIGHT, st.pos.z + rz * 0.36 + cosH * 0.10);
+  } else if (type === 'car_exit') {
+    vehicleTransition.duration = 1.15;
+    vehicleTransition.startPos.set(st.pos.x + rx * 0.36 + sinH * 0.10, st.pos.y - 0.18 + EYE_HEIGHT, st.pos.z + rz * 0.36 + cosH * 0.10);
+    vehicleTransition.endPos.set(st.pos.x + rx * 1.48 + sinH * 0.10, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.48 + cosH * 0.10);
+  }
+}
+
+function updateVehicleTransition(delta) {
+  if (!vehicleTransition.active || !vehicleTransition.car) return false;
+  const vt = vehicleTransition;
+  const car = vt.car;
+  const st = car.state;
+  vt.elapsed += Math.min(delta, 0.05);
+  const p = THREE.MathUtils.clamp(vt.elapsed / vt.duration, 0, 1);
+  const ease = p * p * (3 - 2 * p);
+  const sinH = Math.sin(st.heading);
+  const cosH = Math.cos(st.heading);
+  const rx = cosH;
+  const rz = -sinH;
+
+  let clip = 'Idle';
+  let timeScale = 0.4;
+  let phase = '';
+  let phaseProgress = 0;
+  let facingYaw = st.heading;
+  let hideMesh = false;
+
+  if (vt.type === 'rickshaw_mount_driver' || vt.type === 'rickshaw_dismount_driver') {
+    playerPos.lerpVectors(vt.startPos, vt.endPos, ease);
+    clip = 'Idle';
+    timeScale = 0.0;
+    facingYaw = st.heading;
+  } else if (vt.type === 'rickshaw_mount_passenger' || vt.type === 'rickshaw_dismount_passenger') {
+    // Crisp parabolic hop up into the floral passenger seat (or hop down onto the road!)
+    playerPos.lerpVectors(vt.startPos, vt.endPos, ease);
+    const hopArc = Math.sin(p * Math.PI) * 0.52;
+    playerPos.y += hopArc;
+    clip = p < 0.78 ? 'Jump' : (vt.type === 'rickshaw_mount_passenger' ? 'Sit' : 'Idle');
+    timeScale = p < 0.78 ? 1.15 : 0.6;
+    facingYaw = vt.type === 'rickshaw_mount_passenger'
+      ? THREE.MathUtils.lerp(st.heading - Math.PI * 0.5, st.heading, ease)
+      : THREE.MathUtils.lerp(st.heading, st.heading + Math.PI * 0.5, ease);
+  } else if (vt.type === 'car_enter') {
+    // 4-Stage realistic Car Entry: 1) Open Door -> 2) Sit Inside -> 3) Close Door -> 4) Buckle Seatbelt
+    vt.handTarget.set(st.pos.x + rx * 0.92 - sinH * 0.15, st.pos.y + 0.92, st.pos.z + rz * 0.92 - cosH * 0.15);
+    if (p < 0.24) {
+      phase = 'open_door';
+      phaseProgress = p / 0.24;
+      if (!vt.doorOpenedCue) { vt.doorOpenedCue = true; car.playDoorSound?.(false); }
+      car.setDriverDoorOpen?.(phaseProgress);
+      playerPos.copy(vt.startPos);
+      facingYaw = st.heading - Math.PI * 0.5;
+      clip = 'Idle';
+      timeScale = 0.2;
+      if (interactPrompt) { interactPrompt.textContent = 'দরজা খোলা হচ্ছে... (Opening Door)'; interactPrompt.classList.remove('hidden'); }
+    } else if (p < 0.57) {
+      phase = 'sit_in';
+      phaseProgress = (p - 0.24) / 0.33;
+      const sEase = phaseProgress * phaseProgress * (3 - 2 * phaseProgress);
+      car.setDriverDoorOpen?.(1.0);
+      playerPos.lerpVectors(vt.startPos, vt.endPos, sEase);
+      facingYaw = THREE.MathUtils.lerp(st.heading - Math.PI * 0.5, st.heading, sEase);
+      clip = phaseProgress > 0.45 ? 'Sit' : 'Walk';
+      timeScale = 0.85;
+      if (interactPrompt) { interactPrompt.textContent = 'ভিতরে বসা হচ্ছে... (Getting In)'; interactPrompt.classList.remove('hidden'); }
+    } else if (p < 0.78) {
+      phase = 'close_door';
+      phaseProgress = (p - 0.57) / 0.21;
+      car.setDriverDoorOpen?.(1.0 - phaseProgress);
+      if (phaseProgress > 0.82 && !vt.doorClosedCue) { vt.doorClosedCue = true; car.playDoorSound?.(true); }
+      playerPos.copy(vt.endPos);
+      facingYaw = st.heading;
+      clip = 'Sit';
+      timeScale = 0.3;
+      if (interactPrompt) { interactPrompt.textContent = 'দরজা লাগানো হচ্ছে... (Closing Door)'; interactPrompt.classList.remove('hidden'); }
+    } else {
+      phase = 'seatbelt';
+      phaseProgress = (p - 0.78) / 0.22;
+      car.setDriverDoorOpen?.(0.0);
+      if (phaseProgress > 0.65 && !vt.beltCue) { vt.beltCue = true; car.playSeatbeltSound?.(); }
+      playerPos.copy(vt.endPos);
+      facingYaw = st.heading;
+      clip = 'Sit';
+      timeScale = 0.15;
+      if (interactPrompt) { interactPrompt.textContent = 'সিটবেল্ট বাঁধা হচ্ছে... (Buckling Seatbelt ✓)'; interactPrompt.classList.remove('hidden'); }
+    }
+  } else if (vt.type === 'car_exit') {
+    vt.handTarget.set(st.pos.x + rx * 0.92 - sinH * 0.15, st.pos.y + 0.92, st.pos.z + rz * 0.92 - cosH * 0.15);
+    if (p < 0.22) {
+      phase = 'seatbelt';
+      phaseProgress = 1.0 - p / 0.22;
+      if (!vt.beltCue) { vt.beltCue = true; car.playSeatbeltSound?.(); }
+      playerPos.copy(vt.startPos);
+      facingYaw = st.heading;
+      clip = 'Sit';
+    } else if (p < 0.48) {
+      phase = 'open_door';
+      phaseProgress = (p - 0.22) / 0.26;
+      if (!vt.doorOpenedCue) { vt.doorOpenedCue = true; car.playDoorSound?.(false); }
+      car.setDriverDoorOpen?.(phaseProgress);
+      playerPos.copy(vt.startPos);
+      facingYaw = st.heading;
+      clip = 'Sit';
+    } else if (p < 0.78) {
+      phase = 'step_out';
+      phaseProgress = (p - 0.48) / 0.30;
+      const sEase = phaseProgress * phaseProgress * (3 - 2 * phaseProgress);
+      car.setDriverDoorOpen?.(1.0);
+      playerPos.lerpVectors(vt.startPos, vt.endPos, sEase);
+      facingYaw = THREE.MathUtils.lerp(st.heading, st.heading + Math.PI * 0.5, sEase);
+      clip = 'Walk';
+    } else {
+      phase = 'close_door';
+      phaseProgress = (p - 0.78) / 0.22;
+      car.setDriverDoorOpen?.(1.0 - phaseProgress);
+      if (phaseProgress > 0.82 && !vt.doorClosedCue) { vt.doorClosedCue = true; car.playDoorSound?.(true); }
+      playerPos.copy(vt.endPos);
+      facingYaw = st.heading - Math.PI * 0.5;
+      clip = 'Idle';
+    }
+  }
+
+  // Smooth cinematic camera framing the mount/dismount/door-open/seatbelt animation clearly!
+  const camDist = st.isRickshaw ? 3.2 : 4.2;
+  const camSide = st.isRickshaw ? 1.85 : 2.35;
+  carCamDesired.set(
+    st.pos.x + rx * camSide - sinH * (camDist * 0.55),
+    st.pos.y + 1.85,
+    st.pos.z + rz * camSide - cosH * (camDist * 0.55),
+  );
+  carCamLookTarget.set(playerPos.x, playerPos.y - 0.45, playerPos.z);
+  camera.position.lerp(carCamDesired, Math.min(1, delta * 7.5));
+  camera.lookAt(carCamLookTarget);
+
+  if (playerCharacter) {
+    playerCharacter.update(delta, {
+      position: playerPos,
+      yaw: facingYaw + Math.PI,
+      speed: 0,
+      maxSpeed: 3.45,
+      grounded: true,
+      isSprinting: false,
+      inStudio: false,
+      hideMesh,
+      vehicleAnim: {
+        type: vt.type,
+        progress: p,
+        phase,
+        phaseProgress,
+        heading: st.heading,
+        facingYaw,
+        clip,
+        timeScale,
+        anchors: st.isRickshaw ? car.getRickshawAnchors?.() : null,
+        handTarget: vt.handTarget,
+      },
+    });
+  }
+
+  if (p >= 1.0) {
+    const doneType = vt.type;
+    const doneSeat = vt.seatMode;
+    vt.active = false;
+    vt.type = null;
+    car.setDriverDoorOpen?.(0);
+    if (doneType === 'rickshaw_mount_driver' || doneType === 'rickshaw_mount_passenger' || doneType === 'car_enter') {
+      car.enterCar(doneSeat);
+      syncCarHUD();
+      updateHUDPrompt();
+    } else {
+      playerPos.copy(vt.endPos);
+      controls.euler.set(-0.04, st.heading + Math.PI, 0, 'YXZ');
+      camera.quaternion.setFromEuler(controls.euler);
+      syncCarHUD();
+      updateHUDPrompt();
+    }
+  }
+  return true;
+}
+
 function toggleCarDriving(targetCar = null, seatMode = 'driver') {
-  if (!cars.length || inStudio) return;
+  if (!cars.length || inStudio || vehicleTransition.active) return;
   const activeCar = getDrivingCar();
   if (activeCar) {
+    const wasRick = Boolean(activeCar.state.isRickshaw);
+    const wasPass = wasRick && activeCar.state.rideSeat === 'passenger';
     activeCar.exitCar(playerPos);
-    controls.euler.set(-0.04, activeCar.state.heading + Math.PI, 0, 'YXZ');
-    camera.quaternion.setFromEuler(controls.euler);
     syncCarHUD();
-    updateHUDPrompt();
+    startVehicleTransition(
+      wasRick ? (wasPass ? 'rickshaw_dismount_passenger' : 'rickshaw_dismount_driver') : 'car_exit',
+      activeCar,
+      'driver',
+    );
     return;
   }
   const carToEnter = targetCar || findNearestCar(playerPos) || bmwCar;
   if (!carToEnter) return;
   if (sittingState.active) standUpFromSeat();
   if (liftKeypadOpen) closeLiftKeypad(false);
-  carToEnter.enterCar(seatMode);
   if (!started) beginWalking();
-  syncCarHUD();
-  updateHUDPrompt();
+  const isRick = Boolean(carToEnter.state.isRickshaw);
+  startVehicleTransition(
+    isRick ? (seatMode === 'passenger' ? 'rickshaw_mount_passenger' : 'rickshaw_mount_driver') : 'car_enter',
+    carToEnter,
+    seatMode,
+  );
 }
 
 function handleDoorInteraction(allowClimbFallback = false) {
@@ -3396,10 +3634,13 @@ function updateStudioCamera(delta) {
 function updateMovement(delta) {
   if (!started || (pause && !pause.classList.contains('hidden'))) return;
 
-  // Always update all drivable cars (active driving or gentle coasting when parked)
+  // Always update all drivable cars & rickshaws
   if (cars.length) {
     for (const car of cars) {
       car.update(delta, keys, house, environment, cars);
+    }
+    if (updateVehicleTransition(delta)) {
+      return;
     }
     const drivingCar = getDrivingCar();
     if (drivingCar) {
@@ -3418,17 +3659,19 @@ function updateMovement(delta) {
       }
 
       if (st.cameraMode === 'hood') {
-        carCamDesired.set(st.pos.x + sinH * st.hoodForward, st.pos.y + st.hoodHeight, st.pos.z + cosH * st.hoodForward);
-        carCamLookTarget.set(st.pos.x + sinH * 14.0, st.pos.y + st.hoodHeight - 0.18, st.pos.z + cosH * 14.0);
+        const eyeBack = (st.isRickshaw && st.rideSeat === 'passenger') ? -0.58 : st.hoodForward;
+        const eyeH = (st.isRickshaw && st.rideSeat === 'passenger') ? 1.48 : st.hoodHeight;
+        carCamDesired.set(st.pos.x + sinH * eyeBack, st.pos.y + eyeH, st.pos.z + cosH * eyeBack);
+        carCamLookTarget.set(st.pos.x + sinH * 14.0, st.pos.y + eyeH - 0.16, st.pos.z + cosH * 14.0);
         camera.position.copy(carCamDesired);
         camera.lookAt(carCamLookTarget);
       } else if (st.cameraMode === 'front') {
-        carCamDesired.set(st.pos.x + sinH * 5.4, st.pos.y + 1.65, st.pos.z + cosH * 5.4);
-        carCamLookTarget.set(st.pos.x, st.pos.y + 0.95, st.pos.z);
+        carCamDesired.set(st.pos.x + sinH * 4.4, st.pos.y + 1.55, st.pos.z + cosH * 4.4);
+        carCamLookTarget.set(st.pos.x, st.pos.y + 1.0, st.pos.z);
         camera.position.lerp(carCamDesired, Math.min(1, delta * 9.0));
         camera.lookAt(carCamLookTarget);
       } else {
-        // Dynamic smooth Chase Cam behind the active car
+        // Dynamic smooth Chase Cam behind the active car or rickshaw
         const backDist = st.camBack + Math.min(1.4, speedKmh * 0.014);
         carCamDesired.set(st.pos.x - sinH * backDist, st.pos.y + st.camHeight, st.pos.z - cosH * backDist);
         carCamLookTarget.set(st.pos.x + sinH * 4.5, st.pos.y + 1.05, st.pos.z + cosH * 4.5);
@@ -3438,13 +3681,12 @@ function updateMovement(delta) {
 
       if (playerCharacter) {
         if (st.isRickshaw) {
+          const anchors = drivingCar.getRickshawAnchors?.();
           const isPassenger = st.rideSeat === 'passenger';
-          // Seat either on the rear floral Passenger Seat (-0.62m) or the front leather Driver Saddle (-0.05m)!
           const seatBackOffset = isPassenger ? 0.62 : 0.05;
-          const seatYOffset = isPassenger ? 0.42 : 0.34;
           const riderPos = {
             x: st.pos.x - sinH * seatBackOffset,
-            y: st.pos.y + seatYOffset + EYE_HEIGHT,
+            y: st.pos.y + EYE_HEIGHT,
             z: st.pos.z - cosH * seatBackOffset,
           };
           playerCharacter.update(delta, {
@@ -3463,6 +3705,7 @@ function updateMovement(delta) {
               pedalPhase: st.pedalPhase,
               steerAngle: st.steerAngle,
               speed: st.speed,
+              anchors,
             },
           });
         } else {

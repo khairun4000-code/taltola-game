@@ -173,6 +173,7 @@ export function createPlayerCharacter(scene, manager) {
   let jawBone = null;
   let lLidTop = null;
   let rLidTop = null;
+  let hipsBone = null;
   let spineBone = null;
   let spine1Bone = null;
   let leftUpLeg = null;
@@ -183,8 +184,10 @@ export function createPlayerCharacter(scene, manager) {
   let rightFoot = null;
   let leftArm = null;
   let leftForeArm = null;
+  let leftHand = null;
   let rightArm = null;
   let rightForeArm = null;
+  let rightHand = null;
   const jawRestQ = new THREE.Quaternion();
   const lLidRestQ = new THREE.Quaternion();
   const rLidRestQ = new THREE.Quaternion();
@@ -423,6 +426,7 @@ export function createPlayerCharacter(scene, manager) {
     jawBone = findBoneBySuffix(model, 'Jaw');
     lLidTop = findBoneBySuffix(model, 'LeftOrbicularisTop');
     rLidTop = findBoneBySuffix(model, 'RightOrbicularisTop');
+    hipsBone = findBoneBySuffix(model, 'Hips');
     spineBone = findBoneBySuffix(model, 'Spine');
     spine1Bone = findBoneBySuffix(model, 'Spine1');
     leftUpLeg = findBoneBySuffix(model, 'LeftUpLeg');
@@ -433,8 +437,10 @@ export function createPlayerCharacter(scene, manager) {
     rightFoot = findBoneBySuffix(model, 'RightFoot');
     leftArm = findBoneBySuffix(model, 'LeftArm');
     leftForeArm = findBoneBySuffix(model, 'LeftForeArm');
+    leftHand = findBoneBySuffix(model, 'LeftHand');
     rightArm = findBoneBySuffix(model, 'RightArm');
     rightForeArm = findBoneBySuffix(model, 'RightForeArm');
+    rightHand = findBoneBySuffix(model, 'RightHand');
     if (jawBone) jawRestQ.copy(jawBone.quaternion);
     if (lLidTop) lLidRestQ.copy(lLidTop.quaternion);
     if (rLidTop) rLidRestQ.copy(rLidTop.quaternion);
@@ -764,87 +770,194 @@ export function createPlayerCharacter(scene, manager) {
     }
   }
 
-  function applyRickshawRidingPose(ride) {
-    if (!ride || !ride.active) return;
-    const phase = ride.pedalPhase || 0;
-    const steer = ride.steerAngle || 0;
-    const moveFactor = Math.min(1, Math.abs(ride.speed || 0) / 1.5);
+  // Reusable scratch math objects for exact World-Space 2-Bone Analytical IK (zero Mixamo axis glitches!)
+  const ikA = new THREE.Vector3();
+  const ikB = new THREE.Vector3();
+  const ikC = new THREE.Vector3();
+  const ikDirAT = new THREE.Vector3();
+  const ikDirAB = new THREE.Vector3();
+  const ikDirAK = new THREE.Vector3();
+  const ikPolePerp = new THREE.Vector3();
+  const ikK = new THREE.Vector3();
+  const ikParentQ = new THREE.Quaternion();
+  const ikCurQ = new THREE.Quaternion();
+  const ikDeltaQ = new THREE.Quaternion();
+  const ikHipsWorld = new THREE.Vector3();
+  const ikFwd = new THREE.Vector3();
+  const ikRight = new THREE.Vector3();
+  const ikUp = new THREE.Vector3(0, 1, 0);
+  const ikTarget = new THREE.Vector3();
+  const ikPole = new THREE.Vector3();
 
-    // Slight forward lean toward the handlebars + subtle rhythmic pedaling sway
-    const sway = Math.sin(phase) * 0.045 * moveFactor;
+  function solveTwoBoneIK(upperBone, lowerBone, endBone, targetWorldPos, poleWorldPos) {
+    if (!upperBone || !lowerBone || !endBone || !upperBone.parent) return;
+    upperBone.parent.updateWorldMatrix(true, false);
+    upperBone.updateWorldMatrix(false, true);
+
+    upperBone.getWorldPosition(ikA);
+    lowerBone.getWorldPosition(ikB);
+    endBone.getWorldPosition(ikC);
+
+    const l1 = ikA.distanceTo(ikB);
+    const l2 = ikB.distanceTo(ikC);
+    if (l1 < 0.01 || l2 < 0.01) return;
+
+    ikDirAT.subVectors(targetWorldPos, ikA);
+    const rawDist = ikDirAT.length();
+    if (rawDist < 0.001) return;
+    const dist = THREE.MathUtils.clamp(rawDist, Math.abs(l1 - l2) + 0.02, (l1 + l2) * 0.992);
+    ikDirAT.multiplyScalar(1 / rawDist);
+
+    ikPolePerp.subVectors(poleWorldPos, ikA);
+    const proj = ikPolePerp.dot(ikDirAT);
+    ikPolePerp.addScaledVector(ikDirAT, -proj);
+    if (ikPolePerp.lengthSq() < 1e-6) {
+      ikPolePerp.set(0, 1, 0);
+    } else {
+      ikPolePerp.normalize();
+    }
+
+    const cosAlpha = THREE.MathUtils.clamp((l1 * l1 + dist * dist - l2 * l2) / (2 * l1 * dist), -1, 1);
+    const sinAlpha = Math.sqrt(Math.max(0, 1 - cosAlpha * cosAlpha));
+    ikK.copy(ikA).addScaledVector(ikDirAT, l1 * cosAlpha).addScaledVector(ikPolePerp, l1 * sinAlpha);
+
+    // 1. Rotate upperBone in world space so B -> K
+    ikDirAB.subVectors(ikB, ikA).normalize();
+    ikDirAK.subVectors(ikK, ikA).normalize();
+    ikDeltaQ.setFromUnitVectors(ikDirAB, ikDirAK);
+    upperBone.parent.getWorldQuaternion(ikParentQ);
+    upperBone.getWorldQuaternion(ikCurQ);
+    ikCurQ.premultiply(ikDeltaQ);
+    upperBone.quaternion.copy(ikParentQ).invert().multiply(ikCurQ);
+
+    // 2. Rotate lowerBone in world space so C -> targetWorldPos
+    upperBone.updateWorldMatrix(false, true);
+    lowerBone.getWorldPosition(ikB);
+    endBone.getWorldPosition(ikC);
+    ikDirAB.subVectors(ikC, ikB).normalize();
+    ikDirAK.subVectors(targetWorldPos, ikB).normalize();
+    if (ikDirAB.lengthSq() > 1e-6 && ikDirAK.lengthSq() > 1e-6) {
+      ikDeltaQ.setFromUnitVectors(ikDirAB, ikDirAK);
+      lowerBone.parent.getWorldQuaternion(ikParentQ);
+      lowerBone.getWorldQuaternion(ikCurQ);
+      ikCurQ.premultiply(ikDeltaQ);
+      lowerBone.quaternion.copy(ikParentQ).invert().multiply(ikCurQ);
+    }
+  }
+
+  function alignHipsToWorldPoint(targetPoint) {
+    if (!hipsBone || !targetPoint) return;
+    root.updateMatrixWorld(true);
+    hipsBone.getWorldPosition(ikHipsWorld);
+    root.position.x += targetPoint.x - ikHipsWorld.x;
+    root.position.y += targetPoint.y - ikHipsWorld.y;
+    root.position.z += targetPoint.z - ikHipsWorld.z;
+    root.updateMatrixWorld(true);
+  }
+
+  function applyRickshawRidingPose(ride) {
+    if (!ride || !ride.active || !ride.anchors) return;
+    const a = ride.anchors;
+    const h = ride.heading || 0;
+    ikFwd.set(Math.sin(h), 0, Math.cos(h));
+    ikRight.set(Math.cos(h), 0, -Math.sin(h));
+
+    if (ride.seat === 'passenger') {
+      // Lock seated hips cleanly onto the rear floral passenger cushion under the hood
+      ikTarget.copy(a.passengerSeat);
+      ikTarget.y += 0.14;
+      alignHipsToWorldPoint(ikTarget);
+      return;
+    }
+
+    // 1. Lock hips dead-center onto the leather saddle (zero bobbing, zero jumping!)
+    ikTarget.copy(a.saddle);
+    ikTarget.y += 0.05;
+    alignHipsToWorldPoint(ikTarget);
+
+    // 2. Gentle forward cycling lean on torso
     if (spineBone) {
-      eulerTemp.set(0.18, -steer * 0.14, sway);
+      eulerTemp.set(0.22, 0, 0);
       qTempA.setFromEuler(eulerTemp);
       spineBone.quaternion.multiply(qTempA);
     }
     if (spine1Bone) {
-      eulerTemp.set(0.14, -steer * 0.10, sway * 0.5);
+      eulerTemp.set(0.14, 0, 0);
       qTempA.setFromEuler(eulerTemp);
       spine1Bone.quaternion.multiply(qTempA);
     }
+    root.updateMatrixWorld(true);
 
-    // Synchronized 2-bone cycling leg motion matched 1:1 with Crank_Assembly (Pedal_L at phase, Pedal_R at phase + PI)
-    const pL = phase;
-    const pR = phase + Math.PI;
-    const hipL = -1.02 + 0.44 * Math.sin(pL) - 0.14 * Math.cos(pL);
-    const kneeL = 1.12 - 0.62 * Math.sin(pL) + 0.16 * Math.cos(pL);
-    const footL = -(hipL + kneeL) * 0.42 + 0.22;
+    // 3. Exact 2-Bone World-Space IK: lock Left & Right shoes directly onto the spinning 3D Pedals!
+    ikPole.copy(a.saddle).addScaledVector(ikFwd, 0.75).addScaledVector(ikRight, 0.18);
+    ikPole.y += 0.15;
+    solveTwoBoneIK(leftUpLeg, leftLeg, leftFoot, a.pedalL, ikPole);
 
-    const hipR = -1.02 + 0.44 * Math.sin(pR) - 0.14 * Math.cos(pR);
-    const kneeR = 1.12 - 0.62 * Math.sin(pR) + 0.16 * Math.cos(pR);
-    const footR = -(hipR + kneeR) * 0.42 + 0.22;
+    ikPole.copy(a.saddle).addScaledVector(ikFwd, 0.75).addScaledVector(ikRight, -0.18);
+    ikPole.y += 0.15;
+    solveTwoBoneIK(rightUpLeg, rightLeg, rightFoot, a.pedalR, ikPole);
 
-    if (leftUpLeg) {
-      eulerTemp.set(hipL, 0.06, -0.08);
-      qTempA.setFromEuler(eulerTemp);
-      leftUpLeg.quaternion.multiply(qTempA);
-    }
-    if (leftLeg) {
-      eulerTemp.set(kneeL, 0, 0);
-      qTempA.setFromEuler(eulerTemp);
-      leftLeg.quaternion.multiply(qTempA);
-    }
-    if (leftFoot) {
-      eulerTemp.set(footL, 0, 0);
-      qTempA.setFromEuler(eulerTemp);
-      leftFoot.quaternion.multiply(qTempA);
-    }
-    if (rightUpLeg) {
-      eulerTemp.set(hipR, -0.06, 0.08);
-      qTempA.setFromEuler(eulerTemp);
-      rightUpLeg.quaternion.multiply(qTempA);
-    }
-    if (rightLeg) {
-      eulerTemp.set(kneeR, 0, 0);
-      qTempA.setFromEuler(eulerTemp);
-      rightLeg.quaternion.multiply(qTempA);
-    }
-    if (rightFoot) {
-      eulerTemp.set(footR, 0, 0);
-      qTempA.setFromEuler(eulerTemp);
-      rightFoot.quaternion.multiply(qTempA);
-    }
+    // 4. Exact 2-Bone World-Space IK: lock Left & Right hands directly onto the steering green handlebar grips!
+    if (a.gripL && a.gripR) {
+      ikPole.copy(a.saddle).addScaledVector(ikFwd, 0.10).addScaledVector(ikRight, 0.55);
+      ikPole.y += 0.12;
+      solveTwoBoneIK(leftArm, leftForeArm, leftHand, a.gripL, ikPole);
 
-    // Both arms reaching forward to hold the green rickshaw handlebars, tracking steering smoothly
-    if (leftArm) {
-      eulerTemp.set(-0.92 + steer * 0.18, 0.10, -0.18);
-      qTempA.setFromEuler(eulerTemp);
-      leftArm.quaternion.multiply(qTempA);
+      ikPole.copy(a.saddle).addScaledVector(ikFwd, 0.10).addScaledVector(ikRight, -0.55);
+      ikPole.y += 0.12;
+      solveTwoBoneIK(rightArm, rightForeArm, rightHand, a.gripR, ikPole);
     }
-    if (leftForeArm) {
-      eulerTemp.set(-0.28, 0.18, 0);
-      qTempA.setFromEuler(eulerTemp);
-      leftForeArm.quaternion.multiply(qTempA);
-    }
-    if (rightArm) {
-      eulerTemp.set(-0.92 - steer * 0.18, -0.10, 0.18);
-      qTempA.setFromEuler(eulerTemp);
-      rightArm.quaternion.multiply(qTempA);
-    }
-    if (rightForeArm) {
-      eulerTemp.set(-0.28, -0.18, 0);
-      qTempA.setFromEuler(eulerTemp);
-      rightForeArm.quaternion.multiply(qTempA);
+  }
+
+  function applyVehicleAnimPose(va) {
+    if (!va || !va.type) return;
+    const h = va.heading || 0;
+    ikFwd.set(Math.sin(h), 0, Math.cos(h));
+    ikRight.set(Math.cos(h), 0, -Math.sin(h));
+    const p = THREE.MathUtils.clamp(va.progress || 0, 0, 1);
+
+    if (va.type === 'rickshaw_mount_driver' || va.type === 'rickshaw_dismount_driver') {
+      // High leg-swing over the rickshaw frame bar!
+      const u = va.type === 'rickshaw_dismount_driver' ? (1 - p) : p;
+      const swingArc = Math.sin(u * Math.PI);
+      if (va.anchors && rightUpLeg && rightLeg && rightFoot) {
+        root.updateMatrixWorld(true);
+        rightUpLeg.getWorldPosition(ikTarget);
+        ikTarget.addScaledVector(ikRight, -0.12 - (1 - u) * 0.25);
+        ikTarget.addScaledVector(ikFwd, 0.18 * swingArc);
+        ikTarget.y = (va.anchors.saddle.y - 0.75) + swingArc * 0.72;
+        ikPole.copy(ikTarget).addScaledVector(ikFwd, 0.55).addScaledVector(ikUp, 0.35);
+        solveTwoBoneIK(rightUpLeg, rightLeg, rightFoot, ikTarget, ikPole);
+      }
+      if (va.anchors && u > 0.35 && leftArm && rightArm) {
+        ikPole.copy(va.anchors.saddle).addScaledVector(ikRight, 0.5);
+        solveTwoBoneIK(leftArm, leftForeArm, leftHand, va.anchors.gripL, ikPole);
+        ikPole.copy(va.anchors.saddle).addScaledVector(ikRight, -0.5);
+        solveTwoBoneIK(rightArm, rightForeArm, rightHand, va.anchors.gripR, ikPole);
+      }
+    } else if (va.type === 'car_enter' || va.type === 'car_exit') {
+      // Reach hand to car door handle (phase 1) or pull seatbelt diagonally across chest (phase 4)
+      if (va.phase === 'open_door' || va.phase === 'close_door') {
+        if (va.handTarget && rightArm && rightForeArm && rightHand) {
+          root.updateMatrixWorld(true);
+          rightArm.getWorldPosition(ikPole);
+          ikPole.addScaledVector(ikRight, -0.35).addScaledVector(ikUp, -0.30);
+          solveTwoBoneIK(rightArm, rightForeArm, rightHand, va.handTarget, ikPole);
+        }
+      } else if (va.phase === 'seatbelt') {
+        // Right hand reaches up to left shoulder and pulls seatbelt diagonally down to right hip!
+        if (leftArm && rightArm && rightForeArm && rightHand && spine1Bone) {
+          root.updateMatrixWorld(true);
+          const tBelt = THREE.MathUtils.clamp(va.phaseProgress || 0, 0, 1);
+          spine1Bone.getWorldPosition(ikTarget);
+          // Sweep from upper-left shoulder across chest to right hip buckle
+          ikTarget.addScaledVector(ikRight, THREE.MathUtils.lerp(0.24, -0.22, tBelt));
+          ikTarget.y += THREE.MathUtils.lerp(0.26, -0.24, tBelt);
+          ikTarget.addScaledVector(ikFwd, 0.22);
+          ikPole.copy(ikTarget).addScaledVector(ikRight, -0.45).addScaledVector(ikFwd, 0.25);
+          solveTwoBoneIK(rightArm, rightForeArm, rightHand, ikTarget, ikPole);
+        }
+      }
     }
   }
 
@@ -866,10 +979,12 @@ export function createPlayerCharacter(scene, manager) {
     inStudio = false,
     hideMesh = false,
     rickshawRide = null,
+    vehicleAnim = null,
   }) {
     const dt = Math.min(Math.max(delta || 0.016, 0.001), 0.05);
     const isRidingRickshaw = Boolean(rickshawRide && rickshawRide.active);
-    const shouldShow = !hideMesh && (inStudio || isRidingRickshaw || state.cameraMode !== 'first');
+    const isVehicleAnim = Boolean(vehicleAnim && vehicleAnim.type);
+    const shouldShow = !hideMesh && (inStudio || isRidingRickshaw || isVehicleAnim || state.cameraMode !== 'first');
     root.visible = shouldShow;
 
     if (!inStudio && position) {
@@ -902,7 +1017,9 @@ export function createPlayerCharacter(scene, manager) {
         state.emote = null;
       }
 
-      if (isRidingRickshaw) {
+      if (isVehicleAnim) {
+        state.facingYaw = vehicleAnim.facingYaw ?? vehicleAnim.heading ?? state.facingYaw;
+      } else if (isRidingRickshaw) {
         state.facingYaw = rickshawRide.heading;
       } else if (isClimbing || isDiving) {
         // Keep facing toward climb/dive direction
@@ -1010,17 +1127,25 @@ export function createPlayerCharacter(scene, manager) {
       fadeTime = 0.35;
     }
 
-    if (isRidingRickshaw) {
+    if (isVehicleAnim) {
+      if (vehicleAnim.clip) {
+        targetClip = vehicleAnim.clip;
+        targetScale = vehicleAnim.timeScale ?? 1.0;
+        loopOnce = Boolean(vehicleAnim.loopOnce);
+        fadeTime = 0.08;
+      }
+    } else if (isRidingRickshaw) {
       if (rickshawRide.seat === 'passenger') {
         targetClip = 'Sit';
-        targetScale = 0.6;
+        targetScale = 0.5;
         loopOnce = false;
         fadeTime = 0.12;
       } else {
+        // Freeze Idle at 0 speed so hips have ZERO bounce while 2-bone IK drives exact pedaling!
         targetClip = 'Idle';
-        targetScale = 0.25;
+        targetScale = 0.0;
         loopOnce = false;
-        fadeTime = 0.08;
+        fadeTime = 0.06;
       }
     }
 
@@ -1034,7 +1159,9 @@ export function createPlayerCharacter(scene, manager) {
     }
 
     mixer.update(dt);
-    if (isRidingRickshaw && rickshawRide.seat !== 'passenger') {
+    if (isVehicleAnim) {
+      applyVehicleAnimPose(vehicleAnim);
+    } else if (isRidingRickshaw) {
       applyRickshawRidingPose(rickshawRide);
     }
     applyProceduralHeadAndFace(dt);

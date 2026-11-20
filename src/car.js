@@ -437,6 +437,8 @@ export function createDrivableCar(scene, manager, config) {
 
   let riggedWheels = [];
   let rickshawParts = null;
+  let driverDoorPivot = null;
+  let driverDoorOpen = 0;
   let paintMaterials = [];
   let glossyMaterials = [];
   let carShadowMeshes = [];
@@ -539,6 +541,61 @@ export function createDrivableCar(scene, manager, config) {
         filt.connect(g);
         o.start(now);
         o.stop(now + 0.36);
+      }
+    } catch {}
+  }
+
+  function playDoorSound(closing = false) {
+    ensureAudio();
+    if (!audioCtx) return;
+    try {
+      const now = audioCtx.currentTime;
+      const g = audioCtx.createGain();
+      const o = audioCtx.createOscillator();
+      if (closing) {
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(145, now);
+        o.frequency.exponentialRampToValueAtTime(42, now + 0.14);
+        g.gain.setValueAtTime(0.001, now);
+        g.gain.exponentialRampToValueAtTime(0.22, now + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.start(now);
+        o.stop(now + 0.2);
+      } else {
+        o.type = 'square';
+        o.frequency.setValueAtTime(920, now);
+        o.frequency.exponentialRampToValueAtTime(340, now + 0.055);
+        g.gain.setValueAtTime(0.001, now);
+        g.gain.exponentialRampToValueAtTime(0.09, now + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.start(now);
+        o.stop(now + 0.08);
+      }
+    } catch {}
+  }
+
+  function playSeatbeltSound() {
+    ensureAudio();
+    if (!audioCtx) return;
+    try {
+      const now = audioCtx.currentTime;
+      for (const [offset, freq] of [[0, 2150], [0.055, 3100]]) {
+        const t0 = now + offset;
+        const g = audioCtx.createGain();
+        const o = audioCtx.createOscillator();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(freq, t0);
+        g.gain.setValueAtTime(0.001, t0);
+        g.gain.exponentialRampToValueAtTime(0.11, t0 + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.06);
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        o.start(t0);
+        o.stop(t0 + 0.07);
       }
     } catch {}
   }
@@ -889,6 +946,28 @@ export function createDrivableCar(scene, manager, config) {
           const crank = model.getObjectByName('Crank_Assembly');
           const pedalL = model.getObjectByName('Pedal_L');
           const pedalR = model.getObjectByName('Pedal_R');
+          let gripAnchorL = null;
+          let gripAnchorR = null;
+          if (steering) {
+            gripAnchorL = new THREE.Object3D();
+            gripAnchorL.position.set(0.28, 0.24, -0.17);
+            steering.add(gripAnchorL);
+            gripAnchorR = new THREE.Object3D();
+            gripAnchorR.position.set(-0.28, 0.24, -0.17);
+            steering.add(gripAnchorR);
+          }
+          const saddleAnchor = new THREE.Object3D();
+          saddleAnchor.position.set(0, 1.03, -0.02);
+          model.add(saddleAnchor);
+          const passengerAnchor = new THREE.Object3D();
+          passengerAnchor.position.set(0, 0.72, -0.62);
+          model.add(passengerAnchor);
+          const pedalFootL = new THREE.Object3D();
+          pedalFootL.position.set(0.055, 0.02, 0.0);
+          if (pedalL) pedalL.add(pedalFootL);
+          const pedalFootR = new THREE.Object3D();
+          pedalFootR.position.set(-0.055, 0.02, 0.0);
+          if (pedalR) pedalR.add(pedalFootR);
           rickshawParts = {
             steering,
             steerRestQ: steering ? steering.quaternion.clone() : null,
@@ -898,9 +977,47 @@ export function createDrivableCar(scene, manager, config) {
             crank,
             pedalL,
             pedalR,
+            gripAnchorL,
+            gripAnchorR,
+            saddleAnchor,
+            passengerAnchor,
+            pedalFootL,
+            pedalFootR,
           };
-        } else if (config.wheelNameRegex) {
-          riggedWheels = rigGenericCarWheels(orientedWrapper, config.wheelNameRegex);
+        } else {
+          if (config.wheelNameRegex) {
+            riggedWheels = rigGenericCarWheels(orientedWrapper, config.wheelNameRegex);
+          }
+          const doorParts = [];
+          orientedWrapper.traverse((ch) => {
+            if (ch.name && /door_FL|doorglass_FL/i.test(ch.name)) {
+              doorParts.push(ch);
+            }
+          });
+          if (doorParts.length > 0) {
+            orientedWrapper.updateMatrixWorld(true);
+            const doorBox = new THREE.Box3();
+            const invW = new THREE.Matrix4().copy(orientedWrapper.matrixWorld).invert();
+            const tmpB = new THREE.Box3();
+            for (const dp of doorParts) {
+              tmpB.setFromObject(dp);
+              if (!tmpB.isEmpty()) {
+                tmpB.applyMatrix4(invW);
+                doorBox.union(tmpB);
+              }
+            }
+            if (!doorBox.isEmpty()) {
+              const hingePivot = new THREE.Group();
+              hingePivot.name = 'DriverDoorHinge';
+              hingePivot.position.set(doorBox.max.x, (doorBox.min.y + doorBox.max.y) * 0.5, doorBox.max.z);
+              orientedWrapper.add(hingePivot);
+              orientedWrapper.updateMatrixWorld(true);
+              for (const dp of doorParts) {
+                hingePivot.attach(dp);
+              }
+              driverDoorPivot = hingePivot;
+            }
+          }
         }
       }
 
@@ -918,11 +1035,42 @@ export function createDrivableCar(scene, manager, config) {
   const steerAxisY = new THREE.Vector3(0, 1, 0);
   const steerDeltaQ = new THREE.Quaternion();
 
+  function setDriverDoorOpen(amount) {
+    driverDoorOpen = THREE.MathUtils.clamp(amount, 0, 1);
+    if (driverDoorPivot) {
+      driverDoorPivot.rotation.y = driverDoorOpen * 1.08;
+    }
+  }
+
+  const anchorCache = {
+    saddle: new THREE.Vector3(),
+    passengerSeat: new THREE.Vector3(),
+    pedalL: new THREE.Vector3(),
+    pedalR: new THREE.Vector3(),
+    gripL: new THREE.Vector3(),
+    gripR: new THREE.Vector3(),
+  };
+
+  function getRickshawAnchors() {
+    if (!rickshawParts) return null;
+    root.updateMatrixWorld(true);
+    rickshawParts.saddleAnchor.getWorldPosition(anchorCache.saddle);
+    rickshawParts.passengerAnchor.getWorldPosition(anchorCache.passengerSeat);
+    if (rickshawParts.pedalFootL) rickshawParts.pedalFootL.getWorldPosition(anchorCache.pedalL);
+    if (rickshawParts.pedalFootR) rickshawParts.pedalFootR.getWorldPosition(anchorCache.pedalR);
+    if (rickshawParts.gripAnchorL) rickshawParts.gripAnchorL.getWorldPosition(anchorCache.gripL);
+    if (rickshawParts.gripAnchorR) rickshawParts.gripAnchorR.getWorldPosition(anchorCache.gripR);
+    return anchorCache;
+  }
+
   function syncTransform() {
     root.position.copy(state.pos);
     root.rotation.y = state.heading;
     bodyTiltGroup.rotation.x = state.pitch;
     bodyTiltGroup.rotation.z = state.roll;
+    if (driverDoorPivot) {
+      driverDoorPivot.rotation.y = driverDoorOpen * 1.08;
+    }
 
     if (rickshawParts) {
       if (rickshawParts.steering && rickshawParts.steerRestQ) {
@@ -1257,6 +1405,10 @@ export function createDrivableCar(scene, manager, config) {
     cyclePaintColor,
     cycleCameraMode,
     playHorn,
+    playDoorSound,
+    playSeatbeltSound,
+    setDriverDoorOpen,
+    getRickshawAnchors,
     setQualityMode,
     update,
   };
