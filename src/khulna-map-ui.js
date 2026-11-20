@@ -15,6 +15,8 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
   const fullCtx = fullCanvas ? fullCanvas.getContext('2d') : null;
   const [minX, maxX, minZ, maxZ] = worldData.meta.bounds;
 
+  const visibleLandmarks = worldData.landmarks.filter((lm) => lm.id !== 'pti_more' && lm.id !== 'taltola_ward23');
+
   let isOpen = false;
   let lastMiniDraw = 0;
 
@@ -70,17 +72,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
       bCtx.fill();
     }
 
-    // Building footprint dots
-    bCtx.fillStyle = 'rgba(218, 212, 198, 0.22)';
-    for (const list of Object.values(worldData.chunks)) {
-      for (let i = 0; i < list.length; i++) {
-        const b = list[i];
-        const [px, py] = worldToBasePx(b[0], b[1]);
-        bCtx.fillRect(px - 1, py - 1, 2.2, 2.2);
-      }
-    }
-
-    // Roads by hierarchy
+    // Roads by hierarchy (generic city building dots omitted for a clean road/park map)
     for (const r of worldData.roads) {
       bCtx.strokeStyle = r.t <= 1 ? '#e8b054' : (r.t === 2 ? '#c2ccbe' : (r.t === 3 ? '#7c8f85' : 'rgba(130, 148, 138, 0.55)'));
       bCtx.lineWidth = r.t <= 1 ? 2.4 : (r.t === 2 ? 1.6 : (r.t === 3 ? 1.15 : 0.7));
@@ -104,7 +96,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
   function populateLandmarkButtons(playerX = 420, playerZ = 975) {
     if (!mapList) return;
     mapList.innerHTML = '';
-    for (const lm of worldData.landmarks) {
+    for (const lm of visibleLandmarks) {
       const distM = Math.round(Math.hypot(lm.x - playerX, lm.z - playerZ));
       const { lat, lon } = worldXZToLatLon(lm.x, lm.z);
       const btn = document.createElement('button');
@@ -129,7 +121,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     fullCtx.drawImage(baseLayer, 0, 0, fullCanvas.width, fullCanvas.height);
 
     // Draw landmark pins
-    for (const lm of worldData.landmarks) {
+    for (const lm of visibleLandmarks) {
       const [bx, bz] = worldToBasePx(lm.x, lm.z);
       const px = (bx / baseW) * fullCanvas.width;
       const py = (bz / baseH) * fullCanvas.height;
@@ -203,7 +195,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     );
 
     // Highlight hero landmark pins visible on radar
-    for (const lm of worldData.landmarks) {
+    for (const lm of visibleLandmarks) {
       const dx = lm.x - playerPos.x;
       const dz = lm.z - playerPos.z;
       if (Math.abs(dx) > spanMeters * 0.48 || Math.abs(dz) > spanMeters * 0.48) continue;
@@ -272,7 +264,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     // Snap to nearest landmark within 90m, else warp directly onto clicked street point!
     let bestLm = null;
     let bestD = 90;
-    for (const lm of worldData.landmarks) {
+    for (const lm of visibleLandmarks) {
       const d = Math.hypot(lm.x - clickW.x, lm.z - clickW.z);
       if (d < bestD) {
         bestD = d;

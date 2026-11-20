@@ -3463,7 +3463,6 @@ function applyWorldCollisions(pos) {
   if (footY < 1.75) {
     for (const [cx, cz, hw, hd] of [
       [hx - 1.9, hz + 29.0, 0.78, 1.42],   // Taltola Cross Rd parked CNG
-      [-286.5, -45.5, 0.85, 1.45],         // PTI More parked CNG
       [1217.5, 649.8, 1.42, 0.82],         // Rupsha Ferry Terminal queue CNG
       [1117.0, 17.0, 1.10, 1.25],          // Rupsha Launch Ghat parked CNG
     ]) {
@@ -3921,7 +3920,7 @@ function updateHUDPrompt() {
     } else if (x > 3.1 && x < 24.0 && z >= 20.8 && z <= 26.8) {
       zone = "AVIJIT'S SPECIAL BATCH (ASB) · কোচিং কম্পাউন্ড";
     } else if (x > 1.8 && x < 24.0 && z > -28.0 && z < 20.8) {
-      zone = 'HAJI MOHSIN RD SHOPS · অঙ্কুর ডায়াগনস্টিক ও দোকানপাট';
+      zone = 'HAJI MOHSIN RD · হাজী মহসিন রোড ও দোকানপাট';
     } else if (x <= -2.8 && x >= -19.9 && z >= 14.25 && z <= 28.6) {
       const towerFl = footY < 2.2 ? 0 : Math.min(10, Math.round((footY - 4.0) / 3.0) + 1);
       if (environment?.tower?.isInsideLift(playerPos)) {

@@ -985,15 +985,12 @@ export function buildKhulnaLandmarks(parent, m) {
     return slice;
   }
 
+  // Keep only the top high-detail Khulna showcase landmarks (Model Mosque & Madrasah, Circuit House, Stadium, Boro Maath, Shaheed Hadis Park)
   const aliaSlice = makeSlice('KhulnaLandmark_Alia', 205, 130, 260);
   const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -145, -720, 480);
-  const ptiSlice = makeSlice('KhulnaLandmark_PTI', -304, -57, 250);
-  const ward23Slice = makeSlice('KhulnaLandmark_Ward23', -440, -260, 320);
 
   buildAliaMadrasahCampus(aliaSlice.staticG, aliaSlice.dynamicG, lm, m);
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
-  buildPtiMoreAndTaltolaLane(ptiSlice.staticG, ptiSlice.dynamicG, lm, m);
-  buildTaltolaLaneWard23(ward23Slice.staticG, ward23Slice.dynamicG, lm);
 
   for (const s of slices) {
     mergeStaticMeshes(s.staticG);
