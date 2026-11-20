@@ -1456,80 +1456,8 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
   addBox(staticG, [0.34, 0.24, 5.5], [laneCenterX(-515) - 2.05, 0.12, -515.8], bank.hazardBarrier);
   addBox(staticG, [5.2, 0.24, 0.34], [laneCenterX(-518) - 4.6, 0.12, -518.4], bank.hazardBarrier);
 
-  // 1-Story Ispahani Bikroy Kendra (ইস্পাহানি বিক্রয় কেন্দ্র, খুলনা)
-  const ispGreenShutter = new THREE.MeshStandardMaterial({ map: makeCorrugatedShutterTexture('#15803d'), roughness: 0.42, metalness: 0.52 });
-  const ispRedTrim = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.65 });
-  const ispYellowBand = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.38 });
-  addBox(staticG, [10.6, 4.1, 8.6], [ispX, 2.05, -511.5], bank.creamTrim, { uvScale: 2.2 });
-  addBox(staticG, [0.55, 1.05, 0.55], [ispX - 5.15, 0.52, ispFrontZ + 0.5], ispRedTrim);
-  addBox(staticG, [0.55, 2.45, 0.55], [ispX - 5.15, 2.25, ispFrontZ + 0.5], bank.modernWhite);
-  for (const sx of [ispX - 3.3, ispX - 0.1, ispX + 3.1]) {
-    addBox(staticG, [2.75, 2.75, 0.16], [sx, 1.48, ispFrontZ + 0.35], ispGreenShutter, { uvScale: 1.3 });
-    addBox(staticG, [0.22, 2.85, 0.22], [sx - 1.48, 1.50, ispFrontZ + 0.34], bank.modernWhite);
-  }
-  addBox(staticG, [11.2, 1.15, 0.32], [ispX, 3.85, ispFrontZ + 0.22], ispYellowBand);
-  addBox(staticG, [11.2, 0.14, 0.36], [ispX, 3.24, ispFrontZ + 0.22], ispRedTrim);
-  addIlluminatedSign(dynamicG, bank, {
-    title: 'ইস্পাহানি বিক্রয় কেন্দ্র · খুলনা',
-    subtitle: 'ISPAHANI SALES CENTER · 29 UPPER JESSORE RD',
-    bg: '#facc15',
-    fg: '#14532d',
-    accent: '#b91c1c',
-    border: '#15803d',
-  }, [ispX - 0.4, 3.88, ispFrontZ + 0.04], Math.PI, 8.8, 1.08);
-  addIlluminatedSign(dynamicG, bank, {
-    title: 'ইস্পাহানি বিক্রয় কেন্দ্র',
-    subtitle: 'ISPAHANI · ALTAPOLE LN',
-    bg: '#facc15',
-    fg: '#14532d',
-    accent: '#b91c1c',
-    border: '#15803d',
-  }, [ispX - 5.42, 3.85, -511.5], -Math.PI / 2, 5.4, 0.96);
-  helpers.addBroadleafTree?.(treesG, ispX + 1.5, 0, -504.2, 1.35, 9051);
-  helpers.addBroadleafTree?.(treesG, ispX - 2.6, 0, -505.5, 1.22, 9059);
-
-  // West Side of North Entrance: Iconic 6-Story "29 Upper Jessore Rd" Building
-  const bigX = laneCenterX(-509) - 8.6;
-  const bigZ = -509.2;
-  const bigW = 10.6;
-  const bigL = 14.4;
-  const brownWall = new THREE.MeshStandardMaterial({ color: 0x4b342b, roughness: 0.78 });
-  const mintAccent = new THREE.MeshStandardMaterial({ color: 0x52b788, roughness: 0.66 });
-  const redBrickFace = new THREE.MeshStandardMaterial({ color: 0x9b3d2b, roughness: 0.84 });
-  const grillWhite = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.35, metalness: 0.45 });
-
-  addBox(staticG, [bigW, 3.2, bigL], [bigX, 1.6, bigZ], redBrickFace);
-  addBox(staticG, [bigW + 0.25, 0.55, bigL + 0.25], [bigX, 3.45, bigZ], bank.modernWhite);
-  addBox(staticG, [1.8, 1.9, 0.35], [bigX + 2.2, 1.55, bigZ - bigL * 0.5 - 0.12], bank.modernWhite);
-  addBox(dynamicG, [1.25, 1.35, 0.12], [bigX + 2.2, 1.58, bigZ - bigL * 0.5 - 0.30], bank.dispATM, { castShadow: false });
-  const upFloors = 5;
-  const upFloorH = 3.1;
-  const upTotalH = upFloors * upFloorH;
-  addBox(staticG, [bigW, upTotalH, bigL], [bigX, 3.72 + upTotalH * 0.5, bigZ], brownWall);
-  addBox(staticG, [2.6, upTotalH + 0.2, 0.28], [bigX + bigW * 0.5 - 1.3, 3.72 + upTotalH * 0.5, bigZ - bigL * 0.5 - 0.08], mintAccent);
-  addBox(staticG, [0.28, upTotalH + 0.2, 2.8], [bigX + bigW * 0.5 + 0.08, 3.72 + upTotalH * 0.5, bigZ - bigL * 0.5 + 1.4], mintAccent);
-  for (let f = 0; f < upFloors; f++) {
-    const fy = 3.72 + f * upFloorH;
-    addBox(staticG, [bigW + 0.45, 0.26, bigL + 0.45], [bigX, fy + upFloorH, bigZ], bank.modernWhite);
-    for (const wx of [bigX - 2.6, bigX + 1.6]) {
-      addBox(staticG, [3.1, 1.85, 0.16], [wx, fy + 1.52, bigZ - bigL * 0.5 - 0.06], bank.windowGlass);
-      for (let g = -1.2; g <= 1.25; g += 0.6) {
-        addBox(staticG, [0.05, 1.85, 0.06], [wx + g, fy + 1.52, bigZ - bigL * 0.5 - 0.16], grillWhite);
-      }
-      addBox(staticG, [3.15, 0.06, 0.06], [wx, fy + 1.52, bigZ - bigL * 0.5 - 0.16], grillWhite);
-    }
-    for (const wz of [bigZ - 3.6, bigZ + 0.6, bigZ + 4.4]) {
-      addBox(staticG, [0.16, 1.85, 2.9], [bigX + bigW * 0.5 + 0.06, fy + 1.52, wz], bank.windowGlass);
-      for (let g = -1.1; g <= 1.15; g += 0.55) {
-        addBox(staticG, [0.06, 1.85, 0.05], [bigX + bigW * 0.5 + 0.16, fy + 1.52, wz + g], grillWhite);
-      }
-    }
-    if (f <= 2) {
-      addBox(staticG, [0.36, 0.54, 0.78], [bigX + bigW * 0.5 + 0.24, fy + 0.58, bigZ - 0.8], bank.acBox);
-    }
-  }
-  addBox(staticG, [bigW + 0.2, 1.0, bigL + 0.2], [bigX, 3.72 + upTotalH + 0.5, bigZ], bank.modernWhite);
-  addCyl(staticG, 0.72, 0.74, 1.5, [bigX - 2.0, 3.72 + upTotalH + 1.7, bigZ + 1.5], bank.waterTank, 10);
+  // Enterable 1-Story Ispahani Bikroy Kendra (with openable roll-up shutter & tea interior) is built by src/altapole-houses.js
+  // Enterable 6-Story "29 Upper Jessore Rd" Apartment Tower (empty car garage, [E] main gate, working 3D lift, stairs, furnished flats & openable Thai windows) is built by src/altapole-tower.js
 
   // South Head Corner Shops (two shops flanking the South Central Rd mouth at z = -310)
   const seX = laneCenterX(-311) + 8.3;
@@ -1633,69 +1561,115 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
   helpers.addPalm?.(dynamicG, laneCenterX(-479) - 3.6, 0, -479, 8.2, -0.32, 0.38);
   helpers.addBroadleafTree?.(treesG, laneCenterX(-476) - 4.1, 0, -476, 1.15, 9741);
 
-  // 4) DEEPER INSIDE THE LANE (z = -462 .. -326): ZERO SHOPS — ONLY High-Detail Residential Houses + Tin-Roof Houses (টিনের বাড়ি)!
-  const eastRes = [
-    { z: -458, type: 'tin', tin: bank.tinBlue },
-    { z: -440, type: 'house', floors: 5, wall: bank.modernWhite, band: bank.terracotta },
-    { z: -419, type: 'house', floors: 3, wall: bank.ochrePlaster, band: bank.creamTrim },
-    { z: -398, type: 'tin', tin: bank.tinRust },
-    { z: -378, type: 'house', floors: 4, wall: bank.creamTrim, band: bank.steelBlue },
-    { z: -356, type: 'house', floors: 5, wall: bank.sagePlaster, band: bank.creamTrim },
-    { z: -335, type: 'tin', tin: bank.tinBlue },
-  ];
-  eastRes.forEach((item, i) => {
-    const rx = laneCenterX(item.z);
-    if (item.type === 'tin') {
-      buildTinRoofHouse(staticG, bank, { cx: rx + 9.2, cz: item.z, widthX: 7.4, lengthZ: 10.6, facing: -1, tinMat: item.tin });
-    } else {
-      buildTaltolaStyleResidence(staticG, dynamicG, bank, {
-        cx: rx + 9.5, cz: item.z, widthX: 9.2, lengthZ: 13.8, floors: item.floors,
-        facing: -1, wallMat: item.wall, bandMat: item.band, seed: 9200 + i * 29,
-      });
-    }
-  });
+  // 4) REAL STREET VIEW LANDMARKS ALONG ALTAPOLE LANE (from user's 10 Google Street View photos, z = -458 .. -330):
+  const skyBlueWall = new THREE.MeshStandardMaterial({ color: 0x4b87c8, roughness: 0.72 });
+  const royalBlueDoor = new THREE.MeshStandardMaterial({ color: 0x2554a6, roughness: 0.62 });
+  const mintLowerWall = new THREE.MeshStandardMaterial({ color: 0x8db596, roughness: 0.88 });
+  const mossyTileRoof = new THREE.MeshStandardMaterial({ color: 0x5c693a, roughness: 0.92 });
+  const paleGreenShutter = new THREE.MeshStandardMaterial({ color: 0x8ea688, roughness: 0.82 });
+  const darkBlueShutter = new THREE.MeshStandardMaterial({ color: 0x162b42, roughness: 0.72 });
+  const maroonTinRoof = new THREE.MeshStandardMaterial({ color: 0x7c292b, roughness: 0.60, metalness: 0.35 });
+  const tealMeshGate = new THREE.MeshStandardMaterial({ color: 0x2a7b6f, roughness: 0.55, metalness: 0.50 });
 
-  const westRes = [
-    { z: -458, type: 'house', floors: 3, wall: bank.terracotta, band: bank.creamTrim },
-    { z: -439, type: 'tin', tin: bank.tinRust },
-    { z: -396, type: 'house', floors: 4, wall: bank.creamTrim, band: bank.terracotta },
-    { z: -374, type: 'tin', tin: bank.tinBlue },
-    { z: -353, type: 'house', floors: 5, wall: bank.ochrePlaster, band: bank.creamTrim },
-    { z: -333, type: 'house', floors: 4, wall: bank.sagePlaster, band: bank.modernWhite },
-  ];
-  westRes.forEach((item, i) => {
-    const rx = laneCenterX(item.z);
-    if (item.type === 'tin') {
-      buildTinRoofHouse(staticG, bank, { cx: rx - 9.2, cz: item.z, widthX: 7.4, lengthZ: 10.6, facing: 1, tinMat: item.tin });
-    } else {
-      buildTaltolaStyleResidence(staticG, dynamicG, bank, {
-        cx: rx - 9.5, cz: item.z, widthX: 9.2, lengthZ: 13.8, floors: item.floors,
-        facing: 1, wallMat: item.wall, bandMat: item.band, seed: 9600 + i * 31,
-      });
-    }
-  });
-
-  // Real Altapole Lane Neighborhood Mosque: Masjid Wali Asr (Shia Mosque) at z = -419
-  const mRx = laneCenterX(-419);
-  const mCx = mRx - 9.2;
-  addBox(staticG, [10.0, 0.45, 15.6], [mCx, 0.22, -419], bank.dampPlinth, { uvScale: 2.0 });
-  addBox(staticG, [9.6, 8.0, 15.2], [mCx, 4.2, -419], bank.modernWhite, { uvScale: 2.6 });
-  addBox(staticG, [9.9, 0.42, 15.5], [mCx, 8.3, -419], bank.deckGreen, { uvScale: 2.2 });
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(2.5, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), bank.deckGreen);
-  dome.position.set(mCx, 8.45, -419);
-  staticG.add(dome);
-  for (const mz of [-425.5, -412.5]) {
-    addCyl(staticG, 0.45, 0.52, 12.2, [mCx + 4.2, 6.1, mz], bank.modernWhite, 10);
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.58, 1.4, 10), bank.deckGreen);
-    cap.position.set(mCx + 4.2, 12.9, mz);
-    staticG.add(cap);
+  // Continuous narrow mossy side drain along the lane interior (z = -456 .. -330)
+  for (let dz = -452; dz <= -332; dz += 10) {
+    const cx = laneCenterX(dz);
+    addBox(staticG, [0.38, 0.07, 10.2], [cx + 1.98, 0.02, dz], drainDarkMat, { castShadow: false });
+    addBox(staticG, [0.12, 0.14, 10.2], [cx + 1.74, 0.07, dz], bank.dampPlinth, { castShadow: false });
   }
-  addIlluminatedSign(dynamicG, bank, {
-    title: 'মসজিদ ওয়ালি আসর (শিয়া মসজিদ) · আলতাপোল লেন',
-    subtitle: 'MASJID WALI ASR · ISLAMIC EDUCATION CENTER',
-    bg: '#064e3b',
-    accent: '#fef08a',
-  }, [mCx + 4.98, 3.60, -419], Math.PI / 2, 7.2, 1.02);
+
+  // [A] z = -442 WEST: Enterable "১৫, আলতাপোল লেন — কামিয়াব টিচিং হোম" is built by src/altapole-houses.js
+
+  // [B] z = -442 EAST: Old Exposed-Brick & Mossy Concrete Semi-Pucca House with Pale-Green Wooden Shutters
+  {
+    const rx = laneCenterX(-442);
+    const hx = rx + 7.6;
+    const hz = -442;
+    addBox(staticG, [7.6, 3.4, 11.4], [hx, 1.7, hz], bank.dampPlinth, { uvScale: 2.2 });
+    addBox(staticG, [7.8, 0.22, 11.6], [hx, 3.45, hz], mossyTileRoof);
+    for (const dz of [-2.8, 2.4]) {
+      addBox(staticG, [0.16, 1.28, 1.35], [hx - 3.84, 1.65, hz + dz], paleGreenShutter);
+    }
+    addBox(staticG, [0.16, 2.05, 1.05], [hx - 3.84, 1.12, hz - 0.2], bank.woodBoat);
+    // Exposed-brick 2-story neighbor rising behind
+    addBox(staticG, [6.2, 6.2, 10.0], [hx + 4.8, 3.1, hz - 2.0], bank.brickRed, { uvScale: 2.0 });
+    // Weathered mossy boundary wall
+    addBox(staticG, [0.26, 1.85, 11.8], [rx + 2.65, 0.92, hz], weatheredPlaster, { uvScale: 2.2 });
+  }
+
+  // [C] z = -418 WEST: Enterable "পরশমনি কলা কেন্দ্র · ২৪, আলতাপোল লেন" is built by src/altapole-houses.js
+
+  // [D] z = -418 EAST: ICONIC MOSSY CLAY-TILE ROOF ROW HOUSE (টালির চালের বাড়ি) + MINT-GREEN LOWER WALL & WHITE JALI + OCHRE 2-STORY HERITAGE BUILDING
+  {
+    const rx = laneCenterX(-418);
+    const ex = rx + 2.75;
+    const hz = -418;
+    // Front mint-green lower wall + perforated white brick jali section + mossy clay-tile sloping roof (টালির চাল)
+    addBox(staticG, [0.28, 1.85, 16.0], [ex, 0.92, hz], mintLowerWall, { uvScale: 2.2 });
+    addBox(staticG, [0.24, 0.95, 7.2], [ex, 2.30, hz - 3.6], bank.modernWhite, { uvScale: 1.4 });
+    // Long sloping moss-covered terracotta clay-tile roof overhang facing the lane + silver tin repair patch
+    addBox(staticG, [2.6, 0.12, 16.4], [ex + 1.05, 3.35, hz], mossyTileRoof, { rotZ: 0.34, uvScale: 1.5 });
+    addBox(staticG, [2.5, 0.13, 2.2], [ex + 1.02, 3.38, hz - 2.4], bank.aluminum, { rotZ: 0.34 });
+    // 2-Story weathered ochre-cream heritage building rising directly behind the tile roof with dark-blue louvered shutters
+    addBox(staticG, [7.8, 7.6, 16.0], [ex + 5.6, 3.8, hz], bank.ochrePlaster, { uvScale: 2.6 });
+    addBox(staticG, [8.1, 0.24, 16.2], [ex + 5.5, 7.65, hz], bank.dampPlinth);
+    for (const dz of [-5.4, -2.6, 0.2, 3.0, 5.8]) {
+      addBox(staticG, [0.16, 1.55, 1.15], [ex + 1.68, 5.55, hz + dz], darkBlueShutter);
+      addBox(staticG, [0.28, 0.10, 1.35], [ex + 1.62, 6.38, hz + dz], bank.dampPlinth);
+    }
+  }
+
+  // [E] z = -401 WEST: White 2-Story House with Maroon/Red Pitched Tin Roof + Mossy Grey Boundary Wall
+  {
+    const rx = laneCenterX(-401);
+    const hx = rx - 8.5;
+    const hz = -401;
+    addBox(staticG, [8.2, 6.2, 12.6], [hx, 3.1, hz], bank.modernWhite, { uvScale: 2.4 });
+    addBox(staticG, [4.6, 0.12, 13.0], [hx + 2.0, 6.72, hz], maroonTinRoof, { rotZ: -0.26, uvScale: 1.6 });
+    addBox(staticG, [4.6, 0.12, 13.0], [hx - 2.0, 6.72, hz], maroonTinRoof, { rotZ: 0.26, uvScale: 1.6 });
+    for (const dz of [-3.4, 0, 3.4]) {
+      addBox(staticG, [0.16, 1.45, 1.25], [hx + 4.14, 4.75, hz + dz], bank.windowGlass);
+      addBox(staticG, [0.16, 2.05, 1.15], [hx + 4.14, 1.15, hz + dz], bank.woodBoat);
+    }
+    addBox(staticG, [0.28, 1.95, 12.8], [rx - 2.85, 0.98, hz], weatheredPlaster, { uvScale: 2.2 });
+    helpers.addBroadleafTree?.(treesG, rx - 3.6, 0, hz - 4.5, 1.24, 9823);
+  }
+
+  // [F] z = -384 WEST: Enterable "১ আলতাপোল লেন" Classic White Colonial Veranda House is built by src/altapole-houses.js
+
+  // [G] z = -384 EAST: Weathered Ochre Arched-Window Heritage House (1 Altapole Ln East)
+  {
+    const rx = laneCenterX(-384);
+    const hx = rx + 7.2;
+    const hz = -384;
+    addBox(staticG, [8.0, 6.2, 14.0], [hx, 3.1, hz], bank.ochrePlaster, { uvScale: 2.6 });
+    addBox(staticG, [8.3, 0.22, 14.2], [hx - 0.15, 3.25, hz], bank.dampPlinth);
+    addBox(staticG, [8.3, 0.22, 14.2], [hx - 0.15, 6.25, hz], bank.dampPlinth);
+    for (const dz of [-4.2, -0.4, 3.6]) {
+      addBox(staticG, [0.18, 1.75, 1.35], [hx - 4.04, 1.45, hz + dz], bank.darkSlate);
+      addBox(staticG, [0.34, 0.12, 1.65], [hx - 4.14, 2.40, hz + dz], bank.dampPlinth);
+      addBox(staticG, [0.16, 1.45, 1.25], [hx - 4.04, 4.75, hz + dz], darkBlueShutter);
+    }
+  }
+
+  // [H] Remaining South Residential Stretch (z = -362 .. -330): Taltola-style Houses & Tin-Roof Houses (zero shops!)
+  const southRes = [
+    { z: -362, side: 1, type: 'house', floors: 4, wall: bank.creamTrim, band: bank.steelBlue },
+    { z: -340, side: 1, type: 'tin', tin: bank.tinBlue },
+    { z: -360, side: -1, type: 'tin', tin: bank.tinRust },
+    { z: -338, side: -1, type: 'house', floors: 4, wall: bank.sagePlaster, band: bank.creamTrim },
+  ];
+  southRes.forEach((item, i) => {
+    const rx = laneCenterX(item.z);
+    if (item.type === 'tin') {
+      buildTinRoofHouse(staticG, bank, { cx: rx + item.side * 9.0, cz: item.z, widthX: 7.4, lengthZ: 10.6, facing: -item.side, tinMat: item.tin });
+    } else {
+      buildTaltolaStyleResidence(staticG, dynamicG, bank, {
+        cx: rx + item.side * 9.4, cz: item.z, widthX: 9.2, lengthZ: 13.6, floors: item.floors,
+        facing: -item.side, wallMat: item.wall, bandMat: item.band, seed: 9900 + i * 23,
+      });
+    }
+  });
 
   // BIG High-Quality Leader Wall Posters on Residential Boundary Walls along Altapole Lane!
   for (const [wz, side, pIdx] of [[-483, 1, 0], [-456, -1, 1], [-424, 1, 2], [-392, -1, 0], [-354, 1, 1]]) {

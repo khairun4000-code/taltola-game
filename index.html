@@ -137,6 +137,8 @@
               <option value="taltola_house" selected>তালতলার বাসা · Taltola Cross Rd</option>
               <option value="haji_mohsin">হাজী মহসিন রোড · 35 SK Arshan</option>
               <option value="altapole_lane">আলতাপোল লেন · Altapole Lane</option>
+              <option value="pti_more">পিটিআই মোড় ও আহসান আহমেদ রোড · PTI More</option>
+              <option value="royal_more">রয়্যালের মোড় · Royal More</option>
               <option value="alia_madrasah">আলিয়া মাদ্রাসা · Alia Model Mosque</option>
               <option value="circuit_house">বড় মাঠ · Circuit House & Stadium</option>
               <option value="hadis_park">শহীদ হাদিস পার্ক · Hadis Park</option>
@@ -173,7 +175,7 @@
         <div class="city-map-body">
           <div class="city-map-canvas-wrap">
             <canvas id="city-map-canvas" width="760" height="720"></canvas>
-            <p class="city-map-hint">নীল তীর = আপনার অবস্থান · যেকোনো রাস্তায় বা পিনে ক্লিক করে সঙ্গে সঙ্গে চলে যান</p>
+            <p class="city-map-hint">ম্যাপে ক্লিক বা ডবল ক্লিক = GTA V ইয়েলো জিপিএস রুট (শুধু ডিরেকশন) · টেলিপোর্ট = ডান পাশের লোকেশন লিস্ট</p>
           </div>
           <aside class="city-map-sidebar">
             <div class="city-sidebar-title">KEY KHULNA LANDMARKS</div>
@@ -222,9 +224,9 @@
           <div id="car-badge" class="car-badge">BMW M3 COMPETITION</div>
           <div class="car-gear-box"><span id="car-gear">N</span></div>
         </div>
-        <div class="car-speed-row">
-          <span id="car-speed">0</span>
-          <small>KM/H</small>
+        <div class="forza-gauge-wrap">
+          <canvas id="forza-tacho-canvas" width="280" height="224"></canvas>
+          <span id="car-speed" class="sr-only">0</span>
         </div>
         <div class="car-rpm-track"><div id="car-rpm-fill" class="car-rpm-fill"></div></div>
         <div class="car-hud-actions">
@@ -232,9 +234,9 @@
           <button type="button" id="car-pov-btn" class="car-chip"><kbd>V</kbd> <span id="car-cam-label">ক্যামেরা</span></button>
           <button type="button" id="car-paint-btn" class="car-chip">🎨 <span id="car-paint-name">Green</span></button>
           <button type="button" id="car-horn-btn" class="car-chip"><kbd>H</kbd> হর্ন</button>
-          <button type="button" id="car-exit-btn" class="car-chip car-chip-exit"><kbd>E / T</kbd> নামুন</button>
+          <button type="button" id="car-exit-btn" class="car-chip car-chip-exit"><kbd>F / T</kbd> নামুন</button>
         </div>
-        <div class="car-drive-hint"><kbd>W/S</kbd> চলুন/ব্রেক · <kbd>A/D</kbd> স্টিয়ারিং · <kbd>C</kbd> ফ্রি ক্যাম · <kbd>ESC</kbd> ম্যাপ</div>
+        <div class="car-drive-hint"><kbd>W/S</kbd> চলুন · <kbd>A/D</kbd> স্টিয়ারিং · <kbd>L</kbd> হেডলাইট · <kbd>SHIFT</kbd> বুস্ট</div>
       </div>
       <div class="walk-controls"><span id="look-control"><kbd>2x CLICK</kbd> মাউস</span><span><kbd>C</kbd> ফ্রি ক্যাম</span><span><kbd>P</kbd> ফোন</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>F</kbd> রিকশা</span><span><kbd>G</kbd> প্যাসেঞ্জার</span><span><kbd>T</kbd> গাড়ি</span><span><kbd>ESC</kbd> ম্যাপ</span><span><kbd>TAB</kbd> ক্লিন HUD</span></div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>

@@ -458,14 +458,15 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
   };
 
   const addCap = (cx, cz, radius, segs = 8) => {
+    const capY = yHeight - 0.0022; // Slightly below road quad so joint caps never Z-fight!
     const centerIdx = vBase;
-    positions.push(cx, yHeight, cz);
+    positions.push(cx, capY, cz);
     normals.push(0, 1, 0);
     uvs.push(0.5, 0.5);
     vBase += 1;
     for (let s = 0; s <= segs; s++) {
       const ang = (s / segs) * Math.PI * 2;
-      positions.push(cx + Math.cos(ang) * radius, yHeight, cz + Math.sin(ang) * radius);
+      positions.push(cx + Math.cos(ang) * radius, capY, cz + Math.sin(ang) * radius);
       normals.push(0, 1, 0);
       uvs.push(0.5 + 0.5 * Math.cos(ang), 0.5 + 0.5 * Math.sin(ang));
       vBase += 1;
@@ -474,6 +475,8 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
       indices.push(centerIdx, centerIdx + 1 + s + 1, centerIdx + 1 + s);
     }
   };
+
+  const isInsidePtiPitchZone = (x, z) => x >= -374 && x <= -252 && z >= -232 && z <= 16;
 
   for (const r of roadList) {
     if (!tierPredicate(r)) continue;
@@ -484,6 +487,8 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
       const z0 = pts[i + 1];
       const x1 = pts[i + 2];
       const z1 = pts[i + 3];
+      // Skip underlying OSM road triangles inside PTI More & Ahsan Ahmed Rd where dedicated pitch-asphalt roads sit (ZERO Z-fighting!)
+      if (isInsidePtiPitchZone((x0 + x1) * 0.5, (z0 + z1) * 0.5)) continue;
       const dx = x1 - x0;
       const dz = z1 - z0;
       const len = Math.hypot(dx, dz);
@@ -497,11 +502,11 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
         x1 - nx, z1 - nz,
         len * 0.1
       );
-      if (i > 0) addCap(x0, z0, halfW * 0.99, 8);
+      if (i > 0 && !isInsidePtiPitchZone(x0, z0)) addCap(x0, z0, halfW * 0.99, 8);
     }
     if (pts.length >= 4) {
-      addCap(pts[0], pts[1], halfW * 0.99, 8);
-      addCap(pts[pts.length - 2], pts[pts.length - 1], halfW * 0.99, 8);
+      if (!isInsidePtiPitchZone(pts[0], pts[1])) addCap(pts[0], pts[1], halfW * 0.99, 8);
+      if (!isInsidePtiPitchZone(pts[pts.length - 2], pts[pts.length - 1])) addCap(pts[pts.length - 2], pts[pts.length - 1], halfW * 0.99, 8);
     }
   }
 
@@ -757,9 +762,9 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
     polygonOffsetUnits: 1,
   });
   attachDerivedPBRMaps(sidewalkMat, tex.sidewalkTex, { strength: 2.0, roughBase: 0.88, normalScale: 0.65 });
-  const roadMajorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: tex.roadMajorTex, roughness: 0.78, metalness: 0.04 });
-  const roadMidMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: tex.roadMidTex, roughness: 0.80, metalness: 0.04 });
-  const roadLaneMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: tex.roadLaneTex, roughness: 0.82, metalness: 0.03 });
+  const roadMajorMat = new THREE.MeshStandardMaterial({ color: 0xd8dce0, map: tex.roadMajorTex, roughness: 0.76, metalness: 0.05, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  const roadMidMat = new THREE.MeshStandardMaterial({ color: 0xd8dce0, map: tex.roadMidTex, roughness: 0.78, metalness: 0.04, polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: 0 });
+  const roadLaneMat = new THREE.MeshStandardMaterial({ color: 0xd8dce0, map: tex.roadLaneTex, roughness: 0.82, metalness: 0.03, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
   attachDerivedPBRMaps(roadMajorMat, tex.roadMajorTex, { strength: 1.8, roughBase: 0.78, normalScale: 0.6 });
   attachDerivedPBRMaps(roadMidMat, tex.roadMidTex, { strength: 1.8, roughBase: 0.80, normalScale: 0.6 });
   upgradeWetAsphaltMaterial(roadMajorMat, skySystem?.sharedUniforms, 0.68);

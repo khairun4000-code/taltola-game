@@ -1145,14 +1145,8 @@ export function createPlayerCharacter(scene, manager) {
       solveTwoBoneIK(rightArm, rightForeArm, rightHand, a.gripR, ikPole);
     }
 
-    // 6. Stable forward gaze with subtle natural look into steering turns
+    // 6. Keep head & neck 100% straight forward while driving (never tilts sideways toward window)
     lockHeadAndNeckStraight();
-    const turnGlance = THREE.MathUtils.clamp((cd.steerAngle || 0) * 0.28, -0.22, 0.22);
-    if (headBone && Math.abs(turnGlance) > 0.005) {
-      eulerTemp.set(0, turnGlance, 0);
-      qTempA.setFromEuler(eulerTemp);
-      headBone.quaternion.copy(restHeadQ).multiply(qTempA);
-    }
   }
 
   function applyBikeRidingPose(bike) {
@@ -1653,7 +1647,7 @@ export function createPlayerCharacter(scene, manager) {
     }
 
     applyProceduralHeadAndFace(dt, Boolean(isRidingRickshaw || isRidingBike || isDrivingCar || isVehicleAnim || holdingPhoneNow));
-    if (isRidingRickshaw || isVehicleAnim) {
+    if (isRidingRickshaw || isDrivingCar || isVehicleAnim) {
       lockHeadAndNeckStraight();
     }
   }

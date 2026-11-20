@@ -14,13 +14,155 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
   const fullCtx = fullCanvas ? fullCanvas.getContext('2d') : null;
   const [minX, maxX, minZ, maxZ] = worldData.meta.bounds;
 
-  const visibleLandmarks = worldData.landmarks.filter((lm) => lm.id !== 'pti_more' && lm.id !== 'taltola_ward23');
+  const visibleLandmarks = worldData.landmarks
+    .filter((lm) => lm.id !== 'taltola_ward23')
+    .map((lm) => lm.id === 'pti_more'
+      ? { ...lm, c: 'hero', isPti: true, n: 'PTI More · Ahsan Ahmed Rd', bn: '🟢 পিটিআই মোড় ও আহসান আহমেদ রোড (PTI More)' }
+      : lm);
+  const ptiIdx = visibleLandmarks.findIndex((lm) => lm.id === 'pti_more');
+  if (ptiIdx > 0) {
+    const [ptiLm] = visibleLandmarks.splice(ptiIdx, 1);
+    visibleLandmarks.unshift(ptiLm);
+  }
 
   let isOpen = false;
   let lastMiniDraw = 0;
   let pingUntil = 0;
   let lastPlayerPos = { x: 0, z: 0 };
   let lastPlayerYaw = 0;
+
+  // GTA V-Style Yellow GPS Waypoint & Real Khulna Road Graph Shortest-Path Router
+  let gpsWaypoint = null; // { x, z, label }
+  let gpsRoutePts = [];   // [[x,z], ...]
+  let gpsRouteDistM = 0;
+  let lastRouteRecomputePos = { x: 1e9, z: 1e9 };
+
+  const roadNodes = [];
+  const roadAdj = [];
+  const nodeGrid = new Map();
+  const SNAP_CELL = 14;
+
+  function getOrAddNode(x, z) {
+    const gx = Math.round(x / SNAP_CELL);
+    const gz = Math.round(z / SNAP_CELL);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        const list = nodeGrid.get(`${gx + dx},${gz + dz}`);
+        if (!list) continue;
+        for (const id of list) {
+          if (Math.hypot(roadNodes[id][0] - x, roadNodes[id][1] - z) < 12) return id;
+        }
+      }
+    }
+    const id = roadNodes.length;
+    roadNodes.push([x, z]);
+    roadAdj.push([]);
+    const key = `${gx},${gz}`;
+    if (!nodeGrid.has(key)) nodeGrid.set(key, []);
+    nodeGrid.get(key).push(id);
+    return id;
+  }
+
+  for (const r of worldData.roads) {
+    const pts = r.p;
+    if (!pts || pts.length < 4) continue;
+    let prev = getOrAddNode(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) {
+      const cur = getOrAddNode(pts[i], pts[i + 1]);
+      if (cur !== prev) {
+        const d = Math.hypot(roadNodes[cur][0] - roadNodes[prev][0], roadNodes[cur][1] - roadNodes[prev][1]);
+        roadAdj[prev].push([cur, d]);
+        roadAdj[cur].push([prev, d]);
+        prev = cur;
+      }
+    }
+  }
+
+  function findNearestRoadNode(x, z) {
+    let best = -1;
+    let bestD = Infinity;
+    for (let i = 0; i < roadNodes.length; i++) {
+      const d = (roadNodes[i][0] - x) ** 2 + (roadNodes[i][1] - z) ** 2;
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }
+
+  function computeGpsRoute(fromX, fromZ, toX, toZ) {
+    const s = findNearestRoadNode(fromX, fromZ);
+    const t = findNearestRoadNode(toX, toZ);
+    if (s < 0 || t < 0) return [[fromX, fromZ], [toX, toZ]];
+    const n = roadNodes.length;
+    const dist = new Float64Array(n).fill(Infinity);
+    const prev = new Int32Array(n).fill(-1);
+    const visited = new Uint8Array(n);
+    dist[s] = 0;
+    const heap = [[0, s]];
+    while (heap.length) {
+      let bestIdx = 0;
+      for (let i = 1; i < heap.length; i++) if (heap[i][0] < heap[bestIdx][0]) bestIdx = i;
+      const [d, u] = heap[bestIdx];
+      heap[bestIdx] = heap[heap.length - 1];
+      heap.pop();
+      if (visited[u]) continue;
+      visited[u] = 1;
+      if (u === t) break;
+      for (const [v, w] of roadAdj[u]) {
+        const nd = d + w;
+        if (nd < dist[v]) {
+          dist[v] = nd;
+          prev[v] = u;
+          heap.push([nd, v]);
+        }
+      }
+    }
+    const path = [[toX, toZ]];
+    if (prev[t] !== -1 || s === t) {
+      let cur = t;
+      while (cur !== -1) {
+        path.push(roadNodes[cur]);
+        cur = prev[cur];
+      }
+    }
+    path.push([fromX, fromZ]);
+    path.reverse();
+    return path;
+  }
+
+  function updateGpsRouteIfNeeded(px, pz, force = false) {
+    if (!gpsWaypoint) return;
+    const directDist = Math.hypot(gpsWaypoint.x - px, gpsWaypoint.z - pz);
+    if (directDist < 18) {
+      gpsWaypoint = null;
+      gpsRoutePts = [];
+      gpsRouteDistM = 0;
+      return;
+    }
+    if (!force && Math.hypot(px - lastRouteRecomputePos.x, pz - lastRouteRecomputePos.z) < 16) {
+      gpsRouteDistM = Math.round(directDist);
+      return;
+    }
+    lastRouteRecomputePos = { x: px, z: pz };
+    gpsRoutePts = computeGpsRoute(px, pz, gpsWaypoint.x, gpsWaypoint.z);
+    let total = 0;
+    for (let i = 1; i < gpsRoutePts.length; i++) {
+      total += Math.hypot(gpsRoutePts[i][0] - gpsRoutePts[i - 1][0], gpsRoutePts[i][1] - gpsRoutePts[i - 1][1]);
+    }
+    gpsRouteDistM = Math.round(total || directDist);
+  }
+
+  function setGpsWaypoint(x, z, label = 'মার্ক করা লোকেশন') {
+    gpsWaypoint = { x, z, label };
+    updateGpsRouteIfNeeded(lastPlayerPos.x, lastPlayerPos.z, true);
+    if (isOpen) renderFullMap(lastPlayerPos, lastPlayerYaw);
+  }
+
+  function clearGpsWaypoint() {
+    gpsWaypoint = null;
+    gpsRoutePts = [];
+    gpsRouteDistM = 0;
+    if (isOpen) renderFullMap(lastPlayerPos, lastPlayerYaw);
+  }
 
   // Pre-render static vector base layer of full Khulna map offscreen for instant 120 FPS blitting!
   const baseW = 760;
@@ -48,7 +190,6 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     bCtx.fillStyle = '#18231e';
     bCtx.fillRect(0, 0, baseW, baseH);
 
-    // Greens / Stadiums / Circuit House Ground
     for (const g of worldData.greens) {
       bCtx.fillStyle = g.k === 'pitch' ? '#2c5a37' : '#22452b';
       bCtx.beginPath();
@@ -61,7 +202,6 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
       bCtx.fill();
     }
 
-    // Rivers & Ponds
     for (const w of worldData.waters) {
       bCtx.fillStyle = w.k === 'river' ? '#1c4d63' : '#235e78';
       bCtx.beginPath();
@@ -74,13 +214,12 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
       bCtx.fill();
     }
 
-    // Roads by hierarchy (generic city building dots omitted for a clean road/park map)
     for (const r of worldData.roads) {
-      const isAltapole = r.n === 'Altapole Lane';
-      bCtx.strokeStyle = isAltapole
+      const isGreenRoad = r.n === 'Altapole Lane' || r.n === 'Ahsan Ahmed Rd' || r.n === 'Mia Para Road';
+      bCtx.strokeStyle = isGreenRoad
         ? '#4ade80'
         : (r.t <= 1 ? '#e8b054' : (r.t === 2 ? '#c2ccbe' : (r.t === 3 ? '#7c8f85' : 'rgba(130, 148, 138, 0.55)')));
-      bCtx.lineWidth = isAltapole ? 2.2 : (r.t <= 1 ? 2.4 : (r.t === 2 ? 1.6 : (r.t === 3 ? 1.15 : 0.7)));
+      bCtx.lineWidth = isGreenRoad ? 2.8 : (r.t <= 1 ? 2.4 : (r.t === 2 ? 1.6 : (r.t === 3 ? 1.15 : 0.7)));
       bCtx.beginPath();
       for (let i = 0; i < r.p.length; i += 2) {
         const [px, py] = worldToBasePx(r.p[i], r.p[i + 1]);
@@ -90,7 +229,18 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
       bCtx.stroke();
     }
 
-    // Hero District Watermarks
+    // Highlight PTI More & Ahsan Ahmed Rd junction zone in bright green
+    const [ptx, ptz] = worldToBasePx(-304.3, -56.7);
+    bCtx.save();
+    bCtx.beginPath();
+    bCtx.arc(ptx, ptz, 18, 0, Math.PI * 2);
+    bCtx.fillStyle = 'rgba(74, 222, 128, 0.24)';
+    bCtx.fill();
+    bCtx.lineWidth = 2;
+    bCtx.strokeStyle = '#4ade80';
+    bCtx.stroke();
+    bCtx.restore();
+
     bCtx.font = 'bold 11px "Manrope", sans-serif';
     bCtx.fillStyle = 'rgba(125, 211, 252, 0.72)';
     const [rx, rz] = worldToBasePx(1235, 320);
@@ -107,14 +257,23 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `city-lm-btn ${lm.c === 'hero' ? 'is-hero' : ''}`;
+      if (lm.isPti) {
+        btn.style.borderColor = '#4ade80';
+        btn.style.background = 'rgba(34, 197, 94, 0.24)';
+        btn.style.boxShadow = '0 0 12px rgba(74, 222, 128, 0.30)';
+      }
       btn.innerHTML = `
-        <span class="lm-name">${lm.bn}</span>
+        <span class="lm-name"${lm.isPti ? ' style="color:#86efac"' : ''}>${lm.bn}</span>
         <small class="lm-meta">${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E · ${distM}m away</small>
       `;
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         closeMap();
         onWarpToLandmark?.(lm);
+      });
+      btn.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        setGpsWaypoint(lm.x, lm.z, lm.bn || lm.n);
       });
       mapList.appendChild(btn);
     }
@@ -125,27 +284,68 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     fullCtx.clearRect(0, 0, fullCanvas.width, fullCanvas.height);
     fullCtx.drawImage(baseLayer, 0, 0, fullCanvas.width, fullCanvas.height);
 
-    // Draw landmark pins
+    // Draw GTA V Yellow GPS Route Line & Waypoint Pin on Full Map
+    if (gpsWaypoint) {
+      updateGpsRouteIfNeeded(playerPos.x, playerPos.z, false);
+      if (gpsRoutePts.length >= 2) {
+        fullCtx.save();
+        fullCtx.beginPath();
+        for (let i = 0; i < gpsRoutePts.length; i++) {
+          const [bx, bz] = worldToBasePx(gpsRoutePts[i][0], gpsRoutePts[i][1]);
+          const px = (bx / baseW) * fullCanvas.width;
+          const py = (bz / baseH) * fullCanvas.height;
+          if (i === 0) fullCtx.moveTo(px, py);
+          else fullCtx.lineTo(px, py);
+        }
+        fullCtx.strokeStyle = 'rgba(0, 0, 0, 0.58)';
+        fullCtx.lineWidth = 7.5;
+        fullCtx.lineJoin = 'round';
+        fullCtx.lineCap = 'round';
+        fullCtx.stroke();
+        fullCtx.strokeStyle = '#facc15';
+        fullCtx.lineWidth = 4.4;
+        fullCtx.shadowColor = '#facc15';
+        fullCtx.shadowBlur = 10;
+        fullCtx.stroke();
+        fullCtx.restore();
+      }
+      const [wbx, wbz] = worldToBasePx(gpsWaypoint.x, gpsWaypoint.z);
+      const wpx = (wbx / baseW) * fullCanvas.width;
+      const wpy = (wbz / baseH) * fullCanvas.height;
+      fullCtx.save();
+      fullCtx.beginPath();
+      fullCtx.arc(wpx, wpy, 9, 0, Math.PI * 2);
+      fullCtx.fillStyle = '#facc15';
+      fullCtx.fill();
+      fullCtx.lineWidth = 2.5;
+      fullCtx.strokeStyle = '#0f172a';
+      fullCtx.stroke();
+      fullCtx.font = '800 11.5px "Manrope", sans-serif';
+      fullCtx.fillStyle = '#fef08a';
+      fullCtx.fillText(`🟡 GPS (${gpsRouteDistM}m)`, wpx + 12, wpy + 4);
+      fullCtx.restore();
+    }
+
     for (const lm of visibleLandmarks) {
       const [bx, bz] = worldToBasePx(lm.x, lm.z);
       const px = (bx / baseW) * fullCanvas.width;
       const py = (bz / baseH) * fullCanvas.height;
       fullCtx.beginPath();
-      fullCtx.arc(px, py, lm.c === 'hero' ? 7 : 5, 0, Math.PI * 2);
-      fullCtx.fillStyle = lm.c === 'hero' ? '#fbbf24' : '#d9ed9c';
+      fullCtx.arc(px, py, lm.isPti ? 8.5 : (lm.c === 'hero' ? 7 : 5), 0, Math.PI * 2);
+      fullCtx.fillStyle = lm.isPti ? '#4ade80' : (lm.c === 'hero' ? '#fbbf24' : '#d9ed9c');
       fullCtx.fill();
-      fullCtx.lineWidth = 2;
+      fullCtx.lineWidth = 2.2;
       fullCtx.strokeStyle = '#0f1714';
       fullCtx.stroke();
 
       const alignRight = px > fullCanvas.width - 175;
-      const lx = alignRight ? px - 10 : px + 10;
+      const lx = alignRight ? px - 11 : px + 11;
       const ly = Math.max(18, Math.min(fullCanvas.height - 12, py + 3));
       fullCtx.textAlign = alignRight ? 'right' : 'left';
-      fullCtx.font = lm.c === 'hero' ? '700 12px "Manrope", sans-serif' : '600 10.5px "Manrope", sans-serif';
+      fullCtx.font = (lm.isPti || lm.c === 'hero') ? '700 12px "Manrope", sans-serif' : '600 10.5px "Manrope", sans-serif';
       fullCtx.fillStyle = '#0c1512';
       fullCtx.fillText(lm.n, lx + 1, ly + 1);
-      fullCtx.fillStyle = lm.c === 'hero' ? '#fef08a' : '#f1f5f9';
+      fullCtx.fillStyle = lm.isPti ? '#86efac' : (lm.c === 'hero' ? '#fef08a' : '#f1f5f9');
       fullCtx.fillText(lm.n, lx, ly);
       fullCtx.textAlign = 'left';
     }
@@ -193,12 +393,14 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
   function renderMinimap(playerPos, yaw, districtInfo) {
     if (!miniCtx || !miniCanvas) return;
     const now = performance.now();
-    if (now - lastMiniDraw < 65) return; // Cap minimap redraw cleanly to ~15 Hz
+    if (now - lastMiniDraw < 65) return;
     lastMiniDraw = now;
+
+    lastPlayerPos = { x: playerPos.x, z: playerPos.z };
+    lastPlayerYaw = yaw;
 
     const w = miniCanvas.width;
     const h = miniCanvas.height;
-    // Show ~520m radius around player (north-up for easy geographic reading)
     const spanMeters = 520;
     const srcW = (spanMeters / (maxX - minX)) * baseW;
     const srcH = (spanMeters / (maxZ - minZ)) * baseH;
@@ -218,7 +420,41 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
       h
     );
 
-    // Highlight hero landmark pins visible on radar
+    // Draw live GTA V Yellow GPS Route Line on the corner Minimap Radar!
+    if (gpsWaypoint) {
+      updateGpsRouteIfNeeded(playerPos.x, playerPos.z, false);
+      if (gpsRoutePts.length >= 2) {
+        miniCtx.save();
+        miniCtx.beginPath();
+        for (let i = 0; i < gpsRoutePts.length; i++) {
+          const mx = w * 0.5 + ((gpsRoutePts[i][0] - playerPos.x) / spanMeters) * w;
+          const my = h * 0.5 + ((gpsRoutePts[i][1] - playerPos.z) / spanMeters) * h;
+          if (i === 0) miniCtx.moveTo(mx, my);
+          else miniCtx.lineTo(mx, my);
+        }
+        miniCtx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
+        miniCtx.lineWidth = 5.4;
+        miniCtx.lineJoin = 'round';
+        miniCtx.lineCap = 'round';
+        miniCtx.stroke();
+        miniCtx.strokeStyle = '#facc15';
+        miniCtx.lineWidth = 3.2;
+        miniCtx.stroke();
+        miniCtx.restore();
+      }
+      const wdx = gpsWaypoint.x - playerPos.x;
+      const wdz = gpsWaypoint.z - playerPos.z;
+      const wmx = Math.max(6, Math.min(w - 6, w * 0.5 + (wdx / spanMeters) * w));
+      const wmy = Math.max(6, Math.min(h - 6, h * 0.5 + (wdz / spanMeters) * h));
+      miniCtx.beginPath();
+      miniCtx.arc(wmx, wmy, 4.8, 0, Math.PI * 2);
+      miniCtx.fillStyle = '#facc15';
+      miniCtx.fill();
+      miniCtx.strokeStyle = '#0f172a';
+      miniCtx.lineWidth = 1.5;
+      miniCtx.stroke();
+    }
+
     for (const lm of visibleLandmarks) {
       const dx = lm.x - playerPos.x;
       const dz = lm.z - playerPos.z;
@@ -226,8 +462,8 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
       const mx = w * 0.5 + (dx / spanMeters) * w;
       const my = h * 0.5 + (dz / spanMeters) * h;
       miniCtx.beginPath();
-      miniCtx.arc(mx, my, lm.c === 'hero' ? 4.2 : 3.2, 0, Math.PI * 2);
-      miniCtx.fillStyle = lm.c === 'hero' ? '#fbbf24' : '#d9ed9c';
+      miniCtx.arc(mx, my, lm.isPti ? 5.0 : (lm.c === 'hero' ? 4.2 : 3.2), 0, Math.PI * 2);
+      miniCtx.fillStyle = lm.isPti ? '#4ade80' : (lm.c === 'hero' ? '#fbbf24' : '#d9ed9c');
       miniCtx.fill();
       miniCtx.strokeStyle = '#0f1714';
       miniCtx.lineWidth = 1.2;
@@ -259,9 +495,10 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     miniCtx.stroke();
     miniCtx.restore();
 
-    // Update GPS badge
     if (gpsReadout && districtInfo) {
-      const text = `${districtInfo.lat.toFixed(4)}°N · ${districtInfo.lon.toFixed(4)}°E`;
+      const text = gpsWaypoint
+        ? `🟡 GPS: ${gpsRouteDistM}m`
+        : `${districtInfo.lat.toFixed(4)}°N · ${districtInfo.lon.toFixed(4)}°E`;
       if (gpsReadout.textContent !== text) gpsReadout.textContent = text;
     }
   }
@@ -269,6 +506,8 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
   function openMap(playerPos, yaw) {
     if (!mapModal) return;
     isOpen = true;
+    lastPlayerPos = { x: playerPos.x, z: playerPos.z };
+    lastPlayerYaw = yaw;
     populateLandmarkButtons(playerPos.x, playerPos.z);
     renderFullMap(playerPos, yaw);
     mapModal.classList.remove('hidden');
@@ -287,35 +526,28 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     else openMap(playerPos, yaw);
   }
 
-  fullCanvas?.addEventListener('click', (e) => {
+  // Clicking (or double-clicking) anywhere on the map sets (or clears) a GTA V-style Yellow GPS Road Route!
+  // NEVER teleports from the map canvas — only the right-side landmark list buttons teleport.
+  let lastWaypointSetAt = 0;
+  function handleMapCanvasWaypoint(e) {
+    e.preventDefault();
+    e.stopPropagation();
     const rect = fullCanvas.getBoundingClientRect();
     const px = ((e.clientX - rect.left) / rect.width) * baseW;
     const py = ((e.clientY - rect.top) / rect.height) * baseH;
     const clickW = basePxToWorld(px, py);
-
-    // Snap to nearest landmark within 90m, else warp directly onto clicked street point!
-    let bestLm = null;
-    let bestD = 90;
-    for (const lm of visibleLandmarks) {
-      const d = Math.hypot(lm.x - clickW.x, lm.z - clickW.z);
-      if (d < bestD) {
-        bestD = d;
-        bestLm = lm;
-      }
-    }
-    closeMap();
-    if (bestLm) {
-      onWarpToLandmark?.(bestLm);
+    const now = performance.now();
+    if (gpsWaypoint && (now - lastWaypointSetAt) > 380 && Math.hypot(gpsWaypoint.x - clickW.x, gpsWaypoint.z - clickW.z) < 55) {
+      clearGpsWaypoint();
     } else {
-      onWarpToLandmark?.({
-        n: 'Selected Khulna Street',
-        bn: 'খুলনা শহরের নির্বাচিত স্থান',
-        spawnX: clickW.x,
-        spawnZ: clickW.z,
-        lookX: clickW.x + 8,
-        lookZ: clickW.z,
-      });
+      lastWaypointSetAt = now;
+      setGpsWaypoint(clickW.x, clickW.z, 'মার্ক করা লোকেশন');
     }
+  }
+  fullCanvas?.addEventListener('click', handleMapCanvasWaypoint);
+  fullCanvas?.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
   });
 
   mapCloseBtn?.addEventListener('click', (e) => {
@@ -334,10 +566,12 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     get isOpen() {
       return isOpen;
     },
-    landmarks: worldData.landmarks,
+    landmarks: visibleLandmarks,
     openMap,
     closeMap,
     toggleMap,
+    setGpsWaypoint,
+    clearGpsWaypoint,
     renderMinimap,
     renderFullMap,
   };

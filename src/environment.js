@@ -5,6 +5,8 @@ import { buildHajiMohsinRoad } from './haji-mohsin-road.js';
 import { buildKhulnaCity } from './khulna-city.js';
 import { buildKhulnaLandmarks } from './khulna-landmarks.js';
 import { buildKhulnaCorridors } from './khulna-corridors.js';
+import { buildAltapoleEnterableHouses } from './altapole-houses.js';
+import { buildAltapoleHeadTower } from './altapole-tower.js';
 import { createKhulnaTraffic } from './khulna-vehicles.js';
 import { applyFoliageWindShader } from './aaa-shaders.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
@@ -393,7 +395,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     [[1072, 608, 9.0, 293]]
   );
 
-  const corridors = buildKhulnaCorridors(group, m, {
+  const corridorHelpers = {
     addWire(targetG, pA, pB, wireMat, sag = 0.45, radius = 0.016) {
       const mid = [(pA[0] + pB[0]) * 0.5, (pA[1] + pB[1]) * 0.5 - sag, (pA[2] + pB[2]) * 0.5];
       return createWire(targetG, [pA, mid, pB], radius, wireMat);
@@ -407,7 +409,10 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     addPalm(targetG, x, y, z, height = 7.2, _lean = 0, s = 0) {
       return createPalm(targetG || detailsGroup, [x, y, z], height, Math.abs(Math.round((x + z) * 10 + s * 100)) + 17, m, animated);
     },
-  });
+  };
+  const corridors = buildKhulnaCorridors(group, m, corridorHelpers);
+  const altapole = buildAltapoleEnterableHouses(group, m, corridorHelpers);
+  const altapoleTower = buildAltapoleHeadTower(group, m);
   const traffic = createKhulnaTraffic(group);
 
   function syncVisibility(playerPos = null) {
@@ -426,6 +431,8 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     city,
     landmarks,
     corridors,
+    altapole,
+    altapoleTower,
     traffic,
     tower,
     detailsGroup,

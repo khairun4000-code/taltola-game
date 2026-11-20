@@ -100,9 +100,10 @@ export const CAR_FLEET_CONFIGS = [
     spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z + 5.2],
     spawnHeading: 0.0,
     paintPresets: BMW_PAINT_PRESETS,
-    maxSpeed: 26.5,
-    boostMaxSpeed: 37.5,
-    engineForce: 15.5,
+    gearCount: 8,
+    maxSpeed: 36.0,
+    boostMaxSpeed: 54.0,
+    engineForce: 20.5,
     engineBaseFreq: 32,
     engineRangeFreq: 155,
     hornFreqs: [415, 520],
@@ -134,9 +135,10 @@ export const CAR_FLEET_CONFIGS = [
     tailMats: ['C_red_glass'],
     headlightMats: ['C_13TR01__headlight_3'],
     wheelMatRegex: /^C_tire$/i,
-    maxSpeed: 23.5,
-    boostMaxSpeed: 32.0,
-    engineForce: 13.5,
+    gearCount: 7,
+    maxSpeed: 31.0,
+    boostMaxSpeed: 43.0,
+    engineForce: 17.2,
     engineBaseFreq: 28,
     engineRangeFreq: 120,
     hornFreqs: [370, 466],
@@ -175,9 +177,10 @@ export const CAR_FLEET_CONFIGS = [
     khulnaPlatePos: { front: [0, 0.43, 2.27], rear: [0, 0.66, -2.27] },
     hasBuiltInSteeringWheel: true,
     wheelNameRegex: /wheel|brakedisc/i,
-    maxSpeed: 24.5,
-    boostMaxSpeed: 33.5,
-    engineForce: 14.2,
+    gearCount: 6,
+    maxSpeed: 32.0,
+    boostMaxSpeed: 44.0,
+    engineForce: 17.5,
     engineBaseFreq: 36,
     engineRangeFreq: 140,
     hornFreqs: [440, 554],
@@ -209,9 +212,10 @@ export const CAR_FLEET_CONFIGS = [
     tailMats: ['r_tailight', 'ind_tailighjt'],
     headlightMats: ['indicator_signal', 'indicator_arrow'],
     wheelNameRegex: /^WHEEL_(LF|RF|LR|RR)$/i,
-    maxSpeed: 24.0,
-    boostMaxSpeed: 33.0,
-    engineForce: 14.0,
+    gearCount: 7,
+    maxSpeed: 31.0,
+    boostMaxSpeed: 43.5,
+    engineForce: 17.5,
     engineBaseFreq: 26,
     engineRangeFreq: 115,
     hornFreqs: [360, 450],
@@ -244,9 +248,10 @@ export const CAR_FLEET_CONFIGS = [
     tailMats: [],
     headlightMats: [],
     wheelNameRegex: /hiace_wheel/i,
-    maxSpeed: 21.5,
-    boostMaxSpeed: 29.0,
-    engineForce: 12.2,
+    gearCount: 6,
+    maxSpeed: 27.5,
+    boostMaxSpeed: 37.5,
+    engineForce: 15.6,
     engineBaseFreq: 30,
     engineRangeFreq: 110,
     hornFreqs: [390, 490],
@@ -284,9 +289,10 @@ export const CAR_FLEET_CONFIGS = [
     khulnaPlateText: ['খুলনা মেট্রো-চ', '১১-৩২৯০'],
     hasBuiltInSteeringWheel: false,
     wheelNameRegex: /^Cylinder(\.?\d+)?$/i,
-    maxSpeed: 21.0,
-    boostMaxSpeed: 28.5,
-    engineForce: 12.0,
+    gearCount: 6,
+    maxSpeed: 27.0,
+    boostMaxSpeed: 36.5,
+    engineForce: 15.2,
     engineBaseFreq: 32,
     engineRangeFreq: 112,
     hornFreqs: [400, 505],
@@ -1171,7 +1177,27 @@ export function createDrivableCar(scene, manager, config) {
     camHeight: config.camHeight || 2.15,
     hoodHeight: config.hoodHeight || 1.28,
     hoodForward: config.hoodForward || 0.65,
+    gearCount: config.gearCount || 6,
+    headlightsMode: 0, // 0 = OFF, 1 = LOW BEAM, 2 = HIGH BEAM
   };
+
+  // Real 3D Dual Car/Bike Headlight Beams (toggled with [L] while driving!)
+  const headlightBeams = [];
+  if (!config.isRickshaw) {
+    const hlOffsets = config.isBike ? [0] : [-(config.width || 1.85) * 0.34, (config.width || 1.85) * 0.34];
+    const hlZ = (config.targetLength || 4.4) * 0.48;
+    const hlY = config.isBike ? 0.88 : 0.76;
+    for (const ox of hlOffsets) {
+      const spot = new THREE.SpotLight(0xfff6dc, 0, 52, Math.PI * 0.24, 0.52, 1.35);
+      spot.position.set(ox, hlY, hlZ);
+      spot.castShadow = false;
+      const tgt = new THREE.Object3D();
+      tgt.position.set(ox * 0.85, 0.15, hlZ + 18);
+      bodyTiltGroup.add(spot, tgt);
+      spot.target = tgt;
+      headlightBeams.push({ spot, tgt, hlZ, ox });
+    }
+  }
 
   let riggedWheels = [];
   let bikeFrontAssembly = null;
@@ -1285,14 +1311,14 @@ export function createDrivableCar(scene, manager, config) {
   if (!config.isRickshaw && !config.isBike) {
     const baseCarId = String(config.id || '').replace(/_spawn_.*$/, '');
     const seatPresets = {
-      bmw_m3:          { x:  0.40, y: 0.42, z:  0.10, wy: 0.30, wz: 0.42 },
-      toyota_corolla:  { x:  0.40, y: 0.48, z:  0.22, wy: 0.32, wz: 0.42 },
-      toyota_fortuner: { x:  0.42, y: 0.66, z:  0.26, wy: 0.32, wz: 0.44 },
-      toyota_alphard:  { x:  0.42, y: 0.70, z:  0.54, wy: 0.32, wz: 0.44 },
-      toyota_hiace:    { x:  0.42, y: 0.72, z:  0.96, wy: 0.32, wz: 0.44 },
-      toyota_townace:  { x:  0.40, y: 0.86, z:  0.46, wy: 0.34, wz: 0.42 },
+      bmw_m3:          { x:  0.33, y: 0.34, z:  0.04, wy: 0.30, wz: 0.42 },
+      toyota_corolla:  { x:  0.32, y: 0.40, z:  0.14, wy: 0.32, wz: 0.42 },
+      toyota_fortuner: { x:  0.34, y: 0.56, z:  0.18, wy: 0.32, wz: 0.44 },
+      toyota_alphard:  { x:  0.34, y: 0.60, z:  0.46, wy: 0.32, wz: 0.44 },
+      toyota_hiace:    { x:  0.34, y: 0.62, z:  0.88, wy: 0.32, wz: 0.44 },
+      toyota_townace:  { x:  0.33, y: 0.78, z:  0.38, wy: 0.34, wz: 0.42 },
     };
-    const sp = seatPresets[baseCarId] || { x: 0.40, y: 0.48, z: 0.22, wy: 0.32, wz: 0.42 };
+    const sp = seatPresets[baseCarId] || { x: 0.33, y: 0.40, z: 0.14, wy: 0.32, wz: 0.42 };
     const seatX = sp.x;
     const seatY = sp.y;
     const seatZ = sp.z;
@@ -2417,6 +2443,16 @@ export function createDrivableCar(scene, manager, config) {
       }
     }
 
+    // 3b. Altapole Lane Head 6-Story Tower Empty Car Garage & [E] Main Car Gate
+    const altGarageRes = envRef?.altapoleTower?.applyCarCollisions?.(p, state);
+    if (altGarageRes?.hitWall) hitWall = true;
+
+    // 3c. Solid Landmark Collisions for Cars (Royal More, PTI More & Ahsan Ahmed Rd)
+    const preX = p.x;
+    const preZ = p.z;
+    envRef?.landmarks?.applyCollisions?.(p, Math.max(state.halfWidth, 0.95), 0);
+    if (Math.abs(p.x - preX) > 0.005 || Math.abs(p.z - preZ) > 0.005) hitWall = true;
+
     // 4. Prevent driving into Khulna lakes/ponds/river water
     if (envRef?.city?.isInWater?.(p.x, p.z)) {
       const fwdX = Math.sin(state.heading);
@@ -2446,7 +2482,7 @@ export function createDrivableCar(scene, manager, config) {
       }
     }
 
-    if (!onTowerRamp) {
+    if (!onTowerRamp && !altGarageRes?.inGarage) {
       p.y = 0.01;
     }
 
@@ -2482,6 +2518,22 @@ export function createDrivableCar(scene, manager, config) {
       syncInteriorVisibility();
     }
     return state.cameraMode;
+  }
+
+  function toggleHeadlights() {
+    if (config.isRickshaw) return 0;
+    state.headlightsMode = (state.headlightsMode + 1) % 3; // 0=OFF -> 1=LOW -> 2=HIGH
+    const isOn = state.headlightsMode > 0;
+    const isHigh = state.headlightsMode === 2;
+    for (const b of headlightBeams) {
+      b.spot.intensity = isHigh ? 24.0 : (isOn ? 11.5 : 0);
+      b.spot.distance = isHigh ? 82 : 48;
+      b.spot.angle = isHigh ? Math.PI * 0.30 : Math.PI * 0.23;
+      b.tgt.position.set(b.ox * 0.85, isHigh ? 0.55 : 0.12, b.hlZ + (isHigh ? 28 : 16));
+    }
+    for (const m of drlMats) m.emissiveIntensity = isHigh ? 9.5 : (isOn ? 6.0 : 2.0);
+    for (const m of tailMats) m.emissiveIntensity = isOn ? 4.2 : 1.8;
+    return state.headlightsMode;
   }
 
   function enterCar(seatMode = 'driver') {
@@ -2725,9 +2777,14 @@ export function createDrivableCar(scene, manager, config) {
     state.roll = THREE.MathUtils.lerp(state.roll, targetRoll, Math.min(1, dt * (config.isBike ? 7.5 : 10)));
 
     const absKmh = Math.abs(state.speed) * 3.6;
-    const gearThresholds = [0, 26, 52, 78, 104, 130, 165];
+    const totalGears = state.gearCount || 6;
+    const topKmh = Math.max(120, (config.boostMaxSpeed || 38.0) * 3.6);
+    const gearThresholds = [0];
+    for (let i = 1; i <= totalGears; i++) {
+      gearThresholds.push(Math.round((topKmh * Math.pow(i / totalGears, 1.08))));
+    }
     let g = 1;
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= totalGears; i++) {
       if (absKmh >= gearThresholds[i - 1]) g = i;
     }
     state.gear = state.speed < -0.4 ? 'R' : (absKmh < 1 ? 'N' : g);
@@ -2809,6 +2866,7 @@ export function createDrivableCar(scene, manager, config) {
     toggleAllDoors,
     getDoorStates,
     getInteriorCameraPose,
+    toggleHeadlights,
     playHorn,
     playDoorSound,
     playSeatbeltSound,

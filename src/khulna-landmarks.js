@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { buildCNGAuto } from './khulna-vehicles.js';
 import { buildRoyalMoreDistrict } from './royal-more.js';
+import { buildPtiMoreDistrict } from './pti-more.js';
 
 function makeSignTexture({
   title,
@@ -1219,6 +1220,7 @@ export function buildKhulnaLandmarks(parent, m) {
   buildAliaMadrasahCampus(aliaSlice.staticG, aliaSlice.dynamicG, lm, m);
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
   const royalMore = buildRoyalMoreDistrict(group, m);
+  const ptiMore = buildPtiMoreDistrict(group, m);
 
   for (const s of slices) {
     mergeStaticMeshes(s.staticG);
@@ -1233,24 +1235,29 @@ export function buildKhulnaLandmarks(parent, m) {
       if (s.root.visible !== want) s.root.visible = want;
     }
     royalMore.syncVisibility(playerPos);
+    ptiMore.syncVisibility(playerPos);
   }
 
   return {
     group,
     royalMore,
+    ptiMore,
     syncVisibility,
     getGroundHeight(pos) {
-      return royalMore.getGroundHeight?.(pos) ?? 0;
+      return Math.max(royalMore.getGroundHeight?.(pos) ?? 0, ptiMore.getGroundHeight?.(pos) ?? 0);
     },
     applyCollisions(pos, radius, footY = 0) {
       royalMore.applyCollisions?.(pos, radius, footY);
+      ptiMore.applyCollisions?.(pos, radius, footY);
     },
     setNightFactor(nf) {
       royalMore.setNightFactor(nf);
+      ptiMore.setNightFactor(nf);
     },
     update(time, playerPos = null) {
       if (playerPos) syncVisibility(playerPos);
       royalMore.update(time, playerPos);
+      ptiMore.update(time, playerPos);
     },
     setVisible(visible) {
       group.visible = visible;

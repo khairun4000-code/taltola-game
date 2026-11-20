@@ -39,6 +39,8 @@ const carBadgeEl = document.querySelector('#car-badge');
 const carSpeedEl = document.querySelector('#car-speed');
 const carGearEl = document.querySelector('#car-gear');
 const carRpmFill = document.querySelector('#car-rpm-fill');
+const forzaTachoCanvas = document.querySelector('#forza-tacho-canvas');
+const forzaTachoCtx = forzaTachoCanvas ? forzaTachoCanvas.getContext('2d') : null;
 const carSeatBtn = document.querySelector('#car-seat-btn');
 const carSeatLabelEl = document.querySelector('#car-seat-label');
 const carPaintBtn = document.querySelector('#car-paint-btn');
@@ -1327,8 +1329,15 @@ function toggleRunMode() {
   syncHUDButtons(runModeToggle, true);
 }
 
+function getActiveLiftTower() {
+  if (environment?.altapoleTower?.isInTowerFootprint?.(playerPos, 10.0)) {
+    return environment.altapoleTower;
+  }
+  return environment?.tower || null;
+}
+
 function syncLiftKeypadUI() {
-  const tower = environment?.tower;
+  const tower = getActiveLiftTower();
   if (!tower || !liftKeypad) return;
   const st = tower.state;
   const stops = tower.stops || [];
@@ -1363,10 +1372,15 @@ function syncLiftKeypadUI() {
     }
   }
 
+  const roofIdx = stops.length - 1;
   for (const btn of liftFloorButtons) {
-    const fIdx = Number(btn.dataset.liftFloor);
-    const isCurrent = fIdx === st.liftFloorIndex && !isMoving;
-    const isTarget = fIdx === st.liftTargetIndex && isMoving;
+    const rawIdx = Number(btn.dataset.liftFloor);
+    const isRoofBtn = rawIdx === 10;
+    const mappedIdx = isRoofBtn ? roofIdx : rawIdx;
+    const showBtn = isRoofBtn || rawIdx < roofIdx;
+    btn.style.display = showBtn ? '' : 'none';
+    const isCurrent = showBtn && mappedIdx === st.liftFloorIndex && !isMoving;
+    const isTarget = showBtn && mappedIdx === st.liftTargetIndex && isMoving;
     btn.classList.toggle('current-floor', isCurrent);
     btn.classList.toggle('active-target', isTarget);
   }
@@ -1395,13 +1409,16 @@ function closeLiftKeypad(relock = true) {
 }
 
 function selectLiftFloor(floorIndex) {
-  const tower = environment?.tower;
+  const tower = getActiveLiftTower();
   if (!tower) return false;
   const stops = tower.stops || [];
-  const idx = THREE.MathUtils.clamp(Math.round(floorIndex), 0, stops.length - 1);
+  const rawIdx = Math.round(floorIndex);
+  const idx = rawIdx === 10 ? (stops.length - 1) : THREE.MathUtils.clamp(rawIdx, 0, stops.length - 1);
 
-  // If the player is standing in Sk Arshan Tower or near the lift lobby, step them smoothly inside the 3D cabin so they ride with it!
-  const insideTower = playerPos.x <= -2.8 && playerPos.x >= -19.9 && playerPos.z >= 14.25 && playerPos.z <= 28.6;
+  const isAltTower = tower === environment?.altapoleTower;
+  const insideTower = isAltTower
+    ? tower.isInTowerFootprint(playerPos, 2.0)
+    : (playerPos.x <= -2.8 && playerPos.x >= -19.9 && playerPos.z >= 14.25 && playerPos.z <= 28.6);
   if (insideTower && !tower.isInsideLift(playerPos)) {
     if (sittingState.active) standUpFromSeat();
     const footY = playerPos.y - EYE_HEIGHT;
@@ -1410,7 +1427,9 @@ function selectLiftFloor(floorIndex) {
       tower.state.liftFloorIndex = nearK;
       tower.state.liftY = stops[nearK].y;
     }
-    playerPos.set(-12.38, tower.state.liftY + EYE_HEIGHT, 19.55);
+    const cx = isAltTower ? tower.liftCabinCenter.x : -12.38;
+    const cz = isAltTower ? tower.liftCabinCenter.z : 19.55;
+    playerPos.set(cx, tower.state.liftY + EYE_HEIGHT, cz);
     horizontalVelocity.set(0, 0);
     verticalVelocity = 0;
     grounded = true;
@@ -1630,15 +1649,139 @@ function syncCarHUD() {
       carCamLabelEl.textContent = isRick ? 'ক্যামেরা' : (camNames[activeCar.state.cameraMode] || '৩য় পার্সন');
     }
     carPovBtn?.classList.remove('active');
-    if (carSpeedEl) carSpeedEl.textContent = String(Math.round(Math.abs(activeCar.state.speed) * 3.6));
-    if (carGearEl) carGearEl.textContent = isRick ? (isPass ? 'P' : (activeCar.state.standingPedal ? 'S' : 'D')) : String(activeCar.state.gear);
-    if (carRpmFill) {
-      const pct = isRick
-        ? (activeCar.state.boostCooldown > 0
-          ? THREE.MathUtils.clamp(((20 - activeCar.state.boostCooldown) / 20) * 100, 2, 100)
-          : THREE.MathUtils.clamp((activeCar.state.boostStamina / 10) * 100, 2, 100))
-        : THREE.MathUtils.clamp(((activeCar.state.rpm - 900) / 6900) * 100, 8, 100);
-      carRpmFill.style.width = `${pct.toFixed(1)}%`;
+    const liveKmh = Math.round(Math.abs(activeCar.state.speed) * 3.6);
+    const liveGear = isRick ? (isPass ? 'P' : (activeCar.state.standingPedal ? 'S' : 'D')) : String(activeCar.state.gear);
+    const rpmPct = isRick
+      ? (activeCar.state.boostCooldown > 0
+        ? THREE.MathUtils.clamp((20 - activeCar.state.boostCooldown) / 20, 0.02, 1)
+        : THREE.MathUtils.clamp(activeCar.state.boostStamina / 10, 0.02, 1))
+      : THREE.MathUtils.clamp((activeCar.state.rpm - 800) / 7200, 0.02, 1);
+    if (carSpeedEl) carSpeedEl.textContent = String(liveKmh);
+    if (carGearEl) carGearEl.textContent = liveGear;
+    if (carRpmFill) carRpmFill.style.width = `${(rpmPct * 100).toFixed(1)}%`;
+    if (forzaTachoCtx && forzaTachoCanvas) {
+      const ctx = forzaTachoCtx;
+      const W = forzaTachoCanvas.width;
+      const H = forzaTachoCanvas.height;
+      const cx = W * 0.5;
+      const cy = H * 0.56;
+      const rOuter = 94;
+      const startA = Math.PI * 0.78;
+      const endA = Math.PI * 2.22;
+      const spanA = endA - startA;
+      const redStart = startA + spanA * 0.79;
+      const valA = startA + spanA * rpmPct;
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.beginPath();
+      ctx.arc(cx, cy, rOuter + 7, startA - 0.06, endA + 0.06);
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, rOuter - 4, startA, endA);
+      ctx.strokeStyle = 'rgba(148,163,184,0.22)';
+      ctx.lineWidth = 11;
+      ctx.lineCap = 'butt';
+      ctx.stroke();
+
+      if (!isRick) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, rOuter - 4, redStart, endA);
+        ctx.strokeStyle = 'rgba(239,68,68,0.42)';
+        ctx.lineWidth = 11;
+        ctx.stroke();
+      }
+
+      const grad = ctx.createLinearGradient(cx - rOuter, cy, cx + rOuter, cy);
+      if (isRick) {
+        grad.addColorStop(0, '#22c55e');
+        grad.addColorStop(1, '#facc15');
+      } else {
+        grad.addColorStop(0, '#38bdf8');
+        grad.addColorStop(0.65, '#f8fafc');
+        grad.addColorStop(0.84, '#f97316');
+        grad.addColorStop(1, '#ef4444');
+      }
+      ctx.beginPath();
+      ctx.arc(cx, cy, rOuter - 4, startA, valA);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 11;
+      ctx.stroke();
+
+      for (let i = 0; i <= 16; i++) {
+        const frac = i / 16;
+        const ang = startA + spanA * frac;
+        const isMajor = i % 2 === 0;
+        const isRed = !isRick && frac >= 0.79;
+        const rIn = rOuter - (isMajor ? 20 : 14);
+        const rOut = rOuter + 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(ang) * rIn, cy + Math.sin(ang) * rIn);
+        ctx.lineTo(cx + Math.cos(ang) * rOut, cy + Math.sin(ang) * rOut);
+        ctx.strokeStyle = isRed ? '#ef4444' : (isMajor ? '#f8fafc' : 'rgba(226,232,240,0.45)');
+        ctx.lineWidth = isMajor ? 2.4 : 1.2;
+        ctx.stroke();
+        if (isMajor) {
+          const rTxt = rOuter - 32;
+          ctx.font = '700 13px Manrope, sans-serif';
+          ctx.fillStyle = isRed ? '#f87171' : '#e2e8f0';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(String(i / 2), cx + Math.cos(ang) * rTxt, cy + Math.sin(ang) * rTxt);
+        }
+      }
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(valA);
+      ctx.beginPath();
+      ctx.moveTo(-14, -2.5);
+      ctx.lineTo(rOuter - 8, 0);
+      ctx.lineTo(-14, 2.5);
+      ctx.closePath();
+      ctx.fillStyle = (!isRick && rpmPct >= 0.79) ? '#ef4444' : '#f97316';
+      ctx.shadowColor = '#f97316';
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 46, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(11, 16, 22, 0.88)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 38px Manrope, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(liveKmh).padStart(2, '0'), cx, cy - 6);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '700 11px Manrope, sans-serif';
+      ctx.fillText('KM/H', cx, cy + 20);
+
+      ctx.fillStyle = (!isRick && rpmPct >= 0.82) ? '#ef4444' : '#d9ed9c';
+      ctx.beginPath();
+      ctx.roundRect(cx - 19, cy + 44, 38, 26, 7);
+      ctx.fill();
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '800 16px Manrope, monospace';
+      ctx.fillText(liveGear, cx, cy + 58);
+
+      ctx.fillStyle = 'rgba(148,163,184,0.85)';
+      ctx.font = '700 10px Manrope, sans-serif';
+      ctx.fillText(isRick ? 'STAMINA' : 'RPM x1000', cx, cy + 82);
+      if (!isRick) {
+        ctx.fillStyle = '#4ade80';
+        ctx.font = '700 9.5px Manrope, sans-serif';
+        ctx.fillText('ABS', cx - 44, cy + 58);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillText('TCS', cx + 44, cy + 58);
+      }
     }
     if (carPaintNameEl) {
       carPaintNameEl.textContent = activeCar.state.paintName.split(' ').pop();
@@ -2030,7 +2173,7 @@ function handleDoorInteraction(allowClimbFallback = false) {
     return true;
   }
   const nearSeat = findNearestSeat(playerPos);
-  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos));
+  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house?.getPrompt(playerPos));
   if (nearSeat && (!hasDoorOrLiftPrompt || nearSeat.dist < 1.25)) {
     sitOnSeat(nearSeat);
     return true;
@@ -2042,6 +2185,22 @@ function handleDoorInteraction(allowClimbFallback = false) {
     } else if (environment?.tower?.isNearLiftLobby(playerPos)) {
       openLiftKeypad();
     }
+    syncHUDButtons(false, true);
+    return true;
+  }
+  const altTowerRes = environment?.altapoleTower?.interact(playerPos);
+  if (altTowerRes) {
+    if (altTowerRes === 'open_lift_keypad' || environment?.altapoleTower?.isInsideLift(playerPos)) {
+      openLiftKeypad();
+    }
+    syncHUDButtons(false, true);
+    return true;
+  }
+  if (environment?.landmarks?.ptiMore?.toggleGate?.(playerPos)) {
+    syncHUDButtons(false, true);
+    return true;
+  }
+  if (environment?.altapole?.interact(playerPos)) {
     syncHUDButtons(false, true);
     return true;
   }
@@ -2752,22 +2911,25 @@ liftCloseUiButton?.addEventListener('click', (e) => {
 });
 liftDoorOpenBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
-  environment?.tower?.openDoors();
+  getActiveLiftTower()?.openDoors();
   syncLiftKeypadUI();
 });
 liftDoorCloseBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
-  environment?.tower?.closeDoors();
+  getActiveLiftTower()?.closeDoors();
   syncLiftKeypadUI();
 });
 liftExitBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
-  if (environment?.tower) {
-    environment.tower.openDoors();
-    if (environment.tower.isInsideLift(playerPos)) {
-      playerPos.x = -10.85;
-      playerPos.z = 19.55;
-      playerPos.y = environment.tower.state.liftY + EYE_HEIGHT;
+  const activeT = getActiveLiftTower();
+  if (activeT) {
+    activeT.openDoors();
+    if (activeT.isInsideLift(playerPos)) {
+      const ex = activeT.liftExitPos ? activeT.liftExitPos.x : -10.85;
+      const ez = activeT.liftExitPos ? activeT.liftExitPos.z : 19.55;
+      playerPos.x = ex;
+      playerPos.z = ez;
+      playerPos.y = activeT.state.liftY + EYE_HEIGHT;
       controls.euler.set(-0.04, -Math.PI / 2, 0, 'YXZ');
       camera.quaternion.setFromEuler(controls.euler);
     }
@@ -3001,6 +3163,8 @@ window.addEventListener('keydown', (event) => {
       event.preventDefault();
       house?.toggleAllDoors();
       environment?.tower?.toggleGate?.();
+      environment?.altapoleTower?.toggleGate?.();
+      environment?.landmarks?.ptiMore?.toggleGate?.(activeCar.state.pos);
       syncHUDButtons();
       return;
     }
@@ -3034,6 +3198,13 @@ window.addEventListener('keydown', (event) => {
       return;
     }
     // Paint color is changed via the HUD mouse button; [C] is reserved for Free Cam
+    if (event.code === 'KeyL' && !event.repeat) {
+      event.preventDefault();
+      const mode = activeCar.toggleHeadlights?.() ?? 0;
+      const labels = ['হেডলাইট বন্ধ (OFF)', 'হেডলাইট চালু · লো বিম (LOW BEAM)', 'হেডলাইট হাই বিম (HIGH BEAM)'];
+      gtaPhoneUI?.showToast?.(`💡 ${labels[mode] || labels[0]}`);
+      return;
+    }
     if (event.code === 'KeyH' && !event.repeat) {
       event.preventDefault();
       activeCar.playHorn();
@@ -3064,6 +3235,8 @@ window.addEventListener('keydown', (event) => {
       event.preventDefault();
       house?.toggleAllDoors();
       environment?.tower?.toggleGate?.();
+      environment?.altapoleTower?.toggleGate?.();
+      environment?.landmarks?.ptiMore?.toggleGate?.(activeCar.state.pos);
       syncHUDButtons();
       return;
     }
@@ -3102,10 +3275,11 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
+  const activeLiftT = getActiveLiftTower();
   const insideOrNearLift = Boolean(
     liftKeypadOpen
-    || environment?.tower?.isInsideLift(playerPos)
-    || environment?.tower?.isNearLiftLobby(playerPos)
+    || activeLiftT?.isInsideLift(playerPos)
+    || activeLiftT?.isNearLiftLobby(playerPos)
   );
 
   // When inside the lift, near the lift, or when the lift keypad is open, number keys 0-9 / G / R select lift floors!
@@ -3115,12 +3289,12 @@ window.addEventListener('keydown', (event) => {
     if (!liftKeypadOpen) openLiftKeypad();
     return;
   }
-  if ((liftKeypadOpen || environment?.tower?.isInsideLift(playerPos)) && event.code === 'KeyG') {
+  if ((liftKeypadOpen || activeLiftT?.isInsideLift(playerPos)) && event.code === 'KeyG') {
     event.preventDefault();
     selectLiftFloor(0);
     return;
   }
-  if ((liftKeypadOpen || environment?.tower?.isInsideLift(playerPos)) && event.code === 'KeyR') {
+  if ((liftKeypadOpen || activeLiftT?.isInsideLift(playerPos)) && event.code === 'KeyR') {
     event.preventDefault();
     selectLiftFloor(10);
     return;
@@ -3129,7 +3303,7 @@ window.addEventListener('keydown', (event) => {
   // If the player presses W/A/S/D while the lift keypad is open and the lift doors are open, close the keypad so they can walk out smoothly
   if (
     liftKeypadOpen &&
-    environment?.tower?.state?.liftPhase !== 'moving' &&
+    activeLiftT?.state?.liftPhase !== 'moving' &&
     (event.code === 'KeyW' || event.code === 'KeyS' || event.code === 'KeyA' || event.code === 'KeyD' ||
      event.code === 'ArrowUp' || event.code === 'ArrowDown' || event.code === 'ArrowLeft' || event.code === 'ArrowRight')
   ) {
@@ -3388,6 +3562,8 @@ function getFurnitureBoxesForFloor(building, fy) {
  * Finds the nearest interactive seat (chair, sofa, bed, or toilet commode) near `pos`.
  */
 function findNearestSeat(pos) {
+  const altSeat = environment?.altapoleTower?.findNearestSeat?.(pos);
+  if (altSeat) return altSeat;
   const footY = pos.y - EYE_HEIGHT;
   let building = null;
   let fy = 0;
@@ -3455,6 +3631,9 @@ function findNearestSeat(pos) {
 function computeGroundHeight(pos) {
   const footY = pos.y - EYE_HEIGHT;
   const maxStepUp = grounded ? 0.55 : (verticalVelocity > 0 ? 0.08 : 0.38);
+
+  const altTowerY = environment?.altapoleTower?.computeGroundHeight?.(pos, grounded, verticalVelocity);
+  if (altTowerY !== null && altTowerY !== undefined) return altTowerY;
 
   // --- KHULNA ALIA KAMIL MADRASAH WALKABLE MAIN BUILDING (x = 179.8..192.4, z = 87.8..128.2) ---
   if (pos.x >= 179.8 && pos.x <= 192.4 && pos.z >= 87.8 && pos.z <= 128.2) {
@@ -3627,6 +3806,9 @@ function applyWorldCollisions(pos) {
   const footY = pos.y - EYE_HEIGHT;
   // Solid showcase landmark colliders (Chingri Chattar, Royal More buildings, buses & medians)
   environment?.landmarks?.applyCollisions?.(pos, PLAYER_RADIUS, footY);
+  // Enterable Altapole Lane realistic houses & 6-story head tower colliders
+  environment?.altapole?.applyCollisions?.(pos, PLAYER_RADIUS, footY);
+  environment?.altapoleTower?.applyPlayerCollisions?.(pos, PLAYER_RADIUS, footY);
   // Global live & parked Khulna vehicles (CNGs, Easybikes, Sedans, Trucks) — solid everywhere on map!
   environment?.traffic?.applyVehicleCollisions?.(pos, PLAYER_RADIUS, footY);
 
@@ -4051,7 +4233,7 @@ function updateHUDPrompt() {
       const nearSeat = findNearestSeat(playerPos);
       const nearCar = findNearestEnterableCar(playerPos);
       const carPrompt = nearCar ? nearCar.getPrompt(playerPos) : null;
-      const doorOrLiftPrompt = environment?.tower?.getPrompt(playerPos) || house.getPrompt(playerPos);
+      const doorOrLiftPrompt = environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
       if (carPrompt && !doorOrLiftPrompt && !nearSeat) {
         promptText = carPrompt;
       } else if (nearSeat && (!doorOrLiftPrompt || nearSeat.dist < 1.25)) {
@@ -4148,7 +4330,7 @@ function updateHUDPrompt() {
     } else if (Math.abs(lx) < 16 && Math.abs(lz) < 16) {
       zone = 'তালতলার বাসা · TOOTPARA TALTOLA HOSPITAL CROSS RD';
     } else if (x >= 144 && x <= 192 && z >= -524 && z <= -292) {
-      zone = 'ALTAPOLE LANE · আলতাপোল লেন, খুলনা';
+      zone = environment?.altapoleTower?.getZoneName?.(x, z, footY) || environment?.altapole?.getZoneName?.(x, z) || 'ALTAPOLE LANE · আলতাপোল লেন, খুলনা';
     } else if (Math.abs(x) < 35 && Math.abs(z) < 42) {
       zone = 'HAJI MOHSIN ROAD · হাজী মহসিন রোড, খুলনা';
     } else {
@@ -4567,7 +4749,8 @@ function updateMovement(delta) {
   }
   syncHUDButtons(isSprinting);
 
-  const insideLiftNow = Boolean(environment?.tower?.isInsideLift(playerPos));
+  const activeLiftTowerNow = getActiveLiftTower();
+  const insideLiftNow = Boolean(activeLiftTowerNow?.isInsideLift(playerPos));
   if (insideLiftNow && !wasInsideLift) {
     openLiftKeypad();
   } else if (!insideLiftNow && wasInsideLift && liftKeypadOpen) {
@@ -4594,7 +4777,7 @@ function updateMovement(delta) {
 
   if (jumpBuffer > 0) jumpBuffer = Math.max(0, jumpBuffer - delta);
 
-  if (!climbState.active && !ledgeHangState.active && jumpBuffer > 0 && coyoteTimer > 0 && !(insideLiftNow && environment?.tower?.state?.liftPhase === 'moving')) {
+  if (!climbState.active && !ledgeHangState.active && jumpBuffer > 0 && coyoteTimer > 0 && !(insideLiftNow && activeLiftTowerNow?.state?.liftPhase === 'moving')) {
     if (wallAhead && !inWater) {
       // Grab the wall top with both hands & hang! Press [W] to vault/climb over!
       jumpBuffer = 0;
@@ -4687,7 +4870,9 @@ function updateMovement(delta) {
   const lxCam = playerPos.x - TALTOLA_HOUSE_OFFSET.x;
   const lzCam = playerPos.z - TALTOLA_HOUSE_OFFSET.z;
   const insideHouse = (lxCam > 4.7 && lxCam < 14.6 && Math.abs(lzCam) < 5.3)
-    || (playerPos.x < -2.8 && playerPos.x > -19.9 && playerPos.z > 14.3 && playerPos.z < 28.6);
+    || (playerPos.x < -2.8 && playerPos.x > -19.9 && playerPos.z > 14.3 && playerPos.z < 28.6)
+    || Boolean(environment?.altapole?.isInsideAnyHouse?.(playerPos))
+    || Boolean(environment?.altapoleTower?.isInsideAnyRoom?.(playerPos));
 
   if (indoorLight) {
     indoorLight.visible = insideHouse && quality !== 'low' && quality !== 'medium';
@@ -4823,6 +5008,8 @@ function animate() {
       updateSunShadowTarget(activeCar ? activeCar.state.pos : playerPos, nowPerf, isShadowSceneDynamic);
     }
     if (house && nearTaltolaVis && !deepInTowerUpper) house.update(delta, playerPos, isLow);
+    if (environment?.altapole && !deepInTowerUpper) environment.altapole.update(delta, playerPos, isLow);
+    if (environment?.altapoleTower && !deepInTowerUpper) environment.altapoleTower.update(delta, playerPos, isLow);
     if (skySystem) skySystem.update(elapsed, camera.position);
     if (environment && !deepInTowerUpper) environment.update(elapsed, playerPos, isLow);
 

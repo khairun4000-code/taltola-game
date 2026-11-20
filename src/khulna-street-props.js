@@ -298,24 +298,27 @@ export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0, pole
 
   const sAbs = Math.abs(seed) + 17;
 
-  // 1. Mount crisp 4-corner high-res Leader Poster (from user's 3 uploaded neta images) on corridor poles!
-  const nIdx = Math.abs(seed) % 3;
-  const spec = NETA_POSTER_SPECS[nIdx];
-  const pH = nIdx === 2 ? 1.56 : 1.42;
-  const pW = pH * spec.aspect;
-  const pY = 1.72;
-  const pxOff = poleRadius + 0.07;
+  // 1. Mount Leader Poster SPARSELY (~22% of corridor poles, spaced far apart — never on every pole!)
+  const netaRoll = hashRand(sAbs * 5.9 + 1.7);
+  if (netaRoll < 0.22) {
+    const nIdx = Math.abs(seed) % 3;
+    const spec = NETA_POSTER_SPECS[nIdx];
+    const pH = nIdx === 2 ? 1.32 : 1.22;
+    const pW = pH * spec.aspect;
+    const pY = 1.68;
+    const pxOff = poleRadius + 0.07;
 
-  const board = new THREE.Mesh(new THREE.PlaneGeometry(pW, pH), assets.netaMats[nIdx]);
-  board.position.set(pxOff, pY, 0);
-  board.rotation.y = Math.PI * 0.5;
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.032, pH + 0.07, pW + 0.07), assets.steelMat);
-  frame.position.set(pxOff - 0.02, pY, 0);
-  grp.add(frame, board);
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(pW, pH), assets.netaMats[nIdx]);
+    board.position.set(pxOff, pY, 0);
+    board.rotation.y = Math.PI * 0.5;
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.032, pH + 0.07, pW + 0.07), assets.steelMat);
+    frame.position.set(pxOff - 0.02, pY, 0);
+    grp.add(frame, board);
+  }
 
-  // 2. Only SOME poles (~35%) also have 1 small Bengali sticker higher up (rest stay clean!)
+  // 2. Only occasional poles (~22%) also have 1 small Bengali sticker (rest stay clean!)
   const roll = hashRand(sAbs * 3.7);
-  if (roll < 0.35) {
+  if (roll < 0.22) {
     const sleeveGeo = new THREE.CylinderGeometry(poleRadius + 0.008, poleRadius + 0.014, 0.72, 10, 1, true);
     const kIdx = Math.floor(hashRand(sAbs * 19.3) * POSTER_KIND_COUNT) % POSTER_KIND_COUNT;
     const pm = new THREE.Mesh(sleeveGeo, assets.posterMats[kIdx]);
@@ -504,6 +507,7 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
     let coilCnt = 0;
     const postCnts = new Array(POSTER_KIND_COUNT).fill(0);
     const netaCnts = [0, 0, 0];
+    const placedNetaSpots = []; // Enforce wide >=115m spacing between election posters!
     const posterHeights = [1.60, 2.48];
 
     for (let i = 0; i < activePoles.length && pCnt < MAX_POLES; i++) {
@@ -555,19 +559,28 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
       }
       pCnt++;
 
-      // 5. Lower-base high-res Leader Poster on ~35% of poles, sparse small stickers on ~30%, rest CLEAN!
+      // 5. Very sparse Election Posters (<=16% of poles AND guaranteed >=115m apart!), small stickers on ~20%, rest CLEAN!
       const styleRoll = hashRand(p.id * 4.3 + 1.9);
-      if (styleRoll < 0.35) {
+      let farEnoughFromNeta = true;
+      if (styleRoll < 0.16) {
+        for (let ni = 0; ni < placedNetaSpots.length; ni++) {
+          const dxN = p.x - placedNetaSpots[ni][0];
+          const dzN = p.z - placedNetaSpots[ni][1];
+          if (dxN * dxN + dzN * dzN < 115 * 115) { farEnoughFromNeta = false; break; }
+        }
+      }
+      if (styleRoll < 0.16 && farEnoughFromNeta) {
         const nk = Math.floor(hashRand(p.id * 11.3) * 3) % 3;
         if (netaCnts[nk] < 220) {
           const offsetOut = 0.20 * poleScaleXZ + 0.08;
           dummy.position.set(p.x - p.nx * p.side * offsetOut, 1.62, p.z - p.nz * p.side * offsetOut);
           dummy.rotation.set(0, p.yaw + (p.side > 0 ? -Math.PI * 0.5 : Math.PI * 0.5), 0);
-          dummy.scale.set(1, 1, 1);
+          dummy.scale.set(0.88, 0.88, 0.88);
           dummy.updateMatrix();
           baseNetaInsts[nk].setMatrixAt(netaCnts[nk]++, dummy.matrix);
+          placedNetaSpots.push([p.x, p.z]);
         }
-      } else if (styleRoll < 0.65) {
+      } else if (styleRoll >= 0.16 && styleRoll < 0.36) {
         const numPosters = styleRoll < 0.50 ? 1 : 2;
         for (let pi = 0; pi < numPosters; pi++) {
           const pk = Math.floor(hashRand(p.id * 17.9 + pi * 37.3) * POSTER_KIND_COUNT) % POSTER_KIND_COUNT;
