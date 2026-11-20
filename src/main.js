@@ -4649,13 +4649,13 @@ function updateMovement(delta) {
   let hidePlayerMesh = false;
 
   if (playerCharacter && activeCamMode === 'back') {
-    const followDist = insideLiftNow ? 0.72 : (insideHouse ? 1.15 : 1.95);
+    const followDist = insideLiftNow ? 0.72 : (insideHouse ? 1.15 : 1.88);
     const pitchLift = THREE.MathUtils.clamp(-controls.euler.x * 0.42, -0.32, 0.42);
     camDesiredPos.copy(playerPos).addScaledVector(forwardVec, -followDist);
     camDesiredPos.y = THREE.MathUtils.clamp(
-      playerPos.y + (insideHouse ? 0.12 : 0.22) + pitchLift,
+      playerPos.y + (insideHouse ? -0.10 : -0.16) + pitchLift,
       camFootY + 0.40,
-      camFootY + (insideHouse ? 2.26 : 2.85),
+      camFootY + (insideHouse ? 2.18 : 2.65),
     );
     // If direct behind-the-back arm hits a curb/wall within < 0.85m, gently peek over open shoulder first
     if (!insideLiftNow) {

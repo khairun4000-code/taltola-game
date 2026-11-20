@@ -732,13 +732,46 @@ function buildHajiMohsinCorridor(staticG, dynamicG, bank, m, helpers, treesG = s
       addUtilityPoleAndLamp(staticG, dynamicG, bank, cx - 2.95, pz + 8, 1, false, westWires);
     }
   }
-  for (const arr of [eastWires, westWires]) {
+  for (let aIdx = 0; aIdx < 2; aIdx++) {
+    const arr = aIdx === 0 ? eastWires : westWires;
+    const sideDir = aIdx === 0 ? 1 : -1;
     for (let i = 0; i < arr.length - 1; i++) {
-      // Dense Bangladeshi multi-strand tangled overhead wire bundle between poles
-      helpers.addWire?.(staticG, arr[i], arr[i + 1], wireMat, 0.42, 0.016);
-      helpers.addWire?.(staticG, [arr[i][0], arr[i][1] - 0.55, arr[i][2]], [arr[i + 1][0], arr[i + 1][1] - 0.55, arr[i + 1][2]], wireMat, 0.62, 0.020);
-      helpers.addWire?.(staticG, [arr[i][0], arr[i][1] - 2.95, arr[i][2]], [arr[i + 1][0], arr[i + 1][1] - 3.15, arr[i + 1][2]], wireMat, 0.88, 0.024);
-      helpers.addWire?.(staticG, [arr[i][0], arr[i][1] - 3.35, arr[i][2]], [arr[i + 1][0], arr[i + 1][1] - 3.05, arr[i + 1][2]], wireMat, 1.05, 0.018);
+      const offsets = [
+        [0.0, 0.0, 0.44, 0.016],
+        [-0.38, -0.52, 0.64, 0.018],
+        [0.36, -0.60, 0.58, 0.016],
+        [-0.25, -2.55, 0.92, 0.024],
+        [0.28, -2.95, 1.24, 0.020],
+        [-0.14, -3.35, 1.52, 0.018],
+        [0.18, -3.65, 1.08, 0.016],
+        [-0.30, -3.12, 1.68, 0.015],
+        [0.10, -2.80, 0.78, 0.017],
+        [-0.08, -3.50, 1.38, 0.015],
+        [0.32, -3.28, 1.18, 0.016],
+      ];
+      for (let k = 0; k < offsets.length; k++) {
+        const [lat, dy, sag, rad] = offsets[k];
+        const dy2 = dy + ((k % 3) - 1) * 0.26;
+        const lat2 = lat + ((k % 2 === 0 ? 1 : -1) * 0.16);
+        helpers.addWire?.(
+          staticG,
+          [arr[i][0] + lat, arr[i][1] + dy, arr[i][2]],
+          [arr[i + 1][0] + lat2, arr[i + 1][1] + dy2, arr[i + 1][2]],
+          wireMat,
+          sag,
+          rad,
+        );
+      }
+      for (const [dzOff, endY, sag] of [[-6.5, 4.0, 0.72], [-1.5, 6.2, 0.52], [3.2, 5.4, 0.60], [8.2, 3.7, 0.86]]) {
+        helpers.addWire?.(
+          staticG,
+          [arr[i][0], arr[i][1] - 3.25, arr[i][2]],
+          [arr[i][0] + sideDir * 7.5, endY, arr[i][2] + dzOff],
+          wireMat,
+          sag,
+          0.015,
+        );
+      }
     }
   }
 
@@ -1135,9 +1168,52 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
     addUtilityPoleAndLamp(staticG, dynamicG, bank, poleX, pz, 1, false, poles);
   }
   for (let i = 0; i < poles.length - 1; i++) {
-    helpers.addWire?.(staticG, poles[i], poles[i + 1], m.wire, 0.42, 0.016);
-    helpers.addWire?.(staticG, [poles[i][0], poles[i][1] - 2.90, poles[i][2]], [poles[i + 1][0], poles[i + 1][1] - 3.10, poles[i + 1][2]], m.wire, 0.85, 0.022);
-    helpers.addWire?.(staticG, [poles[i][0], poles[i][1] - 3.30, poles[i][2]], [poles[i + 1][0], poles[i + 1][1] - 3.00, poles[i + 1][2]], m.wire, 1.02, 0.018);
+    const tangledSpecs = [
+      [0.0, 0.0, 0.45, 0.016],
+      [-0.36, -0.45, 0.62, 0.018],
+      [0.34, -0.58, 0.56, 0.016],
+      [-0.22, -2.55, 0.96, 0.024],
+      [0.24, -2.95, 1.36, 0.020],
+      [-0.18, -3.35, 1.62, 0.018],
+      [0.14, -3.65, 1.18, 0.016],
+      [-0.28, -3.15, 1.78, 0.015],
+      [0.26, -2.80, 0.88, 0.017],
+      [-0.08, -3.50, 1.42, 0.015],
+      [0.30, -3.22, 1.24, 0.016],
+      [-0.32, -2.90, 1.50, 0.015],
+    ];
+    for (let k = 0; k < tangledSpecs.length; k++) {
+      const [lat, dy, sag, rad] = tangledSpecs[k];
+      const dy2 = dy + ((k % 3) - 1) * 0.28;
+      const lat2 = lat + (k % 2 === 0 ? 0.18 : -0.16);
+      helpers.addWire?.(
+        staticG,
+        [poles[i][0] + lat, poles[i][1] + dy, poles[i][2]],
+        [poles[i + 1][0] + lat2, poles[i + 1][1] + dy2, poles[i + 1][2]],
+        m.wire,
+        sag,
+        rad,
+      );
+    }
+  }
+  const taltolaDrops = [
+    [poles[1], [ox + 4.4, 4.1, oz - 2.2], 0.74],
+    [poles[1], [ox + 4.4, 6.8, oz + 0.8], 0.58],
+    [poles[1], [ox + 4.4, 9.4, oz + 3.2], 0.65],
+    [poles[1], [ox + 4.4, 5.4, oz - 5.5], 0.82],
+    [poles[1], [ox - 11.5, 4.6, oz - 6.0], 0.78],
+    [poles[1], [ox - 11.5, 6.2, oz + 2.4], 0.88],
+    [poles[2], [ox + 4.4, 4.4, oz + 6.4], 0.85],
+    [poles[2], [ox + 4.4, 7.2, oz + 12.5], 0.70],
+    [poles[2], [ox - 11.0, 5.1, oz + 16.5], 0.72],
+    [poles[2], [ox - 11.0, 3.8, oz + 24.0], 0.82],
+    [poles[0], [ox + 5.2, 5.2, oz - 22.0], 0.76],
+    [poles[0], [ox - 11.0, 4.5, oz - 30.0], 0.70],
+  ];
+  for (const [pStart, pEnd, sag] of taltolaDrops) {
+    if (pStart) {
+      helpers.addWire?.(staticG, [pStart[0], pStart[1] - 3.35, pStart[2]], pEnd, m.wire, sag, 0.015);
+    }
   }
   helpers.addPalm?.(dynamicG, ox - 3.6, 0, oz - 6.0, 6.8, 0.4, 0.35);
   helpers.addPalm?.(dynamicG, ox + 3.8, 0, oz - 12.2, 7.2, -0.3, 0.4);

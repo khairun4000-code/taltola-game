@@ -167,8 +167,13 @@ export const CAR_FLEET_CONFIGS = [
     paintPresets: COROLLA_PAINT_PRESETS,
     bodyPaintMats: ['e180body'],
     glassMats: ['e180_glass', 'e180_glass_out'],
-    tailMats: ['e180_tails', 'e180_RL', 'e180_tail'],
-    headlightMats: ['e180_fog', 'e180_short', 'e180_long'],
+    tailMats: ['e180_tail', 'e180_glassred', 'e180_red'],
+    headlightMats: ['e180_lights', 'e180_fog'],
+    chromeMats: ['e180_chrome', 'mirror'],
+    dashGlowMats: ['e180_gauge', 'displaye180', 'e180_intlight'],
+    khulnaPlateText: ['খুলনা মেট্রো-গ', '১২-৪৫৭৮'],
+    khulnaPlatePos: { front: [0, 0.43, 2.27], rear: [0, 0.66, -2.27] },
+    hasBuiltInSteeringWheel: true,
     wheelNameRegex: /wheel|brakedisc/i,
     maxSpeed: 24.5,
     boostMaxSpeed: 33.5,
@@ -272,7 +277,13 @@ export const CAR_FLEET_CONFIGS = [
     glassMats: ['Material.004'],
     tailMats: ['Material.002'],
     headlightMats: ['Material.006'],
-    wheelNameRegex: /^Cylinder(\.\d+)?$/i,
+    chromeMats: ['Material.005'],
+    rimMats: ['Material.007'],
+    tireMats: ['Material.009'],
+    plateMats: ['Material.003'],
+    khulnaPlateText: ['খুলনা মেট্রো-চ', '১১-৩২৯০'],
+    hasBuiltInSteeringWheel: true,
+    wheelNameRegex: /^Cylinder(\.?\d+)?$/i,
     maxSpeed: 21.0,
     boostMaxSpeed: 28.5,
     engineForce: 12.0,
@@ -355,15 +366,15 @@ export const CAR_FLEET_CONFIGS = [
     bikeSportLean: true,
     bikeSplitMergedWheels: false,
     bikeRig: {
-      seat: [0, 0.80, -0.22],
-      footL: [0.23, 0.33, -0.08],
-      footR: [-0.23, 0.33, -0.08],
-      steerPivot: [0, 1.01, 0.33],
-      gripL: [0.33, 0.01, -0.04],
-      gripR: [-0.33, 0.01, -0.04],
-      dash: [0, 1.12, 0.44],
-      povEye: [0, 1.38, -0.16],
-      povLook: [0, 1.18, 2.4],
+      seat: [0, 0.75, -0.26],
+      footL: [0.20, 0.33, -0.16],
+      footR: [-0.20, 0.33, -0.16],
+      steerPivot: [0, 0.96, 0.32],
+      gripL: [0.33, 0.02, -0.04],
+      gripR: [-0.33, 0.02, -0.04],
+      dash: [0, 1.10, 0.44],
+      povEye: [0, 1.35, -0.20],
+      povLook: [0, 1.16, 2.4],
     },
   },
   {
@@ -393,15 +404,15 @@ export const CAR_FLEET_CONFIGS = [
     bikeSportLean: false,
     bikeSplitMergedWheels: true,
     bikeRig: {
-      seat: [0, 0.86, -0.20],
-      footL: [0.24, 0.35, -0.05],
-      footR: [-0.24, 0.35, -0.05],
-      steerPivot: [0, 1.06, 0.33],
-      gripL: [0.35, 0.02, -0.04],
-      gripR: [-0.35, 0.02, -0.04],
-      dash: [0, 1.14, 0.42],
-      povEye: [0, 1.44, -0.14],
-      povLook: [0, 1.22, 2.4],
+      seat: [0, 0.72, -0.24],
+      footL: [0.21, 0.31, -0.14],
+      footR: [-0.21, 0.31, -0.14],
+      steerPivot: [0, 1.00, 0.32],
+      gripL: [0.37, 0.04, -0.04],
+      gripR: [-0.37, 0.04, -0.04],
+      dash: [0, 1.12, 0.42],
+      povEye: [0, 1.38, -0.20],
+      povLook: [0, 1.18, 2.4],
     },
   },
 ];
@@ -822,7 +833,7 @@ function rigGenericCarWheels(orientedWrapper, wheelRegex, wheelMatRegex = null) 
   };
 }
 
-function splitBikeMeshByWheelCylinders(mesh, invWrapper, frontC, rearC, wheelR) {
+function splitMergedBikeMesh(mesh, invWrapper, frontC, rearC, wheelR, stemPivotPos, opts = {}) {
   const srcGeom = mesh.geometry;
   const posAttr = srcGeom?.attributes?.position;
   if (!posAttr) return null;
@@ -836,10 +847,17 @@ function splitBikeMeshByWheelCylinders(mesh, invWrapper, frontC, rearC, wheelR) 
   const v2 = new THREE.Vector3();
   const triC = new THREE.Vector3();
 
-  const frontTris = [];
-  const rearTris = [];
+  const frontWheelTris = [];
+  const rearWheelTris = [];
+  const frontSteerTris = [];
   const bodyTris = [];
-  const rSq = (wheelR + 0.045) * (wheelR + 0.045);
+
+  const allowWheel = Boolean(opts.allowWheel);
+  const strictRimOnly = Boolean(opts.strictRimOnly);
+  const allowFrontSteer = Boolean(opts.allowFrontSteer);
+  const wheelMaxX = strictRimOnly ? 0.080 : 0.135;
+  const rLim = strictRimOnly ? (wheelR * 0.86) : (wheelR + 0.035);
+  const rSq = rLim * rLim;
   const triCount = indexAttr ? indexAttr.count / 3 : posAttr.count / 3;
 
   for (let t = 0; t < triCount; t++) {
@@ -851,18 +869,26 @@ function splitBikeMeshByWheelCylinders(mesh, invWrapper, frontC, rearC, wheelR) 
     v2.fromBufferAttribute(posAttr, i2).applyMatrix4(toWrapper);
     triC.copy(v0).add(v1).add(v2).multiplyScalar(1 / 3);
 
-    const inX = Math.abs(triC.x) < 0.14;
     const dFrontSq = (triC.y - frontC.y) ** 2 + (triC.z - frontC.z) ** 2;
     const dRearSq = (triC.y - rearC.y) ** 2 + (triC.z - rearC.z) ** 2;
-    if (inX && dFrontSq <= rSq && triC.z > 0.25) {
-      frontTris.push(i0, i1, i2);
-    } else if (inX && dRearSq <= rSq && triC.z < -0.25) {
-      rearTris.push(i0, i1, i2);
+
+    if (allowWheel && Math.abs(triC.x) <= wheelMaxX && dFrontSq <= rSq && triC.z > 0.28) {
+      frontWheelTris.push(i0, i1, i2);
+    } else if (allowWheel && Math.abs(triC.x) <= wheelMaxX && dRearSq <= rSq && triC.z < -0.28) {
+      rearWheelTris.push(i0, i1, i2);
+    } else if (allowFrontSteer) {
+      const isHandlebarOrMirror = triC.y > 0.86 && triC.z > 0.14;
+      const isForkOrHeadlight = triC.z > (0.24 + Math.max(0, 1.0 - triC.y) * 0.30);
+      if (isHandlebarOrMirror || isForkOrHeadlight) {
+        frontSteerTris.push(i0, i1, i2);
+      } else {
+        bodyTris.push(i0, i1, i2);
+      }
     } else {
       bodyTris.push(i0, i1, i2);
     }
   }
-  if (!frontTris.length && !rearTris.length) return null;
+  if (!frontWheelTris.length && !rearWheelTris.length && !frontSteerTris.length) return null;
 
   function buildSub(indices, centerOffset) {
     if (!indices.length) return null;
@@ -904,8 +930,9 @@ function splitBikeMeshByWheelCylinders(mesh, invWrapper, frontC, rearC, wheelR) 
   }
 
   return {
-    frontMesh: buildSub(frontTris, frontC),
-    rearMesh: buildSub(rearTris, rearC),
+    frontWheelMesh: buildSub(frontWheelTris, frontC),
+    rearWheelMesh: buildSub(rearWheelTris, rearC),
+    frontSteerMesh: buildSub(frontSteerTris, stemPivotPos),
     bodyMesh: buildSub(bodyTris, null),
   };
 }
@@ -917,11 +944,10 @@ function rigMotorcycleWheels(orientedWrapper, config) {
   const tmpC = new THREE.Vector3();
   const tmpS = new THREE.Vector3();
 
-  // Steering-head pivot so the ENTIRE front assembly (handlebars, forks, headlight, fender & front wheel) turns together with [A]/[D]!
-  const stemPos = config.bikeRig?.steerPivot || [0, 0.96, 0.33];
+  const stemPos = config.bikeRig?.steerPivot || [0, 0.96, 0.32];
   const frontAssemblyPivot = new THREE.Group();
   frontAssemblyPivot.name = 'BikeFrontSteeringAssembly';
-  frontAssemblyPivot.position.set(0, stemPos[1] - 0.10, stemPos[2]);
+  frontAssemblyPivot.position.set(0, stemPos[1] - 0.08, stemPos[2]);
   orientedWrapper.add(frontAssemblyPivot);
   orientedWrapper.updateMatrixWorld(true);
 
@@ -933,7 +959,7 @@ function rigMotorcycleWheels(orientedWrapper, config) {
     orientedWrapper.traverse((ch) => {
       if (!ch.isMesh || !ch.visible || !ch.geometry?.attributes?.position) return;
       const mName = Array.isArray(ch.material) ? (ch.material[0]?.name || '') : (ch.material?.name || '');
-      if (!/TireMat|Tire|Rubber/i.test(mName)) return;
+      if (!/TireMat/i.test(mName)) return;
       toW.multiplyMatrices(invWrapper, ch.matrixWorld);
       const posA = ch.geometry.attributes.position;
       for (let i = 0; i < posA.count; i++) {
@@ -965,37 +991,29 @@ function rigMotorcycleWheels(orientedWrapper, config) {
     const rearSpin = new THREE.Group();
     rearSteer.add(rearSpin);
 
-    const candidates = [];
+    const allMeshes = [];
     orientedWrapper.traverse((ch) => {
-      if (!ch.isMesh || !ch.visible) return;
-      const mName = Array.isArray(ch.material) ? (ch.material[0]?.name || '') : (ch.material?.name || '');
-      if (/TireMat|BrakeDisk|Sprocket|ScratchedSteel|Chrome/i.test(mName)) {
-        candidates.push(ch);
-      }
+      if (ch.isMesh && ch.visible) allMeshes.push(ch);
     });
-    for (const ch of candidates) {
-      const res = splitBikeMeshByWheelCylinders(ch, invWrapper, frontC, rearC, Math.max(fRad, rRad));
+    for (const ch of allMeshes) {
+      const mName = Array.isArray(ch.material) ? (ch.material[0]?.name || '') : (ch.material?.name || '');
+      const isPureWheel = /TireMat|BrakeDisk|Sprocket/i.test(mName);
+      const isRimCandidate = /Chrome|ScratchedSteel/i.test(mName);
+      const isFrontSteerCandidate = !/Engine|Carburettor|ChainMat|Sprocket|BrakeDisk|TireMat/i.test(mName);
+      if (!isPureWheel && !isRimCandidate && !isFrontSteerCandidate) continue;
+
+      const res = splitMergedBikeMesh(ch, invWrapper, frontC, rearC, Math.max(fRad, rRad), frontAssemblyPivot.position, {
+        allowWheel: isPureWheel || isRimCandidate,
+        strictRimOnly: isRimCandidate,
+        allowFrontSteer: isFrontSteerCandidate,
+      });
       if (!res) continue;
-      if (res.frontMesh) frontSpin.add(res.frontMesh);
-      if (res.rearMesh) rearSpin.add(res.rearMesh);
+      if (res.frontWheelMesh) frontSpin.add(res.frontWheelMesh);
+      if (res.rearWheelMesh) rearSpin.add(res.rearWheelMesh);
+      if (res.frontSteerMesh) frontAssemblyPivot.add(res.frontSteerMesh);
       if (res.bodyMesh) orientedWrapper.add(res.bodyMesh);
       ch.visible = false;
     }
-    orientedWrapper.updateMatrixWorld(true);
-    const frontTurnMeshes = [];
-    orientedWrapper.traverse((ch) => {
-      if (!ch.isMesh || !ch.visible) return;
-      if (ch.parent === frontSpin || ch.parent === rearSpin) return;
-      tmpBox.setFromObject(ch);
-      if (tmpBox.isEmpty()) return;
-      tmpBox.applyMatrix4(invWrapper);
-      tmpBox.getCenter(tmpC);
-      tmpBox.getSize(tmpS);
-      if (tmpBox.min.z > 0.14 && tmpC.z > 0.26 && tmpS.z < 0.78) {
-        frontTurnMeshes.push(ch);
-      }
-    });
-    for (const fm of frontTurnMeshes) frontAssemblyPivot.attach(fm);
 
     return {
       wheels: [
@@ -1039,10 +1057,10 @@ function rigMotorcycleWheels(orientedWrapper, config) {
   const usedSet = new Set([...frontBucket.meshes, ...rearBucket.meshes]);
   for (const item of allSmallMeshes) {
     if (usedSet.has(item.mesh)) continue;
-    if (fCenter && Math.hypot(item.center.y - fCenter.y, item.center.z - fCenter.z) < 0.11 && item.size.y < 0.56 && item.size.z < 0.56) {
+    if (fCenter && Math.hypot(item.center.y - fCenter.y, item.center.z - fCenter.z) < 0.13 && item.size.y < 0.60 && item.size.z < 0.60) {
       frontBucket.meshes.push(item.mesh);
       usedSet.add(item.mesh);
-    } else if (rCenter && Math.hypot(item.center.y - rCenter.y, item.center.z - rCenter.z) < 0.11 && item.size.y < 0.56 && item.size.z < 0.56) {
+    } else if (rCenter && Math.hypot(item.center.y - rCenter.y, item.center.z - rCenter.z) < 0.13 && item.size.y < 0.60 && item.size.z < 0.60) {
       rearBucket.meshes.push(item.mesh);
       usedSet.add(item.mesh);
     }
@@ -1082,7 +1100,9 @@ function rigMotorcycleWheels(orientedWrapper, config) {
     tmpBox.applyMatrix4(invWrapper);
     tmpBox.getCenter(tmpC);
     tmpBox.getSize(tmpS);
-    if (tmpBox.min.z > 0.14 && tmpC.z > 0.26 && tmpS.z < 0.78) {
+    const isHandlebarOrMirror = tmpC.y > 0.84 && tmpC.z > 0.14 && tmpS.z < 0.65;
+    const isFrontForkOrLamp = tmpBox.min.z > 0.10 && tmpC.z > 0.24 && tmpS.z < 0.85;
+    if (isHandlebarOrMirror || isFrontForkOrLamp) {
       frontTurnMeshes.push(ch);
     }
   });
@@ -1260,11 +1280,11 @@ export function createDrivableCar(scene, manager, config) {
   if (!config.isRickshaw && !config.isBike) {
     const seatPresets = {
       bmw_m3:          { x:  0.36, y: 0.38, z: -0.12, wy: 0.24, wz: 0.42 },
-      toyota_corolla:  { x: -0.36, y: 0.40, z: -0.04, wy: 0.24, wz: 0.42 },
+      toyota_corolla:  { x:  0.34, y: 0.46, z:  0.08, wy: 0.30, wz: 0.42 },
       toyota_fortuner: { x: -0.38, y: 0.58, z:  0.08, wy: 0.26, wz: 0.44 },
       toyota_alphard:  { x: -0.38, y: 0.60, z:  0.34, wy: 0.26, wz: 0.44 },
       toyota_hiace:    { x: -0.38, y: 0.62, z:  0.84, wy: 0.26, wz: 0.44 },
-      toyota_townace:  { x: -0.38, y: 0.62, z:  0.28, wy: 0.26, wz: 0.36 },
+      toyota_townace:  { x: -0.39, y: 0.84, z:  0.18, wy: 0.34, wz: 0.42 },
     };
     const sp = seatPresets[config.id] || { x: -0.36, y: 0.42, z: 0.0, wy: 0.24, wz: 0.42 };
     const seatX = sp.x;
@@ -1307,7 +1327,9 @@ export function createDrivableCar(scene, manager, config) {
       new THREE.MeshStandardMaterial({ color: 0xd93829, roughness: 0.35 }),
     );
     topMarker.position.y = 0.175;
-    wheelSpin.add(rimMesh, hubMesh, spokeH, spokeV, topMarker);
+    if (!config.hasBuiltInSteeringWheel) {
+      wheelSpin.add(rimMesh, hubMesh, spokeH, spokeV, topMarker);
+    }
 
     const gripL = new THREE.Object3D();
     gripL.position.set(0.165, 0.025, -0.02);
@@ -1803,12 +1825,41 @@ export function createDrivableCar(scene, manager, config) {
           riggedWheels = builtWheels;
         }
       } else {
-        // Generic high-detail Sketchfab car setup (Toyota Alphard 2025, Toyota Corolla 2017, etc.)
+        // Generic high-detail Sketchfab car setup (Toyota Alphard 2025, Toyota Corolla 2017, Toyota TownAce GL 2005, etc.)
         const bodySet = new Set(config.bodyPaintMats || []);
         const glassSet = new Set(config.glassMats || []);
         const tailSet = new Set(config.tailMats || []);
         const hlSet = new Set(config.headlightMats || []);
+        const chromeSet = new Set(config.chromeMats || []);
+        const rimSet = new Set(config.rimMats || []);
+        const tireSet = new Set(config.tireMats || []);
+        const dashGlowSet = new Set(config.dashGlowMats || []);
+        const plateSet = new Set(config.plateMats || []);
         const clonedMatCache = new Map();
+
+        let khulnaPlateTex = null;
+        if (config.khulnaPlateText) {
+          const pc = document.createElement('canvas');
+          pc.width = 256;
+          pc.height = 128;
+          const pctx = pc.getContext('2d');
+          pctx.fillStyle = '#f8fafc';
+          pctx.fillRect(0, 0, 256, 128);
+          pctx.strokeStyle = '#0f172a';
+          pctx.lineWidth = 8;
+          pctx.strokeRect(5, 5, 246, 118);
+          pctx.fillStyle = '#065f46';
+          pctx.fillRect(10, 10, 236, 12);
+          pctx.fillStyle = '#0f172a';
+          pctx.textAlign = 'center';
+          pctx.font = 'bold 34px sans-serif';
+          pctx.fillText(config.khulnaPlateText[0], 128, 64);
+          pctx.font = 'bold 38px sans-serif';
+          pctx.fillText(config.khulnaPlateText[1], 128, 108);
+          khulnaPlateTex = new THREE.CanvasTexture(pc);
+          khulnaPlateTex.colorSpace = THREE.SRGBColorSpace;
+          khulnaPlateTex.anisotropy = 4;
+        }
 
         model.traverse((child) => {
           if (!child.isMesh || !child.material) return;
@@ -1837,6 +1888,13 @@ export function createDrivableCar(scene, manager, config) {
 
             if (bodySet.has(mName)) {
               out = createBodyMaterial(mat, paintColorHex);
+              if (config.id === 'toyota_townace') {
+                out.metalness = 0.42;
+                out.roughness = 0.15;
+                out.clearcoat = 1.0;
+                out.clearcoatRoughness = 0.05;
+                out.envMapIntensity = 1.75;
+              }
               paintMaterials.push(out);
               glossyMaterials.push(out);
             } else if (glassSet.has(mName)) {
@@ -1852,21 +1910,57 @@ export function createDrivableCar(scene, manager, config) {
                 clearcoat: 1.0,
                 clearcoatRoughness: 0.04,
                 reflectivity: 1.0,
-                envMapIntensity: 1.7,
+                envMapIntensity: 1.85,
               });
               glossyMaterials.push(out);
+            } else if (chromeSet.has(mName)) {
+              out = new THREE.MeshPhysicalMaterial({
+                name: mName,
+                color: new THREE.Color('#eef4fa'),
+                metalness: 0.96,
+                roughness: 0.08,
+                clearcoat: 0.8,
+                envMapIntensity: 2.1,
+              });
+              glossyMaterials.push(out);
+            } else if (rimSet.has(mName)) {
+              out = createWheelMaterial(mat, '#dce7f3');
+              glossyMaterials.push(out);
+            } else if (tireSet.has(mName)) {
+              out = new THREE.MeshStandardMaterial({
+                name: mName,
+                color: new THREE.Color('#1a1d22'),
+                map: mat.map || null,
+                normalMap: mat.normalMap || null,
+                roughness: 0.82,
+                metalness: 0.05,
+                envMapIntensity: 0.55,
+              });
+            } else if (plateSet.has(mName) && khulnaPlateTex) {
+              out = new THREE.MeshStandardMaterial({
+                name: mName,
+                map: khulnaPlateTex,
+                roughness: 0.32,
+                metalness: 0.25,
+                envMapIntensity: 1.0,
+              });
+            } else if (dashGlowSet.has(mName)) {
+              out = mat.clone();
+              out.emissive = new THREE.Color('#38bdf8');
+              out.emissiveIntensity = 1.15;
+              out.roughness = 0.25;
             } else if (tailSet.has(mName)) {
               out = mat.clone();
               if ('transmission' in out && out.transmission > 0) out.transmission = 0;
               out.color = new THREE.Color('#d61424');
               out.emissive = new THREE.Color('#ff1228');
-              out.emissiveIntensity = 1.8;
+              out.emissiveIntensity = 2.1;
               tailMats.push(out);
             } else if (hlSet.has(mName)) {
               out = mat.clone();
               if ('transmission' in out && out.transmission > 0) out.transmission = 0;
-              out.emissive = new THREE.Color('#eef6ff');
-              out.emissiveIntensity = 1.6;
+              out.emissive = new THREE.Color('#f4f9ff');
+              out.emissiveIntensity = 2.0;
               drlMats.push(out);
             } else {
               out = mat.clone();
@@ -1998,6 +2092,11 @@ export function createDrivableCar(scene, manager, config) {
       const dynamicNodes = new Set();
       for (const w of riggedWheels) {
         w.wheelRoot?.traverse((o) => {
+          if (o.isMesh) dynamicNodes.add(o);
+        });
+      }
+      if (bikeFrontAssembly) {
+        bikeFrontAssembly.traverse((o) => {
           if (o.isMesh) dynamicNodes.add(o);
         });
       }
@@ -2582,24 +2681,24 @@ export function createDrivableCar(scene, manager, config) {
       state.pedalPhase += pedalRate * dt;
     }
     if (config.isBike) {
-      // Realistic working Front Telescopic Fork + Heavily-Damped Rear Mono-Shock Suspension (zero rear hopping!)
+      // Realistic visibly workable Front Telescopic Fork Suspension (compresses on brake/bumps & rebounds smoothly, zero rear hopping!)
       state.roadTravelDist += Math.abs(state.speed) * dt;
-      const speedBlend = THREE.MathUtils.clamp(Math.abs(state.speed) / 14.0, 0, 1);
-      const frontRoadBump = (Math.sin(state.roadTravelDist * 2.1) * 0.012 + Math.sin(state.roadTravelDist * 4.7) * 0.006) * speedBlend;
-      const rearRoadBump = Math.sin((state.roadTravelDist - 1.38) * 2.1) * 0.004 * speedBlend;
-      const frontBrakeDive = (brake > 0 || handbrake) && state.speed > 1.2 ? -0.042 : (throttle > 0 ? 0.016 : 0);
-      const rearAccelSquat = throttle > 0 ? -0.012 : 0;
-      const targetFrontSusp = THREE.MathUtils.clamp(frontBrakeDive + frontRoadBump, -0.055, 0.032);
-      const targetRearSusp = THREE.MathUtils.clamp(rearAccelSquat + rearRoadBump, -0.020, 0.012);
+      const speedBlend = THREE.MathUtils.clamp(Math.abs(state.speed) / 10.0, 0, 1);
+      const frontRoadBump = (Math.sin(state.roadTravelDist * 1.9) * 0.024 + Math.sin(state.roadTravelDist * 4.3) * 0.012) * speedBlend;
+      const rearRoadBump = Math.sin((state.roadTravelDist - 1.38) * 1.9) * 0.006 * speedBlend;
+      const frontBrakeDive = (brake > 0 || handbrake) && state.speed > 0.9 ? -0.078 : (throttle > 0 ? 0.028 : 0);
+      const rearAccelSquat = throttle > 0 ? -0.016 : 0;
+      const targetFrontSusp = THREE.MathUtils.clamp(frontBrakeDive + frontRoadBump, -0.088, 0.044);
+      const targetRearSusp = THREE.MathUtils.clamp(rearAccelSquat + rearRoadBump, -0.024, 0.014);
 
-      const fForce = (targetFrontSusp - state.frontSuspOffset) * 92.0 - state.frontSuspVel * 13.5;
+      const fForce = (targetFrontSusp - state.frontSuspOffset) * 78.0 - state.frontSuspVel * 10.5;
       state.frontSuspVel += fForce * dt;
-      state.frontSuspOffset = THREE.MathUtils.clamp(state.frontSuspOffset + state.frontSuspVel * dt, -0.058, 0.036);
+      state.frontSuspOffset = THREE.MathUtils.clamp(state.frontSuspOffset + state.frontSuspVel * dt, -0.092, 0.048);
 
-      // Critically over-damped rear mono-shock: smooth flat ride, zero rear hopping!
-      state.rearSuspOffset = THREE.MathUtils.lerp(state.rearSuspOffset, targetRearSusp, Math.min(1, dt * 12.0));
+      // Critically over-damped rear mono-shock: smooth planted ride, zero rear hopping!
+      state.rearSuspOffset = THREE.MathUtils.lerp(state.rearSuspOffset, targetRearSusp, Math.min(1, dt * 11.0));
     }
-    const suspPitch = config.isBike ? THREE.MathUtils.clamp((state.rearSuspOffset - state.frontSuspOffset) * 0.72, -0.055, 0.055) : 0;
+    const suspPitch = config.isBike ? THREE.MathUtils.clamp((state.rearSuspOffset - state.frontSuspOffset) * 1.05, -0.085, 0.075) : 0;
     const targetPitch = config.isBike
       ? THREE.MathUtils.clamp(-accel * 0.0024 + suspPitch, -0.075, 0.065)
       : THREE.MathUtils.clamp(-accel * 0.0022, -0.045, 0.045);
