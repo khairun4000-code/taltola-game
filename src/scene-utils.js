@@ -95,7 +95,21 @@ export function mergeStaticMeshes(root) {
   });
   for (const bucket of buckets.values()) {
     if (bucket.meshes.length < 2) continue;
-    const geometry = mergeGeometries(bucket.geometries, false);
+    let geoms = bucket.geometries;
+    const hasIndexed = geoms.some((g) => Boolean(g.index));
+    const hasNonIndexed = geoms.some((g) => !g.index);
+    if (hasIndexed && hasNonIndexed) {
+      geoms = geoms.map((g) => (g.index ? g.toNonIndexed() : g));
+    }
+    const commonAttrs = Object.keys(geoms[0].attributes).filter((attr) =>
+      geoms.every((g) => Boolean(g.attributes[attr]))
+    );
+    for (const g of geoms) {
+      for (const attr of Object.keys(g.attributes)) {
+        if (!commonAttrs.includes(attr)) g.deleteAttribute(attr);
+      }
+    }
+    const geometry = mergeGeometries(geoms, false);
     if (!geometry) throw new Error('Static geometry batching failed');
     const mesh = new THREE.Mesh(geometry, bucket.material);
     mesh.castShadow = bucket.cast;
