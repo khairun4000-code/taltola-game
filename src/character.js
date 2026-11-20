@@ -173,6 +173,18 @@ export function createPlayerCharacter(scene, manager) {
   let jawBone = null;
   let lLidTop = null;
   let rLidTop = null;
+  let spineBone = null;
+  let spine1Bone = null;
+  let leftUpLeg = null;
+  let leftLeg = null;
+  let leftFoot = null;
+  let rightUpLeg = null;
+  let rightLeg = null;
+  let rightFoot = null;
+  let leftArm = null;
+  let leftForeArm = null;
+  let rightArm = null;
+  let rightForeArm = null;
   const jawRestQ = new THREE.Quaternion();
   const lLidRestQ = new THREE.Quaternion();
   const rLidRestQ = new THREE.Quaternion();
@@ -411,6 +423,18 @@ export function createPlayerCharacter(scene, manager) {
     jawBone = findBoneBySuffix(model, 'Jaw');
     lLidTop = findBoneBySuffix(model, 'LeftOrbicularisTop');
     rLidTop = findBoneBySuffix(model, 'RightOrbicularisTop');
+    spineBone = findBoneBySuffix(model, 'Spine');
+    spine1Bone = findBoneBySuffix(model, 'Spine1');
+    leftUpLeg = findBoneBySuffix(model, 'LeftUpLeg');
+    leftLeg = findBoneBySuffix(model, 'LeftLeg');
+    leftFoot = findBoneBySuffix(model, 'LeftFoot');
+    rightUpLeg = findBoneBySuffix(model, 'RightUpLeg');
+    rightLeg = findBoneBySuffix(model, 'RightLeg');
+    rightFoot = findBoneBySuffix(model, 'RightFoot');
+    leftArm = findBoneBySuffix(model, 'LeftArm');
+    leftForeArm = findBoneBySuffix(model, 'LeftForeArm');
+    rightArm = findBoneBySuffix(model, 'RightArm');
+    rightForeArm = findBoneBySuffix(model, 'RightForeArm');
     if (jawBone) jawRestQ.copy(jawBone.quaternion);
     if (lLidTop) lLidRestQ.copy(lLidTop.quaternion);
     if (rLidTop) rLidRestQ.copy(rLidTop.quaternion);
@@ -740,6 +764,90 @@ export function createPlayerCharacter(scene, manager) {
     }
   }
 
+  function applyRickshawRidingPose(ride) {
+    if (!ride || !ride.active) return;
+    const phase = ride.pedalPhase || 0;
+    const steer = ride.steerAngle || 0;
+    const moveFactor = Math.min(1, Math.abs(ride.speed || 0) / 1.5);
+
+    // Slight forward lean toward the handlebars + subtle rhythmic pedaling sway
+    const sway = Math.sin(phase) * 0.045 * moveFactor;
+    if (spineBone) {
+      eulerTemp.set(0.18, -steer * 0.14, sway);
+      qTempA.setFromEuler(eulerTemp);
+      spineBone.quaternion.multiply(qTempA);
+    }
+    if (spine1Bone) {
+      eulerTemp.set(0.14, -steer * 0.10, sway * 0.5);
+      qTempA.setFromEuler(eulerTemp);
+      spine1Bone.quaternion.multiply(qTempA);
+    }
+
+    // Synchronized 2-bone cycling leg motion matched 1:1 with Crank_Assembly (Pedal_L at phase, Pedal_R at phase + PI)
+    const pL = phase;
+    const pR = phase + Math.PI;
+    const hipL = -1.02 + 0.44 * Math.sin(pL) - 0.14 * Math.cos(pL);
+    const kneeL = 1.12 - 0.62 * Math.sin(pL) + 0.16 * Math.cos(pL);
+    const footL = -(hipL + kneeL) * 0.42 + 0.22;
+
+    const hipR = -1.02 + 0.44 * Math.sin(pR) - 0.14 * Math.cos(pR);
+    const kneeR = 1.12 - 0.62 * Math.sin(pR) + 0.16 * Math.cos(pR);
+    const footR = -(hipR + kneeR) * 0.42 + 0.22;
+
+    if (leftUpLeg) {
+      eulerTemp.set(hipL, 0.06, -0.08);
+      qTempA.setFromEuler(eulerTemp);
+      leftUpLeg.quaternion.multiply(qTempA);
+    }
+    if (leftLeg) {
+      eulerTemp.set(kneeL, 0, 0);
+      qTempA.setFromEuler(eulerTemp);
+      leftLeg.quaternion.multiply(qTempA);
+    }
+    if (leftFoot) {
+      eulerTemp.set(footL, 0, 0);
+      qTempA.setFromEuler(eulerTemp);
+      leftFoot.quaternion.multiply(qTempA);
+    }
+    if (rightUpLeg) {
+      eulerTemp.set(hipR, -0.06, 0.08);
+      qTempA.setFromEuler(eulerTemp);
+      rightUpLeg.quaternion.multiply(qTempA);
+    }
+    if (rightLeg) {
+      eulerTemp.set(kneeR, 0, 0);
+      qTempA.setFromEuler(eulerTemp);
+      rightLeg.quaternion.multiply(qTempA);
+    }
+    if (rightFoot) {
+      eulerTemp.set(footR, 0, 0);
+      qTempA.setFromEuler(eulerTemp);
+      rightFoot.quaternion.multiply(qTempA);
+    }
+
+    // Both arms reaching forward to hold the green rickshaw handlebars, tracking steering smoothly
+    if (leftArm) {
+      eulerTemp.set(-0.92 + steer * 0.18, 0.10, -0.18);
+      qTempA.setFromEuler(eulerTemp);
+      leftArm.quaternion.multiply(qTempA);
+    }
+    if (leftForeArm) {
+      eulerTemp.set(-0.28, 0.18, 0);
+      qTempA.setFromEuler(eulerTemp);
+      leftForeArm.quaternion.multiply(qTempA);
+    }
+    if (rightArm) {
+      eulerTemp.set(-0.92 - steer * 0.18, -0.10, 0.18);
+      qTempA.setFromEuler(eulerTemp);
+      rightArm.quaternion.multiply(qTempA);
+    }
+    if (rightForeArm) {
+      eulerTemp.set(-0.28, -0.18, 0);
+      qTempA.setFromEuler(eulerTemp);
+      rightForeArm.quaternion.multiply(qTempA);
+    }
+  }
+
   function update(delta, {
     position,
     yaw = 0,
@@ -757,9 +865,11 @@ export function createPlayerCharacter(scene, manager) {
     moveDirZ = 0,
     inStudio = false,
     hideMesh = false,
+    rickshawRide = null,
   }) {
     const dt = Math.min(Math.max(delta || 0.016, 0.001), 0.05);
-    const shouldShow = !hideMesh && (inStudio || state.cameraMode !== 'first');
+    const isRidingRickshaw = Boolean(rickshawRide && rickshawRide.active);
+    const shouldShow = !hideMesh && (inStudio || isRidingRickshaw || state.cameraMode !== 'first');
     root.visible = shouldShow;
 
     if (!inStudio && position) {
@@ -792,7 +902,9 @@ export function createPlayerCharacter(scene, manager) {
         state.emote = null;
       }
 
-      if (isClimbing || isDiving) {
+      if (isRidingRickshaw) {
+        state.facingYaw = rickshawRide.heading;
+      } else if (isClimbing || isDiving) {
         // Keep facing toward climb/dive direction
       } else if (horizSpeed > 0.15) {
         state.walkCycle += dt * (isSprinting ? 10.5 : 7.2);
@@ -898,6 +1010,13 @@ export function createPlayerCharacter(scene, manager) {
       fadeTime = 0.35;
     }
 
+    if (isRidingRickshaw) {
+      targetClip = 'Idle';
+      targetScale = 0.25;
+      loopOnce = false;
+      fadeTime = 0.08;
+    }
+
     playClip(targetClip, {
       fade: fadeTime,
       loopOnce,
@@ -908,6 +1027,9 @@ export function createPlayerCharacter(scene, manager) {
     }
 
     mixer.update(dt);
+    if (isRidingRickshaw) {
+      applyRickshawRidingPose(rickshawRide);
+    }
     applyProceduralHeadAndFace(dt);
   }
 

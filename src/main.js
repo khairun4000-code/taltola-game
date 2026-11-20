@@ -3362,16 +3362,42 @@ function updateMovement(delta) {
       }
 
       if (playerCharacter) {
-        playerCharacter.update(delta, {
-          position: playerPos,
-          yaw: st.heading + Math.PI,
-          speed: 0,
-          maxSpeed: 3.45,
-          grounded: true,
-          isSprinting: false,
-          inStudio: false,
-          hideMesh: true,
-        });
+        if (st.isRickshaw) {
+          // Seat the visible Bangladeshi rider directly on the leather rickshaw saddle & sync legs to the spinning pedals!
+          const riderPos = {
+            x: st.pos.x - sinH * 0.05,
+            y: st.pos.y + 0.34 + EYE_HEIGHT,
+            z: st.pos.z - cosH * 0.05,
+          };
+          playerCharacter.update(delta, {
+            position: riderPos,
+            yaw: st.heading + Math.PI,
+            speed: Math.abs(st.speed),
+            maxSpeed: 8.0,
+            grounded: true,
+            isSprinting: false,
+            inStudio: false,
+            hideMesh: st.cameraMode === 'hood',
+            rickshawRide: {
+              active: true,
+              heading: st.heading,
+              pedalPhase: st.pedalPhase,
+              steerAngle: st.steerAngle,
+              speed: st.speed,
+            },
+          });
+        } else {
+          playerCharacter.update(delta, {
+            position: playerPos,
+            yaw: st.heading + Math.PI,
+            speed: 0,
+            maxSpeed: 3.45,
+            grounded: true,
+            isSprinting: false,
+            inStudio: false,
+            hideMesh: true,
+          });
+        }
       }
 
       syncCarHUD();

@@ -40,6 +40,15 @@ export const COROLLA_PAINT_PRESETS = [
   { name: 'Slate Gray', hex: '#4b535e' },
 ];
 
+export const RICKSHAW_PAINT_PRESETS = [
+  { name: 'Classic Art', hex: '#ffffff' },
+  { name: 'Dhaka Red', hex: '#ffd6d6' },
+  { name: 'Khulna Green', hex: '#d4ffe2' },
+  { name: 'Golden Bangla', hex: '#fff0c4' },
+  { name: 'Royal Blue', hex: '#d4e8ff' },
+  { name: 'Sunset Rose', hex: '#ffe0f2' },
+];
+
 export const CAR_FLEET_CONFIGS = [
   {
     id: 'bmw_m3',
@@ -119,6 +128,27 @@ export const CAR_FLEET_CONFIGS = [
     hoodHeight: 1.28,
     hoodForward: 0.72,
     isBMW: false,
+  },
+  {
+    id: 'bangladeshi_rickshaw',
+    name: 'Bangladeshi Rickshaw',
+    badge: 'BANGLADESHI RICKSHAW',
+    assetUrl: './assets/bangladeshi_rickshaw.glb',
+    targetLength: 2.44,
+    width: 1.04,
+    rotateY: 0,
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 1.10, 0.01, TALTOLA_HOUSE_OFFSET.z + 1.4],
+    spawnHeading: 0.0,
+    paintPresets: RICKSHAW_PAINT_PRESETS,
+    maxSpeed: 7.8,
+    boostMaxSpeed: 11.8,
+    engineForce: 9.2,
+    camBack: 3.45,
+    camHeight: 2.02,
+    hoodHeight: 1.68,
+    hoodForward: 0.14,
+    isBMW: false,
+    isRickshaw: true,
   },
 ];
 
@@ -367,12 +397,14 @@ export function createDrivableCar(scene, manager, config) {
     lateralVel: 0,
     steerAngle: 0,
     wheelSpin: 0,
+    pedalPhase: 0,
     rpm: 920,
     gear: 'N',
     pitch: 0,
     roll: 0,
     paintIndex: 0,
     paintName: paintPresets[0].name,
+    isRickshaw: Boolean(config.isRickshaw),
     halfWidth: (config.width || 1.88) * 0.48,
     halfLength: (config.targetLength || 4.4) * 0.48,
     camBack: config.camBack || 5.4,
@@ -382,6 +414,7 @@ export function createDrivableCar(scene, manager, config) {
   };
 
   let riggedWheels = [];
+  let rickshawParts = null;
   let paintMaterials = [];
   let glossyMaterials = [];
   let carShadowMeshes = [];
@@ -429,6 +462,7 @@ export function createDrivableCar(scene, manager, config) {
   }
 
   function updateEngineAudio(active, rpm, throttle) {
+    if (config.isRickshaw) return;
     if (!audioCtx || !engineGain || !osc1 || !osc2) return;
     const now = audioCtx.currentTime;
     if (!active) {
@@ -447,6 +481,25 @@ export function createDrivableCar(scene, manager, config) {
     if (!audioCtx) return;
     try {
       const now = audioCtx.currentTime;
+      if (config.isRickshaw) {
+        for (const strikeOffset of [0, 0.14]) {
+          const t0 = now + strikeOffset;
+          const g = audioCtx.createGain();
+          g.gain.setValueAtTime(0.001, t0);
+          g.gain.exponentialRampToValueAtTime(0.13, t0 + 0.008);
+          g.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.32);
+          g.connect(audioCtx.destination);
+          for (const freq of [2680, 5360, 3920]) {
+            const o = audioCtx.createOscillator();
+            o.type = 'sine';
+            o.frequency.value = freq;
+            o.connect(g);
+            o.start(t0);
+            o.stop(t0 + 0.34);
+          }
+        }
+        return;
+      }
       const g = audioCtx.createGain();
       g.gain.setValueAtTime(0.001, now);
       g.gain.exponentialRampToValueAtTime(0.11, now + 0.03);
@@ -778,7 +831,53 @@ export function createDrivableCar(scene, manager, config) {
           child.material = isArray ? outMats : outMats[0];
         });
 
-        if (config.wheelNameRegex) {
+        if (config.isRickshaw) {
+          model.traverse((child) => {
+            if (!child.isMesh || !child.material) return;
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            for (const mat of mats) {
+              const mn = (mat.name || '').toLowerCase();
+              if (mat.map) {
+                mat.map.anisotropy = 8;
+                mat.map.needsUpdate = true;
+              }
+              if (/chrome|spoke|aluminum|footwell/.test(mn)) {
+                mat.metalness = Math.max(mat.metalness ?? 0.5, 0.88);
+                mat.roughness = Math.min(mat.roughness ?? 0.5, 0.18);
+                if ('envMapIntensity' in mat) mat.envMapIntensity = 1.9;
+                glossyMaterials.push(mat);
+              } else if (/hood_top|hood_side|hood_back|body_/.test(mn)) {
+                mat.roughness = Math.min(mat.roughness ?? 0.6, 0.34);
+                if ('envMapIntensity' in mat) mat.envMapIntensity = 1.35;
+                paintMaterials.push(mat);
+                glossyMaterials.push(mat);
+              } else if (/paint_|frame_black/.test(mn)) {
+                mat.roughness = Math.min(mat.roughness ?? 0.5, 0.28);
+                mat.metalness = Math.max(mat.metalness ?? 0.2, 0.35);
+                if ('envMapIntensity' in mat) mat.envMapIntensity = 1.45;
+                glossyMaterials.push(mat);
+              }
+            }
+          });
+
+          const steering = model.getObjectByName('Steering_Assembly');
+          const wheelFront = model.getObjectByName('Wheel_Front');
+          const wheelRearL = model.getObjectByName('Wheel_Rear_L');
+          const wheelRearR = model.getObjectByName('Wheel_Rear_R');
+          const crank = model.getObjectByName('Crank_Assembly');
+          const pedalL = model.getObjectByName('Pedal_L');
+          const pedalR = model.getObjectByName('Pedal_R');
+          rickshawParts = {
+            steering,
+            steerRestQ: steering ? steering.quaternion.clone() : null,
+            wheelFront,
+            wheelRearL,
+            wheelRearR,
+            crank,
+            pedalL,
+            pedalR,
+          };
+        } else if (config.wheelNameRegex) {
           riggedWheels = rigGenericCarWheels(orientedWrapper, config.wheelNameRegex);
         }
       }
@@ -794,11 +893,28 @@ export function createDrivableCar(scene, manager, config) {
     },
   );
 
+  const steerAxisY = new THREE.Vector3(0, 1, 0);
+  const steerDeltaQ = new THREE.Quaternion();
+
   function syncTransform() {
     root.position.copy(state.pos);
     root.rotation.y = state.heading;
     bodyTiltGroup.rotation.x = state.pitch;
     bodyTiltGroup.rotation.z = state.roll;
+
+    if (rickshawParts) {
+      if (rickshawParts.steering && rickshawParts.steerRestQ) {
+        steerDeltaQ.setFromAxisAngle(steerAxisY, state.steerAngle * 1.15);
+        rickshawParts.steering.quaternion.copy(rickshawParts.steerRestQ).multiply(steerDeltaQ);
+      }
+      if (rickshawParts.wheelFront) rickshawParts.wheelFront.rotation.x = state.wheelSpin;
+      if (rickshawParts.wheelRearL) rickshawParts.wheelRearL.rotation.x = state.wheelSpin;
+      if (rickshawParts.wheelRearR) rickshawParts.wheelRearR.rotation.x = state.wheelSpin;
+      if (rickshawParts.crank) rickshawParts.crank.rotation.x = state.pedalPhase;
+      if (rickshawParts.pedalL) rickshawParts.pedalL.rotation.x = -state.pedalPhase;
+      if (rickshawParts.pedalR) rickshawParts.pedalR.rotation.x = -state.pedalPhase;
+      return;
+    }
 
     for (const w of riggedWheels) {
       if (w.isFront) {
@@ -955,10 +1071,14 @@ export function createDrivableCar(scene, manager, config) {
 
   function getPrompt(playerPos) {
     if (state.driving) {
-      return `[E / T] ${state.name} গাড়ি থেকে নামুন (Exit Car)`;
+      return config.isRickshaw
+        ? '[E / T] রিকশা থেকে নামুন (Exit Rickshaw)'
+        : `[E / T] ${state.name} গাড়ি থেকে নামুন (Exit Car)`;
     }
     if (isPlayerNear(playerPos)) {
-      return `[E / F] ${state.name} গাড়িতে উঠুন ও চালান (Drive ${state.name})`;
+      return config.isRickshaw
+        ? '[E / F] রিকশায় উঠুন ও প্যাডেল চালান (Ride Rickshaw)'
+        : `[E / F] ${state.name} গাড়িতে উঠুন ও চালান (Drive ${state.name})`;
     }
     return null;
   }
@@ -1038,9 +1158,17 @@ export function createDrivableCar(scene, manager, config) {
 
     applyCarCollisions(houseRef, envRef, allCars);
 
-    state.wheelSpin += (state.speed / 0.34) * dt;
+    const wheelRadius = config.isRickshaw ? 0.365 : 0.34;
+    state.wheelSpin += (state.speed / wheelRadius) * dt;
+    if (config.isRickshaw) {
+      const pedalRate = (throttle > 0 || state.speed > 0.15)
+        ? Math.max(throttle * 3.8, (state.speed / wheelRadius) * 0.72)
+        : (state.speed < -0.15 ? (state.speed / wheelRadius) * 0.5 : 0);
+      state.pedalPhase += pedalRate * dt;
+    }
     const targetPitch = THREE.MathUtils.clamp(-accel * 0.0022, -0.045, 0.045);
-    const targetRoll = THREE.MathUtils.clamp(-turnRate * state.speed * 0.0025, -0.055, 0.055);
+    const pedalSway = config.isRickshaw ? Math.sin(state.pedalPhase) * 0.028 * Math.min(1, Math.abs(state.speed) / 2.5) : 0;
+    const targetRoll = THREE.MathUtils.clamp(-turnRate * state.speed * 0.0025 + pedalSway, -0.065, 0.065);
     state.pitch = THREE.MathUtils.lerp(state.pitch, targetPitch, Math.min(1, dt * 10));
     state.roll = THREE.MathUtils.lerp(state.roll, targetRoll, Math.min(1, dt * 10));
 
