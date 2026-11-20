@@ -759,6 +759,18 @@ body.hud-hidden #minimap-dock .minimap-footer {
   display: none !important;
 }
 
+/* [C] Free Cam Pure Cinema Mode: hides EVERY button, HUD element AND the minimap! */
+body.freecam-active #hud-header,
+body.freecam-active #walk-hud,
+body.freecam-active #minimap-dock,
+body.freecam-active #car-hud,
+body.freecam-active #gta-phone,
+body.freecam-active #gta-cheat-toast {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
 /* Smooth black fade-in / fade-out overlay for entering and exiting cars */
 .vehicle-fade {
   position: fixed;

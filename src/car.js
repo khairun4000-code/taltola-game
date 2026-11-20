@@ -428,8 +428,8 @@ function rigGenericCarWheels(orientedWrapper, wheelRegex, wheelMatRegex = null) 
   const wheelMeshes = [];
   const allNonSkinned = [];
   orientedWrapper.traverse((child) => {
-    if (!child.isMesh || child.isSkinnedMesh) return;
-    allNonSkinned.push(child);
+    if (!child.isMesh) return;
+    if (!child.isSkinnedMesh) allNonSkinned.push(child);
     let matched = false;
     if (wheelRegex) {
       let cur = child;
@@ -478,7 +478,7 @@ function rigGenericCarWheels(orientedWrapper, wheelRegex, wheelMatRegex = null) 
     matchedSet.add(mesh);
   }
 
-  // When matching by tire material (e.g. Alphard), also capture inner rim/hub/brake-disc meshes inside each wheel well
+  // When matching by tire material (e.g. Alphard), capture inner chrome alloy rim, center cap, lug nuts & brake disc
   if (wheelMatRegex) {
     const centers = {};
     for (const [k, b] of Object.entries(buckets)) {
@@ -486,14 +486,16 @@ function rigGenericCarWheels(orientedWrapper, wheelRegex, wheelMatRegex = null) 
     }
     for (const mesh of allNonSkinned) {
       if (matchedSet.has(mesh)) continue;
+      const mName = Array.isArray(mesh.material) ? (mesh.material[0]?.name || '') : (mesh.material?.name || '');
+      if (mName === 'C_089') continue;
       tmpBox.setFromObject(mesh);
       if (tmpBox.isEmpty()) continue;
       tmpBox.applyMatrix4(invWrapper);
       tmpBox.getCenter(tmpCenter);
       tmpBox.getSize(tmpSize);
-      if (Math.max(tmpSize.x, tmpSize.y, tmpSize.z) > 0.85) continue;
+      if (Math.max(tmpSize.x, tmpSize.y, tmpSize.z) > 0.72) continue;
       for (const [k, wc] of Object.entries(centers)) {
-        if (Math.abs(tmpCenter.x - wc.x) < 0.24 && Math.abs(tmpCenter.y - wc.y) < 0.34 && Math.abs(tmpCenter.z - wc.z) < 0.34) {
+        if (Math.abs(tmpCenter.x - wc.x) < 0.14 && Math.abs(tmpCenter.y - wc.y) < 0.18 && Math.abs(tmpCenter.z - wc.z) < 0.18) {
           buckets[k].meshes.push(mesh);
           matchedSet.add(mesh);
           break;
@@ -505,6 +507,9 @@ function rigGenericCarWheels(orientedWrapper, wheelRegex, wheelMatRegex = null) 
   const builtWheels = [];
   let radiusSum = 0;
   let radiusCount = 0;
+  const tmpPos = new THREE.Vector3();
+  const tmpQuat = new THREE.Quaternion();
+  const tmpScale = new THREE.Vector3();
   for (const b of Object.values(buckets)) {
     if (b.meshes.length === 0) continue;
     const center = b.box.getCenter(new THREE.Vector3());
@@ -522,7 +527,22 @@ function rigGenericCarWheels(orientedWrapper, wheelRegex, wheelMatRegex = null) 
     orientedWrapper.updateMatrixWorld(true);
 
     for (const mesh of b.meshes) {
-      spinPivot.attach(mesh);
+      if (mesh.isSkinnedMesh) {
+        // Convert SkinnedMesh wheel (e.g. HiAce) into a safe rigid Mesh at the exact world matrix so it spins without SkinnedMesh errors!
+        mesh.updateMatrixWorld(true);
+        const rigid = new THREE.Mesh(mesh.geometry, mesh.material);
+        rigid.castShadow = mesh.castShadow;
+        rigid.receiveShadow = mesh.receiveShadow;
+        mesh.matrixWorld.decompose(tmpPos, tmpQuat, tmpScale);
+        rigid.position.copy(tmpPos);
+        rigid.quaternion.copy(tmpQuat);
+        rigid.scale.copy(tmpScale);
+        rigid.updateMatrixWorld(true);
+        spinPivot.attach(rigid);
+        mesh.visible = false;
+      } else {
+        spinPivot.attach(mesh);
+      }
     }
 
     builtWheels.push({
@@ -570,6 +590,10 @@ export function createDrivableCar(scene, manager, config) {
     steerAngle: 0,
     wheelSpin: 0,
     pedalPhase: 0,
+    standingPedal: false,
+    standingBlend: 0,
+    boostStamina: 10.0,
+    boostCooldown: 0.0,
     rpm: 920,
     gear: 'N',
     pitch: 0,
@@ -598,11 +622,17 @@ export function createDrivableCar(scene, manager, config) {
   // Interactive 3D Driver Seat + Rotating Steering Wheel with Left/Right Hand IK Grips for non-rickshaw cars
   let carDriverRig = null;
   if (!config.isRickshaw) {
-    const isTallVan = config.id === 'toyota_alphard' || config.id === 'toyota_hiace';
-    const isSuv = config.id === 'toyota_fortuner';
-    const seatX = config.id === 'bmw_m3' ? 0.38 : -0.38;
-    const seatY = isTallVan ? 0.84 : (isSuv ? 0.82 : 0.62);
-    const seatZ = config.id === 'toyota_hiace' ? 0.92 : (isTallVan ? 0.42 : (isSuv ? 0.16 : 0.08));
+    const seatPresets = {
+      bmw_m3:          { x:  0.36, y: 0.38, z: -0.12, wy: 0.24, wz: 0.42 },
+      toyota_corolla:  { x: -0.36, y: 0.40, z: -0.04, wy: 0.24, wz: 0.42 },
+      toyota_fortuner: { x: -0.38, y: 0.58, z:  0.08, wy: 0.26, wz: 0.44 },
+      toyota_alphard:  { x: -0.38, y: 0.60, z:  0.34, wy: 0.26, wz: 0.44 },
+      toyota_hiace:    { x: -0.38, y: 0.62, z:  0.84, wy: 0.26, wz: 0.44 },
+    };
+    const sp = seatPresets[config.id] || { x: -0.36, y: 0.42, z: 0.0, wy: 0.24, wz: 0.42 };
+    const seatX = sp.x;
+    const seatY = sp.y;
+    const seatZ = sp.z;
 
     const rigGroup = new THREE.Group();
     rigGroup.name = `DriverSteeringRig_${config.id}`;
@@ -613,16 +643,16 @@ export function createDrivableCar(scene, manager, config) {
     rigGroup.add(seatAnchor);
 
     const footL = new THREE.Object3D();
-    footL.position.set(seatX + 0.14, seatY - 0.34, seatZ + 0.56);
+    footL.position.set(seatX + 0.13, Math.max(0.18, seatY - 0.22), seatZ + 0.54);
     rigGroup.add(footL);
     const footR = new THREE.Object3D();
-    footR.position.set(seatX - 0.14, seatY - 0.34, seatZ + 0.56);
+    footR.position.set(seatX - 0.13, Math.max(0.18, seatY - 0.22), seatZ + 0.54);
     rigGroup.add(footR);
 
-    // Visible 3D steering wheel right in front of the driver
+    // Visible 3D steering wheel right in front of the driver inside the cabin
     const wheelPivot = new THREE.Group();
-    wheelPivot.position.set(seatX, seatY + 0.30, seatZ + 0.44);
-    wheelPivot.rotation.x = 0.38;
+    wheelPivot.position.set(seatX, seatY + sp.wy, seatZ + sp.wz);
+    wheelPivot.rotation.x = 0.36;
     rigGroup.add(wheelPivot);
 
     const wheelSpin = new THREE.Group();
@@ -652,26 +682,52 @@ export function createDrivableCar(scene, manager, config) {
     carDriverRig = { rigGroup, seatAnchor, footL, footR, wheelSpin, gripL, gripR };
   }
 
-  // Pooled tire-to-road friction smoke puffs
+  // Realistic soft wispy radial-cloud tire-to-road friction smoke sprites
   const tireSmokePuffs = [];
-  const smokeGeo = new THREE.SphereGeometry(0.16, 7, 6);
-  const smokeMatBase = new THREE.MeshBasicMaterial({ color: 0xd8dce2, transparent: true, opacity: 0.36, depthWrite: false });
+  const smokeCanvas = document.createElement('canvas');
+  smokeCanvas.width = 128;
+  smokeCanvas.height = 128;
+  const sCtx = smokeCanvas.getContext('2d');
+  const blobs = [
+    [64, 64, 52, 0.42], [46, 56, 36, 0.30], [82, 60, 34, 0.28],
+    [58, 78, 34, 0.26], [70, 44, 30, 0.24], [44, 74, 28, 0.22],
+  ];
+  for (const [bx, by, br, ba] of blobs) {
+    const g = sCtx.createRadialGradient(bx, by, 2, bx, by, br);
+    g.addColorStop(0, `rgba(215, 218, 222, ${ba})`);
+    g.addColorStop(0.55, `rgba(182, 188, 196, ${ba * 0.52})`);
+    g.addColorStop(1, 'rgba(160, 166, 174, 0)');
+    sCtx.fillStyle = g;
+    sCtx.beginPath();
+    sCtx.arc(bx, by, br, 0, Math.PI * 2);
+    sCtx.fill();
+  }
+  const smokeTex = new THREE.CanvasTexture(smokeCanvas);
   let smokeCooldown = 0;
 
   function spawnTireFrictionPuff(worldX, worldY, worldZ) {
-    if (tireSmokePuffs.length > 26) return;
-    const m = new THREE.Mesh(smokeGeo, smokeMatBase.clone());
-    m.position.set(worldX, worldY + 0.12, worldZ);
-    const s = 0.75 + Math.random() * 0.45;
-    m.scale.setScalar(s);
-    scene.add(m);
+    if (tireSmokePuffs.length > 34) return;
+    const mat = new THREE.SpriteMaterial({
+      map: smokeTex,
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false,
+      color: new THREE.Color(0xcbd1d9),
+      rotation: Math.random() * Math.PI * 2,
+    });
+    const sp = new THREE.Sprite(mat);
+    sp.position.set(worldX + (Math.random() - 0.5) * 0.14, worldY + 0.16, worldZ + (Math.random() - 0.5) * 0.14);
+    sp.scale.setScalar(0.38 + Math.random() * 0.22);
+    scene.add(sp);
     tireSmokePuffs.push({
-      mesh: m,
+      mesh: sp,
       age: 0,
-      maxAge: 0.48 + Math.random() * 0.25,
-      vx: (Math.random() - 0.5) * 0.6,
-      vy: 0.55 + Math.random() * 0.45,
-      vz: (Math.random() - 0.5) * 0.6,
+      maxAge: 0.72 + Math.random() * 0.38,
+      vx: (Math.random() - 0.5) * 0.85,
+      vy: 0.38 + Math.random() * 0.36,
+      vz: (Math.random() - 0.5) * 0.85,
+      rotSpeed: (Math.random() - 0.5) * 1.4,
+      startScale: 0.38 + Math.random() * 0.18,
     });
   }
 
@@ -686,11 +742,14 @@ export function createDrivableCar(scene, manager, config) {
         continue;
       }
       const t = p.age / p.maxAge;
+      const drag = Math.max(0, 1 - dt * 2.2);
+      p.vx *= drag; p.vz *= drag;
       p.mesh.position.x += p.vx * dt;
       p.mesh.position.y += p.vy * dt;
       p.mesh.position.z += p.vz * dt;
-      p.mesh.scale.setScalar(0.85 + t * 2.1);
-      p.mesh.material.opacity = (1 - t) * 0.34;
+      p.mesh.scale.setScalar(p.startScale + Math.pow(t, 0.72) * 1.75);
+      p.mesh.material.rotation += p.rotSpeed * dt;
+      p.mesh.material.opacity = Math.pow(1 - t, 1.8) * 0.28;
     }
   }
   let paintMaterials = [];
@@ -1203,19 +1262,44 @@ export function createDrivableCar(scene, manager, config) {
           let gripAnchorL = null;
           let gripAnchorR = null;
           if (steering) {
+            // Measure exact left/right green rubber grip centers directly from Steering_Fork_Handlebar_Mesh_6!
+            model.updateMatrixWorld(true);
+            const invSteer = new THREE.Matrix4().copy(steering.matrixWorld).invert();
+            const gripMesh = model.getObjectByName('Steering_Fork_Handlebar_Mesh_6');
+            let lPos = new THREE.Vector3(0.285, 0.252, -0.193);
+            let rPos = new THREE.Vector3(-0.285, 0.252, -0.193);
+            if (gripMesh?.geometry?.attributes?.position) {
+              const posAttr = gripMesh.geometry.attributes.position;
+              const vTmp = new THREE.Vector3();
+              const sumL = new THREE.Vector3(); let cntL = 0;
+              const sumR = new THREE.Vector3(); let cntR = 0;
+              for (let i = 0; i < posAttr.count; i++) {
+                vTmp.fromBufferAttribute(posAttr, i).applyMatrix4(gripMesh.matrixWorld).applyMatrix4(invSteer);
+                if (vTmp.x > 0.22) { sumL.add(vTmp); cntL++; }
+                else if (vTmp.x < -0.22) { sumR.add(vTmp); cntR++; }
+              }
+              if (cntL > 0) lPos = sumL.divideScalar(cntL);
+              if (cntR > 0) rPos = sumR.divideScalar(cntR);
+            }
             gripAnchorL = new THREE.Object3D();
-            gripAnchorL.position.set(0.28, 0.24, -0.17);
+            gripAnchorL.position.copy(lPos);
             steering.add(gripAnchorL);
             gripAnchorR = new THREE.Object3D();
-            gripAnchorR.position.set(-0.28, 0.24, -0.17);
+            gripAnchorR.position.copy(rPos);
             steering.add(gripAnchorR);
           }
           const saddleAnchor = new THREE.Object3D();
           saddleAnchor.position.set(0, 1.03, -0.02);
           model.add(saddleAnchor);
           const passengerAnchor = new THREE.Object3D();
-          passengerAnchor.position.set(0, 0.72, -0.62);
+          passengerAnchor.position.set(0, 0.88, -0.78);
           model.add(passengerAnchor);
+          const passengerFootL = new THREE.Object3D();
+          passengerFootL.position.set(0.15, 0.62, -0.34);
+          model.add(passengerFootL);
+          const passengerFootR = new THREE.Object3D();
+          passengerFootR.position.set(-0.15, 0.62, -0.34);
+          model.add(passengerFootR);
           const pedalFootL = new THREE.Object3D();
           pedalFootL.position.set(0.055, 0.02, 0.0);
           if (pedalL) pedalL.add(pedalFootL);
@@ -1235,6 +1319,8 @@ export function createDrivableCar(scene, manager, config) {
             gripAnchorR,
             saddleAnchor,
             passengerAnchor,
+            passengerFootL,
+            passengerFootR,
             pedalFootL,
             pedalFootR,
           };
@@ -1354,6 +1440,8 @@ export function createDrivableCar(scene, manager, config) {
   const anchorCache = {
     saddle: new THREE.Vector3(),
     passengerSeat: new THREE.Vector3(),
+    passengerFootL: new THREE.Vector3(),
+    passengerFootR: new THREE.Vector3(),
     pedalL: new THREE.Vector3(),
     pedalR: new THREE.Vector3(),
     gripL: new THREE.Vector3(),
@@ -1384,6 +1472,8 @@ export function createDrivableCar(scene, manager, config) {
     root.updateMatrixWorld(true);
     rickshawParts.saddleAnchor.getWorldPosition(anchorCache.saddle);
     rickshawParts.passengerAnchor.getWorldPosition(anchorCache.passengerSeat);
+    if (rickshawParts.passengerFootL) rickshawParts.passengerFootL.getWorldPosition(anchorCache.passengerFootL);
+    if (rickshawParts.passengerFootR) rickshawParts.passengerFootR.getWorldPosition(anchorCache.passengerFootR);
     if (rickshawParts.pedalFootL) rickshawParts.pedalFootL.getWorldPosition(anchorCache.pedalL);
     if (rickshawParts.pedalFootR) rickshawParts.pedalFootR.getWorldPosition(anchorCache.pedalR);
     if (rickshawParts.gripAnchorL) rickshawParts.gripAnchorL.getWorldPosition(anchorCache.gripL);
@@ -1652,7 +1742,31 @@ export function createDrivableCar(scene, manager, config) {
     const steerInput = (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0)
       - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0);
     const handbrake = keys.has('Space');
-    const boost = (keys.has('ShiftLeft') || keys.has('ShiftRight')) && throttle > 0 ? 1.42 : 1.0;
+    const shiftPressed = keys.has('ShiftLeft') || keys.has('ShiftRight');
+    let boost = 1.0;
+    if (config.isRickshaw) {
+      if (state.boostCooldown > 0) {
+        state.boostCooldown = Math.max(0, state.boostCooldown - dt);
+        state.standingPedal = false;
+        if (state.boostCooldown <= 0) state.boostStamina = 10.0;
+      } else if (shiftPressed && throttle > 0 && state.boostStamina > 0) {
+        state.standingPedal = true;
+        state.boostStamina = Math.max(0, state.boostStamina - dt);
+        if (state.boostStamina <= 0) {
+          state.standingPedal = false;
+          state.boostCooldown = 20.0;
+        }
+      } else {
+        state.standingPedal = false;
+        if (state.boostStamina < 10.0) {
+          state.boostStamina = Math.min(10.0, state.boostStamina + 0.5 * dt);
+        }
+      }
+      state.standingBlend = THREE.MathUtils.lerp(state.standingBlend, state.standingPedal ? 1.0 : 0.0, Math.min(1, dt * 7.5));
+      boost = state.standingPedal ? 1.55 : 1.0;
+    } else {
+      boost = shiftPressed && throttle > 0 ? 1.42 : 1.0;
+    }
 
     const maxForwardSpeed = boost > 1 ? (config.boostMaxSpeed || 35.0) : (config.maxSpeed || 25.0);
     const engineForce = (config.engineForce || 14.5) * boost;

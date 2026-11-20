@@ -285,6 +285,25 @@ const carCamLookTarget = new THREE.Vector3();
 let carOrbitYaw = 0;
 let carOrbitPitch = 0.24;
 let carOrbitLastMove = 0;
+const freeCam = {
+  active: false,
+  pos: new THREE.Vector3(),
+  euler: new THREE.Euler(0, 0, 0, 'YXZ'),
+  fwd: new THREE.Vector3(),
+  right: new THREE.Vector3(),
+};
+
+function toggleFreeCam() {
+  if (inStudio || !started) return;
+  freeCam.active = !freeCam.active;
+  document.body.classList.toggle('freecam-active', freeCam.active);
+  if (freeCam.active) {
+    freeCam.pos.copy(camera.position);
+    freeCam.euler.setFromQuaternion(camera.quaternion, 'YXZ');
+    freeCursorMode = false;
+    if (!controls.pointerLocked) controls.lock();
+  }
+}
 let sun;
 let ambientLight;
 let hemisphereLight;
@@ -1517,9 +1536,18 @@ function syncCarHUD() {
     const isRick = Boolean(activeCar.state.isRickshaw);
     const isPass = isRick && activeCar.state.rideSeat === 'passenger';
     if (carBadgeEl) {
-      carBadgeEl.textContent = isRick
-        ? (isPass ? 'RICKSHAW · প্যাসেঞ্জার সিট' : 'RICKSHAW · প্যাডেল ড্রাইভ')
-        : activeCar.state.badge;
+      if (isRick) {
+        const stR = activeCar.state;
+        carBadgeEl.textContent = isPass
+          ? 'RICKSHAW · প্যাসেঞ্জার সিট'
+          : (stR.boostCooldown > 0
+            ? `RICKSHAW · বিশ্রাম (${Math.ceil(stR.boostCooldown)}s)`
+            : (stR.standingPedal
+              ? `RICKSHAW · দাঁড়িয়ে স্প্রিন্ট (${Math.ceil(stR.boostStamina)}s)`
+              : 'RICKSHAW · স্প্রিন্ট রেডি [SHIFT]'));
+      } else {
+        carBadgeEl.textContent = activeCar.state.badge;
+      }
     }
     if (carSeatBtn) carSeatBtn.classList.toggle('hidden', !isRick);
     if (carHudDoorsEl) carHudDoorsEl.classList.toggle('hidden', isRick);
@@ -1532,9 +1560,13 @@ function syncCarHUD() {
     }
     carPovBtn?.classList.remove('active');
     if (carSpeedEl) carSpeedEl.textContent = String(Math.round(Math.abs(activeCar.state.speed) * 3.6));
-    if (carGearEl) carGearEl.textContent = isRick ? (isPass ? 'P' : 'D') : String(activeCar.state.gear);
+    if (carGearEl) carGearEl.textContent = isRick ? (isPass ? 'P' : (activeCar.state.standingPedal ? 'S' : 'D')) : String(activeCar.state.gear);
     if (carRpmFill) {
-      const pct = THREE.MathUtils.clamp(((activeCar.state.rpm - 900) / 6900) * 100, 8, 100);
+      const pct = isRick
+        ? (activeCar.state.boostCooldown > 0
+          ? THREE.MathUtils.clamp(((20 - activeCar.state.boostCooldown) / 20) * 100, 2, 100)
+          : THREE.MathUtils.clamp((activeCar.state.boostStamina / 10) * 100, 2, 100))
+        : THREE.MathUtils.clamp(((activeCar.state.rpm - 900) / 6900) * 100, 8, 100);
       carRpmFill.style.width = `${pct.toFixed(1)}%`;
     }
     if (carPaintNameEl) {
@@ -2269,8 +2301,14 @@ canvas.addEventListener('pointerdown', (event) => {
 
 window.addEventListener('mousemove', (event) => {
   if (inStudio || !started) return;
-  if (!controls.pointerLocked || !getDrivingCar()) return;
+  if (!controls.pointerLocked) return;
   if (Math.abs(event.movementX) > 260 || Math.abs(event.movementY) > 260) return;
+  if (freeCam.active) {
+    freeCam.euler.y -= event.movementX * 0.0024;
+    freeCam.euler.x = THREE.MathUtils.clamp(freeCam.euler.x - event.movementY * 0.0024, -Math.PI * 0.48, Math.PI * 0.48);
+    return;
+  }
+  if (!getDrivingCar()) return;
   carOrbitYaw -= event.movementX * 0.0034;
   carOrbitPitch = THREE.MathUtils.clamp(carOrbitPitch + event.movementY * 0.0026, 0.04, 0.78);
   carOrbitLastMove = performance.now();
@@ -2739,6 +2777,18 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
+  // [C] Dedicated Free Cam Toggle (works both on foot & while driving!)
+  if (event.code === 'KeyC' && !event.repeat && !khulnaMapUI?.isOpen && !gtaPhoneUI?.isOpen) {
+    event.preventDefault();
+    toggleFreeCam();
+    return;
+  }
+  if (freeCam.active) {
+    if (event.code === 'Space') event.preventDefault();
+    keys.add(event.code);
+    return;
+  }
+
   // [P] GTA V-Style Smartphone Pop-up Toggle
   if (event.code === 'KeyP' && !event.repeat && !khulnaMapUI?.isOpen) {
     event.preventDefault();
@@ -2825,12 +2875,7 @@ window.addEventListener('keydown', (event) => {
       toggleCarDriving();
       return;
     }
-    if (event.code === 'KeyC' && !event.repeat) {
-      event.preventDefault();
-      activeCar.cyclePaintColor();
-      syncCarHUD();
-      return;
-    }
+    // Paint color is changed via the HUD mouse button; [C] is reserved for Free Cam
     if (event.code === 'KeyH' && !event.repeat) {
       event.preventDefault();
       activeCar.playHorn();
@@ -2960,9 +3005,9 @@ window.addEventListener('keydown', (event) => {
   } else if (event.code === 'KeyR' || event.code === 'CapsLock') {
     event.preventDefault();
     toggleRunMode();
-  } else if (event.code === 'KeyX' || event.code === 'KeyC') {
+  } else if (event.code === 'KeyX') {
     event.preventDefault();
-    playerCharacter?.triggerAttack(event.code === 'KeyC' ? 2 : null);
+    playerCharacter?.triggerAttack(null);
     syncEmoteUI(null);
   }
 
@@ -3239,6 +3284,38 @@ function computeGroundHeight(pos) {
   const footY = pos.y - EYE_HEIGHT;
   const maxStepUp = grounded ? 0.55 : (verticalVelocity > 0 ? 0.08 : 0.38);
 
+  // --- KHULNA ALIA KAMIL MADRASAH WALKABLE MAIN BUILDING (x = 179.8..192.4, z = 87.8..128.2) ---
+  if (pos.x >= 179.8 && pos.x <= 192.4 && pos.z >= 87.8 && pos.z <= 128.2) {
+    // Entry ramp from courtyard (192.4 -> 189.8) up to ground floor 0.45m
+    if (pos.x > 189.8 && pos.z >= 105.2 && pos.z <= 110.8 && footY < 1.5) {
+      const rt = THREE.MathUtils.clamp((192.4 - pos.x) / 2.6, 0, 1);
+      return rt * 0.45;
+    }
+    if (pos.x <= 190.1) {
+      let bestAliaY = 0.45;
+      // S-Shaped (Switchback) Staircase (x = 180.2..187.4, z = 105.2..110.8)
+      if (pos.x >= 180.2 && pos.x <= 187.4 && pos.z >= 105.2 && pos.z <= 110.8) {
+        if (pos.x <= 182.25) {
+          if (2.15 <= footY + maxStepUp) bestAliaY = Math.max(bestAliaY, 2.15);
+        } else if (pos.z >= 108.0) {
+          // Lower flight: climbs West (187.2 -> 182.2) from 0.45 -> 2.15
+          const t = THREE.MathUtils.clamp((187.2 - pos.x) / 5.0, 0, 1);
+          const sy = 0.45 + t * 1.70;
+          if (sy <= footY + maxStepUp) bestAliaY = Math.max(bestAliaY, sy);
+        } else {
+          // Upper flight: climbs East (182.2 -> 187.2) from 2.15 -> 3.85
+          const t = THREE.MathUtils.clamp((pos.x - 182.2) / 5.0, 0, 1);
+          const sy = 2.15 + t * 1.70;
+          if (sy <= footY + maxStepUp) bestAliaY = Math.max(bestAliaY, sy);
+        }
+      } else if (3.85 <= footY + maxStepUp) {
+        // 2nd Floor Hallway & Classrooms (y = 3.85m)
+        bestAliaY = Math.max(bestAliaY, 3.85);
+      }
+      return bestAliaY;
+    }
+  }
+
   // --- SK ARSHAN ALIF TOWER (35 Haji Mohsin Road) ---
   const inSkArshanZone = pos.x >= -19.85 && pos.x <= -2.85 && pos.z >= 14.28 && pos.z <= 28.55;
   if (inSkArshanZone) {
@@ -3409,6 +3486,30 @@ function applyWorldCollisions(pos) {
       const halfZ = car.state.halfLength * cosH + car.state.halfWidth * sinH;
       resolveCircleAABB(pos, PLAYER_RADIUS, cx - halfX, cx + halfX, cz - halfZ, cz + halfZ);
     }
+  }
+
+  // Walkable Khulna Alia Kamil Madrasah Main Building Interior & Exterior Collisions (x = 180..190, z = 88..128)
+  if (pos.x >= 178.5 && pos.x <= 192.0 && pos.z >= 86.5 && pos.z <= 129.5 && footY < 7.2) {
+    // Outer West, North & South walls
+    resolveCircleAABB(pos, PLAYER_RADIUS, 179.6, 180.25, 87.8, 128.2);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 179.8, 190.2, 87.6, 88.25);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 179.8, 190.2, 127.75, 128.4);
+    // East front railing on 2nd floor so you never walk off the balcony
+    if (footY > 2.8) {
+      resolveCircleAABB(pos, PLAYER_RADIUS, 189.65, 190.15, 88.0, 128.0);
+    }
+    // Corridor-to-Room Partition Walls (leaving open doors at 91.8..93.8, 99.8..101.8, 114.2..116.2, 122.2..124.2)
+    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 88.0, 91.7);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 93.9, 99.7);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 101.9, 105.1);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 110.9, 114.1);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 116.3, 122.1);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 124.3, 128.0);
+    // Room divider walls
+    resolveCircleAABB(pos, PLAYER_RADIUS, 180.1, 187.3, 96.45, 96.75);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 180.1, 187.3, 104.85, 105.15);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 180.1, 187.3, 110.85, 111.15);
+    resolveCircleAABB(pos, PLAYER_RADIUS, 180.1, 187.3, 119.25, 119.55);
   }
 
   const nearHajiMohsin = Math.abs(pos.x) < 55 && Math.abs(pos.z) < 55;
@@ -3934,6 +4035,23 @@ function updateStudioCamera(delta) {
 function updateMovement(delta) {
   if (!started || (pause && !pause.classList.contains('hidden'))) return;
 
+  // Dedicated [C] Free Cam flying mode (camera detaches and flies anywhere in 3D space!)
+  if (freeCam.active) {
+    const dt = Math.min(delta, 0.05);
+    camera.quaternion.setFromEuler(freeCam.euler);
+    freeCam.fwd.set(0, 0, -1).applyQuaternion(camera.quaternion);
+    freeCam.right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    const fIn = Number(keys.has('KeyW') || keys.has('ArrowUp')) - Number(keys.has('KeyS') || keys.has('ArrowDown'));
+    const rIn = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft'));
+    const uIn = Number(keys.has('KeyE') || keys.has('Space')) - Number(keys.has('KeyQ') || keys.has('ControlLeft'));
+    const flySpeed = (keys.has('ShiftLeft') || keys.has('ShiftRight')) ? 34.0 : 12.0;
+    freeCam.pos.addScaledVector(freeCam.fwd, fIn * flySpeed * dt);
+    freeCam.pos.addScaledVector(freeCam.right, rIn * flySpeed * dt);
+    freeCam.pos.y = Math.max(0.35, freeCam.pos.y + uIn * flySpeed * dt);
+    camera.position.copy(freeCam.pos);
+    return;
+  }
+
   // Always update all drivable cars & rickshaws
   if (cars.length) {
     for (const car of cars) {
@@ -4028,6 +4146,8 @@ function updateMovement(delta) {
               heading: st.heading,
               pedalPhase: st.pedalPhase,
               steerAngle: st.steerAngle,
+              standingBlend: st.standingBlend || 0,
+              standingPedal: Boolean(st.standingPedal),
               speed: st.speed,
               anchors,
             },

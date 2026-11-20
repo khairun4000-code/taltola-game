@@ -270,79 +270,180 @@ function addRedGreenFenceSpan(staticG, lm, x0, z0, x1, z1, posts = 8) {
   }
 }
 
+function addAliaOfficeFurniture(staticG, dynamicG, lm, cx, cz, fy, labelTitle) {
+  box(staticG, [1.65, 0.78, 0.85], [cx - 0.6, fy + 0.39, cz], lm.teakWood);
+  box(staticG, [0.58, 0.50, 0.58], [cx - 1.75, fy + 0.25, cz], lm.steelMat);
+  box(staticG, [0.12, 0.62, 0.56], [cx - 2.02, fy + 0.68, cz], lm.steelMat);
+  for (const vz of [-0.55, 0.55]) {
+    box(staticG, [0.48, 0.45, 0.48], [cx + 0.65, fy + 0.225, cz + vz], lm.teakWood);
+    box(staticG, [0.08, 0.48, 0.46], [cx + 0.88, fy + 0.62, cz + vz], lm.teakWood);
+  }
+  box(staticG, [0.55, 2.05, 2.1], [cx - 2.55, fy + 1.025, cz - 1.5], lm.teakWood);
+  box(staticG, [0.55, 2.05, 1.8], [cx - 2.55, fy + 1.025, cz + 1.6], lm.steelMat);
+  box(dynamicG, [1.4, 0.08, 0.35], [cx, fy + 3.25, cz], lm.bulbGlow, { castShadow: false });
+  if (labelTitle) {
+    addSignBoard(
+      dynamicG,
+      { title: labelTitle, subtitle: 'KHULNA ALIA MADRASAH', bg: '#064e3b', fg: '#ffffff', accent: '#fde047' },
+      [187.48, fy + 2.55, cz],
+      Math.PI * 0.5,
+      1.85,
+      0.52
+    );
+  }
+}
+
+function addAliaClassroomFurniture(staticG, dynamicG, lm, cx, cz, fy, roomName) {
+  box(staticG, [0.10, 1.25, 3.4], [cx - 2.75, fy + 1.55, cz], lm.emeraldDark);
+  box(staticG, [0.14, 0.08, 3.5], [cx - 2.72, fy + 0.92, cz], lm.teakWood);
+  box(staticG, [0.75, 0.82, 1.35], [cx - 1.85, fy + 0.41, cz], lm.teakWood);
+  box(staticG, [0.46, 0.46, 0.46], [cx - 2.35, fy + 0.23, cz], lm.steelMat);
+  for (let row = 0; row < 3; row++) {
+    const rx = cx - 0.55 + row * 1.15;
+    for (const colZ of [cz - 1.55, cz + 1.55]) {
+      box(staticG, [0.46, 0.74, 2.15], [rx, fy + 0.37, colZ], lm.teakWood);
+      box(staticG, [0.34, 0.44, 2.15], [rx + 0.44, fy + 0.22, colZ], lm.warmOchre);
+    }
+  }
+  box(dynamicG, [2.2, 0.08, 0.4], [cx, fy + 3.25, cz], lm.bulbGlow, { castShadow: false });
+  addSignBoard(
+    dynamicG,
+    { title: roomName, subtitle: '২য় তলা · CLASSROOM', bg: '#1e3a8a', fg: '#ffffff', accent: '#fde047' },
+    [187.48, fy + 2.55, cz],
+    Math.PI * 0.5,
+    1.85,
+    0.52
+  );
+}
+
 function buildAliaMadrasahCampus(staticG, dynamicG, lm, m) {
   // Real-photo Khulna Alia Kamil Madrasah Campus (খুলনা আলিয়া কামিল মাদ্রাসা)
-  // Spawn is at (216, 108) looking West toward (176, 112).
+  // Spawn is at (216, 108) looking West toward the Main Walkable Building (185, 108) & Big Front Buildings!
 
-  // 1) Concrete Entrance Driveway leading straight to the Iconic Curved-Portico Main Building (x = 191..224, z = 108)
-  box(staticG, [34.0, 0.07, 5.4], [207.5, 0.025, 108.0], lm.stonePlinth, { castShadow: false, uvScale: 2.8 });
-  box(staticG, [34.0, 0.22, 0.36], [207.5, 0.11, 105.1], lm.darkConcrete);
-  box(staticG, [34.0, 0.22, 0.36], [207.5, 0.11, 110.9], lm.darkConcrete);
-  // Signature Red & Green Painted Iron Courtyard Railings lining both sides of the entrance road
-  addRedGreenFenceSpan(staticG, lm, 195.0, 105.1, 222.0, 105.1, 14);
-  addRedGreenFenceSpan(staticG, lm, 195.0, 110.9, 222.0, 110.9, 14);
+  // 1) Concrete Entrance Driveway + Front Courtyard Green Lawns (x = 191..228, z = 108)
+  box(staticG, [36.0, 0.07, 5.6], [208.5, 0.025, 108.0], lm.stonePlinth, { castShadow: false, uvScale: 2.8 });
+  box(staticG, [34.0, 0.22, 0.36], [208.5, 0.11, 105.0], lm.darkConcrete);
+  box(staticG, [34.0, 0.22, 0.36], [208.5, 0.11, 111.0], lm.darkConcrete);
+  addRedGreenFenceSpan(staticG, lm, 195.0, 105.0, 222.0, 105.0, 14);
+  addRedGreenFenceSpan(staticG, lm, 195.0, 111.0, 222.0, 111.0, 14);
+
+  // Open Green Courtyard Field right in front flanking the walkway so all big buildings stand prominently in front!
+  box(staticG, [32.0, 0.05, 56.0], [208.0, 0.012, 108.0], lm.moss, { castShadow: false });
 
   // Tall Coconut Palms flanking the main building entrance just like the real photo
   addCoconutPalm(staticG, lm, 196.5, 101.2, 11.2, 0.8, -0.5);
-  addCoconutPalm(staticG, lm, 204.0, 100.8, 10.4, 0.5, 0.4);
+  addCoconutPalm(staticG, lm, 204.5, 101.0, 10.4, 0.5, 0.4);
   addCoconutPalm(staticG, lm, 196.0, 115.0, 11.8, 0.7, 0.6);
-  addCoconutPalm(staticG, lm, 205.5, 116.2, 9.8, -0.4, 0.5);
+  addCoconutPalm(staticG, lm, 205.5, 116.0, 9.8, -0.4, 0.5);
 
-  // 2) ICONIC 3-STORY MAIN ADMINISTRATIVE & HERITAGE BUILDING with Curved Cylindrical Portico (Photo 1!)
-  // Positioned at x = 185, z = 108, facing East (+X) directly toward the teleport spawn point!
+  // 2) WALKABLE 3-STORY MAIN ADMINISTRATIVE & CLASSROOM BUILDING (x = 180..190, z = 88..128)
+  // Ground Floor (y = 0.45m): Left (South) = Office Rooms, Right (North) = Teachers Room & Office, Center = S-Shaped Stairs!
+  // 2nd Floor (y = 3.85m): S-Stairs land into East Hallway leading Left & Right to 4 Furnished Classrooms!
   const mainX = 185.0;
   const mainZ = 108.0;
-  // Plinth & 3-story cream-beige wings (north wing z = 88..103, south wing z = 113..128)
-  box(staticG, [8.6, 0.45, 40.0], [mainX, 0.225, mainZ], lm.stonePlinth);
-  box(staticG, [7.6, 10.2, 38.8], [mainX - 0.3, 5.3, mainZ], lm.colonialCream);
-  // Terracotta-red roof cornice & floor veranda slab bands
-  box(staticG, [8.8, 0.55, 39.8], [mainX, 10.55, mainZ], lm.terracottaTile);
-  box(staticG, [8.6, 0.32, 39.4], [mainX, 3.65, mainZ], lm.colonialCream);
-  box(staticG, [8.6, 0.32, 39.4], [mainX, 7.05, mainZ], lm.colonialCream);
+  const y0 = 0.45;
+  const y1 = 3.85;
+  const y2 = 7.25;
+  const yRoof = 10.55;
 
-  // Arched ground-floor colonnade & upper balustrade verandas on both wings
+  // Ground Plinth + Entry Ramp (x = 189.8..192.4, z = 105.4..110.6)
+  box(staticG, [10.4, y0, 40.4], [mainX, y0 * 0.5, mainZ], lm.stonePlinth);
+  box(staticG, [2.6, 0.22, 5.2], [191.1, 0.14, mainZ], lm.stonePlinth);
+  // 2nd Floor Slab (with stairwell cutout at x = 180.4..187.2, z = 105.4..110.6 so you can walk straight up the S-stairs!)
+  box(staticG, [10.2, 0.26, 17.4], [mainX, y1 - 0.13, 96.7], lm.colonialCream);
+  box(staticG, [10.2, 0.26, 17.4], [mainX, y1 - 0.13, 119.3], lm.colonialCream);
+  box(staticG, [3.0, 0.26, 5.6], [188.6, y1 - 0.13, mainZ], lm.colonialCream);
+  // 3rd Floor Slab & Terracotta Roof Cornice
+  box(staticG, [10.4, 0.28, 40.2], [mainX, y2 - 0.14, mainZ], lm.colonialCream);
+  box(staticG, [10.6, 3.2, 40.0], [mainX, y2 + 1.6, mainZ], lm.colonialCream);
+  box(staticG, [11.0, 0.55, 40.8], [mainX, yRoof, mainZ], lm.terracottaTile);
+
+  // Outer Perimeter Walls (West back wall, North & South end walls) across Ground & 2nd Floor
+  box(staticG, [0.36, y2 - y0, 40.2], [180.0, (y0 + y2) * 0.5, mainZ], lm.colonialCream);
+  box(staticG, [10.2, y2 - y0, 0.36], [mainX, (y0 + y2) * 0.5, 88.0], lm.colonialCream);
+  box(staticG, [10.2, y2 - y0, 0.36], [mainX, (y0 + y2) * 0.5, 128.0], lm.colonialCream);
+
+  // East Front Arched Colonnade + 2nd-Floor Veranda Railings (WIDE OPEN main doorway at z = 105.4..110.6!)
   for (let wz = -17.0; wz <= 17.0; wz += 3.4) {
-    if (Math.abs(wz) < 5.2) continue;
-    // Shaded veranda cavities across 3 floors
-    box(staticG, [0.45, 2.7, 2.4], [mainX + 3.65, 1.85, mainZ + wz], lm.cavityMat);
-    box(staticG, [0.45, 2.4, 2.4], [mainX + 3.65, 5.25, mainZ + wz], lm.emeraldDark);
-    box(staticG, [0.45, 2.3, 2.4], [mainX + 3.65, 8.65, mainZ + wz], lm.emeraldDark);
-    // Decorative white balustrade parapet walls on 2nd & 3rd floor verandas
-    box(staticG, [0.22, 0.85, 3.1], [mainX + 3.92, 4.18, mainZ + wz], lm.whitePlaster);
-    box(staticG, [0.22, 0.85, 3.1], [mainX + 3.92, 7.58, mainZ + wz], lm.whitePlaster);
-    // Vertical colonnade piers
-    box(staticG, [0.42, 10.1, 0.44], [mainX + 3.85, 5.25, mainZ + wz - 1.7], lm.colonialCream);
+    if (Math.abs(wz) < 3.0) continue;
+    box(staticG, [0.38, y2 - y0, 0.42], [189.85, (y0 + y2) * 0.5, mainZ + wz], lm.colonialCream);
+    box(staticG, [0.22, 0.92, 3.2], [189.85, y1 + 0.46, mainZ + wz], lm.whitePlaster);
   }
 
-  // Iconic 3-Story Semicircular Cylindrical Central Portico Tower (projecting East at x = 189.2, z = 108)
-  const portX = 189.4;
-  cylinder(staticG, 4.65, 4.75, 0.42, [portX, 0.21, mainZ], lm.stonePlinth, 24);
-  // Ground-floor wide entrance portico columns & recessed dark entry arch
-  for (const ang of [-1.05, -0.52, 0.52, 1.05]) {
+  // Interior Hallway Partition Walls (at x = 187.3, separating East corridor from Rooms on BOTH floors, with open doors!)
+  for (const fy of [y0, y1]) {
+    const wallH = 3.25;
+    const midY = fy + wallH * 0.5;
+    // South wing rooms (z = 111.0..127.8) — open doors at z = 114.2..116.2 and z = 122.2..124.2
+    box(staticG, [0.24, wallH, 3.2], [187.3, midY, 112.6], lm.whitePlaster);
+    box(staticG, [0.24, wallH, 6.0], [187.3, midY, 119.2], lm.whitePlaster);
+    box(staticG, [0.24, wallH, 3.6], [187.3, midY, 126.0], lm.whitePlaster);
+    // North wing rooms (z = 88.2..105.0) — open doors at z = 91.8..93.8 and z = 99.8..101.8
+    box(staticG, [0.24, wallH, 3.6], [187.3, midY, 90.0], lm.whitePlaster);
+    box(staticG, [0.24, wallH, 6.0], [187.3, midY, 96.8], lm.whitePlaster);
+    box(staticG, [0.24, wallH, 3.2], [187.3, midY, 103.4], lm.whitePlaster);
+    // Room divider walls between front & back rooms in each wing
+    box(staticG, [7.2, wallH, 0.24], [183.7, midY, 111.0], lm.whitePlaster);
+    box(staticG, [7.2, wallH, 0.24], [183.7, midY, 119.4], lm.whitePlaster);
+    box(staticG, [7.2, wallH, 0.24], [183.7, midY, 105.0], lm.whitePlaster);
+    box(staticG, [7.2, wallH, 0.24], [183.7, midY, 96.6], lm.whitePlaster);
+  }
+
+  // GRAND S-SHAPED (SWITCHBACK) MARBLE STAIRCASE straight ahead from the main entrance (x = 180.4..187.2, z = 105.4..110.6)!
+  const stepsPerFlight = 10;
+  for (let i = 0; i < stepsPerFlight; i++) {
+    const t = (i + 0.5) / stepsPerFlight;
+    const sx = THREE.MathUtils.lerp(187.2, 182.2, t);
+    const sy = THREE.MathUtils.lerp(y0, 2.15, (i + 1) / stepsPerFlight);
+    box(staticG, [0.54, sy - y0, 2.25], [sx, y0 + (sy - y0) * 0.5, 109.3], lm.stonePlinth);
+  }
+  box(staticG, [2.0, 0.24, 5.4], [181.25, 2.04, mainZ], lm.stonePlinth);
+  for (let i = 0; i < stepsPerFlight; i++) {
+    const t = (i + 0.5) / stepsPerFlight;
+    const sx = THREE.MathUtils.lerp(182.2, 187.2, t);
+    const sy = THREE.MathUtils.lerp(2.15, y1, (i + 1) / stepsPerFlight);
+    box(staticG, [0.54, 0.24, 2.25], [sx, sy - 0.12, 106.7], lm.stonePlinth);
+  }
+  rodBetween(staticG, [187.2, y0 + 0.95, 108.05], [182.2, 2.15 + 0.95, 108.05], 0.045, lm.steelMat);
+  rodBetween(staticG, [182.2, 2.15 + 0.95, 107.95], [187.2, y1 + 0.95, 107.95], 0.045, lm.steelMat);
+
+  // Ground Floor Furnished Rooms: Left (South) = Office Rooms, Right (North) = Teachers' Room & Office
+  addAliaOfficeFurniture(staticG, dynamicG, lm, 183.8, 115.2, y0, 'অধ্যক্ষের কার্যালয় (PRINCIPAL OFFICE)');
+  addAliaOfficeFurniture(staticG, dynamicG, lm, 183.8, 123.6, y0, 'একাডেমিক অফিস রুম (OFFICE ROOM)');
+  addAliaOfficeFurniture(staticG, dynamicG, lm, 183.8, 100.8, y0, 'শিক্ষক মিলনায়তন (TEACHERS ROOM)');
+  addAliaOfficeFurniture(staticG, dynamicG, lm, 183.8, 92.4, y0, 'হিসাব ও রেজিস্ট্রার অফিস');
+
+  // 2nd Floor Furnished Classrooms on BOTH Left (South) & Right (North) Wings off the Hallway!
+  addAliaClassroomFurniture(staticG, dynamicG, lm, 183.8, 115.2, y1, 'শ্রেণিকক্ষ ১০১ (CLASSROOM 101)');
+  addAliaClassroomFurniture(staticG, dynamicG, lm, 183.8, 123.6, y1, 'শ্রেণিকক্ষ ১০২ (CLASSROOM 102)');
+  addAliaClassroomFurniture(staticG, dynamicG, lm, 183.8, 100.8, y1, 'শ্রেণিকক্ষ ২০১ (CLASSROOM 201)');
+  addAliaClassroomFurniture(staticG, dynamicG, lm, 183.8, 92.4, y1, 'শ্রেণিকক্ষ ২০২ (CLASSROOM 202)');
+
+  // Iconic 3-Story Semicircular Cylindrical Central Portico Tower (OPEN at ground level so you walk straight in!)
+  const portX = 190.4;
+  cylinder(staticG, 4.45, 4.55, 0.34, [portX, 0.17, mainZ], lm.stonePlinth, 24);
+  for (const ang of [-1.10, -0.58, 0.58, 1.10]) {
     cylinder(
       staticG,
       0.24,
       0.28,
       3.55,
-      [portX + Math.cos(ang) * 4.25, 1.98, mainZ + Math.sin(ang) * 4.25],
+      [portX + Math.cos(ang) * 4.15, 1.98, mainZ + Math.sin(ang) * 4.15],
       lm.colonialCream,
       10
     );
   }
-  box(staticG, [1.8, 3.35, 3.8], [mainX + 3.7, 1.9, mainZ], lm.cavityMat);
-  // Curved 1st-floor entablature fascia (holds main name sign), 2nd-floor curved veranda + fascia, 3rd-floor curved crown
-  cylinder(staticG, 4.72, 4.72, 1.15, [portX, 3.95, mainZ], lm.warmOchre, 24);
-  cylinder(staticG, 4.42, 4.42, 2.35, [portX, 5.55, mainZ], lm.emeraldDark, 24);
-  cylinder(staticG, 4.76, 4.76, 1.25, [portX, 7.25, mainZ], lm.colonialCream, 24);
-  cylinder(staticG, 4.42, 4.42, 2.20, [portX, 8.85, mainZ], lm.emeraldDark, 24);
-  cylinder(staticG, 4.82, 4.82, 1.65, [portX, 10.75, mainZ], lm.colonialCream, 24);
-  cylinder(staticG, 4.92, 4.92, 0.28, [portX, 11.65, mainZ], lm.terracottaTile, 24);
+  cylinder(staticG, 4.68, 4.68, 1.15, [portX, 3.95, mainZ], lm.warmOchre, 24);
+  cylinder(staticG, 4.38, 4.38, 2.35, [portX, 5.55, mainZ], lm.emeraldDark, 24);
+  cylinder(staticG, 4.72, 4.72, 1.25, [portX, 7.25, mainZ], lm.colonialCream, 24);
+  cylinder(staticG, 4.38, 4.38, 2.20, [portX, 8.85, mainZ], lm.emeraldDark, 24);
+  cylinder(staticG, 4.78, 4.78, 1.65, [portX, 10.75, mainZ], lm.colonialCream, 24);
+  cylinder(staticG, 4.88, 4.88, 0.28, [portX, 11.65, mainZ], lm.terracottaTile, 24);
   for (const ang of [-0.95, -0.35, 0.35, 0.95]) {
-    cylinder(staticG, 0.14, 0.15, 2.35, [portX + Math.cos(ang) * 4.58, 5.55, mainZ + Math.sin(ang) * 4.58], lm.whitePlaster, 8);
-    cylinder(staticG, 0.14, 0.15, 2.25, [portX + Math.cos(ang) * 4.58, 8.85, mainZ + Math.sin(ang) * 4.58], lm.whitePlaster, 8);
+    cylinder(staticG, 0.14, 0.15, 2.35, [portX + Math.cos(ang) * 4.54, 5.55, mainZ + Math.sin(ang) * 4.54], lm.whitePlaster, 8);
+    cylinder(staticG, 0.14, 0.15, 2.25, [portX + Math.cos(ang) * 4.54, 8.85, mainZ + Math.sin(ang) * 4.54], lm.whitePlaster, 8);
   }
 
-  // Exact Mounted Bilingual Signage on the Cylindrical Portico Front (facing East toward spawn!)
   addSignBoard(
     dynamicG,
     {
@@ -353,7 +454,7 @@ function buildAliaMadrasahCampus(staticG, dynamicG, lm, m) {
       accent: '#7c2d12',
       border: '#7c2d12',
     },
-    [portX + 4.78, 3.98, mainZ],
+    [portX + 4.74, 3.98, mainZ],
     Math.PI * 0.5,
     5.4,
     1.12
@@ -368,38 +469,30 @@ function buildAliaMadrasahCampus(staticG, dynamicG, lm, m) {
       accent: '#0f5132',
       border: '#b94a38',
     },
-    [portX + 4.82, 7.25, mainZ],
+    [portX + 4.78, 7.25, mainZ],
     Math.PI * 0.5,
     5.6,
     1.15
   );
 
-  // 3) CENTRAL GREEN GRASSY CAMPUS FIELD (মাদ্রাসা মাঠ) behind/west of Main Building (x = 148..180, z = 78..134)
-  box(staticG, [34.0, 0.05, 56.0], [164.0, 0.012, 106.0], lm.moss, { castShadow: false });
-  // Paved campus internal road running along the North/East edge of the grassy field (Photo 2!)
-  box(staticG, [36.0, 0.06, 4.2], [165.0, 0.022, 81.5], lm.stonePlinth, { castShadow: false, uvScale: 2.6 });
-
-  // 4) 6-STORY WHITE & TERRACOTTA-RED MODERN ACADEMIC BUILDING (Photo 2 — Center-West facing the field!)
-  const b6x = 144.0;
-  const b6z = 106.0;
+  // 3) BIG 6-STORY WHITE & TERRACOTTA-RED MODERN ACADEMIC BUILDING RIGHT IN FRONT (North Courtyard Side, z = 76!)
+  const b6x = 204.0;
+  const b6z = 76.0;
   const b6H = 19.2;
-  box(staticG, [10.4, 0.5, 34.0], [b6x, 0.25, b6z], lm.terracottaTile);
-  box(staticG, [9.6, b6H, 33.2], [b6x, b6H * 0.5 + 0.4, b6z], lm.whitePlaster);
-  // Bold terracotta-red roof crown, side frame towers & 6 horizontal floor slabs
-  box(staticG, [10.4, 0.72, 34.2], [b6x, b6H + 0.6, b6z], lm.terracottaTile);
+  box(staticG, [32.0, 0.5, 10.2], [b6x, 0.25, b6z], lm.terracottaTile);
+  box(staticG, [31.2, b6H, 9.4], [b6x, b6H * 0.5 + 0.4, b6z], lm.whitePlaster);
+  box(staticG, [32.2, 0.72, 10.2], [b6x, b6H + 0.6, b6z], lm.terracottaTile);
   for (let fl = 0; fl < 6; fl++) {
     const fy = 0.55 + fl * 3.1;
-    box(staticG, [10.1, 0.26, 33.8], [b6x, fy + 2.95, b6z], lm.terracottaTile);
-    box(staticG, [0.22, 0.92, 33.4], [b6x + 4.92, fy + 0.55, b6z], lm.whitePlaster);
-    for (let bz = -13.5; bz <= 13.5; bz += 3.0) {
-      box(staticG, [0.35, 1.95, 2.25], [b6x + 4.72, fy + 1.85, b6z + bz], lm.cavityMat);
+    box(staticG, [31.8, 0.26, 9.9], [b6x, fy + 2.95, b6z], lm.terracottaTile);
+    box(staticG, [31.4, 0.92, 0.22], [b6x, fy + 0.55, b6z + 4.82], lm.whitePlaster);
+    for (let bx = -13.5; bx <= 13.5; bx += 3.0) {
+      box(staticG, [2.25, 1.95, 0.35], [b6x + bx, fy + 1.85, b6z + 4.62], lm.cavityMat);
     }
   }
-  // Vertical terracotta-red structural columns across the 6-story facade
-  for (let cz = -15.0; cz <= 15.0; cz += 3.0) {
-    box(staticG, [0.42, b6H + 0.4, 0.34], [b6x + 4.92, b6H * 0.5 + 0.4, b6z + cz], lm.terracottaTile);
+  for (let cx = -15.0; cx <= 15.0; cx += 3.0) {
+    box(staticG, [0.34, b6H + 0.4, 0.42], [b6x + cx, b6H * 0.5 + 0.4, b6z + 4.82], lm.terracottaTile);
   }
-  // Vertical green & white Madrasah banner hanging on the 6-story facade (just like Photo 2!)
   addSignBoard(
     dynamicG,
     {
@@ -409,61 +502,46 @@ function buildAliaMadrasahCampus(staticG, dynamicG, lm, m) {
       fg: '#ffffff',
       accent: '#fde047',
     },
-    [b6x + 5.15, 8.2, b6z],
-    Math.PI * 0.5,
-    4.6,
+    [b6x, 8.2, b6z + 5.06],
+    0,
+    5.2,
     1.35
   );
 
-  // 5) 4-STORY CREAM & TEAL-GREEN ARCHED ACADEMIC BUILDING (Photos 2 & 3 — North side of the field!)
-  const b4x = 166.0;
-  const b4z = 72.5;
+  // 4) BIG 4-STORY CREAM & TEAL-GREEN ARCHED ACADEMIC BUILDING RIGHT IN FRONT (South Courtyard Side, z = 138!)
+  const b4x = 204.0;
+  const b4z = 138.0;
   const b4H = 13.0;
   box(staticG, [32.0, 0.45, 9.2], [b4x, 0.225, b4z], lm.stonePlinth);
   box(staticG, [31.2, b4H, 8.4], [b4x, b4H * 0.5 + 0.35, b4z], lm.colonialCream);
-  // Roof parapet + right stairwell mumty tower (Photo 3!)
   box(staticG, [32.0, 0.48, 9.0], [b4x, b4H + 0.55, b4z], lm.terracottaTile);
-  box(staticG, [4.6, 3.2, 5.2], [b4x + 13.0, b4H + 2.1, b4z], lm.colonialCream);
-  // 4 floors of arched dark-teal/green veranda bays + red entrance awning on ground floor
+  box(staticG, [4.6, 3.2, 5.2], [b4x - 12.8, b4H + 2.1, b4z], lm.colonialCream);
   for (let fl = 0; fl < 4; fl++) {
     const fy = 0.45 + fl * 3.12;
     box(staticG, [31.6, 0.24, 8.8], [b4x, fy + 2.95, b4z], lm.terracottaTile);
     for (let bx = -13.0; bx <= 13.0; bx += 3.25) {
-      box(staticG, [2.35, 2.05, 0.38], [b4x + bx, fy + 1.65, b4z + 4.12], lm.emeraldDark);
-      box(staticG, [2.55, 0.72, 0.20], [b4x + bx, fy + 0.48, b4z + 4.25], lm.colonialCream);
+      box(staticG, [2.35, 2.05, 0.38], [b4x + bx, fy + 1.65, b4z - 4.12], lm.emeraldDark);
+      box(staticG, [2.55, 0.72, 0.20], [b4x + bx, fy + 0.48, b4z - 4.25], lm.colonialCream);
     }
   }
-  box(staticG, [7.2, 0.24, 1.8], [b4x + 11.2, 3.25, b4z + 4.9], lm.terracottaTile);
+  box(staticG, [7.2, 0.24, 1.8], [b4x - 10.5, 3.25, b4z - 4.9], lm.terracottaTile);
 
-  // 6) 3-STORY WHITE & RED-TRIM SOUTH ACADEMIC WING (Photo 2 — South side of the field!)
-  const b3x = 166.0;
-  const b3z = 136.0;
-  box(staticG, [26.0, 9.4, 8.2], [b3x, 4.7, b3z], lm.whitePlaster);
-  box(staticG, [26.6, 0.52, 8.8], [b3x, 9.65, b3z], lm.terracottaTile);
-  box(staticG, [26.4, 0.28, 8.5], [b3x, 3.25, b3z], lm.terracottaTile);
-  box(staticG, [26.4, 0.28, 8.5], [b3x, 6.45, b3z], lm.terracottaTile);
-  for (let bx = -10.5; bx <= 10.5; bx += 3.0) {
-    box(staticG, [2.1, 2.2, 0.35], [b3x + bx, 1.5, b3z - 4.0], lm.emeraldDark);
-    box(staticG, [2.1, 2.0, 0.35], [b3x + bx, 4.8, b3z - 4.0], lm.cavityMat);
-    box(staticG, [2.1, 2.0, 0.35], [b3x + bx, 8.0, b3z - 4.0], lm.cavityMat);
-  }
-
-  // 7) Stone Foundation Plaque & Red Ixora (রঙ্গন) Flower Bushes in Courtyard (Photo 3!)
-  box(staticG, [2.4, 1.05, 1.2], [181.5, 0.52, 88.5], lm.stonePlinth);
+  // 5) Stone Foundation Plaque & Red Ixora (রঙ্গন) Flower Bushes in Front Courtyard
+  box(staticG, [2.4, 1.05, 1.2], [202.0, 0.52, 103.0], lm.stonePlinth);
   addSignBoard(
     dynamicG,
     { title: 'খুলনা আলিয়া মাদ্রাসা', subtitle: 'স্থাপিত: ১৯৫২ · খুলনা', bg: '#e5e7eb', fg: '#111827', accent: '#b94a38', border: '#475569' },
-    [181.5, 1.08, 89.15],
+    [202.0, 1.08, 103.65],
     0,
     2.1,
     0.72
   );
-  for (const [fx, fz] of [[180.0, 88.8], [183.0, 88.8], [198.0, 104.2], [206.0, 104.2], [198.0, 111.8], [206.0, 111.8]]) {
+  for (const [fx, fz] of [[200.5, 103.2], [203.5, 103.2], [198.0, 104.0], [208.0, 104.0], [198.0, 112.0], [208.0, 112.0]]) {
     box(staticG, [0.9, 0.55, 0.9], [fx, 0.28, fz], lm.moss);
     box(staticG, [0.55, 0.35, 0.55], [fx, 0.62, fz], lm.flowerRed);
   }
 
-  // 8) Courtyard Benches, Lamps & Pond Quay Wall South-East of Campus
+  // 6) Courtyard Benches & Lamps
   for (const [bx, bz, ry] of [
     [203.0, 103.5, 0],
     [214.0, 103.5, 0],
@@ -473,12 +551,10 @@ function buildAliaMadrasahCampus(staticG, dynamicG, lm, m) {
     addParkBench(staticG, lm, bx, bz, ry);
   }
   for (const [lx, lz] of [
-    [196.0, 104.6],
-    [212.0, 104.6],
-    [196.0, 111.4],
-    [212.0, 111.4],
-    [172.0, 83.2],
-    [158.0, 83.2],
+    [196.0, 104.4],
+    [212.0, 104.4],
+    [196.0, 111.6],
+    [212.0, 111.6],
   ]) {
     addParkLamp(staticG, dynamicG, lm, lx, lz, 4.0, 0.02);
   }
