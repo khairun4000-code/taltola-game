@@ -1323,8 +1323,8 @@ function syncHUDButtons(activeSprint = false, force = false) {
     if (runPillButton) {
       runPillButton.classList.toggle('active', runOn);
       runPillButton.innerHTML = runOn
-        ? '<kbd>SHIFT / R</kbd> দৌড়ানো: চালু (Running)'
-        : '<kbd>SHIFT / R</kbd> দৌড়ানো (Run)';
+        ? '<kbd>SHIFT / R</kbd> SPRINT: ON'
+        : '<kbd>SHIFT / R</kbd> SPRINT';
     }
   }
 }
@@ -1346,11 +1346,11 @@ function syncLiftKeypadUI() {
   if (!tower || !liftKeypad) return;
   const st = tower.state;
   const stops = tower.stops || [];
-  const curStop = stops[st.liftFloorIndex] || { code: 'GF', label: 'নিচতলা (Ground Lobby)' };
+  const curStop = stops[st.liftFloorIndex] || { code: 'GF', label: 'Ground Lobby' };
   const tgtStop = stops[st.liftTargetIndex] || curStop;
   const isMoving = st.liftPhase === 'moving' || st.liftPhase === 'closing';
-  const curName = curStop.nameBn || curStop.label || 'নিচতলা';
-  const tgtName = tgtStop.nameBn || tgtStop.label || curName;
+  const curName = curStop.label || curStop.nameBn || 'Ground Lobby';
+  const tgtName = tgtStop.label || tgtStop.nameBn || curName;
 
   if (liftLedArrow) {
     liftLedArrow.textContent = isMoving
@@ -1365,16 +1365,23 @@ function syncLiftKeypadUI() {
   }
   if (liftLedStatus) {
     if (st.liftPhase === 'moving') {
-      liftLedStatus.textContent = `লিফট চলছে → গন্তব্য: ${tgtName}`;
+      liftLedStatus.textContent = `MOVING → ${tgtName}`;
     } else if (st.liftPhase === 'opening') {
-      liftLedStatus.textContent = 'দরজা খুলছে... (Doors Opening)';
+      liftLedStatus.textContent = 'DOORS OPENING...';
     } else if (st.liftPhase === 'closing') {
-      liftLedStatus.textContent = 'দরজা বন্ধ হচ্ছে... (Doors Closing)';
+      liftLedStatus.textContent = 'DOORS CLOSING...';
     } else if (st.liftDoorOpen >= 0.85) {
-      liftLedStatus.textContent = 'দরজা খোলা · ফ্লোর নাম্বার ক্লিক করুন';
+      liftLedStatus.textContent = 'DOORS OPEN · SELECT A FLOOR';
     } else {
-      liftLedStatus.textContent = 'প্রস্তুত · ফ্লোর নাম্বার ক্লিক করুন';
+      liftLedStatus.textContent = 'READY · SELECT A FLOOR';
     }
+  }
+
+  const liftEyebrow = liftKeypad.querySelector('.lift-eyebrow');
+  if (liftEyebrow) {
+    liftEyebrow.textContent = tower === environment?.altapoleTower
+      ? '29 UPPER JESSORE RD · ALTAPOLE LANE'
+      : 'SK ARSHAN ALIF TOWER';
   }
 
   const roofIdx = stops.length - 1;
@@ -1384,6 +1391,10 @@ function syncLiftKeypadUI() {
     const mappedIdx = isRoofBtn ? roofIdx : rawIdx;
     const showBtn = isRoofBtn || rawIdx < roofIdx;
     btn.style.display = showBtn ? '' : 'none';
+    if (showBtn && stops[mappedIdx]) {
+      const lblEl = btn.querySelector('.lift-btn-label');
+      if (lblEl) lblEl.textContent = stops[mappedIdx].label;
+    }
     const isCurrent = showBtn && mappedIdx === st.liftFloorIndex && !isMoving;
     const isTarget = showBtn && mappedIdx === st.liftTargetIndex && isMoving;
     btn.classList.toggle('current-floor', isCurrent);
@@ -1600,7 +1611,7 @@ function syncCarDoorUI() {
   const showNearbyPanel = Boolean(nearCar && !nearCar.state.isRickshaw && !liftKeypadOpen && !khulnaMapUI?.isOpen);
   carDoorPanel?.classList.toggle('hidden', !showNearbyPanel);
   if (showNearbyPanel && carDoorTitle) {
-    carDoorTitle.textContent = `${nearCar.state.name} · দরজা`;
+    carDoorTitle.textContent = `${nearCar.state.name} · Doors`;
   }
   const targetCar = (driving && !driving.state.isRickshaw) ? driving : (showNearbyPanel ? nearCar : null);
   const ds = targetCar?.getDoorStates?.() || { FL: false, FR: false, RL: false, RR: false, anyOpen: false, allOpen: false };
@@ -1611,7 +1622,7 @@ function syncCarDoorUI() {
   }
   if (carDoorAllBtn) {
     carDoorAllBtn.classList.toggle('open', Boolean(ds.allOpen));
-    carDoorAllBtn.textContent = ds.allOpen ? 'সব দরজা বন্ধ করুন (CLOSE ALL)' : 'সব দরজা খুলুন (OPEN ALL)';
+    carDoorAllBtn.textContent = ds.allOpen ? 'CLOSE ALL DOORS' : 'OPEN ALL DOORS';
   }
 }
 
@@ -1634,12 +1645,12 @@ function syncCarHUD() {
       if (isRick) {
         const stR = activeCar.state;
         carBadgeEl.textContent = isPass
-          ? 'RICKSHAW · প্যাসেঞ্জার সিট'
+          ? 'RICKSHAW · PASSENGER SEAT'
           : (stR.boostCooldown > 0
-            ? `RICKSHAW · বিশ্রাম (${Math.ceil(stR.boostCooldown)}s)`
+            ? `RICKSHAW · COOLDOWN (${Math.ceil(stR.boostCooldown)}s)`
             : (stR.standingPedal
-              ? `RICKSHAW · দাঁড়িয়ে স্প্রিন্ট (${Math.ceil(stR.boostStamina)}s)`
-              : 'RICKSHAW · স্প্রিন্ট রেডি [SHIFT]'));
+              ? `RICKSHAW · STANDING SPRINT (${Math.ceil(stR.boostStamina)}s)`
+              : 'RICKSHAW · SPRINT READY [SHIFT]'));
       } else {
         carBadgeEl.textContent = activeCar.state.badge;
       }
@@ -1647,11 +1658,11 @@ function syncCarHUD() {
     if (carSeatBtn) carSeatBtn.classList.toggle('hidden', !isRick);
     if (carHudDoorsEl) carHudDoorsEl.classList.toggle('hidden', isRick || isBike);
     if (carSeatLabelEl && isRick) {
-      carSeatLabelEl.textContent = isPass ? 'ড্রাইভার সিট' : 'প্যাসেঞ্জার সিট';
+      carSeatLabelEl.textContent = isPass ? 'DRIVER SEAT' : 'PASSENGER SEAT';
     }
     if (carCamLabelEl) {
-      const camNames = { chase: '৩য় পার্সন', hood: 'বোনট ভিউ', pov: 'POV স্পিডো', front: 'ফ্রন্ট ভিউ' };
-      carCamLabelEl.textContent = isRick ? 'ক্যামেরা' : (camNames[activeCar.state.cameraMode] || '৩য় পার্সন');
+      const camNames = { chase: '3RD PERSON', hood: 'HOOD CAM', pov: 'POV SPEEDO', front: 'FRONT CAM' };
+      carCamLabelEl.textContent = isRick ? 'CAMERA' : (camNames[activeCar.state.cameraMode] || '3RD PERSON');
     }
     carPovBtn?.classList.remove('active');
     const liveKmh = Math.round(Math.abs(activeCar.state.speed) * 3.6);
@@ -1986,7 +1997,7 @@ function updateVehicleTransition(delta) {
       facingYaw = st.heading - Math.PI * 0.5;
       clip = 'Idle';
       timeScale = 0.2;
-      if (interactPrompt) { interactPrompt.textContent = 'দরজা খোলা হচ্ছে... (Opening Door)'; interactPrompt.classList.remove('hidden'); }
+      if (interactPrompt) { interactPrompt.textContent = 'Opening Door...'; interactPrompt.classList.remove('hidden'); }
     } else if (p < 0.57) {
       phase = 'sit_in';
       phaseProgress = (p - 0.24) / 0.33;
@@ -1996,7 +2007,7 @@ function updateVehicleTransition(delta) {
       facingYaw = THREE.MathUtils.lerp(st.heading - Math.PI * 0.5, st.heading, sEase);
       clip = phaseProgress > 0.45 ? 'Sit' : 'Walk';
       timeScale = 0.85;
-      if (interactPrompt) { interactPrompt.textContent = 'ভিতরে বসা হচ্ছে... (Getting In)'; interactPrompt.classList.remove('hidden'); }
+      if (interactPrompt) { interactPrompt.textContent = 'Getting In...'; interactPrompt.classList.remove('hidden'); }
     } else if (p < 0.78) {
       phase = 'close_door';
       phaseProgress = (p - 0.57) / 0.21;
@@ -2006,7 +2017,7 @@ function updateVehicleTransition(delta) {
       facingYaw = st.heading;
       clip = 'Sit';
       timeScale = 0.3;
-      if (interactPrompt) { interactPrompt.textContent = 'দরজা লাগানো হচ্ছে... (Closing Door)'; interactPrompt.classList.remove('hidden'); }
+      if (interactPrompt) { interactPrompt.textContent = 'Closing Door...'; interactPrompt.classList.remove('hidden'); }
     } else {
       phase = 'seatbelt';
       phaseProgress = (p - 0.78) / 0.22;
@@ -2016,7 +2027,7 @@ function updateVehicleTransition(delta) {
       facingYaw = st.heading;
       clip = 'Sit';
       timeScale = 0.15;
-      if (interactPrompt) { interactPrompt.textContent = 'সিটবেল্ট বাঁধা হচ্ছে... (Buckling Seatbelt ✓)'; interactPrompt.classList.remove('hidden'); }
+      if (interactPrompt) { interactPrompt.textContent = 'Buckling Seatbelt ✓'; interactPrompt.classList.remove('hidden'); }
     }
   } else if (vt.type === 'car_exit') {
     vt.handTarget.set(st.pos.x + rx * 0.92 - sinH * 0.15, st.pos.y + 0.92, st.pos.z + rz * 0.92 - cosH * 0.15);
@@ -2120,7 +2131,7 @@ function toggleCarDriving(targetCar = null, seatMode = 'driver') {
   if (inStudio || vehicleTransition.active) return;
   if (!cars.length) {
     gtaPhoneUI?.open('dial');
-    gtaPhoneUI?.showToast?.('📞 আগে [P] ফোনের চিট কোড দিয়ে গাড়ি স্পন করুন (সর্বোচ্চ ২টি)!');
+    gtaPhoneUI?.showToast?.('📞 Spawn a vehicle first via iFruit Phone [P] (max 2)!');
     return;
   }
   const activeCar = getDrivingCar();
@@ -2381,7 +2392,7 @@ function bindGtaPauseSettingsUI() {
     environment?.tower?.toggleGate?.();
     environment?.altapoleTower?.toggleGate?.();
     syncHUDButtons(false, true);
-    gtaPhoneUI?.showToast?.('🚪 সব দরজা ও গেট আপডেট হয়েছে!');
+    gtaPhoneUI?.showToast?.('🚪 All doors & gates toggled!');
   });
 
   document.querySelector('#gta-freecam-btn')?.addEventListener('click', (e) => {
@@ -2725,9 +2736,9 @@ function syncTalkUI() {
   const talking = Boolean(playerCharacter?.state?.talking);
   const mic = Boolean(playerCharacter?.state?.micActive);
   studioTalkBtn?.classList.toggle('active', talking);
-  if (studioTalkBtn) studioTalkBtn.textContent = talking ? '🗣️ কথা বলা: চালু (ON)' : '🗣️ কথা বলা (Talk)';
+  if (studioTalkBtn) studioTalkBtn.textContent = talking ? '🗣️ Talk: ON' : '🗣️ Talk';
   studioMicBtn?.classList.toggle('active', mic);
-  if (studioMicBtn) studioMicBtn.textContent = mic ? '🎙️ মাইক চালু (Listening)' : '🎙️ মাইক লিপ-সিঙ্ক (Mic)';
+  if (studioMicBtn) studioMicBtn.textContent = mic ? '🎙️ Mic Active (Listening)' : '🎙️ Mic Lip-Sync';
   gameTalkBtn?.classList.toggle('active', talking || mic);
 }
 
@@ -2741,7 +2752,7 @@ studioMicBtn?.addEventListener('click', async () => {
   if (!playerCharacter) return;
   const ok = await playerCharacter.toggleMicLipSync();
   if (!ok && !playerCharacter.state.micActive) {
-    studioMicBtn.textContent = '🎙️ মাইক পারমিশন দিন';
+    studioMicBtn.textContent = '🎙️ Allow Mic Permission';
     setTimeout(syncTalkUI, 2200);
     return;
   }
@@ -3417,7 +3428,7 @@ window.addEventListener('keydown', (event) => {
     if (event.code === 'KeyL' && !event.repeat) {
       event.preventDefault();
       const mode = activeCar.toggleHeadlights?.() ?? 0;
-      const labels = ['হেডলাইট বন্ধ (OFF)', 'হেডলাইট চালু · লো বিম (LOW BEAM)', 'হেডলাইট হাই বিম (HIGH BEAM)'];
+      const labels = ['Headlights OFF', 'Headlights ON · Low Beam', 'Headlights · High Beam'];
       gtaPhoneUI?.showToast?.(`💡 ${labels[mode] || labels[0]}`);
       return;
     }
@@ -3650,12 +3661,12 @@ function getFurnitureBoxesForFloor(building, fy) {
         {
           minX: -7.80, maxX: -4.80, minZ: 15.80, maxZ: 16.50, h: 0.52,
           seat: true, seatX: -6.25, seatZ: 16.18, seatY: 0.50, yaw: 0,
-          label: 'ছাদের স্কাই লাউঞ্জ সোফা (Rooftop Sofa)',
+          label: 'Rooftop Sky Lounge Sofa',
         },
         {
           minX: -7.80, maxX: -7.10, minZ: 16.50, maxZ: 19.20, h: 0.52,
           seat: true, seatX: -7.42, seatZ: 17.85, seatY: 0.50, yaw: Math.PI / 2,
-          label: 'ছাদের স্কাই লাউঞ্জ সোফা (Rooftop Sofa)',
+          label: 'Rooftop Sky Lounge Sofa',
         },
         { minX: -6.80, maxX: -5.40, minZ: 17.20, maxZ: 18.60, h: 0.44, seat: false },
       ];
@@ -3666,26 +3677,26 @@ function getFurnitureBoxesForFloor(building, fy) {
       {
         minX: -19.47, maxX: -18.67, minZ: 20.38, maxZ: 20.92, h: 0.48,
         seat: true, seatX: -18.91, seatZ: 20.65, seatY: 0.46, yaw: Math.PI / 2,
-        label: 'বাথরুমের কমোড (Toilet Commode)',
+        label: 'Toilet Commode',
       },
       { minX: -17.33, maxX: -16.75, minZ: 19.56, maxZ: 20.48, h: 0.88, seat: false },
       // 2) Master Bedroom — King-Size Luxury Bed & Wardrobe
       {
         minX: -19.50, maxX: -16.60, minZ: 15.25, maxZ: 17.45, h: 0.68,
         seat: true, seatX: -17.35, seatZ: 16.35, seatY: 0.64, yaw: Math.PI / 2,
-        label: 'মাস্টার বেডরুমের খাট (King Bed)',
+        label: 'Master King Bed',
       },
       { minX: -16.50, maxX: -14.00, minZ: 17.92, maxZ: 18.52, h: 2.45, seat: false }, // Wardrobe
       // 3) Living Lounge — Royal Blue Tufted Velvet L-Sofa, Marble Coffee Table & TV Console
       {
         minX: -11.02, maxX: -6.58, minZ: 15.02, maxZ: 15.98, h: 0.48,
         seat: true, seatX: -8.40, seatZ: 15.55, seatY: 0.46, yaw: 0,
-        label: 'ড্রয়িং রুমের ভেলভেট সোফা (Velvet Sofa)',
+        label: 'Living Room Velvet Sofa',
       },
       {
         minX: -11.02, maxX: -10.08, minZ: 15.95, maxZ: 17.70, h: 0.48,
         seat: true, seatX: -10.45, seatZ: 16.75, seatY: 0.46, yaw: Math.PI / 2,
-        label: 'ড্রয়িং রুমের কর্নার সোফা (L-Sofa)',
+        label: 'Corner L-Sofa',
       },
       { minX: -9.35, maxX: -7.45, minZ: 16.32, maxZ: 17.28, h: 0.48, seat: false }, // Coffee Table
       { minX: -10.22, maxX: -6.78, minZ: 18.00, maxZ: 18.53, h: 0.56, seat: false }, // TV Console
@@ -3697,7 +3708,7 @@ function getFurnitureBoxesForFloor(building, fy) {
       {
         minX: -18.42, maxX: -17.70, minZ: 25.48, maxZ: 26.12, h: 0.54,
         seat: true, seatX: -18.08, seatZ: 25.80, seatY: 0.52, yaw: -Math.PI / 2,
-        label: 'আরজিবি গেমিং চেয়ার (Gaming Chair)',
+        label: 'RGB Gaming Chair',
       },
       { minX: -19.55, maxX: -18.60, minZ: 24.20, maxZ: 27.60, h: 0.80, seat: false },
     ];
@@ -3707,12 +3718,12 @@ function getFurnitureBoxesForFloor(building, fy) {
         {
           minX: cx - 0.26, maxX: cx + 0.26, minZ: 24.00, maxZ: 24.48, h: 0.48,
           seat: true, seatX: cx, seatZ: 24.25, seatY: 0.46, yaw: 0,
-          label: 'ডাইনিং চেয়ার (Dining Chair)',
+          label: 'Dining Chair',
         },
         {
           minX: cx - 0.26, maxX: cx + 0.26, minZ: 26.32, maxZ: 26.80, h: 0.48,
           seat: true, seatX: cx, seatZ: 26.55, seatY: 0.46, yaw: Math.PI,
-          label: 'ডাইনিং চেয়ার (Dining Chair)',
+          label: 'Dining Chair',
         }
       );
     }
@@ -3726,48 +3737,48 @@ function getFurnitureBoxesForFloor(building, fy) {
     {
       minX: 6.80, maxX: 8.90, minZ: -5.18, maxZ: -4.40, h: 0.48,
       seat: true, seatX: 7.85, seatZ: -4.68, seatY: 0.46, yaw: 0,
-      label: 'বসার ঘরের সোফা (Living Room Sofa)',
+      label: 'Living Room Sofa',
     },
     { minX: 7.28, maxX: 8.42, minZ: -3.86, maxZ: -3.24, h: 0.48, seat: false },
     // Unit A Master Bedroom King Bed & Almirah
     {
       minX: 11.88, maxX: 13.82, minZ: -5.08, maxZ: -3.28, h: 0.56,
       seat: true, seatX: 12.85, seatZ: -3.95, seatY: 0.54, yaw: 0,
-      label: 'মাস্টার বেডরুমের খাট (Master Bed)',
+      label: 'Master Bed',
     },
     { minX: 11.55, maxX: 12.10, minZ: -3.74, maxZ: -2.56, h: 2.02, seat: false },
-    // Unit A & Unit B Attached Bathroom Western Toilet Commodes (কমোড)
+    // Unit A & Unit B Attached Bathroom Western Toilet Commodes
     {
       minX: 9.72, maxX: 10.32, minZ: -4.98, maxZ: -4.46, h: 0.52,
       seat: true, seatX: 10.06, seatZ: -4.72, seatY: 0.50, yaw: Math.PI / 2,
-      label: 'বাথরুমের কমোড (Toilet Commode)',
+      label: 'Toilet Commode',
     },
     {
       minX: 9.72, maxX: 10.32, minZ: 4.46, maxZ: 4.98, h: 0.52,
       seat: true, seatX: 10.06, seatZ: 4.72, seatY: 0.50, yaw: Math.PI / 2,
-      label: 'বাথরুমের কমোড (Toilet Commode)',
+      label: 'Toilet Commode',
     },
     // Unit B Dining Table & 4 Dining Chairs
     { minX: 7.10, maxX: 8.60, minZ: 3.04, maxZ: 4.06, h: 0.79, seat: false },
     {
       minX: 7.28, maxX: 7.72, minZ: 2.56, maxZ: 3.00, h: 0.48,
       seat: true, seatX: 7.50, seatZ: 2.78, seatY: 0.46, yaw: 0,
-      label: 'ডাইনিং চেয়ার (Dining Chair)',
+      label: 'Dining Chair',
     },
     {
       minX: 7.98, maxX: 8.42, minZ: 2.56, maxZ: 3.00, h: 0.48,
       seat: true, seatX: 8.20, seatZ: 2.78, seatY: 0.46, yaw: 0,
-      label: 'ডাইনিং চেয়ার (Dining Chair)',
+      label: 'Dining Chair',
     },
     {
       minX: 7.28, maxX: 7.72, minZ: 4.10, maxZ: 4.54, h: 0.48,
       seat: true, seatX: 7.50, seatZ: 4.32, seatY: 0.46, yaw: Math.PI,
-      label: 'ডাইনিং চেয়ার (Dining Chair)',
+      label: 'Dining Chair',
     },
     {
       minX: 7.98, maxX: 8.42, minZ: 4.10, maxZ: 4.54, h: 0.48,
       seat: true, seatX: 8.20, seatZ: 4.32, seatY: 0.46, yaw: Math.PI,
-      label: 'ডাইনিং চেয়ার (Dining Chair)',
+      label: 'Dining Chair',
     },
     // Unit B Kitchen Counter & Fridge
     { minX: 11.60, maxX: 14.10, minZ: 4.58, maxZ: 5.26, h: 0.95, seat: false },
@@ -3852,36 +3863,10 @@ function computeGroundHeight(pos) {
   const altTowerY = environment?.altapoleTower?.computeGroundHeight?.(pos, grounded, verticalVelocity);
   if (altTowerY !== null && altTowerY !== undefined) return altTowerY;
 
-  // --- KHULNA ALIA KAMIL MADRASAH WALKABLE MAIN BUILDING (x = 179.8..192.4, z = 87.8..128.2) ---
-  if (pos.x >= 179.8 && pos.x <= 192.4 && pos.z >= 87.8 && pos.z <= 128.2) {
-    // Entry ramp from courtyard (192.4 -> 189.8) up to ground floor 0.45m
-    if (pos.x > 189.8 && pos.z >= 105.2 && pos.z <= 110.8 && footY < 1.5) {
-      const rt = THREE.MathUtils.clamp((192.4 - pos.x) / 2.6, 0, 1);
-      return rt * 0.45;
-    }
-    if (pos.x <= 190.1) {
-      let bestAliaY = 0.45;
-      // S-Shaped (Switchback) Staircase (x = 180.2..187.4, z = 105.2..110.8)
-      if (pos.x >= 180.2 && pos.x <= 187.4 && pos.z >= 105.2 && pos.z <= 110.8) {
-        if (pos.x <= 182.25) {
-          if (2.15 <= footY + maxStepUp) bestAliaY = Math.max(bestAliaY, 2.15);
-        } else if (pos.z >= 108.0) {
-          // Lower flight: climbs West (187.2 -> 182.2) from 0.45 -> 2.15
-          const t = THREE.MathUtils.clamp((187.2 - pos.x) / 5.0, 0, 1);
-          const sy = 0.45 + t * 1.70;
-          if (sy <= footY + maxStepUp) bestAliaY = Math.max(bestAliaY, sy);
-        } else {
-          // Upper flight: climbs East (182.2 -> 187.2) from 2.15 -> 3.85
-          const t = THREE.MathUtils.clamp((pos.x - 182.2) / 5.0, 0, 1);
-          const sy = 2.15 + t * 1.70;
-          if (sy <= footY + maxStepUp) bestAliaY = Math.max(bestAliaY, sy);
-        }
-      } else if (3.85 <= footY + maxStepUp) {
-        // 2nd Floor Hallway & Classrooms (y = 3.85m)
-        bestAliaY = Math.max(bestAliaY, 3.85);
-      }
-      return bestAliaY;
-    }
+  // --- KHULNA ALIA KAMIL MADRASAH WALKABLE MAIN BUILDING (delegated to alia-madrasah.js) ---
+  if (pos.x >= 175.8 && pos.x <= 193.0 && pos.z >= 75.0 && pos.z <= 141.0) {
+    const aliaY = environment?.landmarks?.aliaMadrasah?.getGroundHeight?.(pos, grounded, verticalVelocity);
+    if (typeof aliaY === 'number' && aliaY > 0) return aliaY;
   }
 
   // --- SK ARSHAN ALIF TOWER (35 Haji Mohsin Road) ---
@@ -4060,29 +4045,7 @@ function applyWorldCollisions(pos) {
     }
   }
 
-  // Walkable Khulna Alia Kamil Madrasah Main Building Interior & Exterior Collisions (x = 180..190, z = 88..128)
-  if (pos.x >= 178.5 && pos.x <= 192.0 && pos.z >= 86.5 && pos.z <= 129.5 && footY < 7.2) {
-    // Outer West, North & South walls
-    resolveCircleAABB(pos, PLAYER_RADIUS, 179.6, 180.25, 87.8, 128.2);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 179.8, 190.2, 87.6, 88.25);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 179.8, 190.2, 127.75, 128.4);
-    // East front railing on 2nd floor so you never walk off the balcony
-    if (footY > 2.8) {
-      resolveCircleAABB(pos, PLAYER_RADIUS, 189.65, 190.15, 88.0, 128.0);
-    }
-    // Corridor-to-Room Partition Walls (leaving open doors at 91.8..93.8, 99.8..101.8, 114.2..116.2, 122.2..124.2)
-    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 88.0, 91.7);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 93.9, 99.7);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 101.9, 105.1);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 110.9, 114.1);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 116.3, 122.1);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 187.15, 187.45, 124.3, 128.0);
-    // Room divider walls
-    resolveCircleAABB(pos, PLAYER_RADIUS, 180.1, 187.3, 96.45, 96.75);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 180.1, 187.3, 104.85, 105.15);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 180.1, 187.3, 110.85, 111.15);
-    resolveCircleAABB(pos, PLAYER_RADIUS, 180.1, 187.3, 119.25, 119.55);
-  }
+  // Walkable Khulna Alia Kamil Madrasah Main Building collisions are handled in alia-madrasah.js applyCollisions()
 
   const nearHajiMohsin = Math.abs(pos.x) < 55 && Math.abs(pos.z) < 55;
   const nearTaltolaHouse = Math.abs(pos.x - hx) < 28 && Math.abs(pos.z - hz) < 22;
@@ -4435,7 +4398,7 @@ function applyWorldCollisions(pos) {
   pos.z = lpos.z + hz;
 }
 
-const FLOOR_NAMES_BN = ['নিচতলা (1st Floor)', '২য় তলা (2nd Floor)', '৩য় তলা (3rd Floor)', '৪র্থ তলা (4th Floor)', '৫ম তলা (5th Floor)', 'ছাদ (Rooftop)'];
+const FLOOR_NAMES_EN = ['1st Floor (Ground)', '2nd Floor', '3rd Floor', '4th Floor', '5th Floor', 'Rooftop'];
 
 function updateHUDPrompt() {
   if (!house || !interactPrompt) return;
@@ -4445,7 +4408,7 @@ function updateHUDPrompt() {
     if (getDrivingCar()) {
       promptText = null;
     } else if (sittingState.active) {
-      promptText = `[E / F / SPACE] উঠে দাঁড়ান — ${sittingState.seat?.label || 'আসন'} (Stand Up)`;
+      promptText = `[E / F / SPACE] Stand Up — ${sittingState.seat?.label || 'Seat'}`;
     } else {
       const nearSeat = findNearestSeat(playerPos);
       const nearCar = findNearestEnterableCar(playerPos);
@@ -4454,17 +4417,17 @@ function updateHUDPrompt() {
       if (carPrompt && !doorOrLiftPrompt && !nearSeat) {
         promptText = carPrompt;
       } else if (nearSeat && (!doorOrLiftPrompt || nearSeat.dist < 1.25)) {
-        promptText = `[E / F] এখানে বসুন: ${nearSeat.label} (Sit Down)`;
+        promptText = `[E / F] Sit on ${nearSeat.label}`;
       } else if (doorOrLiftPrompt) {
         promptText = doorOrLiftPrompt;
       } else if (nearSeat) {
-        promptText = `[E / F] এখানে বসুন: ${nearSeat.label} (Sit Down)`;
+        promptText = `[E / F] Sit on ${nearSeat.label}`;
       } else if (inWater) {
-        promptText = '[SPACE] পানি থেকে লাফিয়ে উঠুন · [WASD] সাঁতার (Swim)';
+        promptText = '[SPACE] Jump Out · [WASD] Swim';
       } else if (ledgeHangState.active) {
-        promptText = '[W / SPACE] দেয়াল টপকে উঠুন (Climb Over) · [S] ছেড়ে দিন (Drop)';
+        promptText = '[W / SPACE] Climb Over · [S] Drop';
       } else if (wallAhead && !climbState.active) {
-        promptText = '[SPACE / F] দেয়াল ধরে ঝুলুন (Grab Wall)';
+        promptText = '[SPACE / F] Grab Ledge';
       } else {
         promptText = carPrompt || null;
       }
@@ -4485,71 +4448,71 @@ function updateHUDPrompt() {
     const z = playerPos.z;
     const footY = playerPos.y - EYE_HEIGHT;
     const lvl = THREE.MathUtils.clamp(Math.round(footY / 3.05), 0, 5);
-    const flName = FLOOR_NAMES_BN[lvl] || FLOOR_NAMES_BN[0];
+    const flName = FLOOR_NAMES_EN[lvl] || FLOOR_NAMES_EN[0];
     const lx = x - TALTOLA_HOUSE_OFFSET.x;
     const lz = z - TALTOLA_HOUSE_OFFSET.z;
 
     let zone = '';
     if (x < -3.0 && x > -46.0 && z >= 10.0 && z <= 14.25) {
-      zone = 'FAKIR BARI LANE · ফকির বাড়ি লেন (পাশের গলি)';
+      zone = 'FAKIR BARI LANE · SIDE ALLEY';
     } else if (x > 3.1 && x < 24.0 && z >= 20.8 && z <= 26.8) {
-      zone = "AVIJIT'S SPECIAL BATCH (ASB) · কোচিং কম্পাউন্ড";
+      zone = "AVIJIT'S SPECIAL BATCH (ASB) · COACHING COMPOUND";
     } else if (x > 1.8 && x < 24.0 && z > -28.0 && z < 20.8) {
-      zone = 'HAJI MOHSIN RD · হাজী মহসিন রোড ও দোকানপাট';
+      zone = 'HAJI MOHSIN RD · SHOPS & CLINICS';
     } else if (x <= -2.8 && x >= -19.9 && z >= 14.25 && z <= 28.6) {
       const towerFl = footY < 2.2 ? 0 : Math.min(10, Math.round((footY - 4.0) / 3.0) + 1);
       if (environment?.tower?.isInsideLift(playerPos)) {
-        const stopName = environment.tower.stops?.[environment.tower.state.liftFloorIndex]?.nameBn || `${towerFl + 1} তলা`;
-        zone = `SK ARSHAN TOWER · ভিআইপি প্যাসেঞ্জার লিফট কেবিন (${stopName})`;
+        const stopCode = environment.tower.stops?.[environment.tower.state.liftFloorIndex]?.code || `F${towerFl}`;
+        zone = `SK ARSHAN TOWER · VIP ELEVATOR CABIN (${stopCode})`;
       } else if (towerFl === 0) {
-        zone = 'SK ARSHAN ALIF TOWER · গ্র্যান্ড পার্কিং ও রিসেপশন লবি (নিচতলা)';
+        zone = 'SK ARSHAN ALIF TOWER · GRAND PARKING & LOBBY';
       } else if (towerFl >= 10 || footY >= 29.8) {
-        zone = 'SK ARSHAN ALIF TOWER · ছাদের স্কাই লাউঞ্জ ও গার্ডেন (Rooftop)';
+        zone = 'SK ARSHAN ALIF TOWER · ROOFTOP SKY LOUNGE';
       } else if (x > -4.35 || (x > -5.55 && z >= 18.6 && z <= 23.5)) {
-        zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · সামনের বারান্দা (Balcony View)`;
+        zone = `SK ARSHAN TOWER (FLOOR ${towerFl + 1}) · FRONT BALCONY`;
       } else if (x <= -16.55 && x >= -19.75 && z >= 18.63 && z <= 21.4) {
-        zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · অ্যাটাচড লাক্সারি বাথরুম (Attached Bathroom)`;
+        zone = `SK ARSHAN TOWER (FLOOR ${towerFl + 1}) · ATTACHED LUXURY BATHROOM`;
       } else if (z >= 18.55 && z <= 23.3) {
-        zone = `SK ARSHAN TOWER (${towerFl + 1} তলা) · হাই-স্পিড লিফট ও সিঁড়ি লবি`;
+        zone = `SK ARSHAN TOWER (FLOOR ${towerFl + 1}) · HIGH-SPEED LIFT & STAIR LOBBY`;
       } else if (z < 18.55) {
         zone = x > -13.3
-          ? `SK ARSHAN TOWER (${towerFl + 1} তলা) · নর্থ ফ্ল্যাট — ড্রয়িং রুম ও ৪কে স্মার্ট টিভি লাউঞ্জ`
-          : `SK ARSHAN TOWER (${towerFl + 1} তলা) · নর্থ ফ্ল্যাট — মাস্টার বেডরুম`;
+          ? `SK ARSHAN TOWER (FLOOR ${towerFl + 1}) · NORTH FLAT · LIVING LOUNGE & 4K TV`
+          : `SK ARSHAN TOWER (FLOOR ${towerFl + 1}) · NORTH FLAT · MASTER BEDROOM`;
       } else {
         zone = x > -13.3
-          ? `SK ARSHAN TOWER (${towerFl + 1} তলা) · সাউথ ফ্ল্যাট — ডাইনিং ও মডুলার কিচেন`
-          : `SK ARSHAN TOWER (${towerFl + 1} তলা) · সাউথ ফ্ল্যাট — আরজিবি গেমিং ও স্টাডি স্যুট`;
+          ? `SK ARSHAN TOWER (FLOOR ${towerFl + 1}) · SOUTH FLAT · DINING & KITCHEN`
+          : `SK ARSHAN TOWER (FLOOR ${towerFl + 1}) · SOUTH FLAT · RGB GAMING SUITE`;
       }
     } else if (lx >= 2.55 && lx <= 22.0 && Math.abs(lz) <= 7.4) {
       if (lvl === 5 && lx >= 5.9 && lx <= 14.4) {
-        zone = `TALTOLA HOUSE ROOFTOP · বাড়ির ছাদ (${flName})`;
+        zone = `TALTOLA HOUSE · ROOFTOP TERRACE`;
       } else if (lx > 14.4) {
-        zone = 'TALTOLA HOUSE BACKYARD · ঘরের পিছনের উঠান';
+        zone = 'TALTOLA HOUSE · BACKYARD';
       } else if (lvl >= 1 && lvl <= 4 && lx >= 4.72 && lx < 6.08 && Math.abs(lz) <= 5.2) {
-        zone = `FLAT ${lvl + 1}${lz < 0 ? 'A' : 'B'} · সামনের বারান্দা (Front Balcony · ${flName})`;
+        zone = `FLAT ${lvl + 1}${lz < 0 ? 'A' : 'B'} · FRONT BALCONY (${flName})`;
       } else if (lx >= 6.08 && lx <= 14.28 && lz < -1.2 && lz > -5.3 && Math.abs(lz) < 7.2) {
-        if (lx < 9.65) zone = `FLAT ${lvl + 1}A · বসার ঘর ও টিভি রুম (${flName})`;
-        else if (lx < 11.45 && lz < -2.5) zone = `FLAT ${lvl + 1}A · অ্যাটাচড বাথরুম (${flName})`;
-        else zone = `FLAT ${lvl + 1}A · মাস্টার বেডরুম (${flName})`;
+        if (lx < 9.65) zone = `FLAT ${lvl + 1}A · LIVING & TV ROOM (${flName})`;
+        else if (lx < 11.45 && lz < -2.5) zone = `FLAT ${lvl + 1}A · ATTACHED BATHROOM (${flName})`;
+        else zone = `FLAT ${lvl + 1}A · MASTER BEDROOM (${flName})`;
       } else if (lx >= 6.08 && lx <= 14.28 && lz > 1.2 && lz < 5.3 && Math.abs(lz) < 7.2) {
-        if (lx < 9.65) zone = `FLAT ${lvl + 1}B · ডাইনিং ও ফ্যামিলি রুম (${flName})`;
-        else if (lx < 11.45 && lz > 2.5) zone = `FLAT ${lvl + 1}B · অ্যাটাচড বাথরুম (${flName})`;
-        else zone = `FLAT ${lvl + 1}B · রান্নাঘর (${flName})`;
+        if (lx < 9.65) zone = `FLAT ${lvl + 1}B · DINING & FAMILY ROOM (${flName})`;
+        else if (lx < 11.45 && lz > 2.5) zone = `FLAT ${lvl + 1}B · ATTACHED BATHROOM (${flName})`;
+        else zone = `FLAT ${lvl + 1}B · KITCHEN (${flName})`;
       } else if (lx >= 6.0 && lx <= 14.35 && lz <= -5.2 && lz >= -7.3) {
-        zone = 'TALTOLA HOUSE · বাম পাশের গলি';
+        zone = 'TALTOLA HOUSE · LEFT SIDE ALLEY';
       } else if (lx >= 6.0 && lx <= 14.35 && lz >= 5.2 && lz <= 7.3) {
-        zone = 'TALTOLA HOUSE · ডান পাশের গলি';
+        zone = 'TALTOLA HOUSE · RIGHT SIDE ALLEY';
       } else if (lx >= 6.0 && lx <= 14.35 && Math.abs(lz) < 5.3) {
-        zone = `STAIRWELL & CORRIDOR · তালতলার বাসা সিঁড়ি (${flName})`;
+        zone = `TALTOLA HOUSE · STAIRWELL & CORRIDOR (${flName})`;
       } else {
-        zone = 'তালতলার বাসা · FRONT COURTYARD (Tootpara Cross Rd)';
+        zone = 'TALTOLA HOUSE · FRONT COURTYARD (TOOTPARA CROSS RD)';
       }
     } else if (Math.abs(lx) < 16 && Math.abs(lz) < 16) {
-      zone = 'তালতলার বাসা · TOOTPARA TALTOLA HOSPITAL CROSS RD';
-    } else if (x >= 144 && x <= 192 && z >= -524 && z <= -292) {
-      zone = environment?.altapoleTower?.getZoneName?.(x, z, footY) || environment?.altapole?.getZoneName?.(x, z) || 'ALTAPOLE LANE · আলতাপোল লেন, খুলনা';
+      zone = 'TALTOLA HOUSE · TOOTPARA TALTOLA HOSPITAL CROSS RD';
+    } else if (x >= 144 && x <= 212 && z >= -524 && z <= -292) {
+      zone = environment?.altapoleTower?.getZoneName?.(x, z, footY) || environment?.altapole?.getZoneName?.(x, z) || 'ALTAPOLE LANE · KHULNA';
     } else if (Math.abs(x) < 35 && Math.abs(z) < 42) {
-      zone = 'HAJI MOHSIN ROAD · হাজী মহসিন রোড, খুলনা';
+      zone = 'HAJI MOHSIN ROAD · KHULNA';
     } else {
       const info = environment?.city?.findNearestRoadAndDistrict?.(x, z);
       if (info) {
