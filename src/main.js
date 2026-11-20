@@ -2500,7 +2500,25 @@ async function initialize() {
       }
     },
     onPhoneInteract: () => playerCharacter?.triggerPhoneTap?.(),
-    getSpawnLimitInfo: () => ({ count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES }),
+    getSpawnLimitInfo: () => ({
+      count: cheatSpawnedCars.length,
+      max: MAX_CHEAT_SPAWNED_VEHICLES,
+      vehicles: cheatSpawnedCars.map((c) => ({ id: c.state.id, name: c.state.name })),
+    }),
+    onDespawnCheatVehicle: (spawnId) => {
+      const idxSpawn = cheatSpawnedCars.findIndex((c) => c.state.id === spawnId);
+      if (idxSpawn === -1) return { ok: false, count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES };
+      const target = cheatSpawnedCars[idxSpawn];
+      const name = target.state.name;
+      if (target.state.driving) target.exitCar(playerPos);
+      const carIdx = cars.indexOf(target);
+      if (carIdx !== -1) cars.splice(carIdx, 1);
+      cheatSpawnedCars.splice(idxSpawn, 1);
+      target.destroy?.();
+      syncCarHUD();
+      updateHUDPrompt();
+      return { ok: true, name, count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES };
+    },
     onClearSpawnedVehicles: () => {
       const cleared = cheatSpawnedCars.length;
       for (const sc of cheatSpawnedCars) {
@@ -2517,18 +2535,26 @@ async function initialize() {
       return { cleared, count: 0, max: MAX_CHEAT_SPAWNED_VEHICLES };
     },
     onSpawnCheatVehicle: (carId) => {
-      if (cheatSpawnedCars.length >= MAX_CHEAT_SPAWNED_VEHICLES) {
-        return { ok: false, reason: 'limit', count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES };
-      }
       const baseCfg = CAR_FLEET_CONFIGS.find((c) => c.id === carId);
       if (!baseCfg) {
         return { ok: false, reason: 'not_found', count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES };
+      }
+      // FIFO Auto-Despawn: if 2 vehicles are already spawned, despawn the oldest (first-spawned) vehicle automatically!
+      let replacedName = null;
+      while (cheatSpawnedCars.length >= MAX_CHEAT_SPAWNED_VEHICLES) {
+        const oldest = cheatSpawnedCars.shift();
+        if (oldest) {
+          replacedName = oldest.state.name;
+          if (oldest.state.driving) oldest.exitCar(playerPos);
+          const oldIdx = cars.indexOf(oldest);
+          if (oldIdx !== -1) cars.splice(oldIdx, 1);
+          oldest.destroy?.();
+        }
       }
       controls.getHorizontalVectors(forwardVec, rightVec);
       const dist = baseCfg.isRickshaw ? 3.8 : 5.6;
       let sx = playerPos.x + forwardVec.x * dist;
       let sz = playerPos.z + forwardVec.z * dist;
-      // Offset 2nd spawned vehicle slightly to the side if 1st spawned vehicle is right in front
       if (cheatSpawnedCars.some((c) => Math.hypot(c.state.pos.x - sx, c.state.pos.z - sz) < 3.4)) {
         const sideStep = baseCfg.isRickshaw ? 2.2 : 3.4;
         sx += rightVec.x * sideStep;
@@ -2546,7 +2572,9 @@ async function initialize() {
       spawnedCar.setEnvironmentMap?.(selectiveEnv);
       cars.push(spawnedCar);
       cheatSpawnedCars.push(spawnedCar);
-      return { ok: true, count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES };
+      syncCarHUD();
+      updateHUDPrompt();
+      return { ok: true, replacedName, count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES };
     },
     onTeleportLandmark: (lm) => warpToLandmark(lm, false),
     onEnterSelfieMode: () => {

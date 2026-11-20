@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { buildCNGAuto } from './khulna-vehicles.js';
 import { buildRoyalMoreDistrict } from './royal-more.js';
@@ -954,74 +955,204 @@ function buildCircuitHouseAndStadium(staticG, dynamicG, lm, m) {
     1.8
   );
 
-  // 4) Shaheed Hadis Park Lakeside Promenade Pier, Over-Lake Causeway & Shaheed Minar Lake Island (-295,-860 -> -332,-910)
-  // SE Lakeside Brick & Stone Viewing Pier built right under spawn (-295, -860) so Sabit stands cleanly over the lake!
-  box(staticG, [26.0, 0.62, 24.0], [-294.0, -0.28, -856.0], lm.darkConcrete, { castShadow: false });
-  box(staticG, [24.8, 0.06, 22.8], [-294.0, 0.025, -856.0], m.brick, { castShadow: false, uvScale: 2.4 });
-  box(staticG, [20.0, 0.07, 18.0], [-294.0, 0.032, -856.0], lm.stonePlinth, { castShadow: false, uvScale: 3.0 });
-  // Viewing Pier Perimeter Cast-Iron Railings (leaving NW Causeway Opening around x = -307..-300, z = -868)
-  addRailingSpan(staticG, lm, -306.5, -844.5, -281.5, -844.5, 7, 0.86, 0.03);
-  addRailingSpan(staticG, lm, -281.5, -844.5, -281.5, -867.5, 6, 0.86, 0.03);
-  addRailingSpan(staticG, lm, -299.0, -867.5, -281.5, -867.5, 5, 0.86, 0.03);
-  addRailingSpan(staticG, lm, -306.5, -844.5, -306.5, -862.5, 5, 0.86, 0.03);
-  // Park Flowerbed Planters + Benches + Heritage Park Lamps on Viewing Terrace
-  for (const [fx, fz] of [[-285.0, -848.0], [-302.5, -848.0]]) {
-    box(staticG, [4.2, 0.36, 2.2], [fx, 0.18, fz], m.brick);
-    box(staticG, [3.6, 0.44, 1.6], [fx, 0.24, fz], lm.moss);
-    for (const dx of [-1.0, 0.0, 1.0]) {
-      box(staticG, [0.42, 0.28, 0.42], [fx + dx, 0.56, fz], dx === 0 ? lm.flowerGold : lm.flowerRed);
+  // 4) SHAHEED HADIS PARK & REAL 3D SHAHEED MINAR (Elevated Above Water + 6 Walkable Stairs + 3 Side Paths + Flower Gardens + 2 Black Gates with Black Locks & Open Pocket Gates)
+  const blackGateMat = new THREE.MeshStandardMaterial({ color: 0x111317, roughness: 0.42, metalness: 0.72 });
+  const blackLockMat = new THREE.MeshStandardMaterial({ color: 0x090b0e, roughness: 0.35, metalness: 0.85 });
+  const flowerPink = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.82 });
+  const flowerWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.84 });
+  const parkGrass = new THREE.MeshStandardMaterial({ color: 0x2d6a36, roughness: 0.92 });
+
+  // Helper: Builds a Big Black Park Gate (Closed Main Double-Leaf with Black Padlock + Open Pedestrian Pocket Gate beside it!)
+  const addHadisBlackParkGate = (gx, gz, rotY, titleText, subText) => {
+    const gg = new THREE.Group();
+    gg.position.set(gx, 0.04, gz);
+    gg.rotation.y = rotY;
+    staticG.add(gg);
+
+    // Tall Black & Cream Gate Pillars flanking Main Gate (z = -2.4..+2.4) & Pocket Gate (z = +2.4..+4.0)
+    for (const pz of [-2.55, 2.55, 4.15]) {
+      box(gg, [0.72, 3.85, 0.72], [0, 1.925, pz], blackGateMat);
+      box(gg, [0.84, 0.22, 0.84], [0, 3.92, pz], lm.colonialCream);
     }
-  }
-  addParkBench(staticG, lm, -285.5, -863.5, Math.PI * 0.72);
-  addParkBench(staticG, lm, -285.5, -854.0, Math.PI * 0.5);
-  addParkLamp(staticG, dynamicG, lm, -283.0, -846.0, 4.1, 0.03);
-  addParkLamp(staticG, dynamicG, lm, -283.0, -866.0, 4.1, 0.03);
-  addParkLamp(staticG, dynamicG, lm, -305.0, -846.0, 4.1, 0.03);
+    // Overhead Black Iron Arch Beam + Signboard
+    box(gg, [0.36, 0.42, 7.2], [0, 3.85, 0.80], blackGateMat);
+    addSignBoard(
+      gg,
+      { title: titleText, subtitle: subText, bg: '#111827', fg: '#f8fafc', accent: '#facc15', border: '#374151' },
+      [0.24, 4.45, 0.80],
+      Math.PI * 0.5,
+      6.4,
+      1.15
+    );
 
-  // Ceremonial Stone Causeway Bridge across Hadis Park Pond (-304,-866 -> -326,-898)
-  const brDx = -326.0 - -304.0;
-  const brDz = -898.0 - -866.0;
-  const brLen = Math.hypot(brDx, brDz) + 3.0;
-  const brYaw = Math.atan2(brDx, brDz);
-  const brMx = (-304.0 + -326.0) * 0.5;
-  const brMz = (-866.0 + -898.0) * 0.5;
-  rotBox(staticG, [6.4, 0.65, brLen], [brMx, -0.27, brMz], lm.darkConcrete, brYaw, { castShadow: false });
-  rotBox(staticG, [5.6, 0.06, brLen], [brMx, 0.04, brMz], m.brick, brYaw, { castShadow: false, uvScale: 2.4 });
-  for (const side of [-2.9, 2.9]) {
-    const ox = Math.cos(brYaw) * side;
-    const oz = -Math.sin(brYaw) * side;
-    addRailingSpan(staticG, lm, -304.0 + ox, -866.0 + oz, -326.0 + ox, -898.0 + oz, 9, 0.88, 0.04);
-  }
-  for (const f of [0.32, 0.68]) {
-    addParkLamp(staticG, dynamicG, lm, -304.0 + brDx * f + 2.4, -866.0 + brDz * f - 1.5, 3.8, 0.04);
-  }
+    // Closed Big Black Double-Leaf Main Gate (z = -2.2..+2.2, height 2.85m)
+    box(gg, [0.10, 0.92, 4.42], [0, 0.52, 0], blackGateMat);
+    box(gg, [0.10, 0.10, 4.42], [0, 2.82, 0], blackGateMat);
+    box(gg, [0.10, 0.08, 4.42], [0, 1.85, 0], blackGateMat);
+    for (let bz = -2.0; bz <= 2.05; bz += 0.24) {
+      box(gg, [0.05, 2.75, 0.05], [0, 1.44, bz], blackGateMat);
+    }
+    // Center Black Chain & Heavy Black Iron Padlock (কালো তালা) locking the Main Gate!
+    box(gg, [0.18, 0.10, 0.42], [0, 1.38, 0], blackLockMat);
+    box(gg, [0.22, 0.28, 0.22], [0.06, 1.18, 0], blackLockMat);
+    const shackle = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.025, 8, 12, Math.PI), blackLockMat);
+    shackle.position.set(0.06, 1.32, 0);
+    gg.add(shackle);
 
-  // Shaheed Minar Lake Island Plaza & Monument (minarX = -332, minarZ = -910)
+    // Open Pedestrian Pocket Gate (z = +2.65..+4.05, swung OPEN 95° inward so player walks right through!)
+    const pLeaf = new THREE.Group();
+    pLeaf.position.set(0, 0, 2.65);
+    pLeaf.rotation.y = -Math.PI * 0.54;
+    box(pLeaf, [0.08, 0.85, 1.32], [0, 0.48, 0.66], blackGateMat);
+    box(pLeaf, [0.08, 0.08, 1.32], [0, 2.35, 0.66], blackGateMat);
+    for (let pz = 0.14; pz <= 1.24; pz += 0.22) {
+      box(pLeaf, [0.04, 2.25, 0.04], [0, 1.22, pz], blackGateMat);
+    }
+    gg.add(pLeaf);
+  };
+
+  // Helper: Builds a lush Flower Garden Bed with vibrant multi-color flowers
+  const addFlowerGarden = (fx, fz, w, d) => {
+    box(staticG, [w + 0.36, 0.28, d + 0.36], [fx, 0.16, fz], m.brick);
+    box(staticG, [w, 0.34, d], [fx, 0.20, fz], parkGrass);
+    const fMats = [lm.flowerRed, lm.flowerGold, flowerPink, flowerWhite];
+    let fi = 0;
+    for (let gx = -w * 0.38; gx <= w * 0.39; gx += 0.95) {
+      for (let gz = -d * 0.36; gz <= d * 0.37; gz += 0.95) {
+        box(staticG, [0.46, 0.22, 0.46], [fx + gx, 0.42, fz + gz], lm.moss);
+        box(staticG, [0.32, 0.20, 0.32], [fx + gx, 0.58, fz + gz], fMats[(fi++) % fMats.length]);
+      }
+    }
+  };
+
+  // A) SE Main Entrance Park Plaza & Flower Gardens (-294, -856) with MAIN BLACK GATE at x = -281.5
+  box(staticG, [27.0, 0.62, 26.0], [-294.5, -0.28, -856.0], lm.darkConcrete, { castShadow: false });
+  box(staticG, [26.0, 0.06, 25.0], [-294.5, 0.025, -856.0], m.brick, { castShadow: false, uvScale: 2.4 });
+  box(staticG, [18.5, 0.07, 17.5], [-294.5, 0.032, -856.0], lm.stonePlinth, { castShadow: false, uvScale: 3.0 });
+  addRailingSpan(staticG, lm, -307.0, -843.8, -281.5, -843.8, 8, 1.15, 0.03);
+  addRailingSpan(staticG, lm, -281.5, -843.8, -281.5, -851.8, 3, 1.15, 0.03);
+  addRailingSpan(staticG, lm, -281.5, -858.6, -281.5, -868.2, 4, 1.15, 0.03);
+  addRailingSpan(staticG, lm, -299.0, -868.2, -281.5, -868.2, 6, 1.15, 0.03);
+  addRailingSpan(staticG, lm, -307.0, -843.8, -307.0, -862.5, 6, 1.15, 0.03);
+
+  // MAIN BLACK GATE (Closed main leaves with Black Lock + Open Pocket Gate!)
+  addHadisBlackParkGate(-281.5, -856.0, 0, 'শহীদ হাদিস পার্ক · প্রধান গেট', 'SHAHEED HADIS PARK · MAIN GATE (POCKET GATE OPEN)');
+
+  // Lush Flower Gardens, Benches & Heritage Lamps in SE Park Plaza
+  addFlowerGarden(-287.5, -847.2, 5.2, 2.8);
+  addFlowerGarden(-301.5, -847.2, 5.2, 2.8);
+  addFlowerGarden(-287.5, -864.8, 5.2, 2.4);
+  addParkBench(staticG, lm, -294.5, -846.8, 0);
+  addParkBench(staticG, lm, -285.5, -861.5, Math.PI * 0.5);
+  addParkLamp(staticG, dynamicG, lm, -283.2, -845.2, 4.1, 0.03);
+  addParkLamp(staticG, dynamicG, lm, -283.2, -866.8, 4.1, 0.03);
+  addParkLamp(staticG, dynamicG, lm, -305.5, -845.2, 4.1, 0.03);
+
+  // B) 3 WALKABLE APPROACH PATHWAYS TO SHAHEED MINAR (Elevated cleanly above lake water at y = 0.28m!)
+  const buildParkWalkway = (x0, z0, x1, z1, width = 5.4) => {
+    const dx = x1 - x0;
+    const dz = z1 - z0;
+    const len = Math.hypot(dx, dz) + 2.4;
+    const yaw = Math.atan2(dx, dz);
+    const mx = (x0 + x1) * 0.5;
+    const mz = (z0 + z1) * 0.5;
+    rotBox(staticG, [width + 0.8, 0.90, len], [mx, -0.17, mz], lm.darkConcrete, yaw, { castShadow: false });
+    rotBox(staticG, [width, 0.08, len], [mx, 0.28, mz], m.brick, yaw, { castShadow: false, uvScale: 2.2 });
+    for (const side of [-(width * 0.5 + 0.12), width * 0.5 + 0.12]) {
+      const ox = Math.cos(yaw) * side;
+      const oz = -Math.sin(yaw) * side;
+      addRailingSpan(staticG, lm, x0 + ox, z0 + oz, x1 + ox, z1 + oz, Math.max(4, Math.floor(len / 4.2)), 0.88, 0.28);
+    }
+    addParkLamp(staticG, dynamicG, lm, mx + Math.cos(yaw) * (width * 0.45), mz - Math.sin(yaw) * (width * 0.45), 3.8, 0.28);
+  };
+
+  buildParkWalkway(-304.0, -866.0, -325.0, -898.0, 5.6); // Path 1: SE Main Causeway
+  buildParkWalkway(-319.0, -910.0, -292.0, -910.0, 4.8); // Path 2: East Garden Walkway to Back Gate
+  buildParkWalkway(-345.0, -910.0, -364.0, -892.0, 4.6); // Path 3: West Lakeside Flower Terrace Walkway
+
+  // C) BACK GATE GARDEN PLAZA (-284, -910) with BACK BLACK GATE (Black Lock + Open Pocket Gate!) & Flower Gardens
+  box(staticG, [18.0, 0.82, 20.0], [-284.0, -0.16, -910.0], lm.darkConcrete, { castShadow: false });
+  box(staticG, [17.2, 0.08, 19.2], [-284.0, 0.25, -910.0], m.brick, { castShadow: false, uvScale: 2.2 });
+  addRailingSpan(staticG, lm, -292.5, -900.8, -275.5, -900.8, 5, 1.15, 0.25);
+  addRailingSpan(staticG, lm, -292.5, -919.2, -275.5, -919.2, 5, 1.15, 0.25);
+  addRailingSpan(staticG, lm, -275.5, -900.8, -275.5, -905.8, 2, 1.15, 0.25);
+  addRailingSpan(staticG, lm, -275.5, -912.6, -275.5, -919.2, 2, 1.15, 0.25);
+  addHadisBlackParkGate(-275.5, -910.0, 0, 'শহীদ হাদিস পার্ক · পিছনের গেট', 'SHAHEED HADIS PARK · BACK GATE (POCKET GATE OPEN)');
+  addFlowerGarden(-284.5, -903.5, 6.2, 2.8);
+  addFlowerGarden(-284.5, -916.5, 6.2, 2.8);
+  addParkBench(staticG, lm, -284.5, -906.2, 0);
+  addParkBench(staticG, lm, -284.5, -913.8, Math.PI);
+  addParkLamp(staticG, dynamicG, lm, -278.0, -902.0, 4.0, 0.25);
+  addParkLamp(staticG, dynamicG, lm, -278.0, -918.0, 4.0, 0.25);
+
+  // West Lakeside Garden Terrace at end of Path 3 (-366, -890)
+  box(staticG, [12.0, 0.82, 12.0], [-366.0, -0.16, -890.0], lm.darkConcrete, { castShadow: false });
+  box(staticG, [11.2, 0.08, 11.2], [-366.0, 0.25, -890.0], lm.stonePlinth, { castShadow: false, uvScale: 2.6 });
+  addFlowerGarden(-366.0, -890.0, 5.6, 5.6);
+  addParkBench(staticG, lm, -366.0, -885.4, Math.PI);
+
+  // D) ELEVATED SHAHEED MINAR ISLAND PLAZA (y = 0.42m above water) + 6 WALKABLE STAIRS UP TO PODIUM (y = 1.50m) + USER'S 3D MODEL!
   const minarX = -332.0;
   const minarZ = -910.0;
-  box(staticG, [26.0, 0.72, 20.0], [minarX, -0.32, minarZ], lm.darkConcrete, { castShadow: false });
-  box(staticG, [24.2, 0.08, 18.2], [minarX, 0.05, minarZ], lm.stonePlinth, { castShadow: false, uvScale: 2.8 });
-  box(staticG, [17.0, 1.15, 11.0], [minarX, 0.62, minarZ], m.brick);
-  box(staticG, [15.0, 0.52, 9.0], [minarX, 1.45, minarZ], lm.colonialCream);
-  for (const [ox, h] of [[-4.2, 8.5], [-2.1, 11.0], [0, 14.5], [2.1, 11.0], [4.2, 8.5]]) {
-    box(staticG, [0.95, h, 0.45], [minarX + ox, 1.7 + h * 0.5, minarZ - 1.5], lm.colonialCream);
-  }
-  const sunDisc = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.35, 24), lm.terracottaTile);
-  sunDisc.rotation.x = Math.PI / 2;
-  sunDisc.position.set(minarX, 7.85, minarZ - 2.3);
-  staticG.add(sunDisc);
-  addParkLamp(staticG, dynamicG, lm, minarX - 10.5, minarZ + 7.2, 4.0, 0.05);
-  addParkLamp(staticG, dynamicG, lm, minarX + 10.5, minarZ + 7.2, 4.0, 0.05);
+  box(staticG, [30.0, 1.12, 25.0], [minarX, -0.14, minarZ], lm.darkConcrete, { castShadow: false });
+  box(staticG, [28.6, 0.08, 23.6], [minarX, 0.42, minarZ], lm.stonePlinth, { castShadow: false, uvScale: 2.8 });
+  addFlowerGarden(minarX - 11.4, minarZ - 6.8, 3.6, 5.4);
+  addFlowerGarden(minarX + 11.4, minarZ - 6.8, 3.6, 5.4);
+  addFlowerGarden(minarX - 11.4, minarZ + 6.8, 3.6, 5.4);
+  addFlowerGarden(minarX + 11.4, minarZ + 6.8, 3.6, 5.4);
 
-  // Hadis Park Viewing Pier Signboard
-  addSignBoard(
-    dynamicG,
-    { title: 'শহীদ হাদিস পার্ক · খুলনা', subtitle: 'SHAHEED HADIS PARK & LAKE · K.D. GHOSH RD', bg: '#7f1d1d', accent: '#fde68a' },
-    [-286.0, 3.8, -845.5],
-    Math.PI * 0.25,
-    5.4,
-    1.45
-  );
+  // 6 Wide Walkable Ceremonial Stairs climbing from Island Plaza (y = 0.42m) up to Shaheed Minar Podium (y = 1.50m)!
+  const stepCount = 6;
+  const basePlazaY = 0.42;
+  const stepRise = 0.18;
+  const podiumTopY = basePlazaY + stepCount * stepRise; // 1.50m
+  for (let s = 0; s < stepCount; s++) {
+    const sy = basePlazaY + (s + 0.5) * stepRise;
+    const shrink = s * 0.96;
+    const sw = 18.6 - shrink;
+    const sd = 13.6 - shrink;
+    box(staticG, [sw, stepRise + 0.02, sd], [minarX, sy, minarZ - 0.8], s % 2 === 0 ? lm.colonialCream : m.brick);
+  }
+  box(staticG, [13.2, 0.06, 8.2], [minarX, podiumTopY + 0.02, minarZ - 0.8], lm.whitePlaster);
+
+  // Load User's Real 3D Shaheed Minar Model (shaheed_minar_red_sun.glb) cleanly onto the elevated podium!
+  const minarLoader = new GLTFLoader();
+  minarLoader.load('./assets/shaheed_minar_red_sun.glb', (gltf) => {
+    const model = gltf.scene;
+    model.updateMatrixWorld(true);
+    const bbox = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    bbox.getSize(size);
+
+    const maxDim = Math.max(size.y, size.x, size.z, 0.001);
+    const scale = 13.5 / maxDim;
+    model.scale.setScalar(scale);
+
+    model.updateMatrixWorld(true);
+    const scaledBox = new THREE.Box3().setFromObject(model);
+    const scaledCenter = new THREE.Vector3();
+    scaledBox.getCenter(scaledCenter);
+    model.position.set(
+      minarX - scaledCenter.x,
+      podiumTopY + 0.04 - scaledBox.min.y,
+      (minarZ - 1.2) - scaledCenter.z
+    );
+
+    model.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    dynamicG.add(model);
+  }, undefined, (err) => {
+    console.warn('Shaheed Minar GLB load warning:', err);
+  });
+
+  addParkLamp(staticG, dynamicG, lm, minarX - 10.8, minarZ + 10.2, 4.2, 0.42);
+  addParkLamp(staticG, dynamicG, lm, minarX + 10.8, minarZ + 10.2, 4.2, 0.42);
+  addParkLamp(staticG, dynamicG, lm, minarX - 10.8, minarZ - 10.2, 4.2, 0.42);
+  addParkLamp(staticG, dynamicG, lm, minarX + 10.8, minarZ - 10.2, 4.2, 0.42);
 }
 
 function addPtiShopfront(staticG, dynamicG, lm, { cx, cz, len, yaw, wallMat, awningMat, title, subtitle, signBg }) {
@@ -1245,13 +1376,53 @@ export function buildKhulnaLandmarks(parent, m) {
     ptiMore,
     syncVisibility,
     getGroundHeight(pos) {
+      let hadisY = 0;
+      // Walkable Shaheed Hadis Park Elevated Island (y=0.42m), 3 Walkways (y=0.28m) & 6 Stairs up to Shaheed Minar Podium (y=1.50m)
+      if (pos && pos.x >= -374 && pos.x <= -272 && pos.z >= -926 && pos.z <= -840) {
+        const mx = -332.0;
+        const mz = -910.0;
+        if (Math.abs(pos.x - mx) <= 14.8 && Math.abs(pos.z - mz) <= 12.2) {
+          hadisY = 0.42;
+          const dx = Math.abs(pos.x - mx);
+          const dz = Math.abs(pos.z - (mz - 0.8));
+          for (let s = 0; s < 6; s++) {
+            const hw = (18.6 - s * 0.96) * 0.5;
+            const hd = (13.6 - s * 0.96) * 0.5;
+            if (dx <= hw && dz <= hd) {
+              hadisY = 0.42 + (s + 1) * 0.18;
+            }
+          }
+        } else if (pos.x >= -372 && pos.x <= -274 && pos.z >= -921 && pos.z <= -864) {
+          hadisY = 0.28;
+        } else {
+          hadisY = 0.04;
+        }
+      }
       return Math.max(
+        hadisY,
         aliaMadrasah.getGroundHeight?.(pos) ?? 0,
         royalMore.getGroundHeight?.(pos) ?? 0,
         ptiMore.getGroundHeight?.(pos) ?? 0,
       );
     },
     applyCollisions(pos, radius, footY = 0) {
+      // Solid closed Main Gate & Back Gate leaves at Shaheed Hadis Park (leaving BOTH pedestrian pocket gates 100% open & walkable!)
+      if (pos && footY < 2.8 && pos.x >= -290 && pos.x <= -270 && pos.z >= -922 && pos.z <= -842) {
+        const blockBox = (minX, maxX, minZ, maxZ) => {
+          const cx = THREE.MathUtils.clamp(pos.x, minX, maxX);
+          const cz = THREE.MathUtils.clamp(pos.z, minZ, maxZ);
+          const dx = pos.x - cx;
+          const dz = pos.z - cz;
+          const dSq = dx * dx + dz * dz;
+          if (dSq < radius * radius) {
+            const d = Math.sqrt(Math.max(dSq, 1e-8));
+            pos.x += (dx / d) * (radius - d);
+            pos.z += (dz / d) * (radius - d);
+          }
+        };
+        blockBox(-281.8, -281.2, -858.3, -853.7); // Main Gate locked double-leaf (Pocket Gate at -853.5..-851.9 stays OPEN!)
+        blockBox(-275.8, -275.2, -912.3, -907.7); // Back Gate locked double-leaf (Pocket Gate at -907.5..-905.9 stays OPEN!)
+      }
       aliaMadrasah.applyCollisions?.(pos, radius, footY);
       royalMore.applyCollisions?.(pos, radius, footY);
       ptiMore.applyCollisions?.(pos, radius, footY);

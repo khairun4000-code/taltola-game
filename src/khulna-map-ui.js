@@ -327,7 +327,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     fullCtx.clearRect(0, 0, fullCanvas.width, fullCanvas.height);
     fullCtx.drawImage(baseLayer, 0, 0, fullCanvas.width, fullCanvas.height);
 
-    // Draw GTA V Yellow GPS Route Line & Waypoint Pin on Full Map
+    // Draw GTA V Bright Electric Blue GPS Route Line & Waypoint Pin on Full Map
     if (gpsWaypoint) {
       updateGpsRouteIfNeeded(playerPos.x, playerPos.z, false);
       if (gpsRoutePts.length >= 2) {
@@ -340,15 +340,22 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
           if (i === 0) fullCtx.moveTo(px, py);
           else fullCtx.lineTo(px, py);
         }
-        fullCtx.strokeStyle = 'rgba(0, 0, 0, 0.58)';
-        fullCtx.lineWidth = 7.5;
         fullCtx.lineJoin = 'round';
         fullCtx.lineCap = 'round';
+        // Crisp dark navy outline for maximum contrast over all map roads
+        fullCtx.strokeStyle = 'rgba(3, 18, 42, 0.88)';
+        fullCtx.lineWidth = 9.5;
         fullCtx.stroke();
-        fullCtx.strokeStyle = '#facc15';
-        fullCtx.lineWidth = 4.4;
-        fullCtx.shadowColor = '#facc15';
-        fullCtx.shadowBlur = 10;
+        // Vibrant GTA V electric blue glowing route
+        fullCtx.strokeStyle = '#00b8ff';
+        fullCtx.lineWidth = 5.6;
+        fullCtx.shadowColor = '#00d2ff';
+        fullCtx.shadowBlur = 16;
+        fullCtx.stroke();
+        // Bright sky-white center highlight core
+        fullCtx.shadowBlur = 0;
+        fullCtx.strokeStyle = '#d8f3ff';
+        fullCtx.lineWidth = 1.9;
         fullCtx.stroke();
         fullCtx.restore();
       }
@@ -357,15 +364,20 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       const wpy = (wbz / baseH) * fullCanvas.height;
       fullCtx.save();
       fullCtx.beginPath();
-      fullCtx.arc(wpx, wpy, 9, 0, Math.PI * 2);
-      fullCtx.fillStyle = '#facc15';
+      fullCtx.arc(wpx, wpy, 9.5, 0, Math.PI * 2);
+      fullCtx.fillStyle = '#00c8ff';
+      fullCtx.shadowColor = '#00d2ff';
+      fullCtx.shadowBlur = 14;
       fullCtx.fill();
-      fullCtx.lineWidth = 2.5;
-      fullCtx.strokeStyle = '#0f172a';
+      fullCtx.lineWidth = 2.6;
+      fullCtx.strokeStyle = '#ffffff';
       fullCtx.stroke();
-      fullCtx.font = '800 11.5px "Manrope", sans-serif';
-      fullCtx.fillStyle = '#fef08a';
-      fullCtx.fillText(`🟡 GPS (${gpsRouteDistM}m)`, wpx + 12, wpy + 4);
+      fullCtx.shadowBlur = 0;
+      fullCtx.font = '800 12px "Manrope", sans-serif';
+      fullCtx.fillStyle = '#03122a';
+      fullCtx.fillText(`🔵 GPS (${gpsRouteDistM}m)`, wpx + 13, wpy + 5);
+      fullCtx.fillStyle = '#7dd3fc';
+      fullCtx.fillText(`🔵 GPS (${gpsRouteDistM}m)`, wpx + 12, wpy + 4);
       fullCtx.restore();
     }
 
@@ -463,7 +475,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       h
     );
 
-    // Draw live GTA V Yellow GPS Route Line on the corner Minimap Radar!
+    // Draw live GTA V Bright Electric Blue GPS Route Line on the corner Minimap Radar!
     if (gpsWaypoint) {
       updateGpsRouteIfNeeded(playerPos.x, playerPos.z, false);
       if (gpsRoutePts.length >= 2) {
@@ -475,13 +487,19 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
           if (i === 0) miniCtx.moveTo(mx, my);
           else miniCtx.lineTo(mx, my);
         }
-        miniCtx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
-        miniCtx.lineWidth = 5.4;
         miniCtx.lineJoin = 'round';
         miniCtx.lineCap = 'round';
+        miniCtx.strokeStyle = 'rgba(3, 18, 42, 0.88)';
+        miniCtx.lineWidth = 6.8;
         miniCtx.stroke();
-        miniCtx.strokeStyle = '#facc15';
-        miniCtx.lineWidth = 3.2;
+        miniCtx.strokeStyle = '#00b8ff';
+        miniCtx.lineWidth = 4.0;
+        miniCtx.shadowColor = '#00d2ff';
+        miniCtx.shadowBlur = 10;
+        miniCtx.stroke();
+        miniCtx.shadowBlur = 0;
+        miniCtx.strokeStyle = '#e0f7ff';
+        miniCtx.lineWidth = 1.4;
         miniCtx.stroke();
         miniCtx.restore();
       }
@@ -489,13 +507,17 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       const wdz = gpsWaypoint.z - playerPos.z;
       const wmx = Math.max(6, Math.min(w - 6, w * 0.5 + (wdx / spanMeters) * w));
       const wmy = Math.max(6, Math.min(h - 6, h * 0.5 + (wdz / spanMeters) * h));
+      miniCtx.save();
       miniCtx.beginPath();
-      miniCtx.arc(wmx, wmy, 4.8, 0, Math.PI * 2);
-      miniCtx.fillStyle = '#facc15';
+      miniCtx.arc(wmx, wmy, 5.2, 0, Math.PI * 2);
+      miniCtx.fillStyle = '#00c8ff';
+      miniCtx.shadowColor = '#00d2ff';
+      miniCtx.shadowBlur = 8;
       miniCtx.fill();
-      miniCtx.strokeStyle = '#0f172a';
-      miniCtx.lineWidth = 1.5;
+      miniCtx.strokeStyle = '#ffffff';
+      miniCtx.lineWidth = 1.6;
       miniCtx.stroke();
+      miniCtx.restore();
     }
 
     for (const lm of visibleLandmarks) {
@@ -540,7 +562,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
 
     if (gpsReadout && districtInfo) {
       const text = gpsWaypoint
-        ? `🟡 GPS: ${gpsRouteDistM}m`
+        ? `🔵 GPS: ${gpsRouteDistM}m`
         : `${districtInfo.lat.toFixed(4)}°N · ${districtInfo.lon.toFixed(4)}°E`;
       if (gpsReadout.textContent !== text) gpsReadout.textContent = text;
     }

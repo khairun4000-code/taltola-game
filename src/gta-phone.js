@@ -22,6 +22,7 @@ export function createGTAPhoneUI({
   onOpenChange,
   onPhoneInteract,
   onSpawnCheatVehicle,
+  onDespawnCheatVehicle,
   onClearSpawnedVehicles,
   getSpawnLimitInfo,
   onTeleportLandmark,
@@ -112,29 +113,55 @@ export function createGTAPhoneUI({
 
   function populateCheatList() {
     if (!cheatListEl) return;
-    const info = getSpawnLimitInfo?.() || { count: 0, max: 2 };
+    const info = getSpawnLimitInfo?.() || { count: 0, max: 2, vehicles: [] };
     cheatListEl.innerHTML = '';
 
     const headerRow = document.createElement('div');
     headerRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 6px 6px;font-size:11px;color:#cbd5e1;border-bottom:1px solid rgba(255,255,255,0.12);margin-bottom:4px;';
-    headerRow.innerHTML = `<span>SPAWNED VEHICLES: <strong style="color:${info.count >= info.max ? '#f87171' : '#86efac'}">${info.count}/${info.max}</strong></span>`;
+    headerRow.innerHTML = `<span>SPAWNED: <strong style="color:${info.count >= info.max ? '#facc15' : '#86efac'}">${info.count}/${info.max}</strong></span>`;
     if (info.count > 0 && onClearSpawnedVehicles) {
       const clearBtn = document.createElement('button');
       clearBtn.type = 'button';
-      clearBtn.textContent = 'CLEAR ALL';
-      clearBtn.style.cssText = 'background:#ef4444;color:#fff;border:none;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;';
+      clearBtn.textContent = 'DESPAWN ALL';
+      clearBtn.style.cssText = 'background:#ef4444;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:800;cursor:pointer;letter-spacing:0.3px;';
       clearBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         onPhoneInteract?.();
         const res = onClearSpawnedVehicles();
         playTone(440, 330, 0.1, 0.07);
         populateCheatList();
-        if (dialStatus) dialStatus.textContent = `✓ All spawned vehicles cleared (0/${res?.max ?? 2})`;
-        showToast('🗑️ SPAWNED VEHICLES CLEARED — Ready to spawn up to 2 vehicles.');
+        if (dialStatus) dialStatus.textContent = `✓ All vehicles despawned (0/${res?.max ?? 2})`;
+        showToast('🗑️ ALL SPAWNED VEHICLES DESPAWNED (0/2)');
       });
       headerRow.appendChild(clearBtn);
     }
     cheatListEl.appendChild(headerRow);
+
+    if (Array.isArray(info.vehicles) && info.vehicles.length > 0 && onDespawnCheatVehicle) {
+      for (const v of info.vehicles) {
+        const vRow = document.createElement('div');
+        vRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 6px;margin-bottom:4px;border-radius:7px;background:rgba(239,68,68,0.14);border:1px solid rgba(239,68,68,0.34);font-size:11px;color:#f8fafc;';
+        const labelSpan = document.createElement('span');
+        labelSpan.textContent = `🚗 ${v.name}`;
+        labelSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;';
+        const despawnBtn = document.createElement('button');
+        despawnBtn.type = 'button';
+        despawnBtn.textContent = 'DESPAWN';
+        despawnBtn.style.cssText = 'background:#dc2626;color:#fff;border:none;border-radius:5px;padding:2px 7px;font-size:9.5px;font-weight:800;cursor:pointer;flex-shrink:0;';
+        despawnBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          onPhoneInteract?.();
+          const res = onDespawnCheatVehicle(v.id);
+          playTone(420, 310, 0.09, 0.07);
+          populateCheatList();
+          if (dialStatus) dialStatus.textContent = `✓ ${v.name} despawned (${res?.count ?? 0}/${res?.max ?? 2})`;
+          showToast(`🗑️ DESPAWNED: ${v.name} (${res?.count ?? 0}/${res?.max ?? 2})`);
+        });
+        vRow.appendChild(labelSpan);
+        vRow.appendChild(despawnBtn);
+        cheatListEl.appendChild(vRow);
+      }
+    }
 
     for (const item of PHONE_CHEAT_CODES) {
       const row = document.createElement('button');
@@ -194,8 +221,8 @@ export function createGTAPhoneUI({
       const info = getSpawnLimitInfo?.() || { count: 0, max: 2 };
       if (dialStatus) {
         dialStatus.textContent = info.count >= info.max
-          ? `Vehicle limit reached (${info.count}/${info.max}) · Clear to spawn more`
-          : `Dial a cheat code and press Call (${info.count}/${info.max})`;
+          ? `Max ${info.max} active · New spawn replaces oldest (${info.count}/${info.max})`
+          : `Tap a vehicle or dial code (${info.count}/${info.max})`;
       }
     }
   }
@@ -210,17 +237,12 @@ export function createGTAPhoneUI({
       if (res.ok) {
         playTone(880, 1320, 0.16, 0.10);
         populateCheatList();
-        if (dialStatus) dialStatus.textContent = `✓ ${match.label} spawned! (${res.count}/${res.max})`;
-        showToast(`🚗 CHEAT ACTIVATED: ${match.label} (${res.count}/${res.max})`);
+        const swapNote = res.replacedName ? ` · Replaced ${res.replacedName}` : '';
+        if (dialStatus) dialStatus.textContent = `✓ ${match.label} spawned! (${res.count}/${res.max})${swapNote}`;
+        showToast(`🚗 SPAWNED: ${match.label} (${res.count}/${res.max})${swapNote}`);
         dialValue = '';
         if (dialDisplay) dialDisplay.textContent = '—';
         setTimeout(() => close(), 420);
-      } else if (res.reason === 'limit') {
-        playTone(300, 210, 0.22, 0.10);
-        populateCheatList();
-        const msg = `⚠️ VEHICLE LIMIT (${res.count}/${res.max}) — Clear spawned vehicles first.`;
-        if (dialStatus) dialStatus.textContent = msg;
-        showToast(msg);
       } else if (dialStatus) {
         playTone(320, 240, 0.18, 0.09);
         dialStatus.textContent = 'Vehicle not found';
