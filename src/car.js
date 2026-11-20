@@ -1283,15 +1283,16 @@ export function createDrivableCar(scene, manager, config) {
   // Interactive 3D Driver Seat + Rotating Steering Wheel with Left/Right Hand IK Grips for non-rickshaw cars
   let carDriverRig = null;
   if (!config.isRickshaw && !config.isBike) {
+    const baseCarId = String(config.id || '').replace(/_spawn_.*$/, '');
     const seatPresets = {
-      bmw_m3:          { x:  0.36, y: 0.38, z: -0.12, wy: 0.24, wz: 0.42 },
-      toyota_corolla:  { x:  0.34, y: 0.46, z:  0.08, wy: 0.30, wz: 0.42 },
-      toyota_fortuner: { x: -0.38, y: 0.58, z:  0.08, wy: 0.26, wz: 0.44 },
-      toyota_alphard:  { x: -0.38, y: 0.60, z:  0.34, wy: 0.26, wz: 0.44 },
-      toyota_hiace:    { x: -0.38, y: 0.62, z:  0.84, wy: 0.26, wz: 0.44 },
-      toyota_townace:  { x: -0.39, y: 0.84, z:  0.18, wy: 0.34, wz: 0.42 },
+      bmw_m3:          { x:  0.36, y: 0.38, z: -0.12, wy: 0.30, wz: 0.42 },
+      toyota_corolla:  { x:  0.35, y: 0.46, z:  0.08, wy: 0.32, wz: 0.42 },
+      toyota_fortuner: { x:  0.38, y: 0.62, z:  0.08, wy: 0.32, wz: 0.44 },
+      toyota_alphard:  { x:  0.38, y: 0.66, z:  0.34, wy: 0.32, wz: 0.44 },
+      toyota_hiace:    { x:  0.38, y: 0.66, z:  0.84, wy: 0.32, wz: 0.44 },
+      toyota_townace:  { x:  0.38, y: 0.84, z:  0.18, wy: 0.34, wz: 0.42 },
     };
-    const sp = seatPresets[config.id] || { x: -0.36, y: 0.42, z: 0.0, wy: 0.24, wz: 0.42 };
+    const sp = seatPresets[baseCarId] || { x: 0.36, y: 0.46, z: 0.05, wy: 0.30, wz: 0.42 };
     const seatX = sp.x;
     const seatY = sp.y;
     const seatZ = sp.z;
