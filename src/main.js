@@ -1763,32 +1763,36 @@ function syncCarHUD() {
       ctx.fill();
       ctx.restore();
 
-      ctx.beginPath();
-      ctx.arc(cx, cy, 46, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(11, 16, 22, 0.88)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      // Transparent Forza Horizon center readout (no dark solid box — crisp drop-shadow text over the game!)
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.92)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 2;
 
       ctx.fillStyle = '#ffffff';
-      ctx.font = '800 38px Manrope, monospace';
+      ctx.font = '800 42px Manrope, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(String(liveKmh).padStart(2, '0'), cx, cy - 6);
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(String(liveKmh).padStart(2, '0'), cx, cy - 4);
+      ctx.fillStyle = '#e2e8f0';
       ctx.font = '700 11px Manrope, sans-serif';
-      ctx.fillText('KM/H', cx, cy + 20);
+      ctx.fillText('KM/H', cx, cy + 23);
+      ctx.restore();
 
-      ctx.fillStyle = (!isRick && rpmPct >= 0.82) ? '#ef4444' : '#d9ed9c';
+      ctx.fillStyle = (!isRick && rpmPct >= 0.82) ? '#ef4444' : '#38bdf8';
       ctx.beginPath();
       ctx.roundRect(cx - 19, cy + 44, 38, 26, 7);
       ctx.fill();
-      ctx.fillStyle = '#0f172a';
+      ctx.fillStyle = '#06101c';
       ctx.font = '800 16px Manrope, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText(liveGear, cx, cy + 58);
 
-      ctx.fillStyle = 'rgba(148,163,184,0.85)';
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 5;
+      ctx.fillStyle = 'rgba(241,245,249,0.92)';
       ctx.font = '700 10px Manrope, sans-serif';
       ctx.fillText(isRick ? 'STAMINA' : 'RPM x1000', cx, cy + 82);
       if (!isRick) {
@@ -1798,6 +1802,7 @@ function syncCarHUD() {
         ctx.fillStyle = '#38bdf8';
         ctx.fillText('TCS', cx + 44, cy + 58);
       }
+      ctx.restore();
     }
     if (carPaintNameEl) {
       carPaintNameEl.textContent = activeCar.state.paintName.split(' ').pop();

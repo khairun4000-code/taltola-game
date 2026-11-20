@@ -420,7 +420,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     fullCtx.beginPath();
     fullCtx.arc(px, py, 6 + pulseT * maxR, 0, Math.PI * 2);
     fullCtx.strokeStyle = isPinging
-      ? `rgba(250, 204, 21, ${(1 - pulseT) * 0.95})`
+      ? `rgba(0, 210, 255, ${(1 - pulseT) * 0.98})`
       : `rgba(56, 189, 248, ${(1 - pulseT) * 0.85})`;
     fullCtx.lineWidth = isPinging ? 3.2 : 2.2;
     fullCtx.stroke();
@@ -429,9 +429,9 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     fullCtx.translate(px, py);
     fullCtx.rotate(-yaw);
     fullCtx.globalAlpha = blinkAlpha;
-    fullCtx.shadowColor = isPinging ? '#facc15' : '#38bdf8';
-    fullCtx.shadowBlur = isPinging ? 16 : 10;
-    fullCtx.fillStyle = isPinging ? '#facc15' : '#38bdf8';
+    fullCtx.shadowColor = isPinging ? '#00d2ff' : '#38bdf8';
+    fullCtx.shadowBlur = isPinging ? 18 : 10;
+    fullCtx.fillStyle = isPinging ? '#00c8ff' : '#38bdf8';
     fullCtx.strokeStyle = '#ffffff';
     fullCtx.lineWidth = 2.2;
     fullCtx.beginPath();

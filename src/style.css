@@ -733,32 +733,41 @@ body.low-perf-ui * {
 }
 
 
-/* Forza Horizon-Style Analog RPM + Digital Speedometer HUD */
+/* Forza Horizon-Style 100% Transparent Analog RPM + Digital Speedometer HUD (Zero Box, Zero Buttons!) */
 .car-hud {
   position: absolute;
-  right: 28px;
-  bottom: 64px;
-  width: 268px;
-  padding: 12px 14px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 16px;
-  background: radial-gradient(circle at 50% 34%, rgba(22, 30, 38, 0.90), rgba(10, 14, 18, 0.92));
-  backdrop-filter: blur(12px);
+  right: 26px;
+  bottom: 20px;
+  width: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   color: #f5f3eb;
-  pointer-events: auto;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.58);
+  pointer-events: none;
+  box-shadow: none !important;
+}
+.car-hud .car-hud-top,
+.car-hud .car-hud-actions,
+.car-hud .car-hud-doors,
+.car-hud .car-drive-hint {
+  display: none !important;
 }
 .forza-gauge-wrap {
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 2px 0 4px;
+  margin: 0;
+  background: transparent;
 }
 #forza-tacho-canvas {
-  width: 236px;
-  height: 188px;
+  width: 230px;
+  height: 184px;
   display: block;
+  background: transparent;
 }
 .sr-only {
   position: absolute;
@@ -967,6 +976,23 @@ body.low-perf-ui * {
 }
 .hud-quality-select:hover {
   background: rgba(25, 42, 34, 0.92);
+}
+
+/* GTA V Clean PC-Game Mode: ZERO on-screen buttons during gameplay! All controls & settings live inside [ESC] Pause Menu! */
+body.in-game #hud-header,
+body.in-game #emote-bar,
+body.in-game .walk-controls,
+body.in-game #car-door-panel {
+  display: none !important;
+}
+body.in-game #minimap-dock {
+  top: auto !important;
+  bottom: 20px !important;
+  left: 20px !important;
+}
+body.in-game .location-tag {
+  top: 16px !important;
+  left: 20px !important;
 }
 
 /* [TAB] GTA V Clean Cinematic Mode: hides ALL buttons/HUD and keeps ONLY the Minimap Radar at bottom-left! */
