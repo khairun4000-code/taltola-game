@@ -282,7 +282,7 @@ export const CAR_FLEET_CONFIGS = [
     tireMats: ['Material.009'],
     plateMats: ['Material.003'],
     khulnaPlateText: ['খুলনা মেট্রো-চ', '১১-৩২৯০'],
-    hasBuiltInSteeringWheel: true,
+    hasBuiltInSteeringWheel: false,
     wheelNameRegex: /^Cylinder(\.?\d+)?$/i,
     maxSpeed: 21.0,
     boostMaxSpeed: 28.5,
@@ -1285,14 +1285,14 @@ export function createDrivableCar(scene, manager, config) {
   if (!config.isRickshaw && !config.isBike) {
     const baseCarId = String(config.id || '').replace(/_spawn_.*$/, '');
     const seatPresets = {
-      bmw_m3:          { x:  0.36, y: 0.38, z: -0.12, wy: 0.30, wz: 0.42 },
-      toyota_corolla:  { x:  0.35, y: 0.46, z:  0.08, wy: 0.32, wz: 0.42 },
-      toyota_fortuner: { x:  0.38, y: 0.62, z:  0.08, wy: 0.32, wz: 0.44 },
-      toyota_alphard:  { x:  0.38, y: 0.66, z:  0.34, wy: 0.32, wz: 0.44 },
-      toyota_hiace:    { x:  0.38, y: 0.66, z:  0.84, wy: 0.32, wz: 0.44 },
-      toyota_townace:  { x:  0.38, y: 0.84, z:  0.18, wy: 0.34, wz: 0.42 },
+      bmw_m3:          { x:  0.40, y: 0.42, z:  0.10, wy: 0.30, wz: 0.42 },
+      toyota_corolla:  { x:  0.40, y: 0.48, z:  0.22, wy: 0.32, wz: 0.42 },
+      toyota_fortuner: { x:  0.42, y: 0.66, z:  0.26, wy: 0.32, wz: 0.44 },
+      toyota_alphard:  { x:  0.42, y: 0.70, z:  0.54, wy: 0.32, wz: 0.44 },
+      toyota_hiace:    { x:  0.42, y: 0.72, z:  0.96, wy: 0.32, wz: 0.44 },
+      toyota_townace:  { x:  0.40, y: 0.86, z:  0.46, wy: 0.34, wz: 0.42 },
     };
-    const sp = seatPresets[baseCarId] || { x: 0.36, y: 0.46, z: 0.05, wy: 0.30, wz: 0.42 };
+    const sp = seatPresets[baseCarId] || { x: 0.40, y: 0.48, z: 0.22, wy: 0.32, wz: 0.42 };
     const seatX = sp.x;
     const seatY = sp.y;
     const seatZ = sp.z;
@@ -1597,6 +1597,12 @@ export function createDrivableCar(scene, manager, config) {
           if (mats.some((mm) => hideSet.has(mm?.name || ''))) {
             ch.visible = false;
           }
+        });
+      }
+      // Hide any stray right-hand-drive steering wheel node (e.g. TownAce st00) so only the front-left steering wheel is shown
+      if (String(config.id || '').startsWith('toyota_townace')) {
+        model.traverse((ch) => {
+          if (/^st00/i.test(ch.name || '')) ch.visible = false;
         });
       }
 
