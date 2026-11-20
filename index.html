@@ -28,6 +28,8 @@
       </div>
       <div class="hud-actions">
         <span id="fps" class="fps">— FPS</span>
+        <button id="time-toggle-button" class="text-button hidden" type="button">TIME: GOLDEN <span>[T]</span></button>
+        <button id="map-hud-button" class="text-button hidden" type="button">CITY MAP <span>[M]</span></button>
         <button id="studio-toggle-button" class="text-button" type="button">CHARACTER STUDIO <span>★</span></button>
         <button id="lift-hud-button" class="text-button hidden" type="button">LIFT PANEL <span>[L]</span></button>
         <button id="run-toggle-button" class="text-button hidden" type="button">RUN: OFF <span>[SHIFT/R]</span></button>
@@ -55,36 +57,54 @@
         </div>
 
         <div class="studio-group">
-          <label>অ্যানিমেশন টেস্ট (MOVEMENT · হাত বাইরে)</label>
+          <label>মুভমেন্ট ও পারকোর (MOVEMENT & PARKOUR)</label>
           <div class="studio-btn-grid">
-            <button type="button" class="studio-chip active" data-anim="idle">দাঁড়ানো · হাত বাইরে (Idle)</button>
+            <button type="button" class="studio-chip active" data-anim="idle">দাঁড়ানো (Idle)</button>
             <button type="button" class="studio-chip" data-anim="walk">হাঁটা (Walk)</button>
             <button type="button" class="studio-chip" data-anim="run">দৌড়ানো (Run)</button>
             <button type="button" class="studio-chip" data-anim="jump">লাফ (Jump)</button>
-            <button type="button" class="studio-chip" data-anim="fight">মারামারি (Fight)</button>
+            <button type="button" class="studio-chip" data-anim="climb">দেয়াল বাওয়া (Climb)</button>
+            <button type="button" class="studio-chip" data-anim="fall">উপর থেকে পড়া (Fall)</button>
+            <button type="button" class="studio-chip" data-anim="jumpdown">ল্যান্ডিং (Drop Land)</button>
+            <button type="button" class="studio-chip" data-anim="flip">ফ্লিপ (Flip)</button>
+            <button type="button" class="studio-chip" data-anim="dive">ডাইভ (Dive)</button>
+            <button type="button" class="studio-chip" data-anim="swim">সাঁতার (Swim)</button>
           </div>
         </div>
 
         <div class="studio-group">
-          <label>স্টাইল ও ইমোট (STYLE & EMOTES · KEYBOARD P / 1–7)</label>
+          <label>স্টাইল, ফাইট ও ইমোট (KEYBOARD P / 1–0)</label>
           <div class="studio-btn-grid">
-            <button type="button" class="studio-chip" data-anim="pocket">[P / 7] হাত পকেটে স্টাইল (Pocket Pose)</button>
+            <button type="button" class="studio-chip" data-anim="pocket">[P] স্টাইল দাঁড়ানো</button>
             <button type="button" class="studio-chip" data-anim="dance1">[1] হিপ-হপ নাচ</button>
             <button type="button" class="studio-chip" data-anim="dance2">[2] বিজয় নাচ</button>
             <button type="button" class="studio-chip" data-anim="wave">[3] হাই / সালাম</button>
             <button type="button" class="studio-chip" data-anim="kick">[4] ফ্লাইং কিক</button>
             <button type="button" class="studio-chip" data-anim="combo">[5] বক্সিং কম্বো</button>
             <button type="button" class="studio-chip" data-anim="flex">[6] বডি ফ্লেক্স</button>
+            <button type="button" class="studio-chip" data-anim="phone">[7] ফোনে কথা</button>
+            <button type="button" class="studio-chip" data-anim="mobile">[8] মোবাইল গেম</button>
+            <button type="button" class="studio-chip" data-anim="laugh">[9] হাসি (Laugh)</button>
+            <button type="button" class="studio-chip" data-anim="warmup">[0] ওয়ার্ম-আপ</button>
+            <button type="button" class="studio-chip" data-anim="sit">বসা (Sit)</button>
           </div>
         </div>
 
         <div class="studio-group">
-          <label>মাথার অবস্থান ও গ্রাফিক্স (GAZE & GRAPHICS)</label>
+          <label>কথা বলা ও লিপ-সিঙ্ক (TALK &amp; LIP-SYNC)</label>
+          <div class="studio-btn-grid">
+            <button type="button" class="studio-chip" id="studio-talk-btn">🗣️ কথা বলা (Talk)</button>
+            <button type="button" class="studio-chip" id="studio-mic-btn">🎙️ মাইক লিপ-সিঙ্ক (Mic)</button>
+          </div>
+        </div>
+
+        <div class="studio-group">
+          <label>মাথার অবস্থান ও গ্রাফিক্স (GAZE &amp; GRAPHICS)</label>
           <div class="studio-btn-grid">
             <button type="button" class="studio-chip active" data-gaze="straight">সোজা তাকানো (Straight)</button>
             <button type="button" class="studio-chip" data-gaze="original">ছবির ভঙ্গি (Photo Pose)</button>
             <select id="studio-quality" class="studio-chip" aria-label="Studio graphics quality">
-              <option value="low">Graphics: Low (Smooth)</option>
+              <option value="low">Graphics: Low (Crisp)</option>
               <option value="medium">Graphics: Medium</option>
               <option value="high" selected>Graphics: High HD</option>
               <option value="ultra">Graphics: Ultra 4K</option>
@@ -102,15 +122,26 @@
 
     <main id="intro" class="intro hidden">
       <div class="intro-copy">
-        <p class="eyebrow"><span></span> A REAL-PLACE STUDY · 2013</p>
-        <h1>A street<br />remembered.</h1>
-        <p class="intro-description">Step into a familiar Khulna lane, rebuilt in real-time 3D from your Street View reference.</p>
+        <p class="eyebrow"><span></span> REAL-MAP KHULNA CITY · BANGLADESH</p>
+        <h1>Khulna,<br />walkable.</h1>
+        <p class="intro-description">Explore real Khulna from Tootpara Taltola Hospital Cross Rd (তালতলার বাসা) to Haji Mohsin Rd, PTI More, Alia Madrasah, Circuit House & Rupsha Ghat.</p>
         <div class="entry-row">
-          <button id="enter-button" class="primary-button" type="button"><span>ENTER THE STREET</span><b>→</b></button>
+          <button id="enter-button" class="primary-button" type="button"><span>ENTER KHULNA</span><b>→</b></button>
+          <div class="quality-control">
+            <label for="spawn-select">START LOCATION</label>
+            <select id="spawn-select" aria-label="Starting landmark in Khulna">
+              <option value="taltola_house" selected>তালতলার বাসা · Taltola Cross Rd</option>
+              <option value="haji_mohsin">হাজী মহসিন রোড · 35 SK Arshan</option>
+              <option value="pti_more">পিটিআই মোড় · PTI More</option>
+              <option value="alia_madrasah">আলিয়া মাদ্রাসা · Alia Madrasah</option>
+              <option value="circuit_house">বড় মাঠ · Circuit House & Stadium</option>
+              <option value="rupsha_ferry">রূপসা ঘাট · Rupsha Ferry & Strand</option>
+            </select>
+          </div>
           <div class="quality-control">
             <label for="quality">GRAPHICS</label>
             <select id="quality" aria-label="Graphics quality">
-              <option value="low">Low (Smooth · No GPU)</option>
+              <option value="low">Low (Crisp · Smooth)</option>
               <option value="medium">Medium</option>
               <option value="high" selected>High HD</option>
               <option value="ultra">Ultra 4K</option>
@@ -118,8 +149,31 @@
           </div>
         </div>
       </div>
-      <div class="scene-caption"><span>22.7998° N</span><i></i><span>89.5741° E</span></div>
+      <div class="scene-caption"><span>22.7988° N</span><i></i><span>89.5734° E</span></div>
     </main>
+
+    <!-- INTERACTIVE KHULNA CITY MAP & FAST TRAVEL ([M] KEY) -->
+    <section id="city-map-modal" class="city-map-modal hidden" role="dialog" aria-label="Khulna City Map and Fast Travel">
+      <div class="city-map-card">
+        <div class="city-map-header">
+          <div>
+            <p class="eyebrow">KHULNA OPEN-WORLD GPS NAVIGATOR</p>
+            <h3>খুলনা শহর মানচিত্র ও ফাস্ট ট্র্যাভেল (Click Landmark or Road to Teleport)</h3>
+          </div>
+          <button id="close-city-map" class="lift-close-x" type="button" title="Close Map (M / Esc)">×</button>
+        </div>
+        <div class="city-map-body">
+          <div class="city-map-canvas-wrap">
+            <canvas id="city-map-canvas" width="760" height="720"></canvas>
+            <p class="city-map-hint">নীল তীর = আপনার অবস্থান · যেকোনো রাস্তায় বা পিনে ক্লিক করে সঙ্গে সঙ্গে চলে যান</p>
+          </div>
+          <aside class="city-map-sidebar">
+            <div class="city-sidebar-title">KEY KHULNA LANDMARKS</div>
+            <div id="city-landmark-list" class="city-landmark-list"></div>
+          </aside>
+        </div>
+      </div>
+    </section>
 
     <section id="pause" class="pause-screen hidden">
       <div class="pause-card">
@@ -130,7 +184,7 @@
         <div class="pause-settings">
           <label for="pause-quality">GRAPHICS</label>
           <select id="pause-quality" aria-label="Graphics quality while paused">
-            <option value="low">Low (Smooth · No GPU)</option>
+            <option value="low">Low (Crisp · Smooth)</option>
             <option value="medium">Medium</option>
             <option value="high" selected>High HD</option>
             <option value="ultra">Ultra 4K</option>
@@ -143,17 +197,28 @@
       <div class="crosshair" aria-hidden="true"></div>
       <div id="interact-prompt" class="interact-prompt hidden">[E] মেইন গেট খুলুন</div>
       <div id="emote-bar" class="emote-bar">
-        <button type="button" id="run-pill-button" class="emote-pill"><kbd>SHIFT / R</kbd> দৌড়ানো (Run)</button>
-        <button type="button" class="emote-pill" data-game-emote="pocket"><kbd>P</kbd> হাত পকেটে স্টাইল</button>
-        <button type="button" class="emote-pill" data-game-emote="dance1"><kbd>1</kbd> হিপ-হপ নাচ</button>
-        <button type="button" class="emote-pill" data-game-emote="dance2"><kbd>2</kbd> বিজয় নাচ</button>
+        <button type="button" id="run-pill-button" class="emote-pill"><kbd>SHIFT / R</kbd> দৌড়ানো</button>
+        <button type="button" class="emote-pill" data-game-emote="pocket"><kbd>P</kbd> স্টাইল</button>
+        <button type="button" class="emote-pill" data-game-emote="dance1"><kbd>1</kbd> নাচ ১</button>
+        <button type="button" class="emote-pill" data-game-emote="dance2"><kbd>2</kbd> নাচ ২</button>
         <button type="button" class="emote-pill" data-game-emote="wave"><kbd>3</kbd> সালাম/হাই</button>
-        <button type="button" class="emote-pill" data-game-emote="kick"><kbd>4</kbd> ফ্লাইং কিক</button>
-        <button type="button" class="emote-pill" data-game-emote="combo"><kbd>5</kbd> মারামারি কম্বো</button>
-        <button type="button" class="emote-pill" data-game-emote="flex"><kbd>6</kbd> বডি ফ্লেক্স</button>
+        <button type="button" class="emote-pill" data-game-emote="kick"><kbd>4</kbd> কিক</button>
+        <button type="button" class="emote-pill" data-game-emote="combo"><kbd>5</kbd> কম্বো</button>
+        <button type="button" class="emote-pill" data-game-emote="flex"><kbd>6</kbd> ফ্লেক্স</button>
+        <button type="button" class="emote-pill" data-game-emote="phone"><kbd>7</kbd> ফোন</button>
+        <button type="button" class="emote-pill" data-game-emote="mobile"><kbd>8</kbd> গেম</button>
+        <button type="button" class="emote-pill" data-game-emote="laugh"><kbd>9</kbd> হাসি</button>
+        <button type="button" id="talk-pill-button" class="emote-pill"><kbd>Y</kbd> কথা বলা</button>
       </div>
-      <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360° ORBIT</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>SHIFT / R / 2×W</kbd> দৌড়ানো (RUN)</span><span><kbd>SPACE</kbd> JUMP</span><span><kbd>E</kbd> INTERACT / LIFT</span><span><kbd>L</kbd> LIFT PAD</span><span><kbd>1-6</kbd> EMOTE</span><span><kbd>V</kbd> VIEW</span></div>
+      <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360°</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>SPACE</kbd> JUMP / FLIP</span><span><kbd>F</kbd> দেয়াল বাওয়া (CLIMB)</span><span><kbd>Q</kbd> ডাইভ (DIVE)</span><span><kbd>E</kbd> INTERACT</span><span><kbd>1-0</kbd> EMOTE</span><span><kbd>V</kbd> VIEW</span></div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
+      <button id="minimap-dock" class="minimap-dock" type="button" title="Open Full Khulna City Map [M]">
+        <canvas id="khulna-minimap" width="148" height="148"></canvas>
+        <div class="minimap-footer">
+          <span id="gps-readout">22.7988°N · 89.5734°E</span>
+          <kbd>M</kbd>
+        </div>
+      </button>
     </div>
 
     <!-- INTERACTIVE HIGH-SPEED ELEVATOR (LIFT) CONTROL KEYPAD -->

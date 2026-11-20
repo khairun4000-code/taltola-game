@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { box, cylinder, rodBetween, facadeShape, polygonShape, mergeStaticMeshes } from './scene-utils.js';
+import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 
 function frontWindow(group, m, { x = 6.16, y, z, width, height, grill = false, frosted = false, openable = true }) {
   if (!openable) {
@@ -1035,9 +1036,13 @@ function buildSideAndRearElevations(staticGroup, m, floors) {
 }
 
 export function buildHouse(scene, m) {
+  const ox = TALTOLA_HOUSE_OFFSET.x;
+  const oz = TALTOLA_HOUSE_OFFSET.z;
   const group = new THREE.Group();
   group.name = 'Reference house and property';
+  group.position.set(ox, 0, oz);
   scene.add(group);
+  const toLocal = (p) => (p ? { x: p.x - ox, y: p.y, z: p.z - oz } : null);
 
   const staticGroup = new THREE.Group();
   group.add(staticGroup);
@@ -1130,13 +1135,13 @@ export function buildHouse(scene, m) {
     flatDoors,
   };
 
-  function findNearestFlatDoor(playerPosition) {
-    const footY = playerPosition.y - 1.68;
+  function findNearestFlatDoor(localPos) {
+    const footY = localPos.y - 1.68;
     let best = null;
     let bestDist = Infinity;
     for (const fd of flatDoors) {
       if (Math.abs(footY - fd.y) > 1.65) continue;
-      const d = Math.hypot(playerPosition.x - fd.x, playerPosition.z - fd.z);
+      const d = Math.hypot(localPos.x - fd.x, localPos.z - fd.z);
       if (d < bestDist) {
         bestDist = d;
         best = fd;
@@ -1147,6 +1152,7 @@ export function buildHouse(scene, m) {
 
   return {
     group,
+    offset: TALTOLA_HOUSE_OFFSET,
     state,
     isFlatDoorOpen(level, side) {
       const unit = `${level + 1}${side < 0 ? 'A' : 'B'}`;
@@ -1154,13 +1160,14 @@ export function buildHouse(scene, m) {
       return found ? found.open : true;
     },
     toggleNearestDoor(playerPosition) {
-      const footY = playerPosition.y - 1.68;
-      const { door: nearestFlat, dist: dFlat } = findNearestFlatDoor(playerPosition);
+      const lp = toLocal(playerPosition);
+      const footY = lp.y - 1.68;
+      const { door: nearestFlat, dist: dFlat } = findNearestFlatDoor(lp);
 
       if (footY < 1.5) {
-        const dGate = Math.hypot(playerPosition.x - 2.48, playerPosition.z);
-        const dFront = Math.hypot(playerPosition.x - 5.98, playerPosition.z);
-        const dBack = Math.hypot(playerPosition.x - 14.34, playerPosition.z);
+        const dGate = Math.hypot(lp.x - 2.48, lp.z);
+        const dFront = Math.hypot(lp.x - 5.98, lp.z);
+        const dBack = Math.hypot(lp.x - 14.34, lp.z);
 
         if (nearestFlat && dFlat < 2.2 && dFlat < dFront && dFlat < dBack) {
           nearestFlat.open = !nearestFlat.open;
@@ -1197,8 +1204,9 @@ export function buildHouse(scene, m) {
       return next;
     },
     getPrompt(playerPosition) {
-      const footY = playerPosition.y - 1.68;
-      const { door: nearestFlat, dist: dFlat } = findNearestFlatDoor(playerPosition);
+      const lp = toLocal(playerPosition);
+      const footY = lp.y - 1.68;
+      const { door: nearestFlat, dist: dFlat } = findNearestFlatDoor(lp);
 
       if (nearestFlat && dFlat < 2.15) {
         return nearestFlat.open
@@ -1207,9 +1215,9 @@ export function buildHouse(scene, m) {
       }
 
       if (footY < 1.5) {
-        const dGate = Math.hypot(playerPosition.x - 2.48, playerPosition.z);
-        const dFront = Math.hypot(playerPosition.x - 5.98, playerPosition.z);
-        const dBack = Math.hypot(playerPosition.x - 14.34, playerPosition.z);
+        const dGate = Math.hypot(lp.x - 2.48, lp.z);
+        const dFront = Math.hypot(lp.x - 5.98, lp.z);
+        const dBack = Math.hypot(lp.x - 14.34, lp.z);
         if (dGate < 4.5 && dGate <= dFront) {
           return state.gateOpen ? '[E] মেইন গেট বন্ধ করুন' : '[E] মেইন গেট খুলুন (উঠানে যান)';
         }
@@ -1223,6 +1231,7 @@ export function buildHouse(scene, m) {
       return null;
     },
     update(delta, playerPosition = null, isLowQuality = false) {
+      const lp = toLocal(playerPosition);
       const step = Math.min(1, 6.0 * delta);
       const targetGate = state.gateOpen ? Math.PI * 0.48 : 0;
       const targetFront = state.frontDoorOpen ? Math.PI * 0.54 : 0;
@@ -1251,9 +1260,9 @@ export function buildHouse(scene, m) {
       }
 
       // Cull interior furniture of floors the player cannot see (eliminates 85% of geometry outside / on other floors!)
-      if (playerPosition) {
-        const insideOrNear = playerPosition.x > 3.8 && playerPosition.x < 15.8 && Math.abs(playerPosition.z) < 6.8;
-        const playerLvl = Math.round((playerPosition.y - 1.68) / 3.05);
+      if (lp) {
+        const insideOrNear = lp.x > 3.8 && lp.x < 15.8 && Math.abs(lp.z) < 6.8;
+        const playerLvl = Math.round((lp.y - 1.68) / 3.05);
         const maxLvlDiff = isLowQuality ? 0 : 1;
         for (let i = 0; i < floorInteriors.length; i++) {
           const shouldShow = insideOrNear && Math.abs(i - playerLvl) <= maxLvlDiff;
@@ -1264,7 +1273,7 @@ export function buildHouse(scene, m) {
       }
 
       // Skip spinning ceiling fans when in Low (No GPU) mode outside the building
-      if (isLowQuality && playerPosition && (playerPosition.x < 5.5 || playerPosition.x > 14.8)) {
+      if (isLowQuality && lp && (lp.x < 5.5 || lp.x > 14.8)) {
         return;
       }
       const rotDelta = delta * 6.5;

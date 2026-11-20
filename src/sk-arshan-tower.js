@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
+import { attachDerivedPBRMaps } from './aaa-shaders.js';
 
 /**
  * SK ARSHAN ALIF TOWER (শেখ আরশান আলিফ টাওয়ার) — 35 Haji Mohsin Road, Khulna
@@ -528,91 +529,126 @@ function createFramedArtTexture() {
 }
 
 export function createHajiMaterials() {
-  const lam = (opts, uvScale) => {
-    const mat = new THREE.MeshLambertMaterial(opts);
+  const std = (opts, uvScale, pbrOpts = null) => {
+    const mat = new THREE.MeshStandardMaterial({
+      roughness: 0.78,
+      metalness: 0.04,
+      envMapIntensity: 0.78,
+      ...opts,
+    });
     if (uvScale) mat.userData.uvScale = uvScale;
+    if (pbrOpts && mat.map) {
+      attachDerivedPBRMaps(mat, mat.map, pbrOpts);
+    }
     return mat;
   };
-  const std = (opts, uvScale) => {
-    const mat = new THREE.MeshStandardMaterial(opts);
+  const phys = (opts, uvScale, pbrOpts = null) => {
+    const mat = new THREE.MeshPhysicalMaterial({
+      roughness: 0.14,
+      metalness: 0.08,
+      clearcoat: 0.85,
+      clearcoatRoughness: 0.10,
+      envMapIntensity: 1.45,
+      ...opts,
+    });
     if (uvScale) mat.userData.uvScale = uvScale;
+    if (pbrOpts && mat.map) {
+      attachDerivedPBRMaps(mat, mat.map, pbrOpts);
+    }
     return mat;
   };
+
   const stuccoMap = loadTex('white-stucco.jpg');
+  const marbleMap = loadTex('swirl-marble.jpg');
+  const graniteMap = loadTex('black-granite.jpg');
+  const paversMap = loadTex('red-pavers.jpg');
+  const weatheredMap = loadTex('weathered-wall.jpg', { repeatY: 2.95 / 2.2, offsetY: 0.5 });
+  const maroonMap = loadTex('maroon-shutter.jpg');
+  const brownMap = loadTex('brown-shutter.jpg');
   const WALL_W = 2.95;
+
   const mats = {
-    stucco: lam({ map: stuccoMap }, 3.2),
-    stuccoShade: lam({ map: stuccoMap, color: 0xdedcd6 }, 3.2),
-    grey: lam({ map: loadTex('grey-cement.jpg'), color: 0xe2e4e4 }, 2.6),
-    darkGrey: lam({ map: loadTex('grey-cement.jpg'), color: 0x8a8e90 }, 2.6),
-    marble: lam({ map: loadTex('swirl-marble.jpg') }, 1.8),
-    granite: lam({ map: loadTex('black-granite.jpg') }, 1.3),
-    pavers: lam({ map: loadTex('red-pavers.jpg') }, 2.4),
-    alleyConcrete: lam({ map: loadTex('alley-concrete.jpg') }, 3.4),
-    maroonShutter: lam({ map: loadTex('maroon-shutter.jpg') }, 2.4),
-    brownShutter: lam({ map: loadTex('brown-shutter.jpg') }, 2.4),
-    weatheredWall: lam({ map: loadTex('weathered-wall.jpg', { repeatY: WALL_W / 2.2, offsetY: 0.5 }) }, WALL_W),
-    oldCream: lam({ map: stuccoMap, color: 0xd6c08e }, 3.2),
-    oldPink: lam({ map: stuccoMap, color: 0xcf9484 }, 3.2),
-    oldYellow: lam({ map: stuccoMap, color: 0xe0c87a }, 3.2),
-    glass: lam({ color: 0x3b76a3, emissive: 0x0a1c2a, transparent: true, opacity: 0.68 }),
-    clearGlass: lam({ color: 0x99d5ff, transparent: true, opacity: 0.34 }),
-    frame: lam({ color: 0x50565a }),
-    steel: lam({ color: 0xc7cbcf }),
-    gold: lam({ color: 0xf59e0b, emissive: 0x3b2506 }),
-    railGrey: lam({ color: 0x8f969b }),
-    grilleBar: lam({ color: 0xa3a9ad }),
-    dark: lam({ color: 0x17191b }),
-    window: lam({ color: 0x2b3134 }),
-    ac: lam({ color: 0xeceeea }),
-    acFan: lam({ color: 0x33373a }),
-    plant: lam({ color: 0x2e7d32 }),
-    terracotta: lam({ color: 0x9c4a2d }),
-    redCar: lam({ color: 0xc81e1e, emissive: 0x1a0303 }),
-    blackSuv: lam({ color: 0x243044, emissive: 0x06090f }),
-    carGlass: lam({ color: 0x132036 }),
-    headlight: new THREE.MeshBasicMaterial({ color: 0xfef08a }),
-    taillight: new THREE.MeshBasicMaterial({ color: 0xef4444 }),
-    tyre: lam({ color: 0x141414 }),
-    rubble: lam({ color: 0xb3ada2 }),
-    brickRed: lam({ color: 0x9a4a36 }),
-    banner: lam({ map: loadTex('balcony-banner.jpg'), side: THREE.DoubleSide }),
-    signMcsk: lam({ map: loadTex('sign-mcsk.jpg'), side: THREE.DoubleSide }),
-    signShetu: lam({ map: loadTex('sign-shetu.jpg'), side: THREE.DoubleSide }),
-    // High-Fi Interior Luxury Materials (rich procedural textures with ultra-fast Lambert shading for 60-120 FPS & zero white washout!)
-    creamTile: lam({ map: createLuxuryFloorTileTexture() }, 2.2),
-    wallCream: lam({ map: createLuxuryWallTexture() }, 2.6),
-    wallAccent: lam({ map: stuccoMap, color: 0xb8a38a }, 3.0),
-    ceilingMat: lam({ color: 0xe6decb }),
+    stucco: std({ map: stuccoMap, roughness: 0.80 }, 3.2, { strength: 1.5, roughBase: 0.80, normalScale: 0.50 }),
+    stuccoShade: std({ map: stuccoMap, color: 0xdedcd6, roughness: 0.82 }, 3.2),
+    grey: std({ map: loadTex('grey-cement.jpg'), color: 0xe2e4e4, roughness: 0.84 }, 2.6),
+    darkGrey: std({ map: loadTex('grey-cement.jpg'), color: 0x8a8e90, roughness: 0.88 }, 2.6),
+    marble: phys({ map: marbleMap, roughness: 0.18, clearcoat: 0.82 }, 1.8, { strength: 1.4, roughBase: 0.18, normalScale: 0.42 }),
+    granite: phys({ map: graniteMap, roughness: 0.14, clearcoat: 0.90 }, 1.3, { strength: 1.6, roughBase: 0.14, normalScale: 0.45 }),
+    pavers: std({ map: paversMap, roughness: 0.88 }, 2.4, { strength: 2.8, roughBase: 0.88, normalScale: 0.85 }),
+    alleyConcrete: std({ map: loadTex('alley-concrete.jpg'), roughness: 0.88 }, 3.4),
+    maroonShutter: std({ map: maroonMap, roughness: 0.46, metalness: 0.56 }, 2.4, { strength: 2.8, roughBase: 0.46, normalScale: 0.85 }),
+    brownShutter: std({ map: brownMap, roughness: 0.46, metalness: 0.56 }, 2.4, { strength: 2.8, roughBase: 0.46, normalScale: 0.85 }),
+    weatheredWall: std({ map: weatheredMap, roughness: 0.92 }, WALL_W, { strength: 3.0, roughBase: 0.92, normalScale: 0.95 }),
+    oldCream: std({ map: stuccoMap, color: 0xd6c08e, roughness: 0.84 }, 3.2, { strength: 1.6, roughBase: 0.84, normalScale: 0.52 }),
+    oldPink: std({ map: stuccoMap, color: 0xcf9484, roughness: 0.84 }, 3.2, { strength: 1.6, roughBase: 0.84, normalScale: 0.52 }),
+    oldYellow: std({ map: stuccoMap, color: 0xe0c87a, roughness: 0.84 }, 3.2, { strength: 1.6, roughBase: 0.84, normalScale: 0.52 }),
+    glass: phys({ color: 0x3b76a3, emissive: 0x0a1c2a, emissiveIntensity: 0.45, roughness: 0.06, clearcoat: 0.96, envMapIntensity: 1.65, transparent: true, opacity: 0.68 }),
+    clearGlass: phys({ color: 0x99d5ff, roughness: 0.05, clearcoat: 0.95, envMapIntensity: 1.6, transparent: true, opacity: 0.34 }),
+    frame: std({ color: 0x50565a, roughness: 0.44, metalness: 0.68 }),
+    steel: std({ color: 0xd2d7dc, roughness: 0.20, metalness: 0.92, envMapIntensity: 1.4 }),
+    gold: std({ color: 0xf59e0b, emissive: 0x3b2506, roughness: 0.24, metalness: 0.88 }),
+    railGrey: std({ color: 0x9aa2a8, roughness: 0.26, metalness: 0.84 }),
+    grilleBar: std({ color: 0xaab1b6, roughness: 0.24, metalness: 0.88 }),
+    dark: std({ color: 0x17191b, roughness: 0.56, metalness: 0.30 }),
+    window: phys({ color: 0x242e34, roughness: 0.12, clearcoat: 0.8 }),
+    ac: std({ color: 0xeceeea, roughness: 0.45, metalness: 0.25 }),
+    acFan: std({ color: 0x33373a, roughness: 0.55, metalness: 0.35 }),
+    plant: std({ color: 0x2e7d32, roughness: 0.72 }),
+    terracotta: std({ color: 0x9c4a2d, roughness: 0.84 }),
+    redCar: phys({ color: 0xc81e1e, emissive: 0x1a0303, roughness: 0.16, metalness: 0.32, clearcoat: 0.98, envMapIntensity: 1.4 }),
+    blackSuv: phys({ color: 0x1f293d, emissive: 0x05080f, roughness: 0.15, metalness: 0.45, clearcoat: 0.98, envMapIntensity: 1.5 }),
+    carGlass: phys({ color: 0x132036, roughness: 0.06, clearcoat: 1.0, envMapIntensity: 1.6 }),
+    headlight: std({ color: 0xfef08a, emissive: 0xffe89e, emissiveIntensity: 1.4 }),
+    taillight: std({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 1.5 }),
+    tyre: std({ color: 0x141414, roughness: 0.88 }),
+    rubble: std({ color: 0xb3ada2, roughness: 0.94 }),
+    brickRed: std({ color: 0x9a4a36, roughness: 0.88 }),
+    banner: std({ map: loadTex('balcony-banner.jpg'), side: THREE.DoubleSide, roughness: 0.65 }),
+    signMcsk: std({ map: loadTex('sign-mcsk.jpg'), side: THREE.DoubleSide, roughness: 0.55 }),
+    signShetu: std({ map: loadTex('sign-shetu.jpg'), side: THREE.DoubleSide, roughness: 0.55 }),
+    creamTile: phys({ map: createLuxuryFloorTileTexture(), roughness: 0.18, clearcoat: 0.72 }, 2.2),
+    wallCream: std({ map: createLuxuryWallTexture(), roughness: 0.76 }, 2.6),
+    wallAccent: std({ map: stuccoMap, color: 0xb8a38a, roughness: 0.78 }, 3.0),
+    ceilingMat: std({ color: 0xe6decb, roughness: 0.85 }),
     wallArt: new THREE.MeshBasicMaterial({ map: createFramedArtTexture() }),
-    woodWalnut: lam({ map: createWoodGrainTexture('#5c3a21', '#3b2210') }, 1.6),
-    woodOak: lam({ map: createWoodGrainTexture('#a47551', '#7c5333') }, 1.6),
-    velvetBlue: lam({ map: createTuftedFabricTexture('#1d4ed8', '#1e3a8a') }, 1.2),
-    velvetCream: lam({ map: createTuftedFabricTexture('#ece6dc', '#c7bfb1') }, 1.2),
-    velvetEmerald: lam({ map: createTuftedFabricTexture('#047857', '#064e3b') }, 1.2),
-    rugPattern: lam({ map: createPersianRugTexture() }, 3.2),
-    bedSheet: lam({ map: createTuftedFabricTexture('#f8fafc', '#cbd5e1') }, 1.5),
-    bedBlanket: lam({ map: createTuftedFabricTexture('#0284c7', '#0369a1') }, 1.4),
-    bathTile: lam({ map: createBathTileTexture() }, 1.4),
-    porcelain: lam({ color: 0xf8fafc }),
-    chrome: lam({ color: 0xcbd5e1 }),
-    mirrorMat: lam({ color: 0xaad4f5, emissive: 0x1e3a5f }),
-    waterBlue: new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
-    curtainGold: lam({ color: 0xd97706 }),
-    ledWarm: new THREE.MeshBasicMaterial({ color: 0xfffbeb }),
-    ledCyan: new THREE.MeshBasicMaterial({ color: 0x22d3ee }),
-    ledMagenta: new THREE.MeshBasicMaterial({ color: 0xe879f9 }),
-    yellowLine: new THREE.MeshBasicMaterial({ color: 0xfacc15 }),
+    woodWalnut: std({ map: createWoodGrainTexture('#5c3a21', '#3b2210'), roughness: 0.48 }, 1.6),
+    woodOak: std({ map: createWoodGrainTexture('#a47551', '#7c5333'), roughness: 0.52 }, 1.6),
+    velvetBlue: std({ map: createTuftedFabricTexture('#1d4ed8', '#1e3a8a'), roughness: 0.88 }, 1.2),
+    velvetCream: std({ map: createTuftedFabricTexture('#ece6dc', '#c7bfb1'), roughness: 0.88 }, 1.2),
+    velvetEmerald: std({ map: createTuftedFabricTexture('#047857', '#064e3b'), roughness: 0.88 }, 1.2),
+    rugPattern: std({ map: createPersianRugTexture(), roughness: 0.92 }, 3.2),
+    bedSheet: std({ map: createTuftedFabricTexture('#f8fafc', '#cbd5e1'), roughness: 0.86 }, 1.5),
+    bedBlanket: std({ map: createTuftedFabricTexture('#0284c7', '#0369a1'), roughness: 0.84 }, 1.4),
+    bathTile: phys({ map: createBathTileTexture(), roughness: 0.16, clearcoat: 0.82 }, 1.4),
+    porcelain: phys({ color: 0xf8fafc, roughness: 0.12, clearcoat: 0.88 }),
+    chrome: std({ color: 0xe2e8f0, roughness: 0.12, metalness: 0.96, envMapIntensity: 1.5 }),
+    mirrorMat: phys({ color: 0xaad4f5, emissive: 0x1e3a5f, roughness: 0.04, metalness: 0.92, clearcoat: 1.0, envMapIntensity: 1.7 }),
+    waterBlue: phys({ color: 0x38bdf8, roughness: 0.08, clearcoat: 0.9 }),
+    curtainGold: std({ color: 0xd97706, roughness: 0.84 }),
+    ledWarm: std({ color: 0xfffbeb, emissive: 0xfff3c4, emissiveIntensity: 1.5 }),
+    ledCyan: std({ color: 0x22d3ee, emissive: 0x22d3ee, emissiveIntensity: 1.8 }),
+    ledMagenta: std({ color: 0xe879f9, emissive: 0xe879f9, emissiveIntensity: 1.8 }),
+    yellowLine: std({ color: 0xfacc15, roughness: 0.65 }),
     lobbySign: new THREE.MeshBasicMaterial({ map: createLobbySignTexture() }),
-    smartTv: new THREE.MeshBasicMaterial({ map: createSmartTVTexture() }),
+    smartTv: new THREE.MeshBasicMaterial({ map: createSmartTVTexture(), toneMapped: false }),
     liftDisplay: new THREE.MeshBasicMaterial({ map: createLiftDisplayTexture() }),
-    gamingScreen: new THREE.MeshBasicMaterial({ map: createGamingScreenTexture() }),
-    turfGreen: lam({ color: 0x15803d }),
+    gamingScreen: new THREE.MeshBasicMaterial({ map: createGamingScreenTexture(), toneMapped: false }),
+    turfGreen: std({ color: 0x15803d, roughness: 0.88 }),
   };
   mats.setQualityMode = (quality) => {
     const isLow = quality === 'low';
     for (const mat of Object.values(mats)) {
-      if (!mat || typeof mat !== 'object' || !mat.map) continue;
+      if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
+      if (mat.userData?.pbrNormalMap) {
+        const nextNorm = isLow ? null : mat.userData.pbrNormalMap;
+        const nextRough = isLow ? null : mat.userData.pbrRoughnessMap;
+        if (mat.normalMap !== nextNorm || mat.roughnessMap !== nextRough) {
+          mat.normalMap = nextNorm;
+          mat.roughnessMap = nextRough;
+          mat.needsUpdate = true;
+        }
+      }
+      if (!mat.map) continue;
       if (mat.userData.origAniso === undefined) {
         mat.userData.origAniso = mat.map.anisotropy || 8;
       }
@@ -1094,6 +1130,7 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
   }
   BG(-4.14, -4.3, 3.68, 3.82, 18.9, 21.9, hm.frame);
   BG(-4.14, -4.3, PL + 0.02, PL + 0.10, 18.9, 21.9, hm.frame);
+  mergeStaticMeshes(slidingGateGroup);
   slidingGateGroup.position.z = state.gateSlide * -2.85;
 
   // Front (road) ground floor piers & gates
@@ -1669,6 +1706,8 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
       cabRightDoor.position.z = 19.85 + state.liftDoorOpen * 0.56;
 
       const insideTower = playerPos.x <= -2.8 && playerPos.x >= -20.2 && playerPos.z >= 14.2 && playerPos.z <= 28.8;
+      const cabVisible = insideTower || Math.hypot(playerPos.x + 8.0, playerPos.z - 19.0) < 22.0;
+      if (elevatorCabGroup.visible !== cabVisible) elevatorCabGroup.visible = cabVisible;
       for (const ld of landingDoors) {
         const shouldShowDoor = (ld.level === 0 && footY < 3.6) || (insideTower && Math.abs(footY - ld.y) <= 2.4);
         if (ld.group.visible !== shouldShowDoor) ld.group.visible = shouldShowDoor;
@@ -1736,10 +1775,17 @@ export function buildFakirBariLane(staticParent, m, hm) {
     B(x0, x1, 0, h, z0, z1, mat);
     B(x0 + 0.1, x1 - 0.1, h, h + 0.6, z0 - 0.1, z1 + 0.1, mat);
     const dir = faceZ === z0 ? -1 : 1;
+    const minZ = Math.min(z0, z1);
+    const maxZ = Math.max(z0, z1);
     for (let y = floorH; y < h - 0.5; y += floorH) {
       B(x0, x1, y - 0.12, y + 0.06, faceZ + dir * 0.0, faceZ + dir * 0.55, hm.stuccoShade);
       for (let x = x0 - 1.2; x > x1 + 0.8; x -= 2.4) {
         B(x, x - 1.0, y + 0.8, y + 2.2, faceZ + dir * -0.02, faceZ + dir * 0.03, hm.window);
+      }
+      // East gable wall (x0) cornice band & recessed windows facing Haji Mohsin Road
+      B(x0 + 0.02, x0 + 0.32, y - 0.12, y + 0.06, minZ, maxZ, hm.stuccoShade);
+      for (let z = minZ + 1.4; z < maxZ - 1.0; z += 2.6) {
+        B(x0 - 0.02, x0 + 0.04, y + 0.8, y + 2.2, z, z + 1.0, hm.window);
       }
     }
     for (let x = x0 - 0.3; x > x1 + 0.6; x -= 2.2) B(x, x - 1.6, 0, 2.6, faceZ + dir * -0.02, faceZ + dir * 0.04, hm.brownShutter);

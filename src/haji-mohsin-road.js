@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { createHajiMaterials, buildSkArshanTower, buildFakirBariLane } from './sk-arshan-tower.js';
+import { attachDerivedPBRMaps } from './aaa-shaders.js';
 
 function createRedPaverTexture() {
   const canvas = document.createElement('canvas');
@@ -408,38 +409,46 @@ function buildCycleRickshaw(parent, m, x, z) {
  * directly adjacent to the Taltola 5-Story House (z = +7.4 to +42, and across the street x < -2.0).
  */
 export function buildHajiMohsinRoad(parent, m) {
+  const districtGroup = new THREE.Group();
+  districtGroup.name = 'HajiMohsinRoadDistrict';
+  parent.add(districtGroup);
+
   const staticGroup = new THREE.Group();
   staticGroup.name = 'HajiMohsinRoadBlock';
-  parent.add(staticGroup);
+  districtGroup.add(staticGroup);
 
   const towerHostGroup = new THREE.Group();
   towerHostGroup.name = 'SkArshanAlifTowerHost';
-  parent.add(towerHostGroup);
+  districtGroup.add(towerHostGroup);
 
   const dynamicGroup = new THREE.Group();
   dynamicGroup.name = 'HajiMohsinRoadSignboardsAndVehicles';
-  parent.add(dynamicGroup);
+  districtGroup.add(dynamicGroup);
 
   // Photo-matched materials extracted from Street View (see sk-arshan-tower.js)
   const hm = createHajiMaterials();
   const redPaverMat = hm.pavers;
 
-  const shutterMat = new THREE.MeshLambertMaterial({ map: createShutterTexture() });
+  const shutterTex = createShutterTexture();
+  const shutterMat = new THREE.MeshStandardMaterial({ map: shutterTex, roughness: 0.48, metalness: 0.58, envMapIntensity: 1.0 });
   shutterMat.userData.uvScale = 1.8;
+  attachDerivedPBRMaps(shutterMat, shutterTex, { strength: 2.8, roughBase: 0.48, normalScale: 0.85 });
 
-  const graniteMat = new THREE.MeshLambertMaterial({ map: createGraniteTexture() });
+  const graniteTex = createGraniteTexture();
+  const graniteMat = new THREE.MeshPhysicalMaterial({ map: graniteTex, roughness: 0.18, metalness: 0.08, clearcoat: 0.8, clearcoatRoughness: 0.12, envMapIntensity: 1.25 });
   graniteMat.userData.uvScale = 1.5;
+  attachDerivedPBRMaps(graniteMat, graniteTex, { strength: 1.6, roughBase: 0.18, normalScale: 0.5 });
 
-  const mintWallMat = new THREE.MeshLambertMaterial({ color: 0xb8d4cc });
-  const darkMintMat = new THREE.MeshLambertMaterial({ color: 0x7fa39a });
-  const modernStuccoMat = new THREE.MeshLambertMaterial({ color: 0xf4f6f8 });
-  const modernGreyMat = new THREE.MeshLambertMaterial({ color: 0x646a73 });
-  const blueGlassMat = new THREE.MeshLambertMaterial({ color: 0x2563eb, transparent: true, opacity: 0.58 });
-  const redTileMat = new THREE.MeshLambertMaterial({ color: 0xa8382b });
-  const ornateGateMat = new THREE.MeshLambertMaterial({ color: 0x4a3228 });
-  const adBlueMat = new THREE.MeshLambertMaterial({ color: 0x2557a7 });
-  const adYellowMat = new THREE.MeshLambertMaterial({ color: 0xd4b838 });
-  const cypressLeafMat = new THREE.MeshLambertMaterial({ color: 0x23472b });
+  const mintWallMat = new THREE.MeshStandardMaterial({ color: 0xb8d4cc, roughness: 0.82, metalness: 0.02 });
+  const darkMintMat = new THREE.MeshStandardMaterial({ color: 0x7fa39a, roughness: 0.84, metalness: 0.02 });
+  const modernStuccoMat = new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.72, metalness: 0.04 });
+  const modernGreyMat = new THREE.MeshStandardMaterial({ color: 0x646a73, roughness: 0.68, metalness: 0.12 });
+  const blueGlassMat = new THREE.MeshPhysicalMaterial({ color: 0x1d4ed8, roughness: 0.07, metalness: 0.14, clearcoat: 0.96, clearcoatRoughness: 0.06, envMapIntensity: 1.75, transparent: true, opacity: 0.62 });
+  const redTileMat = new THREE.MeshStandardMaterial({ color: 0xa8382b, roughness: 0.54, metalness: 0.04 });
+  const ornateGateMat = new THREE.MeshStandardMaterial({ color: 0x4a3228, roughness: 0.46, metalness: 0.62 });
+  const adBlueMat = new THREE.MeshStandardMaterial({ color: 0x2557a7, roughness: 0.78 });
+  const adYellowMat = new THREE.MeshStandardMaterial({ color: 0xd4b838, roughness: 0.76 });
+  const cypressLeafMat = new THREE.MeshStandardMaterial({ color: 0x23472b, roughness: 0.78 });
 
   // ============================================================================
   // 1. RED-BRICK HERRINGBONE SIDEWALKS (লাল ইটের ফুটপাত) & MANHOLE COVERS
@@ -504,9 +513,26 @@ export function buildHajiMohsinRoad(parent, m) {
   shetuSign.position.set(-2.12, 3.2, 9.95);
   dynamicGroup.add(shetuSign);
 
-  // Older 2-story house visible behind the weathered wall & mango trees (x = -7.8, z = 4.5)
-  box(staticGroup, [6.5, 6.4, 8.8], [-8.2, 3.2, 4.2], m.concrete);
-  box(staticGroup, [6.8, 0.25, 9.1], [-8.2, 6.45, 4.2], m.darkConcrete);
+  // Articulated older 2-story house visible behind the weathered wall & mango trees (x = -8.2, z = 4.2)
+  box(staticGroup, [6.5, 6.4, 8.8], [-8.2, 3.2, 4.2], hm.oldCream, { uvScale: 2.5 });
+  for (const fy of [3.15, 6.38]) {
+    box(staticGroup, [7.0, 0.24, 9.3], [-8.2, fy, 4.2], m.darkConcrete);
+  }
+  box(staticGroup, [6.6, 0.85, 0.22], [-8.2, 6.85, 8.5], hm.oldCream, { uvScale: 2.0 });
+  box(staticGroup, [0.22, 0.85, 8.8], [-4.98, 6.85, 4.2], hm.oldCream, { uvScale: 2.0 });
+  box(staticGroup, [6.6, 0.85, 0.22], [-8.2, 6.85, -0.1], hm.oldCream, { uvScale: 2.0 });
+  for (const wy of [1.65, 4.75]) {
+    for (const wz of [1.6, 4.2, 6.8]) {
+      box(staticGroup, [0.12, 1.35, 1.25], [-4.92, wy, wz], m.glass);
+      box(staticGroup, [0.28, 0.12, 1.48], [-4.84, wy + 0.72, wz], m.concrete);
+      box(staticGroup, [0.22, 0.09, 1.44], [-4.87, wy - 0.72, wz], m.concrete);
+    }
+    for (const wx of [-9.8, -6.6]) {
+      box(staticGroup, [1.25, 1.35, 0.12], [wx, wy, -0.22], m.glass);
+      box(staticGroup, [1.45, 0.12, 0.26], [wx, wy + 0.72, -0.16], m.concrete);
+    }
+  }
+  box(staticGroup, [0.32, 0.48, 0.72], [-4.84, 3.85, 2.8], m.whiteBand);
 
   // ============================================================================
   // 4. SK ARSHAN ALIF TOWER — 35 HAJI MOHSIN RD (G+9, rebuilt 1:1 from Street View)
@@ -530,12 +556,23 @@ export function buildHajiMohsinRoad(parent, m) {
       rodBetween(staticGroup, [3.55, 1.12, sz], [fx, 1.48, fz], 0.045, cypressLeafMat, 6);
     }
   }
-  // Tall Conical Evergreen Pine / Thuja Tree (ঝাউ গাছ) at z = 10.45 (matching step_10_media_0.png)
-  cylinder(staticGroup, 0.12, 0.20, 7.5, [3.65, 3.75, 10.45], m.trunk, 8);
-  for (let tier = 0; tier < 7; tier++) {
-    const ty = 2.0 + tier * 0.88;
-    const rad = 1.45 - tier * 0.17;
-    cylinder(staticGroup, rad * 0.35, rad, 1.35, [3.65, ty, 10.45], cypressLeafMat, 10);
+  // Organic Needle-Cluster Cypress / Thuja Tree (ঝাউ গাছ) at z = 10.45 (layered botanical sprays)
+  cylinder(staticGroup, 0.10, 0.19, 7.2, [3.65, 3.6, 10.45], m.trunk, 8);
+  const cyGeo = new THREE.DodecahedronGeometry(0.68, 1);
+  for (let tier = 0; tier < 16; tier++) {
+    const f = tier / 15;
+    const ty = 1.9 + f * 5.6;
+    const ringR = (1.0 - f * 0.82) * 0.72;
+    const count = tier > 12 ? 2 : 4;
+    for (let b = 0; b < count; b++) {
+      const ang = tier * 1.1 + (b / count) * Math.PI * 2;
+      const puff = new THREE.Mesh(cyGeo, cypressLeafMat);
+      puff.position.set(3.65 + Math.cos(ang) * ringR, ty + (b % 2) * 0.14, 10.45 + Math.sin(ang) * ringR);
+      const sc = (0.55 + (1.0 - f) * 0.68) * (0.85 + (b % 3) * 0.12);
+      puff.scale.set(sc * 0.9, sc * 1.15, sc * 0.9);
+      puff.rotation.set(ang * 0.3, ang, tier * 0.2);
+      staticGroup.add(puff);
+    }
   }
 
   // ============================================================================
@@ -692,5 +729,6 @@ export function buildHajiMohsinRoad(parent, m) {
   mergeStaticMeshes(staticGroup);
   mergeStaticMeshes(towerHostGroup);
   skArshanTower.exteriorStaticGroup = staticGroup;
+  skArshanTower.districtGroup = districtGroup;
   return skArshanTower;
 }

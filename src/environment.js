@@ -2,6 +2,12 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { box, cylinder, rodBetween, seededRandom, mergeStaticMeshes } from './scene-utils.js';
 import { buildHajiMohsinRoad } from './haji-mohsin-road.js';
+import { buildKhulnaCity } from './khulna-city.js';
+import { buildKhulnaLandmarks } from './khulna-landmarks.js';
+import { buildKhulnaCorridors } from './khulna-corridors.js';
+import { createKhulnaTraffic } from './khulna-vehicles.js';
+import { applyFoliageWindShader } from './aaa-shaders.js';
+import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 
 function leafClusterTexture() {
   const random = seededRandom(71513);
@@ -44,8 +50,8 @@ function leafClusterTexture() {
   return texture;
 }
 
-const sharedBarkMat = new THREE.MeshLambertMaterial({ color: 0x625c46 });
-const sharedDarkBarkMat = new THREE.MeshLambertMaterial({ color: 0x57523e });
+const sharedBarkMat = new THREE.MeshStandardMaterial({ color: 0x625c46, roughness: 0.94, metalness: 0.02 });
+const sharedDarkBarkMat = new THREE.MeshStandardMaterial({ color: 0x57523e, roughness: 0.94, metalness: 0.02 });
 
 function createBroadleafTree(parent, position, height, seed, material) {
   const random = seededRandom(seed);
@@ -182,8 +188,8 @@ function createWire(parent, points, radius, material) {
 }
 
 function buildRoad(parent, m) {
-  box(parent, [4.2, 0.14, 84], [0, -0.07, 0], m.road, { uvScale: 5.5, castShadow: false });
-  box(parent, [34, 0.18, 100], [0, -0.39, 0], m.darkConcrete, { castShadow: false });
+  box(parent, [4.2, 0.14, 84], [0, -0.055, 0], m.road, { uvScale: 5.5, castShadow: false });
+  box(parent, [34, 0.18, 86], [0, -0.39, 0], m.darkConcrete, { castShadow: false });
   for (const side of [-1, 1]) {
     const x = side * 2.36;
     box(parent, [0.5, 0.08, 84], [x, -0.32, 0], m.darkConcrete, { castShadow: false });
@@ -192,17 +198,16 @@ function buildRoad(parent, m) {
     box(parent, [0.35, 0.012, 83.5], [x, -0.255, 0], m.drainWater, { castShadow: false });
     box(parent, [0.12, 0.1, 84], [side * 2.02, 0.005, 0], m.concrete);
   }
-  box(parent, [1.0, 0.14, 4.75], [2.34, 0.01, 0], m.concrete);
   for (const z of [-31, -18, 12, 27]) {
     box(parent, [0.56, 0.09, 1.1], [-2.36, -0.02, z], m.concrete);
   }
   const random = seededRandom(8182);
   const leafGeometry = new THREE.PlaneGeometry(0.09, 0.18);
-  const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x776a37, side: THREE.DoubleSide });
+  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x776a37, roughness: 0.85, side: THREE.DoubleSide });
   const debris = new THREE.InstancedMesh(leafGeometry, leafMaterial, 95);
   const dummy = new THREE.Object3D();
   for (let i = 0; i < 95; i++) {
-    dummy.position.set((random() - 0.5) * 3.9, 0.013, (random() - 0.5) * 78);
+    dummy.position.set((random() - 0.5) * 3.9, 0.018, (random() - 0.5) * 78);
     dummy.rotation.set(-Math.PI / 2 + (random() - 0.5) * 0.15, 0, random() * Math.PI * 2);
     dummy.scale.setScalar(0.5 + random());
     dummy.updateMatrix();
@@ -213,29 +218,17 @@ function buildRoad(parent, m) {
 }
 
 function buildNeighbourhood(parent, m) {
-  // North-West brick boundary wall (z = -42 to -10; south of -10 is Haji Mohsin Road & Fakir Bari Lane)
-  box(parent, [0.28, 1.55, 32], [-2.96, 0.62, -26], m.brick, { uvScale: 2.7 });
-  box(parent, [0.34, 0.12, 32], [-2.96, 1.43, -26], m.concrete);
-  for (let z = -40; z <= -12; z += 5.5) {
+  // North-West brick boundary wall along Haji Mohsin Rd (z = -40 to -10 north of Fakir Bari Lane)
+  box(parent, [0.28, 1.55, 30], [-2.96, 0.62, -25], m.brick, { uvScale: 2.7 });
+  box(parent, [0.34, 0.12, 30], [-2.96, 1.43, -25], m.concrete);
+  for (let z = -39; z <= -12; z += 5.5) {
     box(parent, [0.48, 1.8, 0.48], [-2.94, 0.73, z], m.concrete);
     box(parent, [0.08, 0.42, 5.1], [-2.78, -0.05, z + 2.6], m.moss, { castShadow: false });
   }
-  // North-East boundary wall (side = -1: z = -41 to -7.3; side = +1 is now the Haji Mohsin Road commercial & ASB block!)
-  const center = -24;
-  box(parent, [0.27, 1.85, 33.8], [2.78, 0.75, center], m.concrete);
-  box(parent, [0.08, 0.4, 33.8], [2.61, -0.02, center], m.moss, { castShadow: false });
-  for (let z = 7; z <= 41; z += 5.7) {
-    box(parent, [0.44, 2.08, 0.44], [2.77, 0.86, -z], m.darkConcrete);
-  }
-  box(parent, [0.4, 0.13, 34], [2.78, 1.71, center], m.darkConcrete);
-
-  const distant = new THREE.MeshLambertMaterial({ color: 0xc8c3af });
-  box(parent, [9, 8, 13], [10, 3.7, -35], distant);
-  box(parent, [8, 5, 12], [-9, 2.2, -35], distant);
 }
 
-function buildUtilities(parent, m, wireParent = parent) {
-  const poleMaterial = new THREE.MeshLambertMaterial({ color: 0x9a998b });
+function buildUtilities(parent, m, wireParent = parent, taltolaWireParent = wireParent) {
+  const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x9a998b, roughness: 0.88, metalness: 0.04 });
   for (const z of [-16, 17]) {
     cylinder(parent, 0.105, 0.17, 9.6, [-2.42, 4.45, z], poleMaterial, 12);
     box(parent, [0.14, 0.12, 2.0], [-2.42, 8.65, z], m.darkMetal);
@@ -252,15 +245,20 @@ function buildUtilities(parent, m, wireParent = parent) {
     createWire(wireParent, [[x, y, -43], [x + 0.2, y - 0.85, -16], [x - 0.1, y - 1.0, 17], [x, y - 0.2, 43]], 0.012, m.wire);
   }
   for (let i = 0; i < 4; i++) {
-    createWire(wireParent, [[-2.42, 8.5 + i * 0.15, -16], [0.5, 7.45 + i * 0.1, -9], [5.65, 6.3 + i * 0.12, -3.4]], 0.011, m.wire);
-    createWire(wireParent, [[-2.42, 8.55 + i * 0.13, 17], [0.8, 7.6 + i * 0.1, 11], [5.65, 6.9 + i * 0.12, 3.5]], 0.011, m.wire);
-    // Overhead criss-cross fiber/electric cables across Haji Mohsin Road (connecting ASB pole z=23.8 & corner poles z=9.5..21.8)
+    // Haji Mohsin Rd cross-cables connecting into East clinic/shop buildings and ASB gate pole
+    createWire(wireParent, [[-2.42, 8.5 + i * 0.15, -16], [0.5, 7.45 + i * 0.1, -9], [4.1, 6.4 + i * 0.12, -3.4]], 0.011, m.wire);
     createWire(wireParent, [[-2.26, 7.1 + i * 0.14, 9.95], [0.0, 6.5 + i * 0.12, 16.8], [2.28, 7.2 + i * 0.14, 23.8]], 0.012, m.wire);
     createWire(wireParent, [[2.28, 6.8 + i * 0.15, 23.8], [0.2, 6.3 + i * 0.1, 22.8], [-2.95, 7.0 + i * 0.14, 21.8]], 0.012, m.wire);
+
+    // Taltola Hospital Cross Rd utility drop cables to 5-Story Taltola House
+    const tx = TALTOLA_HOUSE_OFFSET.x;
+    const tz = TALTOLA_HOUSE_OFFSET.z;
+    createWire(taltolaWireParent, [[tx - 2.35, 8.2 + i * 0.12, tz - 18], [tx + 1.2, 7.2 + i * 0.1, tz - 8], [tx + 5.65, 6.3 + i * 0.12, tz - 3.4]], 0.011, m.wire);
+    createWire(taltolaWireParent, [[tx - 2.35, 8.2 + i * 0.12, tz + 18], [tx + 1.2, 7.2 + i * 0.1, tz + 8], [tx + 5.65, 6.9 + i * 0.12, tz + 3.5]], 0.011, m.wire);
   }
 }
 
-export function buildEnvironment(scene, m) {
+export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
   const group = new THREE.Group();
   group.name = 'Lane and tropical surroundings';
   scene.add(group);
@@ -276,41 +274,183 @@ export function buildEnvironment(scene, m) {
   const wiresStaticGroup = new THREE.Group();
   wiresStaticGroup.name = 'ExteriorUtilityWires';
   detailsGroup.add(wiresStaticGroup);
+
+  const tx = TALTOLA_HOUSE_OFFSET.x;
+  const tz = TALTOLA_HOUSE_OFFSET.z;
+
+  const taltolaDetailsGroup = new THREE.Group();
+  taltolaDetailsGroup.name = 'TaltolaFoliageAndWires';
+  group.add(taltolaDetailsGroup);
+  const taltolaWiresGroup = new THREE.Group();
+  taltolaWiresGroup.name = 'TaltolaUtilityWires';
+  taltolaDetailsGroup.add(taltolaWiresGroup);
+
   buildRoad(roadBaseGroup, m);
   buildNeighbourhood(farGroup, m);
-  buildUtilities(roadBaseGroup, m, wiresStaticGroup);
+  buildUtilities(roadBaseGroup, m, wiresStaticGroup, taltolaWiresGroup);
   mergeStaticMeshes(roadBaseGroup);
   mergeStaticMeshes(farGroup);
   mergeStaticMeshes(wiresStaticGroup);
+  mergeStaticMeshes(taltolaWiresGroup);
+
+  const city = buildKhulnaCity(group, renderer, skySystem);
+  const landmarks = buildKhulnaLandmarks(group, m);
   const tower = buildHajiMohsinRoad(group, m);
-  const animated = [];
-  const palms = [
-    [-5.4, -9, 11.8, 41], [-5.2, 7.8, 12.7, 53], [-12.5, 8.2, 11.6, 65], [-5.6, -27, 12.2, 77],
-    [4.9, -6.4, 10.8, 89], [5.3, 6.5, 11.5, 101], [12.5, 19.5, 13.1, 113], [9.5, -18, 12.1, 125],
-  ];
-  for (const [x, z, height, seed] of palms) createPalm(detailsGroup, [x, 0, z], height, seed, m, animated);
-  const foliageMaterial = new THREE.MeshLambertMaterial({
+
+  const foliageMaterial = new THREE.MeshStandardMaterial({
     map: leafClusterTexture(),
     alphaTest: 0.38,
     side: THREE.DoubleSide,
     transparent: false,
+    roughness: 0.72,
+    metalness: 0.02,
+    envMapIntensity: 0.65,
     color: 0xffffff,
   });
-  const trees = [
-    [-5.0, -1, 8.0, 211], [-5.4, 6.2, 8.8, 223], [-5.3, -17, 8.8, 227], [-14.0, 8.5, 9.5, 229],
-    [-6.7, -33, 9.2, 233], [9.5, 16.0, 8.5, 239], [6.3, -11, 7.4, 241], [12.0, 35, 9.5, 251],
-  ];
+  applyFoliageWindShader(foliageMaterial, m.shaderUniforms);
+
+  const animated = [];
+  const zoneFoliageSlices = [];
+  function makeFoliageZone(name, parentG, cx, cz, maxDist, palmCoords, treeCoords) {
+    const zRoot = parentG || new THREE.Group();
+    if (!parentG) {
+      zRoot.name = name;
+      group.add(zRoot);
+    }
+    const treeGroup = new THREE.Group();
+    treeGroup.name = `${name}_Trees`;
+    zRoot.add(treeGroup);
+    for (const [x, z, height, seed] of palmCoords) {
+      createPalm(zRoot, [x, 0, z], height, seed, m, animated);
+    }
+    for (const [x, z, height, seed] of treeCoords) {
+      createBroadleafTree(treeGroup, [x, 0, z], height, seed, foliageMaterial);
+    }
+    mergeStaticMeshes(treeGroup);
+    zoneFoliageSlices.push({ root: zRoot, cx, cz, maxDistSq: maxDist * maxDist });
+    return zRoot;
+  }
+
+  // Haji Mohsin local palms & trees stay inside detailsGroup (culled at distHaji >= 190m)
   const treesStaticGroup = new THREE.Group();
   treesStaticGroup.name = 'ExteriorBroadleafTrees';
   detailsGroup.add(treesStaticGroup);
-  for (const [x, z, height, seed] of trees) createBroadleafTree(treesStaticGroup, [x, 0, z], height, seed, foliageMaterial);
+  for (const [x, z, height, seed] of [
+    [-5.4, -9, 11.8, 41], [-5.2, 7.8, 12.7, 53], [-12.5, 8.2, 11.6, 65], [-5.6, -27, 12.2, 77],
+  ]) createPalm(detailsGroup, [x, 0, z], height, seed, m, animated);
+  for (const [x, z, height, seed] of [
+    [-5.0, -1, 8.0, 211], [-5.4, 6.2, 8.8, 223], [-5.3, -17, 8.8, 227], [-14.0, 8.5, 9.5, 229], [-6.7, -33, 9.2, 233],
+  ]) createBroadleafTree(treesStaticGroup, [x, 0, z], height, seed, foliageMaterial);
   mergeStaticMeshes(treesStaticGroup);
+
+  // Per-zone foliage groups so off-screen districts cost zero GPU draw calls
+  makeFoliageZone(
+    'TaltolaDistrictFoliage',
+    taltolaDetailsGroup,
+    tx,
+    tz,
+    210,
+    [[tx + 4.9, tz - 6.4, 10.8, 89], [tx + 5.3, tz + 6.5, 11.5, 101], [tx + 12.5, tz + 19.5, 13.1, 113], [tx - 5.4, tz - 9.0, 11.9, 125]],
+    [[tx + 9.5, tz + 16.0, 8.5, 239], [tx + 15.2, tz - 11.0, 7.8, 241], [tx - 4.8, tz - 12.5, 8.2, 251]]
+  );
+  makeFoliageZone(
+    'AliaDistrictFoliage',
+    null,
+    215,
+    140,
+    260,
+    [[195, 132, 12.5, 137], [238, 146, 13.2, 149], [198, 94, 12.2, 155], [229, 95, 12.8, 163]],
+    [[192, 152, 8.6, 277], [184, 134, 7.6, 283], [228, 138, 8.2, 289], [230, 88, 7.9, 291]]
+  );
+  makeFoliageZone(
+    'CircuitHadisDistrictFoliage',
+    null,
+    -145,
+    -690,
+    480,
+    [[16, -540, 12.6, 161], [66, -540, 12.8, 167], [84, -650, 12.4, 169], [90, -700, 12.6, 175], [-277, -837, 12.2, 171], [-386, -885, 13.0, 179]],
+    [
+      [-388, -870, 9.2, 263], [-384, -928, 9.6, 265], [-264, -858, 8.8, 269], [-276, -834, 9.0, 273],
+      [15, -620, 9.4, 271], [-18, -565, 8.6, 275], [88, -555, 8.9, 279], [82, -625, 9.2, 285], [-22, -640, 8.8, 287],
+    ]
+  );
+  makeFoliageZone(
+    'PtiDistrictFoliage',
+    null,
+    -304,
+    -57,
+    250,
+    [[-290, -45, 11.8, 173], [-318, -44, 12.4, 177], [-279, -68, 12.1, 181]],
+    [[-295, -75, 8.8, 281], [-322, -62, 8.5, 295], [-274, -40, 8.4, 299], [-322, -24, 8.7, 303]]
+  );
+  makeFoliageZone(
+    'RupshaDistrictFoliage',
+    null,
+    1080,
+    320,
+    460,
+    [[1082, 38, 12.2, 185]],
+    [[1072, 608, 9.0, 293]]
+  );
+
+  const corridors = buildKhulnaCorridors(group, m, {
+    addWire(targetG, pA, pB, wireMat, sag = 0.45, radius = 0.016) {
+      const mid = [(pA[0] + pB[0]) * 0.5, (pA[1] + pB[1]) * 0.5 - sag, (pA[2] + pB[2]) * 0.5];
+      return createWire(targetG, [pA, mid, pB], radius, wireMat);
+    },
+    addBroadleafTree(targetG, x, y, z, scale = 1.0, seed = 500) {
+      return createBroadleafTree(targetG || treesStaticGroup, [x, y, z], 7.8 * scale, seed, foliageMaterial);
+    },
+    finalizeTrees(targetG) {
+      if (targetG) mergeStaticMeshes(targetG);
+    },
+    addPalm(targetG, x, y, z, height = 7.2, _lean = 0, s = 0) {
+      return createPalm(targetG || detailsGroup, [x, y, z], height, Math.abs(Math.round((x + z) * 10 + s * 100)) + 17, m, animated);
+    },
+  });
+  const traffic = createKhulnaTraffic(group);
+
+  function syncVisibility(playerPos = null) {
+    if (!playerPos) return;
+    landmarks.syncVisibility?.(playerPos);
+    corridors.syncVisibility?.(playerPos);
+    for (const z of zoneFoliageSlices) {
+      const dx = playerPos.x - z.cx;
+      const dz = playerPos.z - z.cz;
+      const want = dx * dx + dz * dz <= z.maxDistSq;
+      if (z.root.visible !== want) z.root.visible = want;
+    }
+  }
+
   return {
+    city,
+    landmarks,
+    corridors,
+    traffic,
     tower,
     detailsGroup,
     roadBaseGroup,
     farGroup,
-    update(time) {
+    syncVisibility,
+    setNightFactor(nf) {
+      corridors.setNightFactor(nf);
+      traffic.setNightFactor(nf);
+      m.setNightFactor?.(nf);
+    },
+    setQualityMode(qualityMode) {
+      city.setQualityMode?.(qualityMode);
+      traffic.setVisible?.(qualityMode !== 'low');
+    },
+    setFogBounds(near, far) {
+      city.setFogBounds?.(near, far);
+    },
+    update(time, playerPos = null) {
+      m.setShaderTime?.(time);
+      city.animateWater(time);
+      landmarks.update(time);
+      syncVisibility(playerPos);
+      corridors.update(time, playerPos);
+      traffic.update(time, playerPos);
       for (const item of animated) {
         item.object.rotation.x = Math.sin(time * 0.55 + item.phase) * item.strength;
         item.object.rotation.z = Math.cos(time * 0.43 + item.phase) * item.strength;

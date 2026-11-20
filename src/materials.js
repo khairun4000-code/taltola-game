@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import {
+  attachDerivedPBRMaps,
+  upgradeWetAsphaltMaterial,
+  applyFoliageWindShader,
+} from './aaa-shaders.js';
 
 function diffTexture(loader, name, anisotropy) {
   const texture = loader.load(`./assets/${name}-diff.jpg`);
@@ -9,14 +14,27 @@ function diffTexture(loader, name, anisotropy) {
 }
 
 function tiledMaterial(diffMap, options = {}) {
-  const material = new THREE.MeshLambertMaterial({
+  const roughness = options.roughness ?? 0.82;
+  const material = new THREE.MeshStandardMaterial({
     map: diffMap,
     color: options.color ?? 0xffffff,
     emissive: options.emissive ?? 0x000000,
-    side: THREE.FrontSide,
+    emissiveIntensity: options.emissive ? (options.emissiveIntensity ?? 0.55) : 0.0,
+    roughness,
+    metalness: options.metalness ?? 0.02,
+    envMapIntensity: options.envMapIntensity ?? 0.72,
+    side: options.side ?? THREE.FrontSide,
   });
   material.userData.uvScale = options.uvScale ?? 2;
   material.userData.origBumpMap = diffMap;
+  if (options.derivePBR !== false) {
+    attachDerivedPBRMaps(material, diffMap, {
+      strength: options.normalStrength ?? 2.1,
+      roughBase: roughness,
+      roughSpread: options.roughSpread ?? 0.20,
+      normalScale: options.normalScale ?? 0.78,
+    });
+  }
   return material;
 }
 
@@ -272,6 +290,9 @@ function createCarpetRugTexture() {
 export function createMaterials(renderer, manager) {
   const loader = new THREE.TextureLoader(manager);
   const anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
+  const sharedUniforms = {
+    uTime: { value: 0 },
+  };
   const asphalt = diffTexture(loader, 'asphalt', anisotropy);
   const brick = diffTexture(loader, 'brick', anisotropy);
   const plaster = diffTexture(loader, 'plaster', anisotropy);
@@ -281,85 +302,125 @@ export function createMaterials(renderer, manager) {
   const bathTile = createBathTileTexture();
   const tvScreen = createTVScreenTexture();
   const wallArt = createWallArtTexture();
+  const woodTex = createFurnitureWoodTexture('#6e4023', '#432512');
+  const darkWoodTex = createFurnitureWoodTexture('#3d2314', '#221209');
+  const sofaTex = createQuiltedClothTexture('#1e5666', '#0f313b');
+  const cushionTex = createQuiltedClothTexture('#e09f3e', '#9c6818');
+  const rugTex = createCarpetRugTexture();
 
   const materials = {
-    road: tiledMaterial(asphalt, { color: 0xd8d6ce, uvScale: 5.5 }),
-    brick: tiledMaterial(brick, { color: 0xc97b63, uvScale: 2.3 }),
-    plaster: tiledMaterial(plaster, { color: 0xf4ead8, uvScale: 3.4 }),
-    warmPlaster: tiledMaterial(plaster, { color: 0xe6dac8, emissive: 0x221e18, uvScale: 3.0 }),
-    whiteBand: tiledMaterial(plaster, { color: 0xf7f6f2, uvScale: 2.8 }),
-    concrete: tiledMaterial(concrete, { color: 0xd7d4c8, uvScale: 3.2 }),
-    trim: tiledMaterial(plaster, { color: 0xe5dcc4, uvScale: 2.8 }),
-    wall: tiledMaterial(plaster, { color: 0xece3d2, uvScale: 2.4 }),
-    darkConcrete: tiledMaterial(concrete, { color: 0x7c837c, uvScale: 2.5 }),
-    pillarTile: new THREE.MeshLambertMaterial({
+    road: tiledMaterial(asphalt, { color: 0xcdcbc4, uvScale: 5.5, roughness: 0.78, normalStrength: 2.3, normalScale: 0.72 }),
+    brick: tiledMaterial(brick, { color: 0xc97b63, uvScale: 2.3, roughness: 0.88, normalStrength: 3.1, normalScale: 0.92 }),
+    plaster: tiledMaterial(plaster, { color: 0xf4ead8, uvScale: 3.4, roughness: 0.84, normalStrength: 1.6, normalScale: 0.55 }),
+    warmPlaster: tiledMaterial(plaster, { color: 0xe6dac8, emissive: 0x221e18, emissiveIntensity: 0.50, uvScale: 3.0, roughness: 0.82, normalStrength: 1.5, normalScale: 0.52 }),
+    whiteBand: tiledMaterial(plaster, { color: 0xf7f6f2, uvScale: 2.8, roughness: 0.72, normalStrength: 1.3, normalScale: 0.45 }),
+    concrete: tiledMaterial(concrete, { color: 0xd7d4c8, uvScale: 3.2, roughness: 0.88, normalStrength: 2.5, normalScale: 0.82 }),
+    trim: tiledMaterial(plaster, { color: 0xe5dcc4, uvScale: 2.8, roughness: 0.74, normalStrength: 1.4, normalScale: 0.50 }),
+    wall: tiledMaterial(plaster, { color: 0xece3d2, uvScale: 2.4, roughness: 0.84, normalStrength: 1.6, normalScale: 0.55 }),
+    darkConcrete: tiledMaterial(concrete, { color: 0x7c837c, uvScale: 2.5, roughness: 0.90, normalStrength: 2.6, normalScale: 0.85 }),
+    pillarTile: new THREE.MeshStandardMaterial({
       map: pillarTile,
       emissive: 0x353128,
+      emissiveIntensity: 0.42,
+      roughness: 0.28,
+      metalness: 0.05,
+      envMapIntensity: 0.95,
       side: THREE.DoubleSide,
     }),
-    bathTile: new THREE.MeshLambertMaterial({
+    bathTile: new THREE.MeshStandardMaterial({
       map: bathTile,
       emissive: 0x2c3e42,
+      emissiveIntensity: 0.42,
+      roughness: 0.22,
+      metalness: 0.05,
+      envMapIntensity: 1.0,
       side: THREE.DoubleSide,
     }),
-    blackTile: new THREE.MeshLambertMaterial({ color: 0x1d1b18 }),
-    gate: new THREE.MeshLambertMaterial({ color: 0x7a8d8f }),
-    gateInset: new THREE.MeshLambertMaterial({ color: 0x4e6062 }),
-    orange: new THREE.MeshLambertMaterial({ color: 0xb85224 }),
-    rail: new THREE.MeshLambertMaterial({ color: 0xdce3df }),
-    darkMetal: new THREE.MeshLambertMaterial({ color: 0x1e2423 }),
-    aluminum: new THREE.MeshLambertMaterial({ color: 0xd6ded9, emissive: 0x1e2220 }),
-    glass: new THREE.MeshLambertMaterial({ color: 0x528c78, transparent: true, opacity: 0.42 }),
-    frostedGlass: new THREE.MeshLambertMaterial({ color: 0x9db6ba, transparent: true, opacity: 0.65 }),
-    interior: new THREE.MeshLambertMaterial({ color: 0x26322d }),
+    blackTile: new THREE.MeshPhysicalMaterial({ color: 0x1a1917, roughness: 0.16, metalness: 0.08, clearcoat: 0.75, clearcoatRoughness: 0.12, envMapIntensity: 1.25 }),
+    gate: new THREE.MeshStandardMaterial({ color: 0x6f8486, roughness: 0.36, metalness: 0.68, envMapIntensity: 1.1 }),
+    gateInset: new THREE.MeshStandardMaterial({ color: 0x45585a, roughness: 0.44, metalness: 0.58, envMapIntensity: 0.95 }),
+    orange: new THREE.MeshStandardMaterial({ color: 0xb85224, roughness: 0.52, metalness: 0.18, envMapIntensity: 0.78 }),
+    rail: new THREE.MeshStandardMaterial({ color: 0xdce3df, roughness: 0.22, metalness: 0.88, envMapIntensity: 1.35 }),
+    darkMetal: new THREE.MeshStandardMaterial({ color: 0x1e2423, roughness: 0.42, metalness: 0.72, envMapIntensity: 0.92 }),
+    aluminum: new THREE.MeshStandardMaterial({ color: 0xd6ded9, emissive: 0x141817, emissiveIntensity: 0.25, roughness: 0.26, metalness: 0.85, envMapIntensity: 1.3 }),
+    glass: new THREE.MeshPhysicalMaterial({ color: 0x67a69c, roughness: 0.07, metalness: 0.10, clearcoat: 0.95, clearcoatRoughness: 0.06, envMapIntensity: 1.65, transparent: true, opacity: 0.42 }),
+    frostedGlass: new THREE.MeshPhysicalMaterial({ color: 0xa2bcc0, roughness: 0.34, metalness: 0.05, clearcoat: 0.4, envMapIntensity: 1.15, transparent: true, opacity: 0.66 }),
+    interior: new THREE.MeshStandardMaterial({ color: 0x26322d, roughness: 0.88, metalness: 0.02 }),
     // Bright, warm, self-lit residential interior walls & ceilings (never looks like a dark bunker!)
-    hallWall: tiledMaterial(plaster, { color: 0xfdf9f0, emissive: 0x4e493e, uvScale: 2.5 }),
-    roomWall: tiledMaterial(plaster, { color: 0xfaf3e6, emissive: 0x4a453b, uvScale: 2.5 }),
-    ceilingMat: new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x5c5a54 }),
-    wood: new THREE.MeshLambertMaterial({ map: createFurnitureWoodTexture('#6e4023', '#432512') }),
-    darkWood: new THREE.MeshLambertMaterial({ map: createFurnitureWoodTexture('#3d2314', '#221209') }),
-    porcelain: new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x26292b }),
-    chrome: new THREE.MeshLambertMaterial({ color: 0xe2e8f0 }),
-    sofaFabric: new THREE.MeshLambertMaterial({ map: createQuiltedClothTexture('#1e5666', '#0f313b') }),
-    cushionMat: new THREE.MeshLambertMaterial({ map: createQuiltedClothTexture('#e09f3e', '#9c6818') }),
-    rugMat: new THREE.MeshLambertMaterial({ map: createCarpetRugTexture() }),
-    mattressMat: new THREE.MeshLambertMaterial({ map: createQuiltedClothTexture('#f8f6f0', '#cbd5e1') }),
-    blanketMat: new THREE.MeshLambertMaterial({ map: createQuiltedClothTexture('#9e2a3b', '#631420') }),
-    curtainMat: new THREE.MeshLambertMaterial({ color: 0xc89d66, side: THREE.DoubleSide }),
-    bucketMat: new THREE.MeshLambertMaterial({ color: 0x0284c7 }),
-    tvScreen: new THREE.MeshBasicMaterial({ map: tvScreen }),
+    hallWall: tiledMaterial(plaster, { color: 0xfdf9f0, emissive: 0x4e493e, emissiveIntensity: 0.68, uvScale: 2.5, roughness: 0.78, normalStrength: 1.1, normalScale: 0.35 }),
+    roomWall: tiledMaterial(plaster, { color: 0xfaf3e6, emissive: 0x4a453b, emissiveIntensity: 0.68, uvScale: 2.5, roughness: 0.78, normalStrength: 1.1, normalScale: 0.35 }),
+    ceilingMat: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x5c5a54, emissiveIntensity: 0.72, roughness: 0.84 }),
+    wood: new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.56, metalness: 0.04, envMapIntensity: 0.7 }),
+    darkWood: new THREE.MeshStandardMaterial({ map: darkWoodTex, roughness: 0.52, metalness: 0.05, envMapIntensity: 0.75 }),
+    porcelain: new THREE.MeshPhysicalMaterial({ color: 0xffffff, emissive: 0x26292b, emissiveIntensity: 0.38, roughness: 0.14, clearcoat: 0.85, clearcoatRoughness: 0.08, envMapIntensity: 1.2 }),
+    chrome: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.12, metalness: 0.96, envMapIntensity: 1.6 }),
+    sofaFabric: new THREE.MeshStandardMaterial({ map: sofaTex, roughness: 0.88, metalness: 0.02 }),
+    cushionMat: new THREE.MeshStandardMaterial({ map: cushionTex, roughness: 0.84, metalness: 0.02 }),
+    rugMat: new THREE.MeshStandardMaterial({ map: rugTex, roughness: 0.92, metalness: 0.01 }),
+    mattressMat: new THREE.MeshStandardMaterial({ map: createQuiltedClothTexture('#f8f6f0', '#cbd5e1'), roughness: 0.88 }),
+    blanketMat: new THREE.MeshStandardMaterial({ map: createQuiltedClothTexture('#9e2a3b', '#631420'), roughness: 0.86 }),
+    curtainMat: new THREE.MeshStandardMaterial({ color: 0xc89d66, roughness: 0.85, side: THREE.DoubleSide }),
+    bucketMat: new THREE.MeshPhysicalMaterial({ color: 0x0284c7, roughness: 0.34, clearcoat: 0.45 }),
+    tvScreen: new THREE.MeshBasicMaterial({ map: tvScreen, toneMapped: false }),
     wallArt: new THREE.MeshBasicMaterial({ map: wallArt }),
-    blueTarp: new THREE.MeshLambertMaterial({ color: 0x0570a8, side: THREE.DoubleSide }),
-    lamp: new THREE.MeshBasicMaterial({ color: 0xfff9e6 }),
-    ledGreen: new THREE.MeshBasicMaterial({ color: 0x22c55e }),
-    ledRed: new THREE.MeshBasicMaterial({ color: 0xef4444 }),
-    stoveFlame: new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
-    mirrorMat: new THREE.MeshLambertMaterial({ color: 0xbfdbfe }),
-    drainWater: new THREE.MeshLambertMaterial({ color: 0x203a33 }),
-    moss: new THREE.MeshLambertMaterial({ color: 0x385239 }),
-    grass: tiledMaterial(concrete, { color: 0x456934, uvScale: 2.2 }),
-    terracotta: new THREE.MeshLambertMaterial({ color: 0x9c4a2d }),
-    waterTank: new THREE.MeshLambertMaterial({ color: 0x182226 }),
-    pvcPipe: new THREE.MeshLambertMaterial({ color: 0xb8c0bc }),
-    leaf: new THREE.MeshLambertMaterial({ color: 0x315e27, side: THREE.DoubleSide, vertexColors: true }),
-    trunk: new THREE.MeshLambertMaterial({ color: 0x766c50 }),
-    wire: new THREE.MeshBasicMaterial({ color: 0x171b19 }),
-    courtyard: new THREE.MeshLambertMaterial({ map: courtyard }),
+    blueTarp: new THREE.MeshStandardMaterial({ color: 0x0570a8, roughness: 0.62, metalness: 0.04, side: THREE.DoubleSide }),
+    lamp: new THREE.MeshStandardMaterial({ color: 0xfff9e6, emissive: 0xffe6aa, emissiveIntensity: 1.65 }),
+    ledGreen: new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x22c55e, emissiveIntensity: 1.8 }),
+    ledRed: new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 1.8 }),
+    stoveFlame: new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 2.1 }),
+    mirrorMat: new THREE.MeshPhysicalMaterial({ color: 0xcbe2fb, roughness: 0.05, metalness: 0.92, clearcoat: 1.0, envMapIntensity: 1.8 }),
+    drainWater: new THREE.MeshPhysicalMaterial({ color: 0x1b332d, roughness: 0.08, metalness: 0.12, clearcoat: 0.9, envMapIntensity: 1.4 }),
+    moss: new THREE.MeshStandardMaterial({ color: 0x385239, roughness: 0.92 }),
+    grass: tiledMaterial(concrete, { color: 0x456934, uvScale: 2.2, roughness: 0.90, normalStrength: 2.0 }),
+    terracotta: new THREE.MeshStandardMaterial({ color: 0x9c4a2d, roughness: 0.82, metalness: 0.02 }),
+    waterTank: new THREE.MeshPhysicalMaterial({ color: 0x182226, roughness: 0.38, clearcoat: 0.35, clearcoatRoughness: 0.32, envMapIntensity: 0.85 }),
+    pvcPipe: new THREE.MeshStandardMaterial({ color: 0xb8c0bc, roughness: 0.42, metalness: 0.05 }),
+    leaf: new THREE.MeshStandardMaterial({ color: 0x35682a, roughness: 0.68, metalness: 0.02, envMapIntensity: 0.65, side: THREE.DoubleSide, vertexColors: true }),
+    trunk: tiledMaterial(concrete, { color: 0x766c50, uvScale: 1.8, roughness: 0.92, normalStrength: 2.8 }),
+    wire: new THREE.MeshStandardMaterial({ color: 0x161a18, roughness: 0.58, metalness: 0.12 }),
+    courtyard: new THREE.MeshStandardMaterial({ map: courtyard, roughness: 0.72, metalness: 0.04, envMapIntensity: 0.85 }),
   };
+
   materials.courtyard.userData.uvScale = 2.1;
   materials.pillarTile.userData.uvScale = 1.6;
   materials.bathTile.userData.uvScale = 1.8;
 
+  attachDerivedPBRMaps(materials.pillarTile, pillarTile, { strength: 1.6, roughBase: 0.28, normalScale: 0.55 });
+  attachDerivedPBRMaps(materials.bathTile, bathTile, { strength: 1.5, roughBase: 0.22, normalScale: 0.50 });
+  attachDerivedPBRMaps(materials.courtyard, courtyard, { strength: 2.0, roughBase: 0.72, normalScale: 0.68 });
+  attachDerivedPBRMaps(materials.wood, woodTex, { strength: 1.4, roughBase: 0.56, normalScale: 0.42 });
+  attachDerivedPBRMaps(materials.darkWood, darkWoodTex, { strength: 1.4, roughBase: 0.52, normalScale: 0.42 });
+  upgradeWetAsphaltMaterial(materials.road, sharedUniforms, 0.72);
+  applyFoliageWindShader(materials.leaf, sharedUniforms);
+
   const allMaterials = Object.values(materials);
+  materials.shaderUniforms = sharedUniforms;
+
+  materials.setShaderTime = (time) => {
+    sharedUniforms.uTime.value = time;
+  };
+
+  materials.setNightFactor = (nightFactor) => {
+    const nf = Math.max(0, Math.min(1, nightFactor || 0));
+    materials.lamp.emissiveIntensity = 1.2 + nf * 1.4;
+    materials.hallWall.emissiveIntensity = 0.55 + nf * 0.40;
+    materials.roomWall.emissiveIntensity = 0.55 + nf * 0.40;
+    if (materials.road.userData.wetUniforms) {
+      materials.road.userData.wetUniforms.uWetness.value = 0.64 + nf * 0.24;
+    }
+  };
+
   materials.setQualityMode = (quality) => {
-    const useBump = quality === 'ultra';
-    const nextAniso = quality === 'low' ? 1 : anisotropy;
+    const isLow = quality === 'low';
+    const nextAniso = isLow ? 1 : anisotropy;
     for (const mat of allMaterials) {
-      if (!mat) continue;
-      if (mat.userData && mat.userData.origBumpMap) {
-        const nextBump = useBump ? mat.userData.origBumpMap : null;
-        if (mat.bumpMap !== nextBump) {
-          mat.bumpMap = nextBump;
+      if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
+      if (mat.userData && mat.userData.pbrNormalMap) {
+        const nextNorm = isLow ? null : mat.userData.pbrNormalMap;
+        const nextRough = isLow ? null : mat.userData.pbrRoughnessMap;
+        if (mat.normalMap !== nextNorm || mat.roughnessMap !== nextRough) {
+          mat.normalMap = nextNorm;
+          mat.roughnessMap = nextRough;
           mat.needsUpdate = true;
         }
       }
