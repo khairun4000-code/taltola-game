@@ -132,9 +132,10 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
   signGrp.add(bezel, face);
   dynamicG.add(signGrp);
 
-  // 4) Load High-Graphics PBR 3D Model Mosque (8K Basecolor + 4K Normal/Roughness/Metallic)
+  // 4) Load High-Graphics PBR 3D Model Mosque (4K Basecolor + 2K Normal/Roughness/Metallic)
+  //    Mobile + Desktop WebGL-safe (4096 max texture size, single-pass texture loading)
   const texLoader = new THREE.TextureLoader();
-  const configureTex = (tex, isSRGB = false, aniso = 16) => {
+  const configureTex = (tex, isSRGB = false, aniso = 8) => {
     tex.colorSpace = isSRGB ? THREE.SRGBColorSpace : THREE.NoColorSpace;
     tex.anisotropy = aniso;
     tex.generateMipmaps = true;
@@ -144,25 +145,32 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
     return tex;
   };
 
-  const baseColorTex = configureTex(texLoader.load(`${TEX_DIR}${TEX_PREFIX}basecolor.jpg`), true, 16);
-  const normalTex = configureTex(texLoader.load(`${TEX_DIR}${TEX_PREFIX}normal.jpg`), false, 16);
-  const roughnessTex = configureTex(texLoader.load(`${TEX_DIR}${TEX_PREFIX}roughness.jpg`), false, 8);
-  const metallicTex = configureTex(texLoader.load(`${TEX_DIR}${TEX_PREFIX}metallic.jpg`), false, 8);
+  const baseColorTex = configureTex(texLoader.load(`${TEX_DIR}${TEX_PREFIX}basecolor.jpg`), true, 8);
+  const normalTex = configureTex(texLoader.load(`${TEX_DIR}${TEX_PREFIX}normal.jpg`), false, 8);
+  const roughnessTex = configureTex(texLoader.load(`${TEX_DIR}${TEX_PREFIX}roughness.jpg`), false, 4);
+  const metallicTex = configureTex(texLoader.load(`${TEX_DIR}${TEX_PREFIX}metallic.jpg`), false, 4);
 
   const premiumMosqueMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
     map: baseColorTex,
     normalMap: normalTex,
-    normalScale: new THREE.Vector2(1.15, 1.15),
+    normalScale: new THREE.Vector2(1.1, 1.1),
     roughnessMap: roughnessTex,
-    roughness: 1.0,
+    roughness: 0.88,
     metalnessMap: metallicTex,
-    metalness: 1.0,
+    metalness: 0.35,
     clearcoat: 0.08,
     clearcoatRoughness: 0.42,
-    envMapIntensity: 1.05,
+    envMapIntensity: 1.15,
+    side: THREE.DoubleSide,
   });
 
-  const fbxLoader = new FBXLoader();
+  // Prevent FBXLoader from double-downloading internal Phong textures (we apply full PBR above)
+  const TINY_PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
+  const fbxManager = new THREE.LoadingManager();
+  fbxManager.setURLModifier((url) => (/\.(jpe?g|png|tga|bmp)$/i.test(url) ? TINY_PIXEL : url));
+
+  const fbxLoader = new FBXLoader(fbxManager);
   fbxLoader.setPath(MODEL_BASE_DIR);
   fbxLoader.load(
     MODEL_FBX_FILE,
@@ -194,15 +202,18 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
 
       fbx.traverse((child) => {
         if (!child.isMesh) return;
-        // Dispose temporary Phong materials created by FBXLoader and apply full 8K/4K PBR material
         if (child.material) {
           const oldMats = Array.isArray(child.material) ? child.material : [child.material];
           oldMats.forEach((mat) => mat?.dispose?.());
         }
+        if (child.geometry) {
+          child.geometry.computeBoundingBox();
+          child.geometry.computeBoundingSphere();
+        }
         child.material = premiumMosqueMat;
         child.castShadow = true;
         child.receiveShadow = true;
-        child.frustumCulled = true;
+        child.frustumCulled = false;
       });
 
       fbx.name = 'KhulnaDistrictModelMosque_3D';
