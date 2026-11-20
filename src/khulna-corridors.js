@@ -1576,16 +1576,72 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
     accent: '#fde047',
   }, [swX + swB.frontLocalX + 0.24, swB.signY, -310], Math.PI / 2, 5.8, 0.90);
 
-  // 3) INSIDE THE LANE (z = -484 .. -326): ZERO SHOPS — ONLY High-Detail Residential Houses + Tin-Roof Houses (টিনের বাড়ি)!
+  // 3) REAL STREET VIEW ENTRY SEGMENT ("2 Altapole Ln" right after entering from Ispahani side, z = -498 .. -466):
+  //    - EAST (Left looking South): Long weathered mossy paneled compound wall + pilasters + open concrete drain + dense overhanging trees & white tin-roof quarters behind
+  //    - WEST (Right looking South): Old weathered plaster/exposed-brick 2-story house with rusty tin window awning + reddish-brown dusty shoulder + stacked red brick pile + coconut palms
+  const weatheredPlaster = bank.creamTrim;
+  const dirtRedMat = new THREE.MeshStandardMaterial({ color: 0x7a4b37, roughness: 0.96 });
+  const drainDarkMat = new THREE.MeshStandardMaterial({ color: 0x262b27, roughness: 0.95 });
+
+  // Open concrete roadside drain (পাকা ড্রেন) along East edge + reddish-brown dusty earth shoulder along West edge
+  for (let dz = -500; dz <= -456; dz += 8) {
+    const cx = laneCenterX(dz);
+    addBox(staticG, [0.42, 0.08, 8.2], [cx + 2.02, 0.02, dz], drainDarkMat, { castShadow: false });
+    addBox(staticG, [0.14, 0.16, 8.2], [cx + 1.76, 0.08, dz], bank.dampPlinth, { castShadow: false });
+    addBox(staticG, [1.15, 0.04, 8.2], [cx - 2.30, 0.03, dz], dirtRedMat, { castShadow: false });
+  }
+
+  // East Side (z = -498..-466): Long weathered paneled compound wall with pilasters every 3.2m + overhanging trees
+  for (let wz = -496; wz <= -468; wz += 3.2) {
+    const ex = laneCenterX(wz) + 2.38;
+    addBox(staticG, [0.24, 2.05, 3.22], [ex, 1.02, wz], weatheredPlaster, { uvScale: 2.2 });
+    addBox(staticG, [0.36, 2.18, 0.34], [ex, 1.09, wz - 1.58], bank.dampPlinth);
+    addBox(staticG, [0.34, 0.12, 3.24], [ex, 2.08, wz], bank.dampPlinth);
+  }
+  // White plastered tin-roof quarter tucked behind the East mossy wall
+  buildTinRoofHouse(staticG, bank, { cx: laneCenterX(-482) + 8.6, cz: -482, widthX: 6.8, lengthZ: 10.0, facing: -1, tinMat: bank.tinBlue });
+  // Dense overhanging tropical canopy arching over the East wall (matching the Street View jungle-green left edge!)
+  for (const [tz, isPalm] of [[-497, false], [-491, true], [-485, false], [-478, true], [-471, false], [-465, true]]) {
+    const tx = laneCenterX(tz) + 3.45;
+    if (isPalm) helpers.addPalm?.(dynamicG, tx, 0, tz, 7.6, (tz % 4) * 0.25, 0.42);
+    else helpers.addBroadleafTree?.(treesG, tx, 0, tz, 1.18, 9700 + Math.abs(tz));
+  }
+
+  // West Side (z = -496..-484): Old weathered heritage plaster/exposed-brick 2-story house ("2 Altapole Ln")
+  const oldX = laneCenterX(-490) - 6.8;
+  const oldZ = -490.0;
+  const oldW = 7.4;
+  const oldL = 11.2;
+  const oldFrontX = oldX + oldW * 0.5;
+  addBox(staticG, [oldW, 6.2, oldL], [oldX, 3.1, oldZ], weatheredPlaster, { uvScale: 2.4 });
+  addBox(staticG, [oldW + 0.25, 0.18, oldL + 0.25], [oldX, 3.25, oldZ], bank.dampPlinth);
+  // Ground-floor dark wooden shuttered window + rusty corrugated tin awning (chajja) right on the lane face
+  addBox(staticG, [0.18, 1.35, 2.1], [oldFrontX + 0.04, 1.38, oldZ - 1.8], bank.woodBoat);
+  addBox(staticG, [0.78, 0.08, 2.35], [oldFrontX + 0.38, 2.22, oldZ - 1.8], bank.tinRust, { rotZ: -0.32, uvScale: 1.4 });
+  // Upper-floor weathered window opening with exposed red-brick reveal border
+  addBox(staticG, [0.22, 1.75, 2.25], [oldFrontX + 0.02, 4.45, oldZ - 1.8], bank.brickRed, { uvScale: 1.8 });
+  addBox(staticG, [0.26, 1.35, 1.75], [oldFrontX + 0.05, 4.45, oldZ - 1.8], bank.darkSlate);
+  // Second ground window & rusty tin awning
+  addBox(staticG, [0.16, 1.25, 1.45], [oldFrontX + 0.04, 1.45, oldZ + 2.6], bank.woodBoat);
+  addBox(staticG, [0.68, 0.08, 1.65], [oldFrontX + 0.34, 2.22, oldZ + 2.6], bank.tinRust, { rotZ: -0.30, uvScale: 1.4 });
+
+  // Stacked pile of red construction bricks (ইটের স্তূপ) on the West dusty shoulder (z = -472) + overhanging palms
+  const bpX = laneCenterX(-472) - 2.65;
+  addBox(staticG, [1.55, 0.65, 2.9], [bpX, 0.32, -472], bank.brickRed, { uvScale: 1.2 });
+  addBox(staticG, [1.15, 0.52, 2.2], [bpX - 0.12, 0.85, -472], bank.brickRed, { uvScale: 1.2, rotY: 0.08 });
+  addBox(staticG, [0.72, 0.36, 1.4], [bpX - 0.18, 1.22, -472.2], bank.brickRed, { uvScale: 1.2 });
+  helpers.addPalm?.(dynamicG, laneCenterX(-479) - 3.6, 0, -479, 8.2, -0.32, 0.38);
+  helpers.addBroadleafTree?.(treesG, laneCenterX(-476) - 4.1, 0, -476, 1.15, 9741);
+
+  // 4) DEEPER INSIDE THE LANE (z = -462 .. -326): ZERO SHOPS — ONLY High-Detail Residential Houses + Tin-Roof Houses (টিনের বাড়ি)!
   const eastRes = [
-    { z: -480, type: 'house', floors: 4, wall: bank.creamTrim, band: bank.sagePlaster },
-    { z: -461, type: 'tin', tin: bank.tinBlue },
-    { z: -442, type: 'house', floors: 5, wall: bank.modernWhite, band: bank.terracotta },
-    { z: -421, type: 'house', floors: 3, wall: bank.ochrePlaster, band: bank.creamTrim },
-    { z: -400, type: 'tin', tin: bank.tinRust },
-    { z: -380, type: 'house', floors: 4, wall: bank.creamTrim, band: bank.steelBlue },
-    { z: -358, type: 'house', floors: 5, wall: bank.sagePlaster, band: bank.creamTrim },
-    { z: -336, type: 'tin', tin: bank.tinBlue },
+    { z: -458, type: 'tin', tin: bank.tinBlue },
+    { z: -440, type: 'house', floors: 5, wall: bank.modernWhite, band: bank.terracotta },
+    { z: -419, type: 'house', floors: 3, wall: bank.ochrePlaster, band: bank.creamTrim },
+    { z: -398, type: 'tin', tin: bank.tinRust },
+    { z: -378, type: 'house', floors: 4, wall: bank.creamTrim, band: bank.steelBlue },
+    { z: -356, type: 'house', floors: 5, wall: bank.sagePlaster, band: bank.creamTrim },
+    { z: -335, type: 'tin', tin: bank.tinBlue },
   ];
   eastRes.forEach((item, i) => {
     const rx = laneCenterX(item.z);
@@ -1600,9 +1656,8 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
   });
 
   const westRes = [
-    { z: -480, type: 'house', floors: 5, wall: bank.modernWhite, band: bank.sagePlaster },
-    { z: -460, type: 'house', floors: 3, wall: bank.terracotta, band: bank.creamTrim },
-    { z: -441, type: 'tin', tin: bank.tinRust },
+    { z: -458, type: 'house', floors: 3, wall: bank.terracotta, band: bank.creamTrim },
+    { z: -439, type: 'tin', tin: bank.tinRust },
     { z: -396, type: 'house', floors: 4, wall: bank.creamTrim, band: bank.terracotta },
     { z: -374, type: 'tin', tin: bank.tinBlue },
     { z: -353, type: 'house', floors: 5, wall: bank.ochrePlaster, band: bank.creamTrim },
