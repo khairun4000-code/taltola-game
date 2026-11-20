@@ -100,6 +100,8 @@ export function mergeStaticMeshes(root) {
     const mesh = new THREE.Mesh(geometry, bucket.material);
     mesh.castShadow = bucket.cast;
     mesh.receiveShadow = bucket.receive;
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
     for (const original of bucket.meshes) original.removeFromParent();
     root.add(mesh);
   }

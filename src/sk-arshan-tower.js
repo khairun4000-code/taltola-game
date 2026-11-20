@@ -640,7 +640,7 @@ export function createHajiMaterials() {
     for (const mat of Object.values(mats)) {
       if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
       if (mat.userData?.pbrNormalMap) {
-        const nextNorm = isLow ? null : mat.userData.pbrNormalMap;
+        const nextNorm = mat.userData.pbrNormalMap;
         const nextRough = isLow ? null : mat.userData.pbrRoughnessMap;
         if (mat.normalMap !== nextNorm || mat.roughnessMap !== nextRough) {
           mat.normalMap = nextNorm;
@@ -652,10 +652,22 @@ export function createHajiMaterials() {
       if (mat.userData.origAniso === undefined) {
         mat.userData.origAniso = mat.map.anisotropy || 8;
       }
-      const nextAniso = isLow ? 1 : mat.userData.origAniso;
+      const nextAniso = isLow ? Math.min(4, mat.userData.origAniso) : mat.userData.origAniso;
       if (mat.map.anisotropy !== nextAniso) {
         mat.map.anisotropy = nextAniso;
         mat.map.needsUpdate = true;
+      }
+    }
+  };
+  mats.setEnvironmentMap = (envTex) => {
+    for (const mat of Object.values(mats)) {
+      if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
+      if (!('envMap' in mat)) continue;
+      const glossy = Boolean(mat.transparent || (mat.metalness ?? 0) >= 0.25 || (mat.roughness ?? 1) <= 0.35);
+      if (!glossy) continue;
+      if (mat.envMap !== envTex) {
+        mat.envMap = envTex;
+        mat.needsUpdate = true;
       }
     }
   };
@@ -1579,6 +1591,7 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
     state,
     stops: LIFT_STOPS,
     setQualityMode: hm.setQualityMode,
+    setEnvironmentMap: hm.setEnvironmentMap,
     nearestFloorIndex: getNearestFloorIndex,
     isInsideLift,
     isNearLiftLobby,

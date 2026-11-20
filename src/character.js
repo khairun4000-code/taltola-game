@@ -141,6 +141,26 @@ export function createPlayerCharacter(scene, manager) {
   modelHolder.name = 'PlayerModelHolder';
   root.add(modelHolder);
 
+  // Soft underfoot contact shadow disc for instant grounding even on Low · Smooth HD
+  const cCanvas = document.createElement('canvas');
+  cCanvas.width = cCanvas.height = 64;
+  const cCtx = cCanvas.getContext('2d');
+  const cGrad = cCtx.createRadialGradient(32, 32, 4, 32, 32, 30);
+  cGrad.addColorStop(0, 'rgba(6, 10, 12, 0.56)');
+  cGrad.addColorStop(0.55, 'rgba(6, 10, 12, 0.28)');
+  cGrad.addColorStop(1, 'rgba(6, 10, 12, 0)');
+  cCtx.fillStyle = cGrad;
+  cCtx.fillRect(0, 0, 64, 64);
+  const cTex = new THREE.CanvasTexture(cCanvas);
+  const contactShadowMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.95, 0.95),
+    new THREE.MeshBasicMaterial({ map: cTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }),
+  );
+  contactShadowMesh.rotation.x = -Math.PI / 2;
+  contactShadowMesh.position.y = 0.018;
+  contactShadowMesh.visible = false;
+  root.add(contactShadowMesh);
+
   const state = {
     loaded: false,
     cameraMode: 'back',
@@ -347,14 +367,25 @@ export function createPlayerCharacter(scene, manager) {
   const qTempB = new THREE.Quaternion();
   const eulerTemp = new THREE.Euler(0, 0, 0, 'XYZ');
 
+  let pendingEnvMap = null;
   function applyMeshQuality(quality) {
     currentQuality = quality || 'high';
     const cast = currentQuality !== 'low';
-    // Keep crisp PBR shader on the single player mesh even on Low Graphics (1 draw call = ~0.05ms, keeps 4K face crystal clear!)
+    contactShadowMesh.visible = !cast;
     for (const entry of meshEntries) {
       entry.mesh.castShadow = cast && !entry.skipShadowCast;
       entry.mesh.receiveShadow = cast;
       entry.mesh.material = entry.pbrMat;
+    }
+  }
+  function setEnvironmentMap(envTex) {
+    pendingEnvMap = envTex || null;
+    for (const entry of meshEntries) {
+      const m = entry.pbrMat;
+      if (m && 'envMap' in m && m.envMap !== pendingEnvMap) {
+        m.envMap = pendingEnvMap;
+        m.needsUpdate = true;
+      }
     }
   }
 
@@ -555,6 +586,7 @@ export function createPlayerCharacter(scene, manager) {
     }
 
     applyMeshQuality(currentQuality);
+    if (pendingEnvMap) setEnvironmentMap(pendingEnvMap);
     state.loaded = true;
   });
 
@@ -1524,6 +1556,7 @@ export function createPlayerCharacter(scene, manager) {
     toggleMicLipSync,
     connectAudioElement,
     setQualityMode,
+    setEnvironmentMap,
     cycleCameraMode,
     update,
   };

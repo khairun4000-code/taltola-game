@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { rigAllCarDoors, createInteriorCockpitRig } from './car-interior.js';
 
@@ -403,18 +405,155 @@ function createBodyMaterial(source, colorHex) {
 }
 
 function createWheelMaterial(source, colorHex = '#d8ebff') {
-  return new THREE.MeshPhysicalMaterial({
+  return new THREE.MeshStandardMaterial({
     name: source.name,
     color: new THREE.Color(colorHex),
     map: source.map || null,
     normalMap: source.normalMap || null,
-    side: source.side,
-    metalness: 0.90,
-    roughness: 0.14,
-    clearcoat: 0.85,
-    clearcoatRoughness: 0.08,
-    envMapIntensity: 1.75,
+    side: THREE.FrontSide,
+    metalness: 0.88,
+    roughness: 0.15,
+    envMapIntensity: 1.55,
   });
+}
+
+function ensureIndexedForBatch(geom) {
+  if (geom.index) return geom;
+  const count = geom.attributes.position?.count || 0;
+  const idx = count > 65535 ? new Uint32Array(count) : new Uint16Array(count);
+  for (let i = 0; i < count; i++) idx[i] = i;
+  geom.setIndex(new THREE.BufferAttribute(idx, 1));
+  return geom;
+}
+
+function toFloat32Attr(attr) {
+  if (!attr) return null;
+  if (attr.array instanceof Float32Array && !attr.normalized) return attr.clone();
+  const itemSize = attr.itemSize;
+  const count = attr.count;
+  const out = new Float32Array(count * itemSize);
+  for (let i = 0; i < count; i++) {
+    out[i * itemSize] = attr.getX(i);
+    if (itemSize >= 2) out[i * itemSize + 1] = attr.getY(i);
+    if (itemSize >= 3) out[i * itemSize + 2] = attr.getZ(i);
+    if (itemSize >= 4) out[i * itemSize + 3] = attr.getW(i);
+  }
+  return new THREE.BufferAttribute(out, itemSize, false);
+}
+
+function batchStaticCarMeshes(orientedWrapper, skipMeshesSet) {
+  orientedWrapper.updateMatrixWorld(true);
+  const invRoot = new THREE.Matrix4().copy(orientedWrapper.matrixWorld).invert();
+  const mat4 = new THREE.Matrix4();
+  const buckets = new Map();
+
+  orientedWrapper.traverse((child) => {
+    if (!child.isMesh || !child.visible || child.isSkinnedMesh) return;
+    if (skipMeshesSet.has(child) || Array.isArray(child.material) || !child.material) return;
+    const mat = child.material;
+    const src = child.geometry;
+    if (!src || !src.attributes?.position) return;
+
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', toFloat32Attr(src.attributes.position));
+    if (src.attributes.normal) g.setAttribute('normal', toFloat32Attr(src.attributes.normal));
+    if (src.attributes.uv) g.setAttribute('uv', toFloat32Attr(src.attributes.uv));
+    if (mat.vertexColors && src.attributes.color) {
+      g.setAttribute('color', toFloat32Attr(src.attributes.color));
+    }
+    if (src.index) g.setIndex(src.index.clone());
+    if (!g.attributes.normal) g.computeVertexNormals();
+
+    mat4.multiplyMatrices(invRoot, child.matrixWorld);
+    g.applyMatrix4(mat4);
+    if (mat4.determinant() < 0) {
+      ensureIndexedForBatch(g);
+      const idx = g.index;
+      for (let i = 0; i < idx.count; i += 3) {
+        const b = idx.getX(i + 1);
+        const c = idx.getX(i + 2);
+        idx.setX(i + 1, c);
+        idx.setX(i + 2, b);
+      }
+      idx.needsUpdate = true;
+    }
+
+    const attrKey = `${Boolean(g.attributes.uv)}|${Boolean(mat.vertexColors && g.attributes.color)}`;
+    const bucketKey = `${mat.uuid}|${child.castShadow}|${child.receiveShadow}|${child.renderOrder}|${attrKey}`;
+    let b = buckets.get(bucketKey);
+    if (!b) {
+      b = { mat, cast: child.castShadow, receive: child.receiveShadow, order: child.renderOrder, meshes: [], geoms: [] };
+      buckets.set(bucketKey, b);
+    }
+    b.meshes.push(child);
+    b.geoms.push(g);
+  });
+
+  const staticGroup = new THREE.Group();
+  staticGroup.name = 'CarStaticBatched';
+  staticGroup.matrixAutoUpdate = false;
+  staticGroup.updateMatrix();
+  orientedWrapper.add(staticGroup);
+
+  for (const b of buckets.values()) {
+    if (b.meshes.length < 2) {
+      for (const g of b.geoms) g.dispose();
+      b.meshes[0].matrixAutoUpdate = false;
+      b.meshes[0].updateMatrix();
+      continue;
+    }
+    const hasAnyIndex = b.geoms.some((geom) => Boolean(geom.index));
+    if (hasAnyIndex) {
+      for (const geom of b.geoms) ensureIndexedForBatch(geom);
+    }
+    const merged = mergeGeometries(b.geoms, false);
+    for (const g of b.geoms) g.dispose();
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, b.mat);
+    mesh.castShadow = b.cast;
+    mesh.receiveShadow = b.receive;
+    mesh.renderOrder = b.order;
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    for (const old of b.meshes) old.removeFromParent();
+    staticGroup.add(mesh);
+  }
+}
+
+function createCarShadowProxy(orientedWrapper) {
+  orientedWrapper.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(orientedWrapper);
+  const sz = box.getSize(new THREE.Vector3());
+  const ct = box.getCenter(new THREE.Vector3());
+  const invRoot = new THREE.Matrix4().copy(orientedWrapper.matrixWorld).invert();
+  const minLocal = box.min.clone().applyMatrix4(invRoot);
+  ct.applyMatrix4(invRoot);
+
+  const w = Math.max(1.2, sz.x * 0.90);
+  const h = Math.max(0.9, sz.y * 0.92);
+  const l = Math.max(2.4, sz.z * 0.92);
+
+  const lower = new THREE.BoxGeometry(w, h * 0.48, l);
+  lower.translate(ct.x, minLocal.y + h * 0.30, ct.z);
+  const upper = new THREE.BoxGeometry(w * 0.84, h * 0.42, l * 0.56);
+  upper.translate(ct.x, minLocal.y + h * 0.72, ct.z - l * 0.04);
+  const proxyGeo = mergeGeometries([lower, upper], false);
+  lower.dispose();
+  upper.dispose();
+
+  const proxyMat = new THREE.MeshBasicMaterial({
+    colorWrite: false,
+    depthWrite: false,
+    side: THREE.FrontSide,
+    shadowSide: THREE.DoubleSide,
+  });
+  const proxyMesh = new THREE.Mesh(proxyGeo, proxyMat);
+  proxyMesh.name = 'CarShadowProxy';
+  proxyMesh.castShadow = true;
+  proxyMesh.receiveShadow = false;
+  proxyMesh.matrixAutoUpdate = false;
+  proxyMesh.updateMatrix();
+  return proxyMesh;
 }
 
 /**
@@ -758,6 +897,8 @@ export function createDrivableCar(scene, manager, config) {
   let tailMats = [];
   let drlMats = [];
   let currentQuality = 'high';
+  let shadowInRange = true;
+  let activeEnvMap = null;
 
   // Web Audio Engine + Horn
   let audioCtx = null;
@@ -915,6 +1056,7 @@ export function createDrivableCar(scene, manager, config) {
 
   // Load GLB asynchronously so startup stays fast (do not pass LoadingManager for optional extra cars so loading screen doesn't hang on 84MB Alphard)
   const loader = new GLTFLoader(config.isBMW ? manager : undefined);
+  loader.setMeshoptDecoder(MeshoptDecoder);
   loader.load(
     config.assetUrl,
     (gltf) => {
@@ -961,10 +1103,8 @@ export function createDrivableCar(scene, manager, config) {
           const srcMats = isArray ? child.material : [child.material];
 
           const firstName = srcMats[0]?.name || '';
-          const shouldCast = firstName !== 'Meshesheadlight51Mtl' && firstName !== 'Mesheswindows1Mtl';
-          child.castShadow = shouldCast && currentQuality !== 'low';
-          child.receiveShadow = true;
-          if (shouldCast) carShadowMeshes.push(child);
+          child.castShadow = false;
+          child.receiveShadow = firstName !== 'Meshesheadlight51Mtl' && firstName !== 'Mesheswindows1Mtl';
 
           const outMats = srcMats.map((mat) => {
             const mName = mat.name || '';
@@ -1081,23 +1221,27 @@ export function createDrivableCar(scene, manager, config) {
               || mName === 'Meshespillars1Mtl'
               || mName === 'Meshesblack161Mtl'
             ) {
-              const trimMat = new THREE.MeshPhysicalMaterial({
+              const trimMat = new THREE.MeshStandardMaterial({
                 name: mName,
                 color: mName === 'Meshespillars1Mtl' ? new THREE.Color('#15181d') : new THREE.Color('#eef2f6'),
                 map: mat.map || null,
-                roughness: 0.18,
-                metalness: 0.50,
-                clearcoat: 0.9,
-                clearcoatRoughness: 0.10,
-                envMapIntensity: 1.4,
-                side: mat.side,
+                roughness: 0.22,
+                metalness: 0.48,
+                envMapIntensity: 1.25,
+                side: THREE.FrontSide,
               });
-              glossyMaterials.push(trimMat);
               return trimMat;
             }
 
             const cloned = mat.clone();
+            if ('transmission' in cloned && cloned.transmission > 0) cloned.transmission = 0;
+            if (!cloned.transparent && !cloned.alphaTest && /int|black|dash|seat|pillar|rim|tire|caliper|chrome|logo/i.test(mName)) {
+              cloned.side = THREE.FrontSide;
+            }
             cloned.envMapIntensity = 1.15;
+            if (/chrome|rim|mirror|logo/i.test(mName) || (cloned.metalness ?? 0) >= 0.45) {
+              glossyMaterials.push(cloned);
+            }
             return cloned;
           });
 
@@ -1127,9 +1271,8 @@ export function createDrivableCar(scene, manager, config) {
             steerPivot.add(spinPivot);
             const subRim = splitMergedWheelMeshByQuadrant(rimMeshObj, q);
             const subTire = splitMergedWheelMeshByQuadrant(tireMeshObj, q);
-            subRim.castShadow = currentQuality !== 'low';
-            subTire.castShadow = currentQuality !== 'low';
-            carShadowMeshes.push(subRim, subTire);
+            subRim.castShadow = false;
+            subTire.castShadow = false;
             spinPivot.add(subRim);
             spinPivot.add(subTire);
 
@@ -1167,9 +1310,11 @@ export function createDrivableCar(scene, manager, config) {
 
           const isGlass = glassSet.has(firstName);
           const isBody = bodySet.has(firstName);
-          const shouldCast = !isGlass && (!config.shadowOnlyExterior || isBody || /chrome|rim|tire|wheel|C_11CR29/i.test(firstName));
+          const shouldCast = Boolean(config.isRickshaw) && !isGlass && (
+            !config.shadowOnlyExterior || isBody || /hood|frame|wheel|spoke|seat/i.test(firstName)
+          );
 
-          child.castShadow = shouldCast && currentQuality !== 'low';
+          child.castShadow = shouldCast && shadowInRange;
           child.receiveShadow = !isGlass;
           if (shouldCast) carShadowMeshes.push(child);
 
@@ -1188,7 +1333,7 @@ export function createDrivableCar(scene, manager, config) {
                 color: new THREE.Color('#0c1724'),
                 side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.30,
+                opacity: 0.34,
                 depthWrite: false,
                 metalness: 0.35,
                 roughness: 0.06,
@@ -1200,20 +1345,33 @@ export function createDrivableCar(scene, manager, config) {
               glossyMaterials.push(out);
             } else if (tailSet.has(mName)) {
               out = mat.clone();
+              if ('transmission' in out && out.transmission > 0) out.transmission = 0;
               out.color = new THREE.Color('#d61424');
               out.emissive = new THREE.Color('#ff1228');
               out.emissiveIntensity = 1.8;
               tailMats.push(out);
             } else if (hlSet.has(mName)) {
               out = mat.clone();
+              if ('transmission' in out && out.transmission > 0) out.transmission = 0;
               out.emissive = new THREE.Color('#eef6ff');
               out.emissiveIntensity = 1.6;
               drlMats.push(out);
             } else {
               out = mat.clone();
-              if ('envMapIntensity' in out) {
-                out.envMapIntensity = /chrome|cr|rim|mirror/i.test(mName) ? 1.65 : 1.05;
+              if ('transmission' in out && out.transmission > 0) out.transmission = 0;
+              if (!config.isRickshaw && !out.transparent && !out.alphaTest
+                && /int|leather|stitch|seat|dash|black|gray|dark|chrome|rim|tire|engine|brake|sunburst|carpet|wood/i.test(mName)) {
+                out.side = THREE.FrontSide;
               }
+              if ('envMapIntensity' in out) {
+                out.envMapIntensity = /chrome|cr|rim|mirror/i.test(mName) ? 1.55 : 1.0;
+                if (/chrome|cr|rim|mirror|wheel|alloy/i.test(mName) || (out.metalness ?? 0) >= 0.45) {
+                  glossyMaterials.push(out);
+                }
+              }
+            }
+            if (out.map && out.map.anisotropy < 4) {
+              out.map.anisotropy = 4;
             }
 
             clonedMatCache.set(mat, out);
@@ -1336,10 +1494,36 @@ export function createDrivableCar(scene, manager, config) {
       // Keep original full-detail exterior car geometry intact (black fade transition used instead of door animation)
       carDoors = {};
 
+      // Batch all static chassis/interior child meshes by material (cuts 4,098 Alphard draw calls down to ~35!)
+      const dynamicNodes = new Set();
+      for (const w of riggedWheels) {
+        w.wheelRoot?.traverse((o) => {
+          if (o.isMesh) dynamicNodes.add(o);
+        });
+      }
+      if (rickshawParts) {
+        for (const v of Object.values(rickshawParts)) {
+          if (v?.isObject3D) {
+            v.traverse((o) => {
+              if (o.isMesh) dynamicNodes.add(o);
+            });
+          }
+        }
+      }
+      batchStaticCarMeshes(orientedWrapper, dynamicNodes);
+
+      // Attach a single 24-triangle shadow hull proxy for non-rickshaw cars (saves millions of shadow triangles!)
+      if (!config.isRickshaw) {
+        const proxy = createCarShadowProxy(orientedWrapper);
+        orientedWrapper.add(proxy);
+        carShadowMeshes.push(proxy);
+      }
+
       exteriorWrapper = orientedWrapper;
       bodyTiltGroup.add(orientedWrapper);
       state.loaded = true;
       setQualityMode(currentQuality);
+      if (activeEnvMap) setEnvironmentMap(activeEnvMap);
       syncTransform();
     },
     undefined,
@@ -1870,15 +2054,23 @@ export function createDrivableCar(scene, manager, config) {
     syncTransform();
   }
 
+  function syncShadowCasters() {
+    const castNow = shadowInRange;
+    for (const mesh of carShadowMeshes) {
+      if (mesh.castShadow !== castNow) mesh.castShadow = castNow;
+    }
+  }
+
   function setQualityMode(nextQuality) {
     currentQuality = nextQuality;
-    const castShadows = nextQuality !== 'low';
-    const envIntensity = nextQuality === 'ultra' ? 2.1 : (nextQuality === 'high' ? 1.7 : (nextQuality === 'medium' ? 1.25 : 0.85));
-    const clearcoatVal = nextQuality === 'low' ? 0.3 : 1.0;
+    const envIntensity = nextQuality === 'ultra' ? 2.1 : (nextQuality === 'high' ? 1.7 : (nextQuality === 'medium' ? 1.35 : 1.2));
+    const clearcoatVal = nextQuality === 'low' ? 0.65 : 1.0;
 
+    syncShadowCasters();
     for (const mesh of carShadowMeshes) {
-      mesh.castShadow = castShadows;
-      mesh.receiveShadow = castShadows;
+      if (mesh.name !== 'CarShadowProxy') {
+        mesh.receiveShadow = true;
+      }
     }
     for (const mat of glossyMaterials) {
       if ('envMapIntensity' in mat) mat.envMapIntensity = envIntensity;
@@ -1886,6 +2078,25 @@ export function createDrivableCar(scene, manager, config) {
       mat.needsUpdate = true;
     }
     contactShadow.visible = nextQuality === 'low' || nextQuality === 'medium';
+  }
+
+  function setEnvironmentMap(envTex) {
+    activeEnvMap = envTex || null;
+    for (const mat of glossyMaterials) {
+      if ('envMap' in mat && mat.envMap !== activeEnvMap) {
+        mat.envMap = activeEnvMap;
+        mat.needsUpdate = true;
+      }
+    }
+  }
+
+  function setVisibilityAndShadow(visible, nearShadow) {
+    if (root.visible !== visible) root.visible = visible;
+    const wantShadow = Boolean(visible && nearShadow);
+    if (shadowInRange !== wantShadow) {
+      shadowInRange = wantShadow;
+      syncShadowCasters();
+    }
   }
 
   return {
@@ -1920,6 +2131,8 @@ export function createDrivableCar(scene, manager, config) {
       state.roll = 0;
       syncTransform();
     },
+    setVisibilityAndShadow,
+    setEnvironmentMap,
     setQualityMode,
     update,
   };

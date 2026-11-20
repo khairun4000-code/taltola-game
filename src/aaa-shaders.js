@@ -672,7 +672,7 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
     sharedUniforms.uStarAlpha.value = preset.starAlpha;
     sharedUniforms.uNightFactor.value = preset.nightFactor;
 
-    const lowFillMult = quality === 'low' ? 1.55 : (quality === 'medium' ? 1.15 : 1.0);
+    const lowFillMult = quality === 'low' ? 1.12 : (quality === 'medium' ? 1.08 : 1.0);
     if (sun) {
       sun.color.setHex(preset.sunColor);
       sun.intensity = preset.sunIntensity;
@@ -683,7 +683,7 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
       hemisphereLight.intensity = preset.hemiIntensity * lowFillMult;
     }
     if (ambientLight) {
-      ambientLight.intensity = preset.ambientIntensity * (quality === 'low' ? 2.15 : 1.0);
+      ambientLight.intensity = preset.ambientIntensity * (quality === 'low' ? 1.18 : 1.0);
     }
     if (scene.fog) {
       scene.fog.color.setHex(preset.fogColor);
@@ -692,16 +692,13 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
     renderer.toneMappingExposure = preset.exposure;
 
     if (composerPasses?.bloom) {
-      composerPasses.bloom.strength = quality === 'low' ? 0 : preset.bloomStrength;
+      composerPasses.bloom.strength = (quality === 'low' || quality === 'medium') ? 0 : preset.bloomStrength;
       composerPasses.bloom.threshold = preset.bloomThreshold;
     }
 
     skyDome.visible = true;
-    if (quality === 'low') {
-      scene.environment = null;
-    } else {
-      rebakePMREM(preset);
-    }
+    rebakePMREM(preset);
+    scene.environment = quality === 'ultra' ? (currentEnvRT?.texture || null) : null;
     return preset;
   }
 
@@ -710,6 +707,7 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
     skyDome,
     getActivePreset: () => TIME_OF_DAY_PRESETS[activePresetId],
     getActiveId: () => activePresetId,
+    getEnvTexture: () => currentEnvRT?.texture || null,
     applyPreset,
     update(time, cameraPos) {
       sharedUniforms.uTime.value = time;

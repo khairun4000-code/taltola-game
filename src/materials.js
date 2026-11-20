@@ -412,11 +412,11 @@ export function createMaterials(renderer, manager) {
 
   materials.setQualityMode = (quality) => {
     const isLow = quality === 'low';
-    const nextAniso = isLow ? 1 : (quality === 'medium' ? Math.min(4, anisotropy) : anisotropy);
+    const nextAniso = isLow ? Math.min(4, anisotropy) : (quality === 'medium' ? Math.min(6, anisotropy) : anisotropy);
     for (const mat of allMaterials) {
       if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
       if (mat.userData && mat.userData.pbrNormalMap) {
-        const nextNorm = isLow ? null : mat.userData.pbrNormalMap;
+        const nextNorm = mat.userData.pbrNormalMap;
         const nextRough = isLow ? null : mat.userData.pbrRoughnessMap;
         if (mat.normalMap !== nextNorm || mat.roughnessMap !== nextRough) {
           mat.normalMap = nextNorm;
@@ -427,6 +427,34 @@ export function createMaterials(renderer, manager) {
       if (mat.map && mat.map.anisotropy !== nextAniso) {
         mat.map.anisotropy = nextAniso;
         mat.map.needsUpdate = true;
+      }
+    }
+  };
+
+  const reflectiveMaterials = [
+    materials.pillarTile,
+    materials.bathTile,
+    materials.blackTile,
+    materials.gate,
+    materials.gateInset,
+    materials.rail,
+    materials.darkMetal,
+    materials.aluminum,
+    materials.glass,
+    materials.frostedGlass,
+    materials.porcelain,
+    materials.chrome,
+    materials.mirrorMat,
+    materials.drainWater,
+    materials.waterTank,
+    materials.bucketMat,
+  ].filter(Boolean);
+
+  materials.setEnvironmentMap = (envTex) => {
+    for (const mat of reflectiveMaterials) {
+      if (mat.envMap !== envTex) {
+        mat.envMap = envTex;
+        mat.needsUpdate = true;
       }
     }
   };

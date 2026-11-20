@@ -96,8 +96,8 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.08;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.shadowMap.autoUpdate = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.autoUpdate = false;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x18211e);
@@ -154,9 +154,17 @@ function applyTimeOfDay(nextId) {
 
   if (!inStudio) {
     updateSunPositionFromAnchor(lastSunAnchorX, lastSunAnchorZ);
-    if (sun?.castShadow) renderer.shadowMap.needsUpdate = true;
+    if (sun?.castShadow) {
+      renderer.shadowMap.needsUpdate = true;
+      lastShadowUpdateAt = performance.now();
+    }
     environment?.setNightFactor?.(preset.nightFactor);
   }
+  const selectiveEnv = quality === 'ultra' ? null : (skySystem?.getEnvTexture?.() || null);
+  sceneMaterials?.setEnvironmentMap?.(selectiveEnv);
+  environment?.tower?.setEnvironmentMap?.(selectiveEnv);
+  playerCharacter?.setEnvironmentMap?.(selectiveEnv);
+  for (const c of cars) c?.setEnvironmentMap?.(selectiveEnv);
   if (timeToggleButton) {
     timeToggleButton.innerHTML = `TIME: ${preset.shortLabel} <span>[N]</span>`;
   }
@@ -252,8 +260,8 @@ const studioOrbit = {
   lastY: 0,
 };
 
-let quality = localStorage.getItem('taltola_quality') || 'high';
-if (!['low', 'medium', 'high', 'ultra'].includes(quality)) quality = 'high';
+let quality = localStorage.getItem('taltola_quality') || 'medium';
+if (!['low', 'medium', 'high', 'ultra'].includes(quality)) quality = 'medium';
 let sceneMaterials;
 let environment;
 let house;
@@ -330,6 +338,7 @@ let camHideMeshState = false;
 let isThirdPersonEyeFallback = false;
 let lastResolvedCamMode = null;
 let ultraFastMode = false;
+let softwareRendererDetected = false;
 let lowFpsStreak = 0;
 let khulnaMapUI = null;
 let gtaPhoneUI = null;
@@ -337,6 +346,7 @@ let selfiePrevCamMode = null;
 let lastMinimapUpdate = 0;
 let lastSunAnchorX = 0;
 let lastSunAnchorZ = 0;
+let lastShadowUpdateAt = 0;
 const camGroundProbePos = new THREE.Vector3();
 
 const MAX_CAM_BOXES = 128;
@@ -978,6 +988,7 @@ function setMode(studioMode) {
     document.body.classList.remove('hud-hidden');
     if (skySystem?.skyDome) skySystem.skyDome.visible = false;
     scene.environment = null;
+    playerCharacter?.setEnvironmentMap?.(null);
     if (brandTitle) brandTitle.textContent = 'CHARACTER STUDIO';
     if (brandSubtitle) brandSubtitle.textContent = 'FULL HUMAN 3D MODEL · DRAG TO ROTATE 360°';
     if (studioToggleButton) studioToggleButton.innerHTML = 'PLAY STREET GAME <span>→</span>';
@@ -1022,37 +1033,46 @@ function setUltraFastPerf(enabled) {
   if (inStudio) return;
   const dpr = window.devicePixelRatio || 1;
   const isLow = quality === 'low';
-  if (enabled && isLow) {
-    // Keep crisp readable resolution (>= 0.85) & shadowless sun so Sabit's face never looks blurry!
-    renderer.setPixelRatio(Math.min(dpr, 0.85));
+  if (enabled && isLow && softwareRendererDetected) {
+    renderer.setPixelRatio(Math.min(dpr, 0.88));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    scene.fog.near = 135;
-    scene.fog.far = 310;
-    camera.far = 360;
+    scene.fog.near = 140;
+    scene.fog.far = 330;
+    camera.far = 390;
     camera.updateProjectionMatrix();
     if (sun) {
       sun.visible = true;
       sun.castShadow = false;
     }
-    if (hemisphereLight) hemisphereLight.intensity = 1.25;
+    renderer.shadowMap.enabled = false;
+    if (hemisphereLight) hemisphereLight.intensity = 1.15;
     document.body.classList.add('low-perf-ui');
   }
 }
 
-function updateSunShadowTarget(focusPos) {
+function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynamic = false) {
   if (!sun || inStudio) return;
-  const radius = quality === 'ultra' ? 44 : (quality === 'high' ? 38 : 28);
-  const mapSize = sun.shadow.mapSize.x || 2048;
+  const radius = quality === 'ultra' ? 40 : (quality === 'high' ? 32 : (quality === 'medium' ? 26 : 20));
+  const mapSize = sun.shadow.mapSize.x || 1024;
   const worldUnitsPerTexel = (radius * 2) / mapSize;
 
   // Texel-snap shadow frustum center to eliminate shadow edge shimmer while walking or driving!
   const snapX = Math.round(focusPos.x / worldUnitsPerTexel) * worldUnitsPerTexel;
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
-  lastSunAnchorX = snapX;
-  lastSunAnchorZ = snapZ;
-  updateSunPositionFromAnchor(snapX, snapZ);
-  sun.target.updateMatrixWorld();
+  const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 1e-4 || Math.abs(snapZ - lastSunAnchorZ) > 1e-4;
+  if (anchorMoved) {
+    lastSunAnchorX = snapX;
+    lastSunAnchorZ = snapZ;
+    updateSunPositionFromAnchor(snapX, snapZ);
+    sun.target.updateMatrixWorld();
+  }
+
+  const shadowCadenceMs = quality === 'low' ? 140 : (quality === 'medium' ? 85 : (quality === 'high' ? 45 : 16));
+  if (anchorMoved || lastShadowUpdateAt === 0 || (forceDynamic && nowPerf - lastShadowUpdateAt >= shadowCadenceMs)) {
+    renderer.shadowMap.needsUpdate = true;
+    lastShadowUpdateAt = nowPerf;
+  }
 }
 
 function applyQuality(nextQuality) {
@@ -1068,20 +1088,20 @@ function applyQuality(nextQuality) {
   const isLow = quality === 'low';
   const isUltra = quality === 'ultra';
   const isHigh = quality === 'high';
-  // Crisp native pixel ratio even on Low (0.95) for sharp character faces, up to 2.0x on Ultra 4K!
+  // Crisp native pixel ratio on hardware GPUs (never force blurry 0.85 or wasteful >dpr supersampling on 1080p!)
   const ratios = {
-    low: Math.min(dpr, ultraFastMode ? 0.85 : 0.95),
-    medium: Math.min(dpr, 1.1),
-    high: Math.min(Math.max(dpr, 1.25), 1.5),
-    ultra: Math.min(Math.max(dpr * 1.4, 1.75), 2.0),
+    low: (ultraFastMode && softwareRendererDetected) ? Math.min(dpr, 0.88) : Math.min(dpr, 1.0),
+    medium: Math.min(dpr, 1.0),
+    high: Math.min(dpr, 1.25),
+    ultra: Math.min(dpr * 1.25, 1.65),
   };
-  const shadowSizes = { low: 512, medium: 1024, high: 2048, ultra: 4096 };
+  const shadowSizes = { low: 512, medium: 1024, high: 1536, ultra: 2048 };
   const useShadows = !isLow;
   const activeRatio = ratios[quality] ?? ratios.high;
 
   renderer.setPixelRatio(activeRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.toneMappingExposure = isUltra ? 1.12 : (isHigh ? 1.08 : 1.04);
+  renderer.toneMappingExposure = isUltra ? 1.12 : (isHigh ? 1.08 : (isLow ? 1.05 : 1.06));
   if (composer) {
     composer.setPixelRatio(activeRatio);
     composer.setSize(window.innerWidth, window.innerHeight);
@@ -1091,45 +1111,47 @@ function applyQuality(nextQuality) {
     );
   }
   renderer.shadowMap.enabled = useShadows;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  // Real-time dynamic shadow map updates so buildings, cars, doors & character always cast live shadows!
-  renderer.shadowMap.autoUpdate = useShadows;
-  if (useShadows) renderer.shadowMap.needsUpdate = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.autoUpdate = false;
+  if (useShadows) {
+    renderer.shadowMap.needsUpdate = true;
+    lastShadowUpdateAt = 0;
+  }
 
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = ultraFastMode ? 135 : (isLow ? 150 : (quality === 'medium' ? 175 : (isUltra ? 240 : 195)));
-    scene.fog.far = ultraFastMode ? 310 : (isLow ? 340 : (quality === 'medium' ? 440 : (isUltra ? 760 : 560)));
-    camera.far = ultraFastMode ? 360 : (isLow ? 390 : (quality === 'medium' ? 500 : (isUltra ? 880 : 640)));
+    scene.fog.near = (ultraFastMode && softwareRendererDetected) ? 140 : (isLow ? 160 : (quality === 'medium' ? 180 : (isUltra ? 240 : 195)));
+    scene.fog.far = (ultraFastMode && softwareRendererDetected) ? 330 : (isLow ? 390 : (quality === 'medium' ? 460 : (isUltra ? 760 : 560)));
+    camera.far = (ultraFastMode && softwareRendererDetected) ? 390 : (isLow ? 460 : (quality === 'medium' ? 520 : (isUltra ? 880 : 640)));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
 
-  // Keep clean shadowless sun + soft fill light even on Low so Sabit's face stays sharp, well-lit & vibrant
+  // Keep rich natural sunlight + PMREM IBL on every tier including Low so metals, cars & character skin look realistic!
   const useExtraLights = !isLow || inStudio;
   if (studioKeyLight) studioKeyLight.visible = useExtraLights;
   if (fillDirLight) {
     fillDirLight.visible = true;
-    fillDirLight.intensity = isLow && !inStudio ? 0.34 : (isUltra ? 0.72 : 0.55);
+    fillDirLight.intensity = isLow && !inStudio ? 0.48 : (isUltra ? 0.72 : 0.56);
   }
   if (ambientLight) {
     ambientLight.visible = true;
-    ambientLight.intensity = isLow && !inStudio ? 0.42 : (isUltra ? 0.45 : 0.38);
+    ambientLight.intensity = isLow && !inStudio ? 0.40 : (isUltra ? 0.45 : 0.38);
   }
   if (hemisphereLight) {
     hemisphereLight.visible = true;
-    hemisphereLight.intensity = ultraFastMode && !inStudio ? 1.75 : (isLow && !inStudio ? 1.38 : (isUltra ? 0.92 : 0.86));
-    hemisphereLight.color.setHex(isLow && !inStudio ? 0xf6f2ea : 0xbad9f7);
-    hemisphereLight.groundColor.setHex(isLow && !inStudio ? 0x8e806e : 0x625645);
+    hemisphereLight.intensity = isLow && !inStudio ? 0.92 : (isUltra ? 0.92 : 0.86);
+    hemisphereLight.color.setHex(0xbad9f7);
+    hemisphereLight.groundColor.setHex(0x625645);
   }
   if (sun) {
-    sun.visible = !ultraFastMode || inStudio;
-    sun.intensity = isUltra ? 2.25 : (isHigh ? 2.05 : (isLow ? 1.35 : 1.75));
+    sun.visible = true;
+    sun.intensity = isUltra ? 2.25 : (isHigh ? 2.05 : (isLow ? 1.85 : 1.92));
     sun.castShadow = useShadows;
     if (useShadows) {
-      const size = shadowSizes[quality] || 2048;
-      const radius = isUltra ? 44 : (isHigh ? 38 : 28);
+      const size = shadowSizes[quality] || 1536;
+      const radius = isUltra ? 40 : (isHigh ? 32 : (quality === 'medium' ? 26 : 20));
       sun.shadow.camera.left = -radius;
       sun.shadow.camera.right = radius;
       sun.shadow.camera.top = radius;
@@ -1148,6 +1170,7 @@ function applyQuality(nextQuality) {
       sun.shadow.bias = -0.0005;
       sun.shadow.normalBias = 0.035;
       renderer.shadowMap.needsUpdate = true;
+      lastShadowUpdateAt = 0;
     }
   }
 
@@ -1159,7 +1182,7 @@ function applyQuality(nextQuality) {
   for (const c of cars) {
     c?.setQualityMode?.(quality);
   }
-  if (environment?.farGroup) environment.farGroup.visible = !isLow;
+  if (environment?.farGroup) environment.farGroup.visible = true;
   if (!inStudio && skySystem) {
     if (skySystem.skyDome) skySystem.skyDome.visible = true;
     applyTimeOfDay(timeOfDayId);
@@ -2085,6 +2108,7 @@ async function initialize() {
       const glRenderer = dbgExt ? gl.getParameter(dbgExt.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
       if (/SwiftShader|llvmpipe|Basic Render|Software|Subzero/i.test(String(glRenderer || ''))
         && !localStorage.getItem('taltola_quality_manual')) {
+        softwareRendererDetected = true;
         quality = 'low';
         ultraFastMode = true;
       }
@@ -2108,6 +2132,12 @@ async function initialize() {
   const startInStudio = params.get('studio') === '1';
   setMode(startInStudio);
   syncHUDButtons(false, true);
+  if (typeof renderer.compileAsync === 'function') {
+    await Promise.race([
+      renderer.compileAsync(scene, camera).catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, 1200)),
+    ]);
+  }
 
   loadingBar.style.width = '100%';
   loadingStatus.textContent = '3D Human Character Ready.';
@@ -2382,10 +2412,21 @@ function syncSceneVisibility() {
     }
   }
   if (environment?.farGroup) {
-    const wantFar = !isLow && !inWindowlessTower && distHajiSq < 240 * 240;
+    const wantFar = !inWindowlessTower && distHajiSq < 240 * 240;
     if (environment.farGroup.visible !== wantFar) {
       environment.farGroup.visible = wantFar;
     }
+  }
+  for (let i = 0; i < cars.length; i++) {
+    const c = cars[i];
+    if (!c) continue;
+    const cPos = c.state.pos;
+    const dx = cPos.x - playerPos.x;
+    const dz = cPos.z - playerPos.z;
+    const dSq = dx * dx + dz * dz;
+    const wantVis = Boolean(c.state.driving) || dSq < 150 * 150;
+    const wantShadow = Boolean(c.state.driving) || dSq < 36 * 36;
+    c.setVisibilityAndShadow?.(wantVis, wantShadow);
   }
   if (environment?.city) {
     environment.city.setVisible(!inWindowlessTower);
@@ -2429,11 +2470,12 @@ function warpToLandmark(lm, lockControls = false) {
   const groundY = computeGroundHeight(playerPos);
   playerPos.y = groundY + EYE_HEIGHT;
   syncSceneVisibility();
-  if (sun?.castShadow && quality !== 'low') {
+  if (sun?.castShadow) {
     lastSunAnchorX = Math.round(playerPos.x / 4) * 4;
     lastSunAnchorZ = Math.round(playerPos.z / 4) * 4;
     updateSunPositionFromAnchor(lastSunAnchorX, lastSunAnchorZ);
     renderer.shadowMap.needsUpdate = true;
+    lastShadowUpdateAt = performance.now();
   }
   camera.position.copy(playerPos);
   camera.lookAt(lx, groundY + 1.8, lz);
@@ -4541,14 +4583,21 @@ function animate() {
     // Smart indoor building & exterior culling + active chunk streaming across Khulna City
     const { nearTaltolaVis, deepInTowerUpper } = syncSceneVisibility();
     const activeCar = getDrivingCar();
-    if (sun?.castShadow && !isLow) {
-      updateSunShadowTarget(activeCar ? activeCar.state.pos : playerPos);
+    const nowPerf = performance.now();
+    const isShadowSceneDynamic = (
+      !started
+      || horizontalVelocity.lengthSq() > 0.01
+      || Math.abs(verticalVelocity) > 0.05
+      || Boolean(activeCar && Math.abs(activeCar.state.speed) > 0.08)
+      || Boolean(playerCharacter?.state?.emote || playerCharacter?.state?.attackTimer > 0)
+    );
+    if (sun?.castShadow) {
+      updateSunShadowTarget(activeCar ? activeCar.state.pos : playerPos, nowPerf, isShadowSceneDynamic);
     }
     if (house && nearTaltolaVis && !deepInTowerUpper) house.update(delta, playerPos, isLow);
     if (skySystem) skySystem.update(elapsed, camera.position);
-    if (environment && !isLow && !deepInTowerUpper) environment.update(elapsed, playerPos);
+    if (environment && !deepInTowerUpper) environment.update(elapsed, playerPos, isLow);
 
-    const nowPerf = performance.now();
     if (khulnaMapUI && !khulnaMapUI.isOpen && nowPerf - lastMinimapUpdate > 100) {
       lastMinimapUpdate = nowPerf;
       controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
@@ -4582,19 +4631,19 @@ function animate() {
   if (now - fpsTime > 800) {
     const currentFps = Math.round((fpsFrames * 1000) / (now - fpsTime));
     fpsLabel.textContent = `${currentFps} FPS`;
-    // Smooth GPU/UI perf adaptation ONLY when user has NOT manually locked High HD / Ultra 4K
+    // Smooth GPU/UI perf adaptation ONLY when user has NOT manually locked quality & after shader warmup
     const manualQualityLock = Boolean(localStorage.getItem('taltola_quality_manual'));
-    if (ready && !inStudio && !manualQualityLock) {
-      if (currentFps < 20 && quality !== 'low') {
+    if (ready && !inStudio && !manualQualityLock && elapsed > 6.0) {
+      if (currentFps < 18 && quality !== 'low') {
         lowFpsStreak++;
-        if (lowFpsStreak >= 3) {
+        if (lowFpsStreak >= 4) {
           applyQuality(quality === 'ultra' ? 'high' : (quality === 'high' ? 'medium' : 'low'));
           lowFpsStreak = 0;
         }
-      } else if (quality === 'low' && !ultraFastMode) {
-        if (currentFps < 15) {
+      } else if (quality === 'low' && !ultraFastMode && softwareRendererDetected) {
+        if (currentFps < 14) {
           lowFpsStreak++;
-          if (lowFpsStreak >= 3) {
+          if (lowFpsStreak >= 4) {
             setUltraFastPerf(true);
           }
         } else {

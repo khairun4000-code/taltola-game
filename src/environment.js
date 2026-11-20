@@ -439,21 +439,23 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     },
     setQualityMode(qualityMode) {
       city.setQualityMode?.(qualityMode);
-      traffic.setVisible?.(qualityMode !== 'low');
+      traffic.setVisible?.(true);
     },
     setFogBounds(near, far) {
       city.setFogBounds?.(near, far);
     },
-    update(time, playerPos = null) {
+    update(time, playerPos = null, isLow = false) {
       m.setShaderTime?.(time);
       city.animateWater(time);
       landmarks.update(time);
       syncVisibility(playerPos);
       corridors.update(time, playerPos);
       traffic.update(time, playerPos);
-      for (const item of animated) {
-        item.object.rotation.x = Math.sin(time * 0.55 + item.phase) * item.strength;
-        item.object.rotation.z = Math.cos(time * 0.43 + item.phase) * item.strength;
+      if (!isLow) {
+        for (const item of animated) {
+          item.object.rotation.x = Math.sin(time * 0.55 + item.phase) * item.strength;
+          item.object.rotation.z = Math.cos(time * 0.43 + item.phase) * item.strength;
+        }
       }
     },
   };

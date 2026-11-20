@@ -789,10 +789,22 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
   }
 
   function setQualityMode(qualityMode) {
-    const nextWaterMat = (qualityMode === 'low' || !waterShaderMat) ? waterLowMat : waterShaderMat;
+    const nextWaterMat = waterShaderMat || waterLowMat;
     for (const wm of waterMeshes) {
       if (wm.material !== nextWaterMat) wm.material = nextWaterMat;
     }
+    const nextAniso = qualityMode === 'low' ? 4 : (qualityMode === 'medium' ? 6 : 8);
+    for (const t of [tex.roadMajorTex, tex.roadMidTex, tex.roadLaneTex, tex.sidewalkTex, tex.grassTex, tex.pitchTex, tex.landTex]) {
+      if (t && t.anisotropy !== nextAniso) {
+        t.anisotropy = nextAniso;
+        t.needsUpdate = true;
+      }
+    }
+  }
+
+  for (const child of group.children) {
+    child.matrixAutoUpdate = false;
+    child.updateMatrix();
   }
 
   function setFogBounds(near, far) {

@@ -796,6 +796,9 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
     // Kitchen Ceiling LED Light
     box(floorInterior, [0.52, 0.04, 0.52], [12.85, fy + 2.89, 3.35], m.lamp);
 
+    floorInterior.traverse((obj) => {
+      if (obj.isMesh) obj.castShadow = false;
+    });
     mergeStaticMeshes(floorInterior);
     floorInterior.visible = false;
     dynamicParent.add(floorInterior);
@@ -880,7 +883,7 @@ function buildBoundaryAndBackyard(staticGroup, m) {
     cylinder(staticGroup, 0.05, 0.065, 0.18, [2.63, 2.86, gatePillarZ], m.darkMetal, 12);
     const globe = new THREE.Mesh(new THREE.SphereGeometry(0.21, 24, 16), m.lamp);
     globe.position.set(2.63, 3.06, gatePillarZ);
-    globe.castShadow = true;
+    globe.castShadow = false;
     staticGroup.add(globe);
 
     rodBetween(staticGroup, [2.44, 2.34, side * 2.76], [2.44, 2.34, side * 7.05], 0.022, m.rail);
@@ -915,7 +918,7 @@ function buildBoundaryAndBackyard(staticGroup, m) {
     const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.88 + (i % 2) * 0.2, 4, 4), clothMat);
     cloth.geometry.rotateY(Math.PI / 2);
     cloth.position.set(17.6, 1.68, -4.2 + i * 0.78);
-    cloth.castShadow = true;
+    cloth.castShadow = false;
     staticGroup.add(cloth);
   }
 
@@ -935,7 +938,7 @@ function buildBoundaryAndBackyard(staticGroup, m) {
     cylinder(staticGroup, 0.22, 0.15, 0.36, [px, 0.2, pz], m.terracotta, 10);
     const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 1), m.moss);
     bush.position.set(px, 0.52, pz);
-    bush.castShadow = true;
+    bush.castShadow = false;
     staticGroup.add(bush);
   }
 
