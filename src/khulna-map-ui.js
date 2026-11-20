@@ -348,19 +348,19 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
         fullCtx.lineJoin = 'round';
         fullCtx.lineCap = 'round';
         // Crisp dark navy outline for maximum contrast over all map roads
-        fullCtx.strokeStyle = 'rgba(3, 18, 42, 0.88)';
-        fullCtx.lineWidth = 9.5;
+        fullCtx.strokeStyle = 'rgba(2, 12, 36, 0.92)';
+        fullCtx.lineWidth = 11.0;
         fullCtx.stroke();
-        // Vibrant GTA V electric blue glowing route
-        fullCtx.strokeStyle = '#00b8ff';
-        fullCtx.lineWidth = 5.6;
-        fullCtx.shadowColor = '#00d2ff';
-        fullCtx.shadowBlur = 16;
+        // Vibrant GTA V electric royal blue glowing route
+        fullCtx.strokeStyle = '#007bff';
+        fullCtx.lineWidth = 6.8;
+        fullCtx.shadowColor = '#00b4ff';
+        fullCtx.shadowBlur = 18;
         fullCtx.stroke();
-        // Bright sky-white center highlight core
+        // Bright glowing blue-white core
         fullCtx.shadowBlur = 0;
-        fullCtx.strokeStyle = '#d8f3ff';
-        fullCtx.lineWidth = 1.9;
+        fullCtx.strokeStyle = '#60d5ff';
+        fullCtx.lineWidth = 2.6;
         fullCtx.stroke();
         fullCtx.restore();
       }
@@ -369,19 +369,19 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       const wpy = (wbz / baseH) * fullCanvas.height;
       fullCtx.save();
       fullCtx.beginPath();
-      fullCtx.arc(wpx, wpy, 9.5, 0, Math.PI * 2);
-      fullCtx.fillStyle = '#00c8ff';
-      fullCtx.shadowColor = '#00d2ff';
-      fullCtx.shadowBlur = 14;
+      fullCtx.arc(wpx, wpy, 10, 0, Math.PI * 2);
+      fullCtx.fillStyle = '#0088ff';
+      fullCtx.shadowColor = '#00c8ff';
+      fullCtx.shadowBlur = 16;
       fullCtx.fill();
-      fullCtx.lineWidth = 2.6;
+      fullCtx.lineWidth = 2.8;
       fullCtx.strokeStyle = '#ffffff';
       fullCtx.stroke();
       fullCtx.shadowBlur = 0;
-      fullCtx.font = '800 12px "Manrope", sans-serif';
-      fullCtx.fillStyle = '#03122a';
+      fullCtx.font = '800 12.5px "Manrope", sans-serif';
+      fullCtx.fillStyle = '#020c24';
       fullCtx.fillText(`🔵 GPS (${gpsRouteDistM}m)`, wpx + 13, wpy + 5);
-      fullCtx.fillStyle = '#7dd3fc';
+      fullCtx.fillStyle = '#60d5ff';
       fullCtx.fillText(`🔵 GPS (${gpsRouteDistM}m)`, wpx + 12, wpy + 4);
       fullCtx.restore();
     }
@@ -515,17 +515,17 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
         }
         miniCtx.lineJoin = 'round';
         miniCtx.lineCap = 'round';
-        miniCtx.strokeStyle = 'rgba(3, 18, 42, 0.88)';
-        miniCtx.lineWidth = 6.8;
+        miniCtx.strokeStyle = 'rgba(2, 12, 36, 0.92)';
+        miniCtx.lineWidth = 7.6;
         miniCtx.stroke();
-        miniCtx.strokeStyle = '#00b8ff';
-        miniCtx.lineWidth = 4.0;
-        miniCtx.shadowColor = '#00d2ff';
-        miniCtx.shadowBlur = 10;
+        miniCtx.strokeStyle = '#007bff';
+        miniCtx.lineWidth = 4.6;
+        miniCtx.shadowColor = '#00b4ff';
+        miniCtx.shadowBlur = 12;
         miniCtx.stroke();
         miniCtx.shadowBlur = 0;
-        miniCtx.strokeStyle = '#e0f7ff';
-        miniCtx.lineWidth = 1.4;
+        miniCtx.strokeStyle = '#7dd3fc';
+        miniCtx.lineWidth = 1.8;
         miniCtx.stroke();
         miniCtx.restore();
       }
@@ -535,9 +535,9 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       const wmy = Math.max(6, Math.min(h - 6, h * 0.5 + (wdz / spanMeters) * h));
       miniCtx.save();
       miniCtx.beginPath();
-      miniCtx.arc(wmx, wmy, 5.2, 0, Math.PI * 2);
-      miniCtx.fillStyle = '#00c8ff';
-      miniCtx.shadowColor = '#00d2ff';
+      miniCtx.arc(wmx, wmy, 5.6, 0, Math.PI * 2);
+      miniCtx.fillStyle = '#0088ff';
+      miniCtx.shadowColor = '#00c8ff';
       miniCtx.shadowBlur = 8;
       miniCtx.fill();
       miniCtx.strokeStyle = '#ffffff';

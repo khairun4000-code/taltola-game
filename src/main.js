@@ -2820,7 +2820,7 @@ async function initialize() {
   };
   renderActiveScene();
   loading.classList.add('complete');
-  header.classList.remove('hidden');
+  header?.classList.toggle('hidden', !inStudio);
   setTimeout(() => loading.classList.add('hidden'), 450);
 }
 
@@ -3374,7 +3374,8 @@ controls.addEventListener('lock', () => {
   carDoorCursorMode = false;
   if (controls.pointerLocked) freeCursorMode = false;
   started = true;
-  document.querySelector('#look-control kbd').textContent = controls.pointerLocked ? '2x CLICK' : '2x CLICK';
+  const lookKbd = document.querySelector('#look-control kbd');
+  if (lookKbd) lookKbd.textContent = '2x CLICK';
   intro.classList.add('hidden');
   pause.classList.add('hidden');
   walkHud.classList.remove('hidden');
@@ -3396,7 +3397,7 @@ controls.addEventListener('unlock', () => {
   walkHud.classList.add('hidden');
 });
 
-document.querySelector('#reference-button').addEventListener('click', () => {
+document.querySelector('#reference-button')?.addEventListener('click', () => {
   if (controls.isLocked) controls.unlock();
   pause.classList.add('hidden');
   referenceModal.showModal();
