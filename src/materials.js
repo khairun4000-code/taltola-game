@@ -412,7 +412,7 @@ export function createMaterials(renderer, manager) {
 
   materials.setQualityMode = (quality) => {
     const isLow = quality === 'low';
-    const nextAniso = isLow ? 1 : anisotropy;
+    const nextAniso = isLow ? 1 : (quality === 'medium' ? Math.min(4, anisotropy) : anisotropy);
     for (const mat of allMaterials) {
       if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
       if (mat.userData && mat.userData.pbrNormalMap) {

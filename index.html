@@ -28,9 +28,16 @@
       </div>
       <div class="hud-actions">
         <span id="fps" class="fps">— FPS</span>
-        <button id="time-toggle-button" class="text-button hidden" type="button">TIME: GOLDEN <span>[T]</span></button>
+        <select id="hud-quality" class="hud-quality-select" aria-label="Live graphics quality">
+          <option value="low">LOW</option>
+          <option value="medium">MEDIUM</option>
+          <option value="high">HIGH HD</option>
+          <option value="ultra" selected>ULTRA 4K ★</option>
+        </select>
+        <button id="time-toggle-button" class="text-button hidden" type="button">TIME: GOLDEN <span>[N]</span></button>
         <button id="map-hud-button" class="text-button hidden" type="button">CITY MAP <span>[M]</span></button>
         <button id="studio-toggle-button" class="text-button" type="button">CHARACTER STUDIO <span>★</span></button>
+        <button id="car-toggle-button" class="text-button hidden" type="button">DRIVE CAR <span>[T]</span></button>
         <button id="lift-hud-button" class="text-button hidden" type="button">LIFT PANEL <span>[L]</span></button>
         <button id="run-toggle-button" class="text-button hidden" type="button">RUN: OFF <span>[SHIFT/R]</span></button>
         <button id="camera-toggle-button" class="text-button hidden" type="button">VIEW: BACK <span>[V]</span></button>
@@ -87,14 +94,6 @@
             <button type="button" class="studio-chip" data-anim="laugh">[9] হাসি (Laugh)</button>
             <button type="button" class="studio-chip" data-anim="warmup">[0] ওয়ার্ম-আপ</button>
             <button type="button" class="studio-chip" data-anim="sit">বসা (Sit)</button>
-          </div>
-        </div>
-
-        <div class="studio-group">
-          <label>কথা বলা ও লিপ-সিঙ্ক (TALK &amp; LIP-SYNC)</label>
-          <div class="studio-btn-grid">
-            <button type="button" class="studio-chip" id="studio-talk-btn">🗣️ কথা বলা (Talk)</button>
-            <button type="button" class="studio-chip" id="studio-mic-btn">🎙️ মাইক লিপ-সিঙ্ক (Mic)</button>
           </div>
         </div>
 
@@ -208,9 +207,26 @@
         <button type="button" class="emote-pill" data-game-emote="phone"><kbd>7</kbd> ফোন</button>
         <button type="button" class="emote-pill" data-game-emote="mobile"><kbd>8</kbd> গেম</button>
         <button type="button" class="emote-pill" data-game-emote="laugh"><kbd>9</kbd> হাসি</button>
-        <button type="button" id="talk-pill-button" class="emote-pill"><kbd>Y</kbd> কথা বলা</button>
       </div>
-      <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360°</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>SPACE</kbd> JUMP / FLIP</span><span><kbd>F</kbd> দেয়াল বাওয়া (CLIMB)</span><span><kbd>Q</kbd> ডাইভ (DIVE)</span><span><kbd>E</kbd> INTERACT</span><span><kbd>1-0</kbd> EMOTE</span><span><kbd>V</kbd> VIEW</span></div>
+      <div id="car-hud" class="car-hud hidden">
+        <div class="car-hud-top">
+          <div id="car-badge" class="car-badge">BMW M3 COMPETITION</div>
+          <div class="car-gear-box"><span id="car-gear">N</span></div>
+        </div>
+        <div class="car-speed-row">
+          <span id="car-speed">0</span>
+          <small>KM/H</small>
+        </div>
+        <div class="car-rpm-track"><div id="car-rpm-fill" class="car-rpm-fill"></div></div>
+        <div class="car-hud-actions">
+          <button type="button" id="car-paint-btn" class="car-chip"><kbd>C</kbd> <span id="car-paint-name">Green</span></button>
+          <button type="button" id="car-cam-btn" class="car-chip"><kbd>V</kbd> ক্যামেরা</button>
+          <button type="button" id="car-horn-btn" class="car-chip"><kbd>H</kbd> হর্ন</button>
+          <button type="button" id="car-exit-btn" class="car-chip car-chip-exit"><kbd>E / T</kbd> গাড়ি থেকে নামুন</button>
+        </div>
+        <div class="car-drive-hint"><kbd>W/S</kbd> গ্যাস/ব্রেক · <kbd>A/D</kbd> স্টিয়ারিং · <kbd>SHIFT</kbd> বুস্ট · <kbd>SPACE</kbd> ড্রিফট</div>
+      </div>
+      <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360°</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>T</kbd> গাড়ি (CAR)</span><span><kbd>SPACE</kbd> JUMP / FLIP</span><span><kbd>F</kbd> দেয়াল বাওয়া</span><span><kbd>E</kbd> INTERACT / LIFT</span><span><kbd>M</kbd> ম্যাপ</span><span><kbd>V</kbd> VIEW</span></div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
       <button id="minimap-dock" class="minimap-dock" type="button" title="Open Full Khulna City Map [M]">
         <canvas id="khulna-minimap" width="148" height="148"></canvas>

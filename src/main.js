@@ -11,6 +11,7 @@ import { createPlayerCharacter } from './character.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { createKhulnaMapUI } from './khulna-map-ui.js';
 import { createAtmosphericSkyAndPMREM, TIME_OF_DAY_PRESETS } from './aaa-shaders.js';
+import { createDrivableCarFleet } from './car.js';
 import './style.css';
 
 const canvas = document.querySelector('#scene');
@@ -30,6 +31,18 @@ const gateToggleButton = document.querySelector('#gate-toggle-button');
 const cameraToggleButton = document.querySelector('#camera-toggle-button');
 const runToggleButton = document.querySelector('#run-toggle-button');
 const runPillButton = document.querySelector('#run-pill-button');
+const carToggleButton = document.querySelector('#car-toggle-button');
+const carHud = document.querySelector('#car-hud');
+const carBadgeEl = document.querySelector('#car-badge');
+const carSpeedEl = document.querySelector('#car-speed');
+const carGearEl = document.querySelector('#car-gear');
+const carRpmFill = document.querySelector('#car-rpm-fill');
+const carPaintBtn = document.querySelector('#car-paint-btn');
+const carPaintNameEl = document.querySelector('#car-paint-name');
+const carCamBtn = document.querySelector('#car-cam-btn');
+const carHornBtn = document.querySelector('#car-horn-btn');
+const carExitBtn = document.querySelector('#car-exit-btn');
+const emoteBar = document.querySelector('#emote-bar');
 const liftHudButton = document.querySelector('#lift-hud-button');
 const timeToggleButton = document.querySelector('#time-toggle-button');
 const mapHudButton = document.querySelector('#map-hud-button');
@@ -51,6 +64,7 @@ const qualityInputs = [
   document.querySelector('#quality'),
   document.querySelector('#pause-quality'),
   document.querySelector('#studio-quality'),
+  document.querySelector('#hud-quality'),
 ];
 const referenceModal = document.querySelector('#reference-modal');
 const fpsLabel = document.querySelector('#fps');
@@ -60,16 +74,16 @@ const brandSubtitle = document.querySelector('#brand-subtitle');
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
-  antialias: false,
+  antialias: true,
   powerPreference: 'high-performance',
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.06;
-renderer.shadowMap.enabled = false;
+renderer.toneMappingExposure = 1.08;
+renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.shadowMap.autoUpdate = false;
+renderer.shadowMap.autoUpdate = true;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x18211e);
@@ -130,7 +144,7 @@ function applyTimeOfDay(nextId) {
     environment?.setNightFactor?.(preset.nightFactor);
   }
   if (timeToggleButton) {
-    timeToggleButton.innerHTML = `TIME: ${preset.shortLabel} <span>[T]</span>`;
+    timeToggleButton.innerHTML = `TIME: ${preset.shortLabel} <span>[N]</span>`;
   }
 }
 
@@ -231,6 +245,29 @@ let environment;
 let house;
 let studioGroup;
 let playerCharacter;
+let cars = [];
+let bmwCar;
+function getDrivingCar() {
+  return cars.find((c) => c.state.driving) || null;
+}
+function findNearestCar(pos) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const c of cars) {
+    const d = c.distanceToPlayer(pos);
+    if (d < bestDist) {
+      bestDist = d;
+      best = c;
+    }
+  }
+  return best;
+}
+function findNearestEnterableCar(pos) {
+  const c = findNearestCar(pos);
+  return c && c.isPlayerNear(pos) ? c : null;
+}
+const carCamDesired = new THREE.Vector3();
+const carCamLookTarget = new THREE.Vector3();
 let sun;
 let ambientLight;
 let hemisphereLight;
@@ -875,8 +912,17 @@ function setMode(studioMode) {
     camera.fov = 39;
     camera.updateProjectionMatrix();
 
+    const drivingCar = getDrivingCar();
+    if (drivingCar) {
+      drivingCar.exitCar(playerPos);
+      carHud?.classList.add('hidden');
+      emoteBar?.classList.remove('hidden');
+    }
     if (house?.group) house.group.visible = false;
     if (environment?.group) environment.group.visible = false;
+    for (const c of cars) {
+      if (c?.group) c.group.visible = false;
+    }
     if (studioGroup) studioGroup.visible = true;
 
     studioPanel?.classList.remove('hidden');
@@ -889,6 +935,7 @@ function setMode(studioMode) {
     gateToggleButton?.classList.add('hidden');
     runToggleButton?.classList.add('hidden');
     liftHudButton?.classList.add('hidden');
+    carToggleButton?.classList.add('hidden');
     if (skySystem?.skyDome) skySystem.skyDome.visible = false;
     scene.environment = null;
     if (brandTitle) brandTitle.textContent = 'CHARACTER STUDIO';
@@ -902,6 +949,10 @@ function setMode(studioMode) {
 
     if (house?.group) house.group.visible = true;
     if (environment?.group) environment.group.visible = true;
+    for (const c of cars) {
+      if (c?.group) c.group.visible = true;
+    }
+    if (skySystem?.skyDome) skySystem.skyDome.visible = true;
     if (studioGroup) studioGroup.visible = false;
 
     studioPanel?.classList.add('hidden');
@@ -911,6 +962,7 @@ function setMode(studioMode) {
     gateToggleButton?.classList.remove('hidden');
     runToggleButton?.classList.remove('hidden');
     liftHudButton?.classList.remove('hidden');
+    carToggleButton?.classList.remove('hidden');
     if (brandTitle) brandTitle.textContent = 'TALTOLA';
     if (brandSubtitle) brandSubtitle.textContent = 'KHULNA · BANGLADESH';
     if (studioToggleButton) studioToggleButton.innerHTML = 'CHARACTER STUDIO <span>★</span>';
@@ -946,6 +998,22 @@ function setUltraFastPerf(enabled) {
   }
 }
 
+function updateSunShadowTarget(focusPos) {
+  if (!sun || inStudio) return;
+  const radius = quality === 'ultra' ? 44 : (quality === 'high' ? 38 : 28);
+  const mapSize = sun.shadow.mapSize.x || 2048;
+  const worldUnitsPerTexel = (radius * 2) / mapSize;
+
+  // Texel-snap shadow frustum center to eliminate shadow edge shimmer while walking or driving!
+  const snapX = Math.round(focusPos.x / worldUnitsPerTexel) * worldUnitsPerTexel;
+  const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
+
+  lastSunAnchorX = snapX;
+  lastSunAnchorZ = snapZ;
+  updateSunPositionFromAnchor(snapX, snapZ);
+  sun.target.updateMatrixWorld();
+}
+
 function applyQuality(nextQuality) {
   quality = nextQuality;
   if (quality !== 'low') {
@@ -957,20 +1025,22 @@ function applyQuality(nextQuality) {
   } catch {}
   const dpr = window.devicePixelRatio || 1;
   const isLow = quality === 'low';
-  const isFast = isLow || quality === 'medium';
-  // Keep crisp native-like pixel ratio even on Low (0.95) so faces & buildings stay sharp at 50-60 FPS!
+  const isUltra = quality === 'ultra';
+  const isHigh = quality === 'high';
+  // Crisp native pixel ratio even on Low (0.95) for sharp character faces, up to 2.0x on Ultra 4K!
   const ratios = {
     low: Math.min(dpr, ultraFastMode ? 0.85 : 0.95),
-    medium: Math.min(dpr, 1.0),
-    high: Math.min(dpr, window.innerWidth >= 1400 ? 1.05 : 1.15),
-    ultra: Math.min(dpr * 1.25, 1.5),
+    medium: Math.min(dpr, 1.1),
+    high: Math.min(Math.max(dpr, 1.25), 1.5),
+    ultra: Math.min(Math.max(dpr * 1.4, 1.75), 2.0),
   };
-  const shadowSizes = { low: 512, medium: 1024, high: 1024, ultra: 2048 };
-  const useShadows = quality === 'high' || quality === 'ultra';
+  const shadowSizes = { low: 512, medium: 1024, high: 2048, ultra: 4096 };
+  const useShadows = !isLow;
   const activeRatio = ratios[quality] ?? ratios.high;
 
   renderer.setPixelRatio(activeRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.toneMappingExposure = isUltra ? 1.12 : (isHigh ? 1.08 : 1.04);
   if (composer) {
     composer.setPixelRatio(activeRatio);
     composer.setSize(window.innerWidth, window.innerHeight);
@@ -981,45 +1051,52 @@ function applyQuality(nextQuality) {
   }
   renderer.shadowMap.enabled = useShadows;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.shadowMap.autoUpdate = false;
+  // Real-time dynamic shadow map updates so buildings, cars, doors & character always cast live shadows!
+  renderer.shadowMap.autoUpdate = useShadows;
   if (useShadows) renderer.shadowMap.needsUpdate = true;
 
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = ultraFastMode ? 135 : (isLow ? 150 : (quality === 'medium' ? 175 : (quality === 'ultra' ? 240 : 195)));
-    scene.fog.far = ultraFastMode ? 310 : (isLow ? 340 : (quality === 'medium' ? 440 : (quality === 'ultra' ? 760 : 560)));
-    camera.far = ultraFastMode ? 360 : (isLow ? 390 : (quality === 'medium' ? 500 : (quality === 'ultra' ? 880 : 640)));
+    scene.fog.near = ultraFastMode ? 135 : (isLow ? 150 : (quality === 'medium' ? 175 : (isUltra ? 240 : 195)));
+    scene.fog.far = ultraFastMode ? 310 : (isLow ? 340 : (quality === 'medium' ? 440 : (isUltra ? 760 : 560)));
+    camera.far = ultraFastMode ? 360 : (isLow ? 390 : (quality === 'medium' ? 500 : (isUltra ? 880 : 640)));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
 
   // Keep clean shadowless sun + soft fill light even on Low so Sabit's face stays sharp, well-lit & vibrant
-  const useExtraLights = !isFast || inStudio;
+  const useExtraLights = !isLow || inStudio;
   if (studioKeyLight) studioKeyLight.visible = useExtraLights;
   if (fillDirLight) {
     fillDirLight.visible = true;
-    fillDirLight.intensity = isLow && !inStudio ? 0.34 : 0.42;
+    fillDirLight.intensity = isLow && !inStudio ? 0.34 : (isUltra ? 0.72 : 0.55);
   }
   if (ambientLight) {
     ambientLight.visible = true;
-    ambientLight.intensity = isLow && !inStudio ? 0.42 : 0.28;
+    ambientLight.intensity = isLow && !inStudio ? 0.42 : (isUltra ? 0.45 : 0.38);
   }
   if (hemisphereLight) {
     hemisphereLight.visible = true;
-    hemisphereLight.intensity = ultraFastMode && !inStudio ? 1.75 : (isFast && !inStudio ? 1.48 : 0.96);
-    hemisphereLight.color.setHex(isFast && !inStudio ? 0xf6f2ea : 0x9ec8f2);
-    hemisphereLight.groundColor.setHex(isFast && !inStudio ? 0x8e806e : 0x5c4f3d);
+    hemisphereLight.intensity = ultraFastMode && !inStudio ? 1.75 : (isLow && !inStudio ? 1.38 : (isUltra ? 0.92 : 0.86));
+    hemisphereLight.color.setHex(isLow && !inStudio ? 0xf6f2ea : 0xbad9f7);
+    hemisphereLight.groundColor.setHex(isLow && !inStudio ? 0x8e806e : 0x625645);
   }
   if (sun) {
     sun.visible = !ultraFastMode || inStudio;
-    sun.intensity = isFast && !inStudio ? 1.45 : 2.35;
-  }
-
-  if (sun) {
+    sun.intensity = isUltra ? 2.25 : (isHigh ? 2.05 : (isLow ? 1.35 : 1.75));
     sun.castShadow = useShadows;
     if (useShadows) {
-      const size = shadowSizes[quality] || 1024;
+      const size = shadowSizes[quality] || 2048;
+      const radius = isUltra ? 44 : (isHigh ? 38 : 28);
+      sun.shadow.camera.left = -radius;
+      sun.shadow.camera.right = radius;
+      sun.shadow.camera.top = radius;
+      sun.shadow.camera.bottom = -radius;
+      sun.shadow.camera.near = 2;
+      sun.shadow.camera.far = 135;
+      sun.shadow.camera.updateProjectionMatrix();
+
       if (sun.shadow.mapSize.x !== size || sun.shadow.mapSize.y !== size) {
         sun.shadow.mapSize.set(size, size);
         if (sun.shadow.map) {
@@ -1027,8 +1104,8 @@ function applyQuality(nextQuality) {
           sun.shadow.map = null;
         }
       }
-      sun.shadow.bias = -0.0014;
-      sun.shadow.normalBias = 0.04;
+      sun.shadow.bias = -0.0005;
+      sun.shadow.normalBias = 0.035;
       renderer.shadowMap.needsUpdate = true;
     }
   }
@@ -1038,8 +1115,12 @@ function applyQuality(nextQuality) {
   environment?.tower?.setQualityMode?.(quality);
   environment?.city?.refreshActiveChunks?.(playerPos.x, playerPos.z, quality);
   playerCharacter?.setQualityMode?.(quality);
+  for (const c of cars) {
+    c?.setQualityMode?.(quality);
+  }
   if (environment?.farGroup) environment.farGroup.visible = !isLow;
   if (!inStudio && skySystem) {
+    if (skySystem.skyDome) skySystem.skyDome.visible = true;
     applyTimeOfDay(timeOfDayId);
   }
 
@@ -1058,22 +1139,22 @@ for (const input of qualityInputs) {
 }
 
 function setupLighting() {
-  ambientLight = new THREE.AmbientLight(0xf6f0e4, 0.68);
+  ambientLight = new THREE.AmbientLight(0xf6f0e4, 0.58);
   scene.add(ambientLight);
 
-  hemisphereLight = new THREE.HemisphereLight(0xdcebf2, 0x7a6e5e, 0.72);
+  hemisphereLight = new THREE.HemisphereLight(0xd9ecfa, 0x6b6052, 0.74);
   scene.add(hemisphereLight);
 
-  sun = new THREE.DirectionalLight(0xfff2dc, 1.45);
-  sun.position.set(TALTOLA_HOUSE_OFFSET.x + 4, 24, TALTOLA_HOUSE_OFFSET.z + 12);
-  sun.target.position.set(TALTOLA_HOUSE_OFFSET.x, 1, TALTOLA_HOUSE_OFFSET.z);
+  sun = new THREE.DirectionalLight(0xfff1d6, 2.05);
+  sun.position.set(TALTOLA_HOUSE_OFFSET.x + 26, 42, TALTOLA_HOUSE_OFFSET.z + 20);
+  sun.target.position.set(TALTOLA_HOUSE_OFFSET.x, 0, TALTOLA_HOUSE_OFFSET.z);
   sun.castShadow = true;
-  sun.shadow.camera.left = -30;
-  sun.shadow.camera.right = 30;
-  sun.shadow.camera.top = 30;
-  sun.shadow.camera.bottom = -24;
-  sun.shadow.camera.near = 1;
-  sun.shadow.camera.far = 112;
+  sun.shadow.camera.left = -38;
+  sun.shadow.camera.right = 38;
+  sun.shadow.camera.top = 38;
+  sun.shadow.camera.bottom = -38;
+  sun.shadow.camera.near = 2;
+  sun.shadow.camera.far = 135;
   scene.add(sun, sun.target);
   lastSunAnchorX = TALTOLA_HOUSE_OFFSET.x;
   lastSunAnchorZ = TALTOLA_HOUSE_OFFSET.z;
@@ -1361,13 +1442,67 @@ function startParkourDive() {
   return true;
 }
 
+function syncCarHUD() {
+  if (!cars.length) return;
+  const activeCar = getDrivingCar();
+  const driving = Boolean(activeCar);
+  if (carToggleButton) {
+    carToggleButton.innerHTML = driving ? 'EXIT CAR <span>[T]</span>' : 'DRIVE CAR <span>[T]</span>';
+  }
+  carHud?.classList.toggle('hidden', !driving);
+  emoteBar?.classList.toggle('hidden', driving);
+  if (driving && activeCar) {
+    if (carBadgeEl) carBadgeEl.textContent = activeCar.state.badge;
+    if (carSpeedEl) carSpeedEl.textContent = String(Math.round(Math.abs(activeCar.state.speed) * 3.6));
+    if (carGearEl) carGearEl.textContent = String(activeCar.state.gear);
+    if (carRpmFill) {
+      const pct = THREE.MathUtils.clamp(((activeCar.state.rpm - 900) / 6900) * 100, 8, 100);
+      carRpmFill.style.width = `${pct.toFixed(1)}%`;
+    }
+    if (carPaintNameEl) {
+      carPaintNameEl.textContent = activeCar.state.paintName.split(' ').pop();
+    }
+  }
+}
+
+function toggleCarDriving(targetCar = null) {
+  if (!cars.length || inStudio) return;
+  const activeCar = getDrivingCar();
+  if (activeCar) {
+    activeCar.exitCar(playerPos);
+    controls.euler.set(-0.04, activeCar.state.heading + Math.PI, 0, 'YXZ');
+    camera.quaternion.setFromEuler(controls.euler);
+    syncCarHUD();
+    updateHUDPrompt();
+    return;
+  }
+  const carToEnter = targetCar || findNearestCar(playerPos) || bmwCar;
+  if (!carToEnter) return;
+  if (sittingState.active) standUpFromSeat();
+  if (liftKeypadOpen) closeLiftKeypad(false);
+  carToEnter.enterCar();
+  if (!started) beginWalking();
+  syncCarHUD();
+  updateHUDPrompt();
+}
+
 function handleDoorInteraction(allowClimbFallback = false) {
+  if (getDrivingCar()) {
+    toggleCarDriving();
+    return true;
+  }
   if (sittingState.active) {
     standUpFromSeat();
     return true;
   }
   const nearSeat = findNearestSeat(playerPos);
+  const nearCar = findNearestEnterableCar(playerPos);
   const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos));
+  // If near a drivable car and no closer seat/door/lift is active, enter & drive it!
+  if (nearCar && !hasDoorOrLiftPrompt && !nearSeat) {
+    toggleCarDriving(nearCar);
+    return;
+  }
   // If near a seat and either no door/lift is active or seat is very close (< 1.25m), sit down!
   if (nearSeat && (!hasDoorOrLiftPrompt || nearSeat.dist < 1.25)) {
     sitOnSeat(nearSeat);
@@ -1387,6 +1522,10 @@ function handleDoorInteraction(allowClimbFallback = false) {
     house.toggleNearestDoor(playerPos);
     syncHUDButtons(false, true);
     return true;
+  }
+  if (nearCar) {
+    toggleCarDriving(nearCar);
+    return;
   }
   if (nearSeat) {
     sitOnSeat(nearSeat);
@@ -1443,6 +1582,8 @@ async function initialize() {
       }
     },
   });
+  cars = createDrivableCarFleet(scene, manager);
+  bmwCar = cars[0];
 
   await allLoaded;
 
@@ -1498,6 +1639,10 @@ async function initialize() {
     house,
     environment,
     playerCharacter,
+    bmwCar,
+    cars,
+    getDrivingCar,
+    toggleCarDriving,
     playerPos,
     sittingState,
     sitOnSeat,
@@ -1640,7 +1785,10 @@ canvas.addEventListener('pointerdown', (event) => {
     return;
   }
   if (event.button === 0 && controls.pointerLocked) {
-    if (sittingState.active || findNearestSeat(playerPos) || environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos)) {
+    const activeCar = getDrivingCar();
+    if (activeCar) {
+      activeCar.playHorn();
+    } else if (sittingState.active || findNearestSeat(playerPos) || findNearestEnterableCar(playerPos) || environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos)) {
       handleDoorInteraction();
     } else {
       playerCharacter?.triggerAttack();
@@ -1733,6 +1881,11 @@ function syncSceneVisibility() {
 
 function warpToLandmark(lm, lockControls = false) {
   if (!lm) return;
+  const activeCar = getDrivingCar();
+  if (activeCar) {
+    activeCar.exitCar(playerPos);
+    syncCarHUD();
+  }
   if (sittingState.active) standUpFromSeat();
   liftKeypadOpen = false;
   liftKeypad?.classList.add('hidden');
@@ -1866,6 +2019,27 @@ runToggleButton?.addEventListener('click', () => {
 runPillButton?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleRunMode();
+});
+carToggleButton?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleCarDriving();
+});
+carPaintBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  getDrivingCar()?.cyclePaintColor();
+  syncCarHUD();
+});
+carCamBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  getDrivingCar()?.cycleCameraMode();
+});
+carHornBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  getDrivingCar()?.playHorn();
+});
+carExitBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (getDrivingCar()) toggleCarDriving();
 });
 liftHudButton?.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -2039,18 +2213,12 @@ window.addEventListener('keydown', (event) => {
 
   if (!started) return;
 
-  if (event.code === 'KeyT') {
+  if (event.code === 'KeyN' && !event.repeat) {
     event.preventDefault();
     cycleTimeOfDay();
     return;
   }
-  if (event.code === 'KeyY') {
-    event.preventDefault();
-    playerCharacter?.toggleTalking();
-    syncTalkUI();
-    return;
-  }
-  if (event.code === 'KeyM') {
+  if (event.code === 'KeyM' && !event.repeat) {
     event.preventDefault();
     controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
     khulnaMapUI?.toggleMap(playerPos, controls.euler.y);
@@ -2062,6 +2230,51 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (khulnaMapUI?.isOpen) return;
+
+  // Toggle Drivable Car Mode (BMW M3 / Alphard / Corolla) with [T] anytime
+  if (event.code === 'KeyT' && !event.repeat) {
+    event.preventDefault();
+    toggleCarDriving();
+    return;
+  }
+
+  // Dedicated Driving Controls when inside any drivable car
+  const activeCar = getDrivingCar();
+  if (activeCar) {
+    if ((event.code === 'KeyE' || event.code === 'KeyF') && !event.repeat) {
+      event.preventDefault();
+      toggleCarDriving();
+      return;
+    }
+    if (event.code === 'KeyC' && !event.repeat) {
+      event.preventDefault();
+      activeCar.cyclePaintColor();
+      syncCarHUD();
+      return;
+    }
+    if (event.code === 'KeyH' && !event.repeat) {
+      event.preventDefault();
+      activeCar.playHorn();
+      return;
+    }
+    if ((event.code === 'KeyV' || event.code === 'KeyB') && !event.repeat) {
+      event.preventDefault();
+      activeCar.cycleCameraMode();
+      return;
+    }
+    if (event.code === 'KeyG' && !event.repeat) {
+      event.preventDefault();
+      house?.toggleAllDoors();
+      environment?.tower?.toggleGate?.();
+      syncHUDButtons();
+      return;
+    }
+    if (event.code === 'Space') {
+      event.preventDefault();
+    }
+    keys.add(event.code);
+    return;
+  }
 
   // Toggle Lift Keypad with [L] key anytime
   if (event.code === 'KeyL') {
@@ -2571,6 +2784,21 @@ function applyWorldCollisions(pos) {
     }
   }
 
+  // Parked drivable car body colliders when walking on foot anywhere in Khulna
+  if (footY < 1.9 && cars.length) {
+    for (const car of cars) {
+      if (!car || car.state.driving) continue;
+      const cx = car.state.pos.x;
+      const cz = car.state.pos.z;
+      if (Math.abs(pos.x - cx) > 6.5 || Math.abs(pos.z - cz) > 6.5) continue;
+      const cosH = Math.abs(Math.cos(car.state.heading));
+      const sinH = Math.abs(Math.sin(car.state.heading));
+      const halfX = car.state.halfWidth * cosH + car.state.halfLength * sinH;
+      const halfZ = car.state.halfLength * cosH + car.state.halfWidth * sinH;
+      resolveCircleAABB(pos, PLAYER_RADIUS, cx - halfX, cx + halfX, cz - halfZ, cz + halfZ);
+    }
+  }
+
   const nearHajiMohsin = Math.abs(pos.x) < 55 && Math.abs(pos.z) < 55;
   const nearTaltolaHouse = Math.abs(pos.x - hx) < 28 && Math.abs(pos.z - hz) < 22;
 
@@ -2928,12 +3156,18 @@ function updateHUDPrompt() {
   if (!house || !interactPrompt) return;
   let promptText = null;
   if (controls.isLocked || liftKeypadOpen) {
-    if (sittingState.active) {
+    if (getDrivingCar()) {
+      promptText = null;
+    } else if (sittingState.active) {
       promptText = `[E / F / SPACE] উঠে দাঁড়ান — ${sittingState.seat?.label || 'আসন'} (Stand Up)`;
     } else {
       const nearSeat = findNearestSeat(playerPos);
+      const nearCar = findNearestEnterableCar(playerPos);
+      const carPrompt = nearCar ? nearCar.getPrompt(playerPos) : null;
       const doorOrLiftPrompt = environment?.tower?.getPrompt(playerPos) || house.getPrompt(playerPos);
-      if (nearSeat && (!doorOrLiftPrompt || nearSeat.dist < 1.25)) {
+      if (carPrompt && !doorOrLiftPrompt && !nearSeat) {
+        promptText = carPrompt;
+      } else if (nearSeat && (!doorOrLiftPrompt || nearSeat.dist < 1.25)) {
         promptText = `[E / F] এখানে বসুন: ${nearSeat.label} (Sit Down)`;
       } else if (doorOrLiftPrompt) {
         promptText = doorOrLiftPrompt;
@@ -2944,7 +3178,7 @@ function updateHUDPrompt() {
       } else if (wallAhead && !climbState.active) {
         promptText = '[F / SPACE] দেয়াল বেয়ে উঠুন (Wall Climb)';
       } else {
-        promptText = null;
+        promptText = carPrompt || null;
       }
     }
   }
@@ -3035,6 +3269,10 @@ function updateHUDPrompt() {
         zone = 'KHULNA CITY · OPEN WORLD STREET';
       }
     }
+    const drivingCar = getDrivingCar();
+    if (drivingCar) {
+      zone = `${drivingCar.state.name.toUpperCase()} DRIVING · ${zone}`;
+    }
     if (zone !== lastZoneText) {
       lastZoneText = zone;
       locationTagText.innerHTML = `<span class="location-dot"></span> ${zone}`;
@@ -3082,6 +3320,65 @@ function updateStudioCamera(delta) {
 
 function updateMovement(delta) {
   if (!started || (pause && !pause.classList.contains('hidden'))) return;
+
+  // Always update all drivable cars (active driving or gentle coasting when parked)
+  if (cars.length) {
+    for (const car of cars) {
+      car.update(delta, keys, house, environment, cars);
+    }
+    const drivingCar = getDrivingCar();
+    if (drivingCar) {
+      const st = drivingCar.state;
+      playerPos.set(st.pos.x, st.pos.y + EYE_HEIGHT, st.pos.z);
+
+      const sinH = Math.sin(st.heading);
+      const cosH = Math.cos(st.heading);
+      const speedKmh = Math.abs(st.speed) * 3.6;
+
+      // Dynamic speed-rush FOV while driving
+      const targetFov = THREE.MathUtils.clamp(60 + speedKmh * 0.12, 60, 75);
+      if (Math.abs(camera.fov - targetFov) > 0.05) {
+        camera.fov += (targetFov - camera.fov) * Math.min(1, delta * 7.5);
+        camera.updateProjectionMatrix();
+      }
+
+      if (st.cameraMode === 'hood') {
+        carCamDesired.set(st.pos.x + sinH * st.hoodForward, st.pos.y + st.hoodHeight, st.pos.z + cosH * st.hoodForward);
+        carCamLookTarget.set(st.pos.x + sinH * 14.0, st.pos.y + st.hoodHeight - 0.18, st.pos.z + cosH * 14.0);
+        camera.position.copy(carCamDesired);
+        camera.lookAt(carCamLookTarget);
+      } else if (st.cameraMode === 'front') {
+        carCamDesired.set(st.pos.x + sinH * 5.4, st.pos.y + 1.65, st.pos.z + cosH * 5.4);
+        carCamLookTarget.set(st.pos.x, st.pos.y + 0.95, st.pos.z);
+        camera.position.lerp(carCamDesired, Math.min(1, delta * 9.0));
+        camera.lookAt(carCamLookTarget);
+      } else {
+        // Dynamic smooth Chase Cam behind the active car
+        const backDist = st.camBack + Math.min(1.4, speedKmh * 0.014);
+        carCamDesired.set(st.pos.x - sinH * backDist, st.pos.y + st.camHeight, st.pos.z - cosH * backDist);
+        carCamLookTarget.set(st.pos.x + sinH * 4.5, st.pos.y + 1.05, st.pos.z + cosH * 4.5);
+        camera.position.lerp(carCamDesired, Math.min(1, delta * 8.5));
+        camera.lookAt(carCamLookTarget);
+      }
+
+      if (playerCharacter) {
+        playerCharacter.update(delta, {
+          position: playerPos,
+          yaw: st.heading + Math.PI,
+          speed: 0,
+          maxSpeed: 3.45,
+          grounded: true,
+          isSprinting: false,
+          inStudio: false,
+          hideMesh: true,
+        });
+      }
+
+      syncCarHUD();
+      updateHUDPrompt();
+      return;
+    }
+  }
 
   const turnInput = Number(keys.has('KeyQ'));
   if (turnInput !== 0) {
@@ -3445,15 +3742,9 @@ function animate() {
     updateMovement(delta);
     // Smart indoor building & exterior culling + active chunk streaming across Khulna City
     const { nearTaltolaVis, deepInTowerUpper } = syncSceneVisibility();
+    const activeCar = getDrivingCar();
     if (sun?.castShadow && !isLow) {
-      const sdx = playerPos.x - lastSunAnchorX;
-      const sdz = playerPos.z - lastSunAnchorZ;
-      if (sdx * sdx + sdz * sdz > 64) {
-        lastSunAnchorX = Math.round(playerPos.x / 4) * 4;
-        lastSunAnchorZ = Math.round(playerPos.z / 4) * 4;
-        updateSunPositionFromAnchor(lastSunAnchorX, lastSunAnchorZ);
-        renderer.shadowMap.needsUpdate = true;
-      }
+      updateSunShadowTarget(activeCar ? activeCar.state.pos : playerPos);
     }
     if (house && nearTaltolaVis && !deepInTowerUpper) house.update(delta, playerPos, isLow);
     if (skySystem) skySystem.update(elapsed, camera.position);
@@ -3478,7 +3769,7 @@ function animate() {
       camera.lookAt(sittingState.seat.seatX, sittingState.seat.fy + 0.92, sittingState.seat.seatZ);
       renderActiveScene();
       camera.quaternion.copy(savedCameraQuat);
-    } else if (playerCharacter && playerCharacter.state.cameraMode === 'front' && !isThirdPersonEyeFallback) {
+    } else if (!activeCar && playerCharacter && playerCharacter.state.cameraMode === 'front' && !isThirdPersonEyeFallback) {
       savedCameraQuat.copy(camera.quaternion);
       camera.lookAt(playerPos.x, playerPos.y - 0.12, playerPos.z);
       renderActiveScene();
@@ -3493,25 +3784,26 @@ function animate() {
   if (now - fpsTime > 800) {
     const currentFps = Math.round((fpsFrames * 1000) / (now - fpsTime));
     fpsLabel.textContent = `${currentFps} FPS`;
-    // Smooth GPU/UI perf adaptation without abruptly ruining visuals unless framerate actually suffers
-    if (ready && !inStudio) {
-      if (currentFps < 26) {
+    // Smooth GPU/UI perf adaptation ONLY when user has NOT manually locked High HD / Ultra 4K
+    const manualQualityLock = Boolean(localStorage.getItem('taltola_quality_manual'));
+    if (ready && !inStudio && !manualQualityLock) {
+      if (currentFps < 20 && quality !== 'low') {
         lowFpsStreak++;
-        if (lowFpsStreak >= 2) {
-          document.body.classList.add('low-perf-ui');
+        if (lowFpsStreak >= 3) {
+          applyQuality(quality === 'ultra' ? 'high' : (quality === 'high' ? 'medium' : 'low'));
+          lowFpsStreak = 0;
         }
-      } else if (quality !== 'low') {
+      } else if (quality === 'low' && !ultraFastMode) {
+        if (currentFps < 15) {
+          lowFpsStreak++;
+          if (lowFpsStreak >= 3) {
+            setUltraFastPerf(true);
+          }
+        } else {
+          lowFpsStreak = 0;
+        }
+      } else {
         lowFpsStreak = 0;
-      }
-      const manualQualityLock = Boolean(localStorage.getItem('taltola_quality_manual'));
-      if (!manualQualityLock) {
-        if (currentFps < 36 && (quality === 'high' || quality === 'ultra')) {
-          applyQuality('medium');
-        } else if (currentFps < 28 && quality === 'medium') {
-          applyQuality('low');
-        } else if (quality === 'low' && !ultraFastMode && currentFps < 24 && lowFpsStreak >= 2) {
-          setUltraFastPerf(true);
-        }
       }
     }
     fpsFrames = 0;
