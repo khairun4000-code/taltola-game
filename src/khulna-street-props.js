@@ -482,22 +482,35 @@ function createBigElectionPosterTexture(kind) {
 }
 
 const POSTER_KIND_COUNT = 8;
+const NETA_POSTER_SPECS = [
+  { url: './assets/neta/neta_boat.jpg', aspect: 1160 / 1355 },   // Z X হুজ্জা (নৌকা মার্কা)
+  { url: './assets/neta/neta_scales.jpg', aspect: 1160 / 1355 }, // সাবিদ ফালা (ধানের শীষ মার্কা)
+  { url: './assets/neta/neta_paddy.jpg', aspect: 941 / 1672 },   // পি.টি.আই রাফিন (মেয়র পদপ্রার্থী)
+];
+
 let sharedPropsAssets = null;
 function getSharedPropsAssets() {
   if (sharedPropsAssets) return sharedPropsAssets;
+  const texLoader = new THREE.TextureLoader();
   const posterMats = Array.from({ length: POSTER_KIND_COUNT }, (_, k) => new THREE.MeshLambertMaterial({
     map: createPolePosterTexture(k),
     side: THREE.DoubleSide,
   }));
-  const bigElectionData = [0, 1, 2].map((k) => createBigElectionPosterTexture(k));
-  const bannerMats = bigElectionData.map((d) => new THREE.MeshLambertMaterial({
-    map: d.tex,
-    side: THREE.DoubleSide,
-  }));
+  const bannerMats = NETA_POSTER_SPECS.map((spec) => {
+    const tex = texLoader.load(spec.url);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    return new THREE.MeshBasicMaterial({
+      map: tex,
+      side: THREE.DoubleSide,
+    });
+  });
   sharedPropsAssets = {
     posterMats,
     bannerMats,
-    bigElectionData,
     poleMat: new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.85, metalness: 0.18 }),
     steelMat: new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.55, metalness: 0.65 }),
     lampGlowMat: new THREE.MeshStandardMaterial({
@@ -518,27 +531,30 @@ function hashRand(n) {
 }
 
 /**
- * Allows swapping custom funny leader photo(s) live onto the 3 big pole election posters!
+ * Mounts a crisp, high-resolution 4-corner framed election poster of one of the 3 leaders
+ * directly on any building or compound wall (preserving exact aspect ratio so faces & text are crystal clear!).
  */
-export function setElectionLeaderImages(urls = []) {
+export function addBigNetaWallPoster(parent, netaIdx, x, y, z, rotY = 0, height = 2.45) {
   const assets = getSharedPropsAssets();
-  for (let k = 0; k < 3; k++) {
-    const url = urls[k] || urls[0];
-    if (!url) continue;
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const entry = assets.bigElectionData[k];
-      drawBigElectionPosterToCanvas(entry.canvas, k, img);
-      entry.tex.needsUpdate = true;
-    };
-    img.src = url;
-  }
+  const idx = ((netaIdx % 3) + 3) % 3;
+  const aspect = NETA_POSTER_SPECS[idx].aspect;
+  const w = height * aspect;
+  const grp = new THREE.Group();
+  grp.position.set(x, y, z);
+  grp.rotation.y = rotY;
+
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.10, height + 0.10, 0.03), assets.steelMat);
+  frame.position.z = -0.018;
+  const poster = new THREE.Mesh(new THREE.PlaneGeometry(w, height), assets.bannerMats[idx]);
+  poster.position.z = 0.002;
+  grp.add(frame, poster);
+  parent.add(grp);
+  return grp;
 }
 
 /**
- * Adds varied Bangladeshi pole posters (0..4 different types per pole!), dense hanging black cable coils
- * (3-4 coils per pole!), and a BIG high-mounted upright election poster board (নৌকা, ধানের শীষ, দাঁড়িপাল্লা).
+ * Adds varied Bangladeshi pole posters, dense hanging black cable coils, and a HIGH-MOUNTED
+ * 4-corner rectangular election banner of the 3 leaders with steel frame bars.
  */
 export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0, poleRadius = 0.19) {
   const assets = getSharedPropsAssets();
@@ -574,19 +590,26 @@ export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0, pole
     grp.add(coil);
   }
 
-  // BIG upright Election Poster Board mounted high up on the utility pole (নৌকা, ধানের শীষ, দাঁড়িপাল্লা)
+  // HIGH-MOUNTED 4-corner framed rectangular election banner of the 3 leaders (never curved sticker!)
   const bIdx = Math.abs(seed) % 3;
-  const posterW = 1.52;
-  const posterH = 2.02;
-  const posterBoard = new THREE.Mesh(new THREE.PlaneGeometry(posterW, posterH), assets.bannerMats[bIdx]);
-  posterBoard.position.set(0.88, 5.25, 0);
-  grp.add(posterBoard);
+  const spec = NETA_POSTER_SPECS[bIdx];
+  const bannerH = bIdx === 2 ? 2.18 : 1.98;
+  const bannerW = bannerH * spec.aspect;
+  const bannerY = 5.65;
+  const offsetX = poleRadius + bannerW * 0.5 + 0.14;
+  const bannerBoard = new THREE.Mesh(new THREE.PlaneGeometry(bannerW, bannerH), assets.bannerMats[bIdx]);
+  bannerBoard.position.set(offsetX, bannerY, 0);
+  grp.add(bannerBoard);
 
-  const barTop = new THREE.Mesh(new THREE.BoxGeometry(posterW + 0.14, 0.05, 0.05), assets.steelMat);
-  barTop.position.set(0.86, 5.25 + posterH * 0.5 + 0.03, 0);
-  const barBot = new THREE.Mesh(new THREE.BoxGeometry(posterW + 0.14, 0.05, 0.05), assets.steelMat);
-  barBot.position.set(0.86, 5.25 - posterH * 0.5 - 0.03, 0);
-  grp.add(barTop, barBot);
+  const barTop = new THREE.Mesh(new THREE.BoxGeometry(bannerW + 0.24, 0.055, 0.055), assets.steelMat);
+  barTop.position.set(offsetX - 0.08, bannerY + bannerH * 0.5 + 0.03, 0);
+  const barBot = new THREE.Mesh(new THREE.BoxGeometry(bannerW + 0.24, 0.055, 0.055), assets.steelMat);
+  barBot.position.set(offsetX - 0.08, bannerY - bannerH * 0.5 - 0.03, 0);
+  const barL = new THREE.Mesh(new THREE.BoxGeometry(0.05, bannerH + 0.12, 0.05), assets.steelMat);
+  barL.position.set(offsetX - bannerW * 0.5 - 0.025, bannerY, 0);
+  const barR = new THREE.Mesh(new THREE.BoxGeometry(0.05, bannerH + 0.12, 0.05), assets.steelMat);
+  barR.position.set(offsetX + bannerW * 0.5 + 0.025, bannerY, 0);
+  grp.add(barTop, barBot, barL, barR);
 
   parent.add(grp);
 }
@@ -693,10 +716,11 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
     return im;
   });
 
-  // BIG upright high-mounted election poster boards (1.50m wide x 2.00m tall)
-  const bannerGeo = new THREE.PlaneGeometry(1.50, 2.00);
-  const bannerInsts = assets.bannerMats.map((m) => {
-    const im = new THREE.InstancedMesh(bannerGeo, m, 260);
+  // BIG high-mounted 4-corner rectangular election banners (exact aspect ratio per leader so faces/text stay 100% sharp!)
+  const bannerInsts = assets.bannerMats.map((m, idx) => {
+    const h = idx === 2 ? 2.18 : 1.98;
+    const w = h * NETA_POSTER_SPECS[idx].aspect;
+    const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(w, h), m, 260);
     im.frustumCulled = false;
     return im;
   });
@@ -761,9 +785,9 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
       const p = activePoles[i];
       activeById.set(p.id, p);
 
-      // Varied pole thickness: some thick heavy concrete poles, some medium, some slim steel poles!
+      // Clearly visible thick vs slim utility poles: heavy concrete (1.55x-1.78x), medium (1.08x), slim steel (0.55x-0.65x)!
       const thickRoll = hashRand(p.id * 11.7 + 2.3);
-      const poleScaleXZ = thickRoll < 0.32 ? (0.72 + thickRoll * 0.45) : (thickRoll < 0.62 ? (1.02 + (thickRoll - 0.32) * 0.55) : (1.28 + (thickRoll - 0.62) * 0.72));
+      const poleScaleXZ = thickRoll < 0.34 ? (0.54 + thickRoll * 0.32) : (thickRoll < 0.62 ? 1.08 : (1.52 + (thickRoll - 0.62) * 0.68));
 
       // 1. Utility Pole
       dummy.position.set(p.x, 0, p.z);
@@ -820,11 +844,11 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
         }
       }
 
-      // 6. BIG High-Mounted Election Posters (নৌকা, ধানের শীষ, দাঁড়িপাল্লা) on ~75% of poles
+      // 6. HIGH-MOUNTED 4-corner Rectangular Leader Banners on ~75% of poles (y = 5.65m)
       if (hashRand(p.id * 5.7) < 0.75) {
         const bk = Math.floor(hashRand(p.id * 11.3) * 3) % 3;
         if (banCnts[bk] < 260) {
-          dummy.position.set(p.x - p.nx * p.side * 0.86, 5.25, p.z - p.nz * p.side * 0.86);
+          dummy.position.set(p.x - p.nx * p.side * 1.05, 5.65, p.z - p.nz * p.side * 1.05);
           dummy.rotation.set(0, p.yaw + Math.PI * 0.5, 0);
           dummy.scale.set(1, 1, 1);
           dummy.updateMatrix();

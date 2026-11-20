@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { attachDerivedPBRMaps, upgradeWetAsphaltMaterial } from './aaa-shaders.js';
 import { buildBanglaTruck, buildCNGAuto } from './khulna-vehicles.js';
-import { decorateCorridorPole } from './khulna-street-props.js';
+import { decorateCorridorPole, addBigNetaWallPoster } from './khulna-street-props.js';
 
 function seeded(seed = 7731) {
   let s = seed >>> 0;
@@ -620,12 +620,13 @@ function addIlluminatedSign(dynamicG, bank, opts, pos, rotY, w, h) {
   return signGroup;
 }
 
-function addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDirX = 1, hasTransformer = false, wireTargets = null) {
-  const seedVal = Math.abs(Math.round(px * 3 + pz));
-  const thicknessMod = hasTransformer ? 2 : (seedVal % 3); // 0 = slim, 1 = medium, 2 = thick concrete pole
-  const rt = thicknessMod === 2 ? 0.19 : (thicknessMod === 1 ? 0.15 : 0.105);
-  const rb = thicknessMod === 2 ? 0.27 : (thicknessMod === 1 ? 0.21 : 0.145);
-  const midR = (rt + rb) * 0.5 + 0.015;
+function addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDirX = 1, hasTransformer = false, wireTargets = null, forceTier = null) {
+  const hVal = Math.abs(Math.sin(px * 13.7 + pz * 7.3) * 43758.5453) % 1;
+  const thicknessMod = forceTier !== null ? forceTier : (hasTransformer ? 2 : (hVal < 0.36 ? 0 : (hVal < 0.62 ? 1 : 2)));
+  // Clearly visible thick concrete poles (0.25..0.35m), medium (0.16..0.22m), and slim steel poles (0.08..0.11m)!
+  const rt = thicknessMod === 2 ? 0.25 : (thicknessMod === 1 ? 0.16 : 0.082);
+  const rb = thicknessMod === 2 ? 0.35 : (thicknessMod === 1 ? 0.22 : 0.112);
+  const midR = (rt + rb) * 0.5 + 0.014;
   addCyl(staticG, rt, rb, 9.2, [px, 4.6, pz], bank.poleConcrete, 8);
   // Concrete footing collar
   addCyl(staticG, rb + 0.06, rb + 0.09, 0.34, [px, 0.17, pz], bank.dampPlinth, 8);
@@ -708,6 +709,15 @@ function buildHajiMohsinCorridor(staticG, dynamicG, bank, m, helpers, treesG = s
   addBox(staticG, [9.0, 0.08, 11.6], [-7.6, -0.008, 44.8], bank.dampPlinth, { castShadow: false, uvScale: 2.5 });
   addBox(staticG, [0.34, 2.25, 11.2], [-3.85, 1.12, 44.8], bank.brickRed, { rotY: -0.26, uvScale: 2.4 });
   addBox(staticG, [0.46, 0.14, 11.4], [-3.85, 2.28, 44.8], bank.creamTrim, { rotY: -0.26 });
+
+  // BIG High-Quality Leader Wall Posters along Haji Mohsin Road compound walls!
+  addBigNetaWallPoster(dynamicG, 0, 3.74, 1.32, -39.2, -Math.PI / 2, 1.95);
+  addBigNetaWallPoster(dynamicG, 1, 3.74, 1.32, -43.0, -Math.PI / 2, 1.95);
+  addBigNetaWallPoster(dynamicG, 2, -2.52, 1.32, -44.2, Math.PI / 2 + 0.21, 1.98);
+  addBigNetaWallPoster(dynamicG, 0, 2.22, 1.32, 42.2, -Math.PI / 2 - 0.26, 1.92);
+  addBigNetaWallPoster(dynamicG, 1, -3.62, 1.32, 44.8, Math.PI / 2 - 0.26, 1.92);
+  addBigNetaWallPoster(dynamicG, 2, -2.86, 1.32, -4.5, Math.PI / 2, 1.95);
+  addBigNetaWallPoster(dynamicG, 0, -2.86, 1.32, 3.5, Math.PI / 2, 1.95);
 
   // Crisp Zebra Crosswalks & Storm Drain Gratings along Hero Block (x = -1.9..+1.9)
   for (const cz of [-28.0, 9.8, 39.2]) {
@@ -1167,10 +1177,21 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
     }
     return ox;
   };
+  // BIG High-Quality Leader Wall Posters right on Taltola House front boundary wall (facing the street!)
+  addBigNetaWallPoster(dynamicG, 0, ox + 2.28, 1.34, oz - 4.7, -Math.PI / 2, 1.92);
+  addBigNetaWallPoster(dynamicG, 1, ox + 2.28, 1.34, oz + 4.7, -Math.PI / 2, 1.92);
+  addBigNetaWallPoster(dynamicG, 2, ox + 6.02, 5.20, oz - 0.1, -Math.PI / 2, 2.75);
+
   const poles = [];
-  for (const pz of [oz - 28, oz - 4, oz + 20, oz + 42]) {
+  const taltolaPoleSpecs = [
+    [oz - 28, 2], // মোটা কংক্রিটের খাম্বা
+    [oz - 4,  0], // চিকন স্টিলের খাম্বা
+    [oz + 20, 2], // মোটা কংক্রিটের খাম্বা
+    [oz + 42, 0], // চিকন স্টিলের খাম্বা
+  ];
+  for (const [pz, tier] of taltolaPoleSpecs) {
     const poleX = Math.min(ox - 3.65, crossLaneRoadX(pz) - 3.45);
-    addUtilityPoleAndLamp(staticG, dynamicG, bank, poleX, pz, 1, false, poles);
+    addUtilityPoleAndLamp(staticG, dynamicG, bank, poleX, pz, 1, false, poles, tier);
   }
   for (let i = 0; i < poles.length - 1; i++) {
     const tangledSpecs = [
