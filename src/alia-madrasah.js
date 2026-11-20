@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { attachDerivedPBRMaps } from './aaa-shaders.js';
+import { buildKhulnaModelMosque3D, getModelMosqueGroundHeight, applyModelMosqueCollisions } from './khulna-model-mosque.js';
 
 /**
  * KHULNA ALIA KAMIL MADRASAH & KHULNA DISTRICT MODEL MOSQUE CAMPUS
@@ -1827,8 +1828,8 @@ export function buildAliaMadrasahDistrict(parent, m) {
   // 3) 4-Story Arched Academic Building (South) & 6-Story Modern Academic Building (North)
   buildAcademicBuildings(staticG, dynamicG, bank);
 
-  // 4) Walkable 4-Story Khulna District Model Mosque & Islamic Cultural Center
-  buildKhulnaModelMosque(staticG, dynamicG, bank);
+  // 4) High-Graphics 3D Khulna District Model Mosque & Islamic Cultural Center (8K/4K PBR)
+  buildKhulnaModelMosque3D(staticG, dynamicG, bank);
 
   // 5) Grand Interactive East Main Gate, Boundary Wall & Central Pond Brick Ghat
   const mainGate = buildMainGateAndPondGhat(staticG, dynamicG, bank);
@@ -1960,16 +1961,9 @@ export function buildAliaMadrasahDistrict(parent, m) {
       }
     }
 
-    // 2) Khulna District Model Mosque Grand Marble Staircase & 2nd-Floor Prayer Hall (x = 161..191, z = 155..177)
-    if (pos.x >= 161.0 && pos.x <= 191.0 && pos.z >= 155.0 && pos.z <= 177.0) {
-      if (pos.x >= 184.8 && pos.x <= 190.8 && pos.z >= 159.8 && pos.z <= 172.2) {
-        const t = THREE.MathUtils.clamp((190.6 - pos.x) / 5.6, 0, 1);
-        return t * 3.20;
-      }
-      if (pos.x >= 161.2 && pos.x <= 185.2 && pos.z >= 155.2 && pos.z <= 176.8) {
-        return 3.20;
-      }
-    }
+    // 2) Khulna District Model Mosque 3D Grand Staircase & Plaza (delegated to khulna-model-mosque.js)
+    const mosqueY = getModelMosqueGroundHeight(pos);
+    if (mosqueY > 0) return mosqueY;
     return 0.0;
   }
 
@@ -2022,26 +2016,8 @@ export function buildAliaMadrasahDistrict(parent, m) {
       resolveCircleAABB(pos, radius, 230.7, 232.3, 111.1, 112.5);
     }
 
-    // 4) Khulna District Model Mosque Collisions (x = 160.5..191.5, z = 154.5..177.5)
-    if (pos.x >= 159.5 && pos.x <= 192.0 && pos.z >= 153.5 && pos.z <= 178.5) {
-      resolveCircleAABB(pos, radius, 181.0, 184.6, 154.8, 158.4);
-      if (footY < 2.6) {
-        resolveCircleAABB(pos, radius, 186.4, 189.2, 164.2, 167.8);
-      }
-      if (footY < 2.5) {
-        resolveCircleAABB(pos, radius, 160.5, 185.2, 154.5, 159.8);
-        resolveCircleAABB(pos, radius, 160.5, 185.2, 172.2, 177.5);
-        resolveCircleAABB(pos, radius, 160.5, 184.8, 159.8, 172.2);
-      } else if (footY < 8.0) {
-        resolveCircleAABB(pos, radius, 160.8, 161.5, 155.0, 177.0);
-        resolveCircleAABB(pos, radius, 161.0, 181.0, 154.8, 155.5);
-        resolveCircleAABB(pos, radius, 161.0, 181.0, 176.5, 177.2);
-        resolveCircleAABB(pos, radius, 180.5, 181.2, 155.0, 163.8);
-        resolveCircleAABB(pos, radius, 180.5, 181.2, 168.2, 177.0);
-        resolveCircleAABB(pos, radius, 184.8, 185.3, 155.0, 160.0);
-        resolveCircleAABB(pos, radius, 184.8, 185.3, 172.0, 177.0);
-      }
-    }
+    // 4) Khulna District Model Mosque 3D Collisions (delegated to khulna-model-mosque.js)
+    applyModelMosqueCollisions(pos, radius, footY);
   }
 
   function getNearbyPrompt(pos) {
