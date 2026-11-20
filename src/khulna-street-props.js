@@ -493,7 +493,6 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
     lastChunkKey = key;
 
     const activePoles = [];
-    const activeBuildings = [];
     for (let dx = -rad; dx <= rad; dx++) {
       for (let dz = -rad; dz <= rad; dz++) {
         const ck = `${cx + dx},${cz + dz}`;
@@ -505,10 +504,6 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
             const maxR = rad === 1 ? 260 : 380;
             if (distSq <= maxR * maxR) activePoles.push(p);
           }
-        }
-        const blist = worldData.chunks[ck];
-        if (blist) {
-          for (let i = 0; i < blist.length; i++) activeBuildings.push(blist[i]);
         }
       }
     }
@@ -621,27 +616,7 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
         }
       }
 
-      // B) Service drop wires going directly from pole into 1-2 nearest houses (বাসা-বাড়িতে তারের লাইন!)
-      let drops = 0;
-      const maxDrops = quality === 'low' ? 1 : 2;
-      for (let bIdx = 0; bIdx < activeBuildings.length && drops < maxDrops; bIdx += 2) {
-        const b = activeBuildings[bIdx];
-        const bdx = b[0] - p.x;
-        const bdz = b[1] - p.z;
-        const dSq = bdx * bdx + bdz * bdz;
-        if (dSq > 36 && dSq < 26 * 26) {
-          const bH = Math.min((b[5] || 2) * 3.05, 9.2);
-          const attachY = Math.max(3.6, bH - 1.1);
-          addCatenaryWire(
-            wireVerts,
-            p.x, 5.45 - drops * 0.35, p.z,
-            b[0], attachY, b[1],
-            0.55 + drops * 0.18,
-            2,
-          );
-          drops++;
-        }
-      }
+
     }
 
     wireGeom.setAttribute('position', new THREE.Float32BufferAttribute(wireVerts, 3));
