@@ -2004,24 +2004,26 @@ function toggleCarDriving(targetCar = null, seatMode = 'driver') {
   );
 }
 
-function handleDoorInteraction(allowClimbFallback = false) {
+function handleVehicleInteraction() {
   if (getDrivingCar()) {
     toggleCarDriving();
     return true;
   }
+  const nearCar = findNearestEnterableCar(playerPos);
+  if (nearCar) {
+    toggleCarDriving(nearCar, 'driver');
+    return true;
+  }
+  return false;
+}
+
+function handleDoorInteraction(allowClimbFallback = false) {
   if (sittingState.active) {
     standUpFromSeat();
     return true;
   }
   const nearSeat = findNearestSeat(playerPos);
-  const nearCar = findNearestEnterableCar(playerPos);
   const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos));
-  // Prioritize entering a nearby drivable car or rickshaw when standing right next to it (< 3.2m)
-  if (nearCar && (!hasDoorOrLiftPrompt || nearCar.distanceToPlayer(playerPos) < 3.2) && !nearSeat) {
-    toggleCarDriving(nearCar, 'driver');
-    return true;
-  }
-  // If near a seat and either no door/lift is active or seat is very close (< 1.25m), sit down!
   if (nearSeat && (!hasDoorOrLiftPrompt || nearSeat.dist < 1.25)) {
     sitOnSeat(nearSeat);
     return true;
@@ -2039,10 +2041,6 @@ function handleDoorInteraction(allowClimbFallback = false) {
   if (house?.getPrompt(playerPos)) {
     house.toggleNearestDoor(playerPos);
     syncHUDButtons(false, true);
-    return true;
-  }
-  if (nearCar) {
-    toggleCarDriving(nearCar, 'driver');
     return true;
   }
   if (nearSeat) {
@@ -2953,12 +2951,15 @@ window.addEventListener('keydown', (event) => {
   // Dedicated Driving Controls when inside any drivable car or rickshaw
   const activeCar = getDrivingCar();
   if (activeCar) {
+    if (event.code === 'KeyE' && !event.repeat) {
+      // [E] strictly for opening/closing gates & doors (never exits vehicle!)
+      event.preventDefault();
+      house?.toggleAllDoors();
+      environment?.tower?.toggleGate?.();
+      syncHUDButtons();
+      return;
+    }
     if (activeCar.state.isRickshaw) {
-      if (event.code === 'KeyE' && !event.repeat) {
-        event.preventDefault();
-        toggleCarDriving();
-        return;
-      }
       if (event.code === 'KeyF' && !event.repeat) {
         event.preventDefault();
         if (activeCar.state.rideSeat === 'passenger') {
@@ -2981,7 +2982,8 @@ window.addEventListener('keydown', (event) => {
         }
         return;
       }
-    } else if ((event.code === 'KeyE' || event.code === 'KeyF') && !event.repeat) {
+    } else if (event.code === 'KeyF' && !event.repeat) {
+      // [F] strictly for entering/exiting cars & bikes
       event.preventDefault();
       toggleCarDriving();
       return;
@@ -3098,11 +3100,13 @@ window.addEventListener('keydown', (event) => {
   }
 
   if (event.code === 'KeyE') {
+    // [E] strictly for doors, gates, lift & sitting
     event.preventDefault();
     handleDoorInteraction(false);
   } else if (event.code === 'KeyF') {
+    // [F] strictly for entering/exiting vehicles (falls back to wall climb if no vehicle nearby)
     event.preventDefault();
-    handleDoorInteraction(true);
+    if (!handleVehicleInteraction()) startWallClimb();
   } else if (event.code === 'KeyQ') {
     event.preventDefault();
     startParkourDive();

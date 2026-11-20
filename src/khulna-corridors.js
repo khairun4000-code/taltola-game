@@ -622,10 +622,10 @@ function addIlluminatedSign(dynamicG, bank, opts, pos, rotY, w, h) {
 
 function addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDirX = 1, hasTransformer = false, wireTargets = null, forceTier = null) {
   const hVal = Math.abs(Math.sin(px * 13.7 + pz * 7.3) * 43758.5453) % 1;
-  const thicknessMod = forceTier !== null ? forceTier : (hasTransformer ? 2 : (hVal < 0.36 ? 0 : (hVal < 0.62 ? 1 : 2)));
-  // Clearly visible thick concrete poles (0.25..0.35m), medium (0.16..0.22m), and slim steel poles (0.08..0.11m)!
-  const rt = thicknessMod === 2 ? 0.25 : (thicknessMod === 1 ? 0.16 : 0.082);
-  const rb = thicknessMod === 2 ? 0.35 : (thicknessMod === 1 ? 0.22 : 0.112);
+  const thicknessMod = forceTier !== null ? forceTier : (hasTransformer ? 2 : (hVal < 0.42 ? 0 : (hVal < 0.62 ? 1 : 2)));
+  // Dramatic, unmistakably visible thick concrete poles (0.28..0.40m) vs slim steel poles (0.065..0.09m)!
+  const rt = thicknessMod === 2 ? 0.28 : (thicknessMod === 1 ? 0.16 : 0.065);
+  const rb = thicknessMod === 2 ? 0.40 : (thicknessMod === 1 ? 0.22 : 0.090);
   const midR = (rt + rb) * 0.5 + 0.014;
   addCyl(staticG, rt, rb, 9.2, [px, 4.6, pz], bank.poleConcrete, 8);
   // Concrete footing collar

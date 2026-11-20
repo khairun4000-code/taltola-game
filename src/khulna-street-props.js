@@ -8,7 +8,7 @@ function createPolePosterTexture(kind) {
   ctx.textAlign = 'center';
 
   if (kind === 0) {
-    // ১) ব্যাচে পড়ানো হয় (Coaching)
+    // ১) ব্যাচে পড়ানো হয়
     ctx.fillStyle = '#fde047';
     ctx.fillRect(0, 0, 256, 384);
     ctx.fillStyle = '#b91c1c';
@@ -33,7 +33,7 @@ function createPolePosterTexture(kind) {
     ctx.font = 'bold 18px monospace';
     ctx.fillText('017XX-XXXXXX', 128, 354);
   } else if (kind === 1) {
-    // ২) ছাত্র চাই / টিউশন (Tuition)
+    // ২) ছাত্র চাই / টিউশন
     ctx.fillStyle = '#e0f2fe';
     ctx.fillRect(0, 0, 256, 384);
     ctx.strokeStyle = '#0369a1';
@@ -58,7 +58,7 @@ function createPolePosterTexture(kind) {
     ctx.font = 'bold 20px monospace';
     ctx.fillText('যোগাযোগ: 019XX-XXXX', 128, 340);
   } else if (kind === 2) {
-    // ৩) বাসা ভাড়া / টু-লেট (To-Let)
+    // ৩) বাসা ভাড়া / টু-লেট
     ctx.fillStyle = '#fff7ed';
     ctx.fillRect(0, 0, 256, 384);
     ctx.fillStyle = '#ea580c';
@@ -83,7 +83,7 @@ function createPolePosterTexture(kind) {
     ctx.font = 'bold 18px monospace';
     ctx.fillText('018XX-XXXXXX', 128, 340);
   } else if (kind === 3) {
-    // ৪) সুপার ফাস্ট ব্রডব্যান্ড ওয়াই-ফাই (Broadband ISP!)
+    // ৪) ফাইবার ওয়াই-ফাই
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, 0, 256, 384);
     ctx.fillStyle = '#22c55e';
@@ -108,7 +108,7 @@ function createPolePosterTexture(kind) {
     ctx.font = 'bold 18px monospace';
     ctx.fillText('016XX-XXXXXX', 128, 344);
   } else if (kind === 4) {
-    // ৫) ওয়াজ মাহফিল / ইসলামী মহাসম্মেলন (Classic Green/Yellow BD Poster!)
+    // ৫) বার্ষিক ওয়াজ মাহফিল
     ctx.fillStyle = '#14532d';
     ctx.fillRect(0, 0, 256, 384);
     ctx.strokeStyle = '#fde047';
@@ -133,7 +133,7 @@ function createPolePosterTexture(kind) {
     ctx.font = 'bold 17px sans-serif';
     ctx.fillText('আয়োজনে: খুলনা যুব সমাজ', 128, 340);
   } else if (kind === 5) {
-    // ৬) ডেন্টাল ও ডাক্তার চেম্বার (Local Medical/Dental Poster)
+    // ৬) ডেন্টাল কেয়ার
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, 256, 384);
     ctx.fillStyle = '#0d9488';
@@ -158,7 +158,7 @@ function createPolePosterTexture(kind) {
     ctx.font = 'bold 20px monospace';
     ctx.fillText('সিরিয়াল: 017XX-XXXX', 128, 333);
   } else if (kind === 6) {
-    // ৭) ডিশ ও ক্যাবল টিভি / এসি সার্ভিসিং (AC & Dish Service)
+    // ৭) এসি ও ফ্রিজ মেরামত
     ctx.fillStyle = '#fef2f2';
     ctx.fillRect(0, 0, 256, 384);
     ctx.fillStyle = '#dc2626';
@@ -181,7 +181,7 @@ function createPolePosterTexture(kind) {
     ctx.font = 'bold 20px monospace';
     ctx.fillText('কল: 019XX-XXXXXX', 128, 326);
   } else {
-    // ৮) জরুরি নিয়োগ / চাকরির বিজ্ঞপ্তি (Job Recruitment Poster)
+    // ৮) জরুরি নিয়োগ
     ctx.fillStyle = '#f8fafc';
     ctx.fillRect(0, 0, 256, 384);
     ctx.strokeStyle = '#7c2d12';
@@ -212,280 +212,11 @@ function createPolePosterTexture(kind) {
   return tex;
 }
 
-function drawFunnyLeaderCaricature(ctx, cx, cy, r, variant) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.clip();
-
-  const bg = ctx.createRadialGradient(cx, cy - r * 0.2, r * 0.1, cx, cy, r);
-  bg.addColorStop(0, variant === 0 ? '#fef08a' : (variant === 1 ? '#bbf7d0' : '#bae6fd'));
-  bg.addColorStop(1, variant === 0 ? '#f59e0b' : (variant === 1 ? '#16a34a' : '#0284c7'));
-  ctx.fillStyle = bg;
-  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-
-  // Panjabi + vest shoulders
-  ctx.fillStyle = variant === 0 ? '#f8fafc' : (variant === 1 ? '#fef3c7' : '#e2e8f0');
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + r * 0.92, r * 0.78, r * 0.56, 0, Math.PI, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#111827';
-  ctx.beginPath();
-  ctx.moveTo(cx - r * 0.48, cy + r * 0.50);
-  ctx.lineTo(cx - r * 0.14, cy + r * 0.54);
-  ctx.lineTo(cx - r * 0.12, cy + r * 1.05);
-  ctx.lineTo(cx - r * 0.75, cy + r * 1.05);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(cx + r * 0.48, cy + r * 0.50);
-  ctx.lineTo(cx + r * 0.14, cy + r * 0.54);
-  ctx.lineTo(cx + r * 0.12, cy + r * 1.05);
-  ctx.lineTo(cx + r * 0.75, cy + r * 1.05);
-  ctx.closePath();
-  ctx.fill();
-
-  // Marigold flower garland
-  for (let i = -3; i <= 3; i++) {
-    const a = (i / 3) * 0.85;
-    const fx = cx + Math.sin(a) * r * 0.34;
-    const fy = cy + r * 0.44 + Math.cos(a) * r * 0.28;
-    ctx.fillStyle = i % 2 === 0 ? '#f97316' : '#facc15';
-    ctx.beginPath();
-    ctx.arc(fx, fy, r * 0.085, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = '#d99b72';
-  ctx.beginPath();
-  ctx.ellipse(cx, cy - r * 0.05, r * 0.38, r * 0.44, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  if (variant === 2) {
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy - r * 0.42, r * 0.35, r * 0.17, 0, Math.PI, Math.PI * 2);
-    ctx.fill();
-    ctx.fillRect(cx - r * 0.35, cy - r * 0.42, r * 0.70, r * 0.12);
-  } else {
-    ctx.fillStyle = '#18181b';
-    ctx.beginPath();
-    ctx.arc(cx, cy - r * 0.14, r * 0.39, Math.PI * 1.08, Math.PI * 1.92);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = variant === 0 ? '#0f172a' : '#1e293b';
-  ctx.strokeStyle = '#fbbf24';
-  ctx.lineWidth = 3;
-  ctx.fillRect(cx - r * 0.30, cy - r * 0.16, r * 0.25, r * 0.15);
-  ctx.fillRect(cx + r * 0.05, cy - r * 0.16, r * 0.25, r * 0.15);
-  ctx.strokeRect(cx - r * 0.30, cy - r * 0.16, r * 0.25, r * 0.15);
-  ctx.strokeRect(cx + r * 0.05, cy - r * 0.16, r * 0.25, r * 0.15);
-  ctx.beginPath();
-  ctx.moveTo(cx - r * 0.05, cy - r * 0.10);
-  ctx.lineTo(cx + r * 0.05, cy - r * 0.10);
-  ctx.stroke();
-
-  ctx.fillStyle = '#18181b';
-  ctx.beginPath();
-  ctx.ellipse(cx - r * 0.10, cy + r * 0.09, r * 0.13, r * 0.05, -0.15, 0, Math.PI * 2);
-  ctx.ellipse(cx + r * 0.10, cy + r * 0.09, r * 0.13, r * 0.05, 0.15, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(cx, cy + r * 0.14, r * 0.14, 0.05 * Math.PI, 0.95 * Math.PI);
-  ctx.fill();
-
-  ctx.restore();
-  ctx.strokeStyle = '#fde047';
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.stroke();
-}
-
-function drawElectionSymbol(ctx, kind, cx, cy, scale = 1.0) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(scale, scale);
-
-  if (kind === 0) {
-    // নৌকা মার্কা
-    ctx.fillStyle = '#fef08a';
-    ctx.beginPath();
-    ctx.moveTo(-66, 0);
-    ctx.quadraticCurveTo(0, 48, 66, 0);
-    ctx.lineTo(50, 28);
-    ctx.quadraticCurveTo(0, 52, -50, 28);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#111827';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = '#dc2626';
-    ctx.beginPath();
-    ctx.moveTo(-28, -2);
-    ctx.quadraticCurveTo(0, -52, 30, -2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(0, -48);
-    ctx.lineTo(0, 10);
-    ctx.stroke();
-  } else if (kind === 1) {
-    // ধানের শীষ
-    ctx.strokeStyle = '#fde047';
-    ctx.fillStyle = '#facc15';
-    ctx.lineWidth = 4;
-    for (const ang of [-0.38, -0.19, 0, 0.19, 0.38]) {
-      ctx.save();
-      ctx.rotate(ang);
-      ctx.beginPath();
-      ctx.moveTo(0, 44);
-      ctx.lineTo(0, -54);
-      ctx.stroke();
-      for (let y = -50; y <= -4; y += 11) {
-        ctx.beginPath();
-        ctx.ellipse(-6.5, y, 5.5, 2.8, -0.5, 0, Math.PI * 2);
-        ctx.ellipse(6.5, y, 5.5, 2.8, 0.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-    ctx.fillStyle = '#dc2626';
-    ctx.fillRect(-18, 16, 36, 11);
-  } else {
-    // দাঁড়িপাল্লা
-    ctx.strokeStyle = '#fde047';
-    ctx.fillStyle = '#fde047';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(0, -50);
-    ctx.lineTo(0, 44);
-    ctx.moveTo(-28, 44);
-    ctx.lineTo(28, 44);
-    ctx.moveTo(-50, -30);
-    ctx.lineTo(50, -30);
-    ctx.stroke();
-    ctx.lineWidth = 2.8;
-    for (const sx of [-46, 46]) {
-      ctx.beginPath();
-      ctx.moveTo(sx, -30);
-      ctx.lineTo(sx - 17, 12);
-      ctx.moveTo(sx, -30);
-      ctx.lineTo(sx + 17, 12);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(sx, 12, 18, 0, Math.PI);
-      ctx.fill();
-    }
-  }
-  ctx.restore();
-}
-
-function drawBigElectionPosterToCanvas(c, kind, customImg = null) {
-  const ctx = c.getContext('2d');
-  const W = c.width;
-  const H = c.height;
-
-  const palettes = [
-    { top: '#065f46', mid: '#047857', bot: '#991b1b', voteText: 'নৌকা মার্কায় ভোট দিন', sub: 'উন্নয়নের ধারাবাহিকতা রক্ষায় · খুলনা', footer: 'প্রচারে: খুলনা মহানগর এলাকাবাসী' },
-    { top: '#14532d', mid: '#166534', bot: '#1e3a8a', voteText: 'ধানের শীষ মার্কায় ভোট দিন', sub: 'গণতন্ত্র ও উন্নয়নের প্রতীক · খুলনা', footer: 'প্রচারে: খুলনা সদর ও সোনাডাঙ্গা' },
-    { top: '#0f172a', mid: '#1e3a8a', bot: '#065f46', voteText: 'দাঁড়িপাল্লা মার্কায় ভোট দিন', sub: 'ন্যায় ও ইনসাফের প্রতীক · খুলনা', footer: 'প্রচারে: খুলনা মহানগরবাসী' },
-  ];
-  const pal = palettes[kind % 3];
-
-  const grd = ctx.createLinearGradient(0, 0, 0, H);
-  grd.addColorStop(0, pal.top);
-  grd.addColorStop(0.55, pal.mid);
-  grd.addColorStop(1, pal.bot);
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, W, H);
-
-  ctx.strokeStyle = '#fde047';
-  ctx.lineWidth = 10;
-  ctx.strokeRect(8, 8, W - 16, H - 16);
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(18, 18, W - 36, H - 36);
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-  ctx.fillRect(22, 24, W - 44, 52);
-  ctx.fillStyle = '#fef08a';
-  ctx.font = 'bold 24px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('খুলনা সিটি নির্বাচনী প্রচারণা', W * 0.5, 58);
-
-  const pCx = 122;
-  const pCy = 186;
-  const pR = 82;
-  if (customImg) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(pCx, pCy, pR, 0, Math.PI * 2);
-    ctx.clip();
-    const aspect = customImg.width / Math.max(1, customImg.height);
-    let dw = pR * 2, dh = pR * 2;
-    if (aspect > 1) dw = dh * aspect;
-    else dh = dw / aspect;
-    ctx.drawImage(customImg, pCx - dw * 0.5, pCy - dh * 0.5, dw, dh);
-    ctx.restore();
-    ctx.strokeStyle = '#fde047';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.arc(pCx, pCy, pR, 0, Math.PI * 2);
-    ctx.stroke();
-  } else {
-    drawFunnyLeaderCaricature(ctx, pCx, pCy, pR, kind % 3);
-  }
-
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
-  ctx.beginPath();
-  ctx.arc(286, 186, 68, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 4;
-  ctx.stroke();
-  drawElectionSymbol(ctx, kind % 3, 286, 188, 0.88);
-
-  ctx.fillStyle = '#fde047';
-  ctx.fillRect(24, 292, W - 48, 76);
-  ctx.fillStyle = '#111827';
-  ctx.font = kind === 0 ? 'bold 31px sans-serif' : 'bold 26px sans-serif';
-  ctx.fillText(pal.voteText, W * 0.5, 340);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 21px sans-serif';
-  ctx.fillText(pal.sub, W * 0.5, 404);
-  ctx.fillStyle = '#fef08a';
-  ctx.font = 'bold 20px sans-serif';
-  ctx.fillText('আপনার মূল্যবান ভোট ও দোয়া প্রার্থী', W * 0.5, 442);
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
-  ctx.fillRect(24, 460, W - 48, 30);
-  ctx.fillStyle = '#e2e8f0';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillText(pal.footer, W * 0.5, 480);
-}
-
-function createBigElectionPosterTexture(kind) {
-  const c = document.createElement('canvas');
-  c.width = 384;
-  c.height = 512;
-  drawBigElectionPosterToCanvas(c, kind, null);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  return { tex, canvas: c };
-}
-
 const POSTER_KIND_COUNT = 8;
 const NETA_POSTER_SPECS = [
-  { url: './assets/neta/neta_boat.jpg', aspect: 1160 / 1355 },   // Z X হুজ্জা (নৌকা মার্কা)
-  { url: './assets/neta/neta_scales.jpg', aspect: 1160 / 1355 }, // সাবিদ ফালা (ধানের শীষ মার্কা)
-  { url: './assets/neta/neta_paddy.jpg', aspect: 941 / 1672 },   // পি.টি.আই রাফিন (মেয়র পদপ্রার্থী)
+  { url: './assets/neta/neta_boat.jpg', aspect: 1160 / 1355 },   // Z X হুজ্জা
+  { url: './assets/neta/neta_scales.jpg', aspect: 1160 / 1355 }, // সাবিদ ফালা
+  { url: './assets/neta/neta_paddy.jpg', aspect: 941 / 1672 },   // পি.টি.আই রাফিন
 ];
 
 let sharedPropsAssets = null;
@@ -496,7 +227,7 @@ function getSharedPropsAssets() {
     map: createPolePosterTexture(k),
     side: THREE.DoubleSide,
   }));
-  const bannerMats = NETA_POSTER_SPECS.map((spec) => {
+  const netaMats = NETA_POSTER_SPECS.map((spec) => {
     const tex = texLoader.load(spec.url);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
@@ -510,8 +241,8 @@ function getSharedPropsAssets() {
   });
   sharedPropsAssets = {
     posterMats,
-    bannerMats,
-    poleMat: new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.85, metalness: 0.18 }),
+    netaMats,
+    poleMat: new THREE.MeshStandardMaterial({ color: 0x7a8086, roughness: 0.85, metalness: 0.16 }),
     steelMat: new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.55, metalness: 0.65 }),
     lampGlowMat: new THREE.MeshStandardMaterial({
       color: 0xfff4d4,
@@ -531,7 +262,7 @@ function hashRand(n) {
 }
 
 /**
- * Mounts a crisp, high-resolution 4-corner framed election poster of one of the 3 leaders
+ * Mounts a crisp, high-resolution 4-corner framed poster of one of the 3 leaders
  * directly on any building or compound wall (preserving exact aspect ratio so faces & text are crystal clear!).
  */
 export function addBigNetaWallPoster(parent, netaIdx, x, y, z, rotY = 0, height = 2.45) {
@@ -543,9 +274,9 @@ export function addBigNetaWallPoster(parent, netaIdx, x, y, z, rotY = 0, height 
   grp.position.set(x, y, z);
   grp.rotation.y = rotY;
 
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.10, height + 0.10, 0.03), assets.steelMat);
-  frame.position.z = -0.018;
-  const poster = new THREE.Mesh(new THREE.PlaneGeometry(w, height), assets.bannerMats[idx]);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.08, height + 0.08, 0.028), assets.steelMat);
+  frame.position.z = -0.016;
+  const poster = new THREE.Mesh(new THREE.PlaneGeometry(w, height), assets.netaMats[idx]);
   poster.position.z = 0.002;
   grp.add(frame, poster);
   parent.add(grp);
@@ -553,8 +284,11 @@ export function addBigNetaWallPoster(parent, netaIdx, x, y, z, rotY = 0, height 
 }
 
 /**
- * Adds varied Bangladeshi pole posters, dense hanging black cable coils, and a HIGH-MOUNTED
- * 4-corner rectangular election banner of the 3 leaders with steel frame bars.
+ * Decorates corridor utility poles:
+ * - Sparse small Bengali stickers ONLY on ~50% of poles (some poles have 0, some 1, some 2)
+ * - High-resolution 4-corner leader posters mounted at the LOWER BASE of select poles (খাম্বার গোড়ায়!)
+ * - Dense hanging round black ISP/dish wire coils (3-4 per pole)
+ * - NO overhead text banners on top of poles!
  */
 export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0, poleRadius = 0.19) {
   const assets = getSharedPropsAssets();
@@ -563,20 +297,39 @@ export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0, pole
   grp.rotation.y = facingYaw;
 
   const sAbs = Math.abs(seed) + 17;
-  // Varied poster density per pole: some poles have 1, some 2, some 3 or 4 stacked!
-  const countPick = hashRand(sAbs * 3.7);
-  const posterCount = countPick < 0.22 ? 1 : (countPick < 0.52 ? 2 : (countPick < 0.80 ? 3 : 4));
-  const sleeveGeo = new THREE.CylinderGeometry(poleRadius + 0.008, poleRadius + 0.014, 0.72, 10, 1, true);
-  const heights = [1.45, 2.22, 3.00, 3.76];
-  for (let i = 0; i < posterCount; i++) {
-    const kIdx = Math.floor(hashRand(sAbs * 19.3 + i * 31.7) * POSTER_KIND_COUNT) % POSTER_KIND_COUNT;
-    const pm = new THREE.Mesh(sleeveGeo, assets.posterMats[kIdx]);
-    pm.position.y = heights[i] + (hashRand(sAbs + i * 7) - 0.5) * 0.14;
-    pm.rotation.y = hashRand(sAbs * 5 + i * 13) * Math.PI * 2;
-    grp.add(pm);
+
+  // 1. Mount crisp 4-corner high-res Leader Poster at the LOWER BASE of ~65% of poles (খাম্বার গোড়ায়!)
+  const hasBaseNeta = hashRand(sAbs * 2.9) < 0.65;
+  if (hasBaseNeta) {
+    const nIdx = Math.abs(seed) % 3;
+    const spec = NETA_POSTER_SPECS[nIdx];
+    const pH = nIdx === 2 ? 1.48 : 1.32;
+    const pW = pH * spec.aspect;
+    const pY = 1.62;
+    const pxOff = poleRadius + 0.06;
+
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(pW, pH), assets.netaMats[nIdx]);
+    board.position.set(pxOff, pY, 0);
+    board.rotation.y = Math.PI * 0.5;
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.03, pH + 0.07, pW + 0.07), assets.steelMat);
+    frame.position.set(pxOff - 0.02, pY, 0);
+    grp.add(frame, board);
+  } else {
+    // 2. Only SOME of the remaining poles get 1 or 2 small Bengali stickers (others stay completely clean!)
+    const roll = hashRand(sAbs * 3.7);
+    const posterCount = roll < 0.45 ? 0 : (roll < 0.78 ? 1 : 2);
+    const sleeveGeo = new THREE.CylinderGeometry(poleRadius + 0.008, poleRadius + 0.014, 0.72, 10, 1, true);
+    const heights = [1.65, 2.55];
+    for (let i = 0; i < posterCount; i++) {
+      const kIdx = Math.floor(hashRand(sAbs * 19.3 + i * 31.7) * POSTER_KIND_COUNT) % POSTER_KIND_COUNT;
+      const pm = new THREE.Mesh(sleeveGeo, assets.posterMats[kIdx]);
+      pm.position.y = heights[i] + (hashRand(sAbs + i * 7) - 0.5) * 0.14;
+      pm.rotation.y = hashRand(sAbs * 5 + i * 13) * Math.PI * 2;
+      grp.add(pm);
+    }
   }
 
-  // Dense Bangladeshi round black ISP/dish wire coils hanging around mid-upper pole (3-4 coils per pole!)
+  // 3. Dense Bangladeshi round black ISP/dish wire coils hanging around mid-upper pole (3-4 coils per pole!)
   const coilGeo = new THREE.TorusGeometry(0.30, 0.055, 6, 12);
   const coilCount = hashRand(sAbs * 9.1) > 0.4 ? 4 : 3;
   for (let c = 0; c < coilCount; c++) {
@@ -584,44 +337,22 @@ export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0, pole
     const r2 = hashRand(sAbs * 23.7 + c * 7.9);
     const coil = new THREE.Mesh(coilGeo, assets.coilMat);
     const ang = r1 * Math.PI * 2;
-    coil.position.set(Math.cos(ang) * 0.20, 4.25 + c * 0.34 + (r2 - 0.5) * 0.14, Math.sin(ang) * 0.20);
+    const cOff = Math.max(0.20, poleRadius + 0.06);
+    coil.position.set(Math.cos(ang) * cOff, 4.25 + c * 0.34 + (r2 - 0.5) * 0.14, Math.sin(ang) * cOff);
     coil.rotation.set((r1 - 0.5) * 0.7, ang + 0.6, (r2 - 0.5) * 0.6);
     coil.scale.setScalar(0.86 + r2 * 0.44);
     grp.add(coil);
   }
-
-  // HIGH-MOUNTED 4-corner framed rectangular election banner of the 3 leaders (never curved sticker!)
-  const bIdx = Math.abs(seed) % 3;
-  const spec = NETA_POSTER_SPECS[bIdx];
-  const bannerH = bIdx === 2 ? 2.18 : 1.98;
-  const bannerW = bannerH * spec.aspect;
-  const bannerY = 5.65;
-  const offsetX = poleRadius + bannerW * 0.5 + 0.14;
-  const bannerBoard = new THREE.Mesh(new THREE.PlaneGeometry(bannerW, bannerH), assets.bannerMats[bIdx]);
-  bannerBoard.position.set(offsetX, bannerY, 0);
-  grp.add(bannerBoard);
-
-  const barTop = new THREE.Mesh(new THREE.BoxGeometry(bannerW + 0.24, 0.055, 0.055), assets.steelMat);
-  barTop.position.set(offsetX - 0.08, bannerY + bannerH * 0.5 + 0.03, 0);
-  const barBot = new THREE.Mesh(new THREE.BoxGeometry(bannerW + 0.24, 0.055, 0.055), assets.steelMat);
-  barBot.position.set(offsetX - 0.08, bannerY - bannerH * 0.5 - 0.03, 0);
-  const barL = new THREE.Mesh(new THREE.BoxGeometry(0.05, bannerH + 0.12, 0.05), assets.steelMat);
-  barL.position.set(offsetX - bannerW * 0.5 - 0.025, bannerY, 0);
-  const barR = new THREE.Mesh(new THREE.BoxGeometry(0.05, bannerH + 0.12, 0.05), assets.steelMat);
-  barR.position.set(offsetX + bannerW * 0.5 + 0.025, bannerY, 0);
-  grp.add(barTop, barBot, barL, barR);
 
   parent.add(grp);
 }
 
 /**
  * Builds an ultra-lightweight, chunk-streamed, GPU-instanced Khulna citywide streetscape:
- * - Roadside utility poles (খাম্বা) & street lampposts
- * - Super messy pole-to-pole tangled overhead wire webs (14 strands) + dense hanging round wire coils (3-4 per pole)
- * - Messy house service drop wires shooting from poles directly into nearby houses (6 per pole)
- * - 8 diverse Bengali pole poster types with varied density per pole (some sparse, some crowded!)
- * - BIG high-mounted upright election poster boards (নৌকা, ধানের শীষ, দাঁড়িপাল্লা)
- * All GPU-instanced & batched (< 18 draw calls total) for locked 60+ FPS!
+ * - Clearly distinct THICK concrete utility poles vs SLIM steel poles
+ * - Super messy pole-to-pole tangled overhead wire webs + dense hanging round wire coils + house service drop wires
+ * - Sparse, varied Bengali pole stickers (half the poles stay clean — never repetitive!)
+ * - Crisp high-res 4-corner leader posters at the LOWER BASE of select poles (NO overhead text banners!)
  */
 export function createKhulnaStreetPropsSystem(scene, worldData) {
   const assets = getSharedPropsAssets();
@@ -691,7 +422,8 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
   }
 
   const MAX_POLES = 560;
-  const poleGeo = new THREE.CylinderGeometry(0.135, 0.195, 8.4, 8);
+  // Base cylinder scaled from 0.42x (slim steel pole) to 1.85x (thick heavy concrete pole)!
+  const poleGeo = new THREE.CylinderGeometry(0.145, 0.21, 8.4, 8);
   poleGeo.translate(0, 4.2, 0);
   const poleInst = new THREE.InstancedMesh(poleGeo, assets.poleMat, MAX_POLES);
   poleInst.frustumCulled = false;
@@ -704,33 +436,31 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
   const lampInst = new THREE.InstancedMesh(lampGeo, assets.lampGlowMat, MAX_POLES);
   lampInst.frustumCulled = false;
 
-  // 3-4 messy hanging round black ISP/dish wire coils per pole!
   const coilGeo = new THREE.TorusGeometry(0.30, 0.055, 5, 10);
   const coilInst = new THREE.InstancedMesh(coilGeo, assets.coilMat, MAX_POLES * 4);
   coilInst.frustumCulled = false;
 
-  const posterGeo = new THREE.CylinderGeometry(0.184, 0.194, 0.72, 8, 1, true);
+  const posterGeo = new THREE.CylinderGeometry(0.195, 0.205, 0.72, 8, 1, true);
   const posterInsts = assets.posterMats.map((m) => {
-    const im = new THREE.InstancedMesh(posterGeo, m, 240);
+    const im = new THREE.InstancedMesh(posterGeo, m, 180);
     im.frustumCulled = false;
     return im;
   });
 
-  // BIG high-mounted 4-corner rectangular election banners (exact aspect ratio per leader so faces/text stay 100% sharp!)
-  const bannerInsts = assets.bannerMats.map((m, idx) => {
-    const h = idx === 2 ? 2.18 : 1.98;
+  // High-res 4-corner leader posters mounted at the LOWER BASE of select poles (খাম্বার গোড়ায়!)
+  const baseNetaInsts = assets.netaMats.map((m, idx) => {
+    const h = idx === 2 ? 1.48 : 1.32;
     const w = h * NETA_POSTER_SPECS[idx].aspect;
-    const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(w, h), m, 260);
+    const im = new THREE.InstancedMesh(new THREE.PlaneGeometry(w, h), m, 220);
     im.frustumCulled = false;
     return im;
   });
 
-  // Single merged LineSegments for ALL tangled pole-to-pole & house-drop overhead wires (1 draw call!)
   const wireGeom = new THREE.BufferGeometry();
   const wireLines = new THREE.LineSegments(wireGeom, assets.wireMat);
   wireLines.frustumCulled = false;
 
-  group.add(poleInst, armInst, lampInst, coilInst, ...posterInsts, ...bannerInsts, wireLines);
+  group.add(poleInst, armInst, lampInst, coilInst, ...posterInsts, ...baseNetaInsts, wireLines);
 
   const dummy = new THREE.Object3D();
   let lastChunkKey = '';
@@ -778,16 +508,16 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
     let pCnt = 0;
     let coilCnt = 0;
     const postCnts = new Array(POSTER_KIND_COUNT).fill(0);
-    const banCnts = [0, 0, 0];
-    const posterHeights = [1.45, 2.22, 3.00, 3.74];
+    const netaCnts = [0, 0, 0];
+    const posterHeights = [1.60, 2.48];
 
     for (let i = 0; i < activePoles.length && pCnt < MAX_POLES; i++) {
       const p = activePoles[i];
       activeById.set(p.id, p);
 
-      // Clearly visible thick vs slim utility poles: heavy concrete (1.55x-1.78x), medium (1.08x), slim steel (0.55x-0.65x)!
+      // Dramatic, unmistakable thick vs slim poles: slim steel (0.42x), medium (1.05x), thick heavy concrete (1.85x)!
       const thickRoll = hashRand(p.id * 11.7 + 2.3);
-      const poleScaleXZ = thickRoll < 0.34 ? (0.54 + thickRoll * 0.32) : (thickRoll < 0.62 ? 1.08 : (1.52 + (thickRoll - 0.62) * 0.68));
+      const poleScaleXZ = thickRoll < 0.40 ? 0.42 : (thickRoll < 0.62 ? 1.05 : 1.85);
 
       // 1. Utility Pole
       dummy.position.set(p.x, 0, p.z);
@@ -810,13 +540,13 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
       dummy.updateMatrix();
       lampInst.setMatrixAt(pCnt, dummy.matrix);
 
-      // 4. 3 to 4 messy round black ISP/dish wire coils per pole!
+      // 4. 3 to 4 messy round black ISP/dish wire coils per pole
       const cNum = hashRand(p.id * 9.3) > 0.35 ? 4 : 3;
       for (let c = 0; c < cNum && coilCnt < MAX_POLES * 4; c++) {
         const r1 = hashRand(p.id * 13.7 + c * 17.3);
         const r2 = hashRand(p.id * 29.1 + c * 11.9);
         const ang = r1 * Math.PI * 2;
-        const cRad = 0.21 * Math.max(1.0, poleScaleXZ);
+        const cRad = 0.22 * Math.max(0.85, poleScaleXZ);
         dummy.position.set(
           p.x + Math.cos(ang) * cRad,
           4.25 + c * 0.34 + (r2 - 0.5) * 0.14,
@@ -830,29 +560,29 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
       }
       pCnt++;
 
-      // 5. Diverse Pole Posters with varied density & matching pole thickness!
-      const densityRoll = hashRand(p.id * 4.3 + 1.9);
-      const numPosters = densityRoll < 0.12 ? 0 : (densityRoll < 0.34 ? 1 : (densityRoll < 0.62 ? 2 : (densityRoll < 0.84 ? 3 : 4)));
-      for (let pi = 0; pi < numPosters; pi++) {
-        const pk = Math.floor(hashRand(p.id * 17.9 + pi * 37.3) * POSTER_KIND_COUNT) % POSTER_KIND_COUNT;
-        if (postCnts[pk] < 240) {
-          dummy.position.set(p.x, posterHeights[pi] + (hashRand(p.id + pi * 5) - 0.5) * 0.14, p.z);
-          dummy.rotation.set(0, p.yaw + hashRand(p.id * 7 + pi * 19) * Math.PI * 2, 0);
-          dummy.scale.set(poleScaleXZ, 1, poleScaleXZ);
-          dummy.updateMatrix();
-          posterInsts[pk].setMatrixAt(postCnts[pk]++, dummy.matrix);
-        }
-      }
-
-      // 6. HIGH-MOUNTED 4-corner Rectangular Leader Banners on ~75% of poles (y = 5.65m)
-      if (hashRand(p.id * 5.7) < 0.75) {
-        const bk = Math.floor(hashRand(p.id * 11.3) * 3) % 3;
-        if (banCnts[bk] < 260) {
-          dummy.position.set(p.x - p.nx * p.side * 1.05, 5.65, p.z - p.nz * p.side * 1.05);
-          dummy.rotation.set(0, p.yaw + Math.PI * 0.5, 0);
+      // 5. Lower-base high-res Leader Poster on ~35% of poles, sparse small stickers on ~30%, rest CLEAN!
+      const styleRoll = hashRand(p.id * 4.3 + 1.9);
+      if (styleRoll < 0.35) {
+        const nk = Math.floor(hashRand(p.id * 11.3) * 3) % 3;
+        if (netaCnts[nk] < 220) {
+          const offsetOut = 0.20 * poleScaleXZ + 0.08;
+          dummy.position.set(p.x - p.nx * p.side * offsetOut, 1.62, p.z - p.nz * p.side * offsetOut);
+          dummy.rotation.set(0, p.yaw + (p.side > 0 ? -Math.PI * 0.5 : Math.PI * 0.5), 0);
           dummy.scale.set(1, 1, 1);
           dummy.updateMatrix();
-          bannerInsts[bk].setMatrixAt(banCnts[bk]++, dummy.matrix);
+          baseNetaInsts[nk].setMatrixAt(netaCnts[nk]++, dummy.matrix);
+        }
+      } else if (styleRoll < 0.65) {
+        const numPosters = styleRoll < 0.50 ? 1 : 2;
+        for (let pi = 0; pi < numPosters; pi++) {
+          const pk = Math.floor(hashRand(p.id * 17.9 + pi * 37.3) * POSTER_KIND_COUNT) % POSTER_KIND_COUNT;
+          if (postCnts[pk] < 180) {
+            dummy.position.set(p.x, posterHeights[pi] + (hashRand(p.id + pi * 5) - 0.5) * 0.14, p.z);
+            dummy.rotation.set(0, p.yaw + hashRand(p.id * 7 + pi * 19) * Math.PI * 2, 0);
+            dummy.scale.set(poleScaleXZ, 1, poleScaleXZ);
+            dummy.updateMatrix();
+            posterInsts[pk].setMatrixAt(postCnts[pk]++, dummy.matrix);
+          }
         }
       }
     }
@@ -870,8 +600,8 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
       posterInsts[k].instanceMatrix.needsUpdate = true;
     }
     for (let k = 0; k < 3; k++) {
-      bannerInsts[k].count = banCnts[k];
-      bannerInsts[k].instanceMatrix.needsUpdate = true;
+      baseNetaInsts[k].count = netaCnts[k];
+      baseNetaInsts[k].instanceMatrix.needsUpdate = true;
     }
 
     // Build SUPER MESSY Bangladeshi Khulna pole-to-pole tangled overhead wires + house service drops!
@@ -912,7 +642,6 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
         }
       }
 
-      // Messy House Service Drop Wires shooting from each pole into nearby houses on both sides!
       for (let d = 0; d < dropCount; d++) {
         const rd1 = hashRand(p.id * 71 + d * 17.3);
         const rd2 = hashRand(p.id * 89 + d * 23.1);
