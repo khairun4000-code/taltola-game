@@ -76,8 +76,11 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
 
     // Roads by hierarchy (generic city building dots omitted for a clean road/park map)
     for (const r of worldData.roads) {
-      bCtx.strokeStyle = r.t <= 1 ? '#e8b054' : (r.t === 2 ? '#c2ccbe' : (r.t === 3 ? '#7c8f85' : 'rgba(130, 148, 138, 0.55)'));
-      bCtx.lineWidth = r.t <= 1 ? 2.4 : (r.t === 2 ? 1.6 : (r.t === 3 ? 1.15 : 0.7));
+      const isAltapole = r.n === 'Altapole Lane';
+      bCtx.strokeStyle = isAltapole
+        ? '#4ade80'
+        : (r.t <= 1 ? '#e8b054' : (r.t === 2 ? '#c2ccbe' : (r.t === 3 ? '#7c8f85' : 'rgba(130, 148, 138, 0.55)')));
+      bCtx.lineWidth = isAltapole ? 2.2 : (r.t <= 1 ? 2.4 : (r.t === 2 ? 1.6 : (r.t === 3 ? 1.15 : 0.7)));
       bCtx.beginPath();
       for (let i = 0; i < r.p.length; i += 2) {
         const [px, py] = worldToBasePx(r.p[i], r.p[i + 1]);

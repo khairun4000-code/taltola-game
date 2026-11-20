@@ -517,25 +517,30 @@ function splitMergedWheelMeshByQuadrant(mesh, q) {
 }
 
 function createBodyMaterial(source, colorHex) {
-  return new THREE.MeshPhysicalMaterial({
+  const mat = new THREE.MeshPhysicalMaterial({
     name: source.name,
-    color: new THREE.Color(colorHex),
+    color: source.map ? (source.color ? source.color.clone() : new THREE.Color('#ffffff')) : new THREE.Color(colorHex),
     map: source.map || null,
     normalMap: source.normalMap || null,
     normalScale: source.normalScale ? source.normalScale.clone() : new THREE.Vector2(1, 1),
+    roughnessMap: source.roughnessMap || null,
+    metalnessMap: source.metalnessMap || null,
     aoMap: source.aoMap || null,
     side: source.side,
     transparent: source.transparent,
     opacity: source.opacity,
     alphaTest: source.alphaTest,
-    metalness: 0.72,
-    roughness: 0.16,
+    metalness: source.metalnessMap ? 1.0 : 0.68,
+    roughness: source.roughnessMap ? 1.0 : 0.14,
     clearcoat: 1.0,
-    clearcoatRoughness: 0.05,
+    clearcoatRoughness: 0.04,
     ior: 1.52,
     reflectivity: 1.0,
-    envMapIntensity: 1.65,
+    envMapIntensity: 1.85,
   });
+  if (mat.map) mat.map.anisotropy = 8;
+  if (mat.normalMap) mat.normalMap.anisotropy = 8;
+  return mat;
 }
 
 function createWheelMaterial(source, colorHex = '#d8ebff') {
@@ -1976,8 +1981,11 @@ export function createDrivableCar(scene, manager, config) {
                 }
               }
             }
-            if (out.map && out.map.anisotropy < 4) {
-              out.map.anisotropy = 4;
+            if (out.map && out.map.anisotropy < 8) {
+              out.map.anisotropy = 8;
+            }
+            if (out.normalMap && out.normalMap.anisotropy < 8) {
+              out.normalMap.anisotropy = 8;
             }
 
             clonedMatCache.set(mat, out);
