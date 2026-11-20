@@ -250,11 +250,11 @@ function buildUtilities(parent, m, wireParent = parent, taltolaWireParent = wire
     createWire(wireParent, [[-2.26, 7.1 + i * 0.14, 9.95], [0.0, 6.5 + i * 0.12, 16.8], [2.28, 7.2 + i * 0.14, 23.8]], 0.012, m.wire);
     createWire(wireParent, [[2.28, 6.8 + i * 0.15, 23.8], [0.2, 6.3 + i * 0.1, 22.8], [-2.95, 7.0 + i * 0.14, 21.8]], 0.012, m.wire);
 
-    // Taltola Hospital Cross Rd utility drop cables to 5-Story Taltola House
+    // Taltola Hospital Cross Rd utility drop cables anchored directly from footpath poles to Taltola House
     const tx = TALTOLA_HOUSE_OFFSET.x;
     const tz = TALTOLA_HOUSE_OFFSET.z;
-    createWire(taltolaWireParent, [[tx - 2.35, 8.2 + i * 0.12, tz - 18], [tx + 1.2, 7.2 + i * 0.1, tz - 8], [tx + 5.65, 6.3 + i * 0.12, tz - 3.4]], 0.011, m.wire);
-    createWire(taltolaWireParent, [[tx - 2.35, 8.2 + i * 0.12, tz + 18], [tx + 1.2, 7.2 + i * 0.1, tz + 8], [tx + 5.65, 6.9 + i * 0.12, tz + 3.5]], 0.011, m.wire);
+    createWire(taltolaWireParent, [[tx - 3.92, 8.2 + i * 0.12, tz - 4], [tx + 0.9, 7.1 + i * 0.1, tz - 3.7], [tx + 5.65, 6.3 + i * 0.12, tz - 3.4]], 0.011, m.wire);
+    createWire(taltolaWireParent, [[tx - 3.65, 8.2 + i * 0.12, tz + 20], [tx + 1.0, 7.4 + i * 0.1, tz + 11.8], [tx + 5.65, 6.9 + i * 0.12, tz + 3.5]], 0.011, m.wire);
   }
 }
 

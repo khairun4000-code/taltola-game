@@ -778,10 +778,10 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y, levelIndex = 1
   B(-18.3, -19.6, fy, y + 2.74, 18.55, 18.72, hm.wallCream);
   B(-7.2, -8.6, y + 2.22, y + 2.74, 18.55, 18.72, hm.wallCream);
   B(-17.1, -18.3, y + 2.22, y + 2.74, 18.55, 18.72, hm.wallCream);
-  // Walnut door frames & open wooden door leaf swung into Flat A
+  // Walnut door frames & open wooden door leaf hinged on east jamb (never overlapping Smart TV console!)
   B(-7.16, -7.24, fy, y + 2.24, 18.52, 18.75, hm.woodWalnut);
   B(-8.56, -8.64, fy, y + 2.24, 18.52, 18.75, hm.woodWalnut);
-  B(-8.55, -8.65, fy, y + 2.2, 17.35, 18.55, hm.woodWalnut);
+  B(-7.15, -7.24, fy, y + 2.2, 17.35, 18.55, hm.woodWalnut);
 
   // ATTACHED LUXURY BATHROOM (অ্যাটাচড বাথরুম: x = -16.65 .. -19.55, z = 18.65 .. 21.35)
   // Outer walls facing the Stair Landing (x = -16.56) and South Corridor (z = 21.38) are clad in
@@ -842,7 +842,7 @@ function buildApartmentFloorInterior(parent, screenParent, hm, y, levelIndex = 1
   B(-7.2, -8.6, y + 2.22, y + 2.74, 23.18, 23.35, hm.wallCream);
   B(-7.16, -7.24, fy, y + 2.24, 23.15, 23.38, hm.woodWalnut);
   B(-8.56, -8.64, fy, y + 2.24, 23.15, 23.38, hm.woodWalnut);
-  B(-8.55, -8.65, fy, y + 2.2, 23.35, 24.55, hm.woodWalnut);
+  B(-7.15, -7.24, fy, y + 2.2, 23.35, 24.55, hm.woodWalnut);
 
   // 2. NORTH WING (FLAT A): Grand Living Lounge (x = -4.3 .. -13.3, z = 14.8 .. 18.55)
   // Partition wall between Living Lounge and Master Bedroom at x = -13.3 (open doorway at z = 16.0 .. 17.3)

@@ -415,11 +415,11 @@ function buildAttachedBathroom(staticGroup, m, fy, side) {
   const zCenter = (zMin + zMax) * 0.5; // -3.92 or +3.92
   const zOuter = side === -1 ? -5.18 : 5.18;
 
-  // Aqua non-slip ceramic bathroom floor tile & dado wall tile wainscoting
-  box(staticGroup, [1.72, 0.03, 2.66], [10.55, fy + 0.085, zCenter], m.bathTile);
-  box(staticGroup, [1.72, 1.45, 0.04], [10.55, fy + 0.82, zOuter], m.bathTile);
-  box(staticGroup, [0.04, 1.45, 2.64], [9.70, fy + 0.82, zCenter], m.bathTile);
-  box(staticGroup, [0.04, 1.45, 2.64], [11.40, fy + 0.82, zCenter], m.bathTile);
+  // Aqua non-slip ceramic bathroom floor tile & dado wall tile wainscoting (inset 2cm from wall faces to prevent z-fighting)
+  box(staticGroup, [1.62, 0.03, 2.60], [10.55, fy + 0.085, zCenter], m.bathTile);
+  box(staticGroup, [1.62, 1.45, 0.03], [10.55, fy + 0.82, zOuter - side * 0.04], m.bathTile);
+  box(staticGroup, [0.03, 1.45, 2.58], [9.74, fy + 0.82, zCenter], m.bathTile);
+  box(staticGroup, [0.03, 1.45, 2.58], [11.36, fy + 0.82, zCenter], m.bathTile);
 
   // 1. Western Porcelain Commode / Toilet (কমোড) along x = 9.98, near outer wall
   const commodeZ = side === -1 ? -4.72 : 4.72;
@@ -464,7 +464,7 @@ function buildAttachedBathroom(staticGroup, m, fy, side) {
  */
 function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans, flatDoors, floorInteriors) {
   const levelBaseYs = [0, 3.05, 6.10, 9.15, 12.20];
-  const wallH = 2.96;
+  const wallH = 3.06;
 
   for (let lvl = 0; lvl < levelBaseYs.length; lvl++) {
     const fy = levelBaseYs[lvl];
@@ -474,25 +474,25 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
     // 1. FLOOR SLAB & CEILING SLAB (with Stairwell Cutout x = 7.65..12.10, z = 0.16..1.16)
     // ==========================================================================
     if (lvl === 0) {
-      // Ground floor continuous polished tile slab
-      box(staticGroup, [8.35, 0.10, 10.80], [10.175, fy + 0.03, 0], m.pillarTile, { uvScale: 1.5 });
+      // Ground floor continuous polished tile slab (inset inside exterior wall faces)
+      box(staticGroup, [8.14, 0.10, 10.58], [10.18, fy + 0.03, 0], m.pillarTile, { uvScale: 1.5 });
     } else {
       // Upper floor slab with stairwell opening at x ∈ [7.65, 12.10], z ∈ [0.16, 1.16]
-      // Left half + corridor walkway (z = -5.40 .. +0.16, width 5.56, center -2.62)
-      box(staticGroup, [8.35, 0.12, 5.56], [10.175, fy + 0.03, -2.62], m.pillarTile, { uvScale: 1.5 });
-      // Right apartment wing (z = +1.16 .. +5.40, width 4.24, center +3.28)
-      box(staticGroup, [8.35, 0.12, 4.24], [10.175, fy + 0.03, 3.28], m.pillarTile, { uvScale: 1.5 });
-      // Front stair landing strip (x = 6.00 .. 7.65, z = 0.16 .. 1.16)
-      box(staticGroup, [1.65, 0.12, 1.00], [6.825, fy + 0.03, 0.66], m.pillarTile);
-      // Rear stair landing strip (x = 12.10 .. 14.35, z = 0.16 .. 1.16)
-      box(staticGroup, [2.25, 0.12, 1.00], [13.225, fy + 0.03, 0.66], m.pillarTile);
+      // Left half + corridor walkway (z = -5.28 .. +0.16, width 5.44, center -2.56)
+      box(staticGroup, [8.14, 0.12, 5.44], [10.18, fy + 0.03, -2.56], m.pillarTile, { uvScale: 1.5 });
+      // Right apartment wing (z = +1.16 .. +5.28, width 4.12, center +3.22)
+      box(staticGroup, [8.14, 0.12, 4.12], [10.18, fy + 0.03, 3.22], m.pillarTile, { uvScale: 1.5 });
+      // Front stair landing strip (x = 6.11 .. 7.65, z = 0.16 .. 1.16)
+      box(staticGroup, [1.54, 0.12, 1.00], [6.88, fy + 0.03, 0.66], m.pillarTile);
+      // Rear stair landing strip (x = 12.10 .. 14.25, z = 0.16 .. 1.16)
+      box(staticGroup, [2.15, 0.12, 1.00], [13.175, fy + 0.03, 0.66], m.pillarTile);
     }
 
-    // Bright Self-Lit White Ceiling Slab (with matching stairwell cutout)
-    box(staticGroup, [8.35, 0.08, 5.56], [10.175, fy + 2.94, -2.62], m.ceilingMat);
-    box(staticGroup, [8.35, 0.08, 4.24], [10.175, fy + 2.94, 3.28], m.ceilingMat);
-    box(staticGroup, [1.65, 0.08, 1.00], [6.825, fy + 2.94, 0.66], m.ceilingMat);
-    box(staticGroup, [2.25, 0.08, 1.00], [13.225, fy + 2.94, 0.66], m.ceilingMat);
+    // Bright Self-Lit White Ceiling Slab (with matching stairwell cutout, strictly inside exterior walls)
+    box(staticGroup, [8.14, 0.08, 5.44], [10.18, fy + 2.94, -2.56], m.ceilingMat);
+    box(staticGroup, [8.14, 0.08, 4.12], [10.18, fy + 2.94, 3.22], m.ceilingMat);
+    box(staticGroup, [1.54, 0.08, 1.00], [6.88, fy + 2.94, 0.66], m.ceilingMat);
+    box(staticGroup, [2.15, 0.08, 1.00], [13.175, fy + 2.94, 0.66], m.ceilingMat);
 
     // ==========================================================================
     // 2. EXTERIOR PERIMETER WALLS (with Real Window Openings on Every Floor!)
@@ -504,13 +504,13 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
       box(staticGroup, [0.22, wallH, 0.66], [6.08, midY, -5.03], m.warmPlaster);
       box(staticGroup, [0.22, wallH, 1.22], [6.08, midY, -1.25], m.warmPlaster);
       box(staticGroup, [0.22, 0.52, 2.85], [6.08, fy + 0.26, -3.28], m.warmPlaster);
-      box(staticGroup, [0.22, 0.50, 2.85], [6.08, fy + 2.71, -3.28], m.warmPlaster);
+      box(staticGroup, [0.22, 0.60, 2.85], [6.08, fy + 2.76, -3.28], m.warmPlaster);
 
       box(staticGroup, [0.22, wallH, 0.66], [6.08, midY, 5.03], m.warmPlaster);
       box(staticGroup, [0.22, wallH, 1.22], [6.08, midY, 1.25], m.warmPlaster);
       box(staticGroup, [0.22, 0.52, 2.85], [6.08, fy + 0.26, 3.28], m.warmPlaster);
-      box(staticGroup, [0.22, 0.50, 2.85], [6.08, fy + 2.71, 3.28], m.warmPlaster);
-      box(staticGroup, [0.22, 0.62, 1.32], [6.08, fy + 2.67, 0], m.warmPlaster);
+      box(staticGroup, [0.22, 0.60, 2.85], [6.08, fy + 2.76, 3.28], m.warmPlaster);
+      box(staticGroup, [0.22, 0.72, 1.32], [6.08, fy + 2.70, 0], m.warmPlaster);
     } else {
       // Upper floors have walkable balcony doorway at inner half (z = ±2.55) & window at outer half (z = ±4.02)
       box(staticGroup, [0.22, wallH, 0.66], [6.08, midY, -5.03], m.plaster);
@@ -520,7 +520,7 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
         const wz = side === -1 ? -3.28 : 3.35;
         // Sill only under the outer window half so the inner half (z = side * 2.55) is a walk-through balcony doorway!
         box(staticGroup, [0.22, 0.45, 1.44], [6.08, fy + 0.225, side * 4.02], m.plaster);
-        box(staticGroup, [0.22, 0.48, 2.88], [6.08, fy + 2.72, wz], m.plaster);
+        box(staticGroup, [0.22, 0.58, 2.88], [6.08, fy + 2.77, wz], m.plaster);
       }
     }
 
@@ -529,20 +529,20 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
       box(staticGroup, [0.22, wallH, 0.72], [14.28, midY, -5.02], m.warmPlaster);
       box(staticGroup, [0.22, wallH, 1.26], [14.28, midY, -1.27], m.warmPlaster);
       box(staticGroup, [0.22, 0.52, 2.76], [14.28, fy + 0.26, -3.28], m.warmPlaster);
-      box(staticGroup, [0.22, 0.50, 2.76], [14.28, fy + 2.71, -3.28], m.warmPlaster);
+      box(staticGroup, [0.22, 0.60, 2.76], [14.28, fy + 2.76, -3.28], m.warmPlaster);
 
       box(staticGroup, [0.22, wallH, 0.72], [14.28, midY, 5.02], m.warmPlaster);
-      box(staticGroup, [0.22, wallH, 1.26], [14.28, fy + midY, 1.27], m.warmPlaster);
+      box(staticGroup, [0.22, wallH, 1.26], [14.28, midY, 1.27], m.warmPlaster);
       box(staticGroup, [0.22, 0.52, 2.76], [14.28, fy + 0.26, 3.28], m.warmPlaster);
-      box(staticGroup, [0.22, 0.50, 2.76], [14.28, fy + 2.71, 3.28], m.warmPlaster);
-      box(staticGroup, [0.22, 0.62, 1.32], [14.28, fy + 2.67, 0], m.warmPlaster);
+      box(staticGroup, [0.22, 0.60, 2.76], [14.28, fy + 2.76, 3.28], m.warmPlaster);
+      box(staticGroup, [0.22, 0.72, 1.32], [14.28, fy + 2.70, 0], m.warmPlaster);
     } else {
       box(staticGroup, [0.22, wallH, 0.70], [14.28, midY, -5.05], m.plaster);
       box(staticGroup, [0.22, wallH, 3.88], [14.28, midY, 0.0], m.plaster);
       box(staticGroup, [0.22, wallH, 0.70], [14.28, midY, 5.05], m.plaster);
       for (const wz of [-3.32, 3.32]) {
         box(staticGroup, [0.22, 0.45, 2.78], [14.28, fy + 0.225, wz], m.plaster);
-        box(staticGroup, [0.22, 0.48, 2.78], [14.28, fy + 2.72, wz], m.plaster);
+        box(staticGroup, [0.22, 0.58, 2.78], [14.28, fy + 2.77, wz], m.plaster);
       }
     }
 
@@ -558,11 +558,11 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
       // Window sills & headers at x = 8.0 and x = 12.65
       for (const wx of [8.0, 12.65]) {
         box(staticGroup, [1.86, 0.72, 0.20], [wx, fy + 0.36, wz], extMat);
-        box(staticGroup, [1.86, 0.68, 0.20], [wx, fy + 2.62, wz], extMat);
+        box(staticGroup, [1.86, 0.78, 0.20], [wx, fy + 2.67, wz], extMat);
       }
       // Bathroom ventilator window sill & header at x = 10.55
       box(staticGroup, [0.74, 1.26, 0.20], [10.55, fy + 0.63, wz], extMat);
-      box(staticGroup, [0.74, 0.78, 0.20], [10.55, fy + 2.57, wz], extMat);
+      box(staticGroup, [0.74, 0.88, 0.20], [10.55, fy + 2.62, wz], extMat);
     }
 
     // ==========================================================================
@@ -572,12 +572,12 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
     // - Main Flat A Doorway at x = 7.18..8.30 (center 7.74) with interactive wooden door!
     // - Rear Bedroom Doorway at x = 12.10..13.20 (center 12.65)
     box(staticGroup, [1.10, wallH, 0.15], [6.63, midY, -1.18], m.hallWall);
-    box(staticGroup, [1.12, 0.70, 0.15], [7.74, fy + 2.61, -1.18], m.hallWall);
+    box(staticGroup, [1.12, 0.80, 0.15], [7.74, fy + 2.66, -1.18], m.hallWall);
     box(staticGroup, [0.08, 2.28, 0.19], [7.18, fy + 1.14, -1.18], m.wood);
     box(staticGroup, [0.08, 2.28, 0.19], [8.30, fy + 1.14, -1.18], m.wood);
     box(staticGroup, [1.20, 0.08, 0.19], [7.74, fy + 2.28, -1.18], m.wood);
     box(staticGroup, [3.80, wallH, 0.15], [10.20, midY, -1.18], m.hallWall);
-    box(staticGroup, [1.10, 0.70, 0.15], [12.65, fy + 2.61, -1.18], m.hallWall);
+    box(staticGroup, [1.10, 0.80, 0.15], [12.65, fy + 2.66, -1.18], m.hallWall);
     box(staticGroup, [0.08, 2.28, 0.19], [12.10, fy + 1.14, -1.18], m.wood);
     box(staticGroup, [0.08, 2.28, 0.19], [13.20, fy + 1.14, -1.18], m.wood);
     box(staticGroup, [1.18, 0.08, 0.19], [12.65, fy + 2.28, -1.18], m.wood);
@@ -587,12 +587,12 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
     // - Main Flat B Doorway at x = 6.38..7.50 (center 6.94) on the front landing (clear of stairs!)
     // - Rear Kitchen Doorway at x = 12.20..13.30 (center 12.75) on the rear landing
     box(staticGroup, [0.30, wallH, 0.15], [6.23, midY, 1.18], m.hallWall);
-    box(staticGroup, [1.12, 0.70, 0.15], [6.94, fy + 2.61, 1.18], m.hallWall);
+    box(staticGroup, [1.12, 0.80, 0.15], [6.94, fy + 2.66, 1.18], m.hallWall);
     box(staticGroup, [0.08, 2.28, 0.19], [6.38, fy + 1.14, 1.18], m.wood);
     box(staticGroup, [0.08, 2.28, 0.19], [7.50, fy + 1.14, 1.18], m.wood);
     box(staticGroup, [1.20, 0.08, 0.19], [6.94, fy + 2.28, 1.18], m.wood);
     box(staticGroup, [4.70, wallH, 0.15], [9.85, midY, 1.18], m.hallWall);
-    box(staticGroup, [1.10, 0.70, 0.15], [12.75, fy + 2.61, 1.18], m.hallWall);
+    box(staticGroup, [1.10, 0.80, 0.15], [12.75, fy + 2.66, 1.18], m.hallWall);
     box(staticGroup, [0.08, 2.28, 0.19], [12.20, fy + 1.14, 1.18], m.wood);
     box(staticGroup, [0.08, 2.28, 0.19], [13.30, fy + 1.14, 1.18], m.wood);
     box(staticGroup, [1.18, 0.08, 0.19], [12.75, fy + 2.28, 1.18], m.wood);
@@ -645,9 +645,9 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
       box(staticGroup, [stepRun + 0.03, 0.16, 0.92], [sx, sy - 0.08, 0.65], m.pillarTile);
       box(staticGroup, [0.04, stepRise, 0.92], [sx - stepRun * 0.45, sy - stepRise * 0.5, 0.65], m.concrete);
     }
-    // Sloped concrete stringer beam under the stairs
-    rodBetween(staticGroup, [7.75, fy + 0.05, 0.35], [12.05, fy + 3.02, 0.35], 0.08, m.concrete, 6);
-    rodBetween(staticGroup, [7.75, fy + 0.05, 0.95], [12.05, fy + 3.02, 0.95], 0.08, m.concrete, 6);
+    // Sloped concrete stringer beam tucked cleanly underneath the stair treads (never poking through steps)
+    rodBetween(staticGroup, [7.75, fy - 0.16, 0.35], [12.05, fy + 2.81, 0.35], 0.075, m.concrete, 6);
+    rodBetween(staticGroup, [7.75, fy - 0.16, 0.95], [12.05, fy + 2.81, 0.95], 0.075, m.concrete, 6);
     // Staircase Handrail & Balusters along z = 0.18
     rodBetween(staticGroup, [7.75, fy + 0.92, 0.18], [12.05, fy + 3.92, 0.18], 0.024, m.rail, 8);
     for (let b = 0; b <= 5; b++) {
@@ -665,20 +665,26 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
 
     for (const side of [-1, 1]) {
       // Partition 1 at x = 9.65 (separates Front Living/Dining from Bathroom + Inner Passage)
-      // Doorway at z ∈ [side*1.35, side*2.40] so player can walk freely between Front Room, Bathroom & Bedroom!
+      // Doorway at z ∈ [side*1.22, side*2.40] with flush ceiling header & framed trim
       box(floorInterior, [0.15, wallH, 2.86], [9.65, midY, side * 3.83], m.roomWall);
-      box(floorInterior, [0.15, 0.68, 1.15], [9.65, fy + 2.62, side * 1.82], m.roomWall);
+      box(floorInterior, [0.15, 0.78, 1.24], [9.65, fy + 2.67, side * 1.80], m.roomWall);
+      box(floorInterior, [0.18, 2.26, 0.06], [9.65, fy + 1.13, side * 2.38], m.wood);
+      box(floorInterior, [0.18, 2.26, 0.06], [9.65, fy + 1.13, side * 1.26], m.wood);
+      box(floorInterior, [0.18, 0.06, 1.18], [9.65, fy + 2.26, side * 1.82], m.wood);
 
       // Partition 2 at x = 11.45 (separates Bathroom from Rear Bedroom/Kitchen)
-      // Doorway at z ∈ [side*1.35, side*2.40]
+      // Doorway at z ∈ [side*1.22, side*2.40] with flush ceiling header & framed trim
       box(floorInterior, [0.15, wallH, 2.86], [11.45, midY, side * 3.83], m.roomWall);
-      box(floorInterior, [0.15, 0.68, 1.15], [11.45, fy + 2.62, side * 1.82], m.roomWall);
+      box(floorInterior, [0.15, 0.78, 1.24], [11.45, fy + 2.67, side * 1.80], m.roomWall);
+      box(floorInterior, [0.18, 2.26, 0.06], [11.45, fy + 1.13, side * 2.38], m.wood);
+      box(floorInterior, [0.18, 2.26, 0.06], [11.45, fy + 1.13, side * 1.26], m.wood);
+      box(floorInterior, [0.18, 0.06, 1.18], [11.45, fy + 2.26, side * 1.82], m.wood);
 
       // Bathroom Front Wall at z = side * 2.55 (between x = 9.65 and x = 11.45)
       // Bathroom Doorway at x = 10.10 .. 11.00 (center 10.55, width 0.90m)
       box(floorInterior, [0.46, wallH, 0.14], [9.88, midY, side * 2.55], m.roomWall);
       box(floorInterior, [0.46, wallH, 0.14], [11.22, midY, side * 2.55], m.roomWall);
-      box(floorInterior, [0.90, 0.72, 0.14], [10.55, fy + 2.60, side * 2.55], m.roomWall);
+      box(floorInterior, [0.90, 0.82, 0.14], [10.55, fy + 2.65, side * 2.55], m.roomWall);
       box(floorInterior, [0.06, 2.24, 0.17], [10.10, fy + 1.12, side * 2.55], m.wood);
       box(floorInterior, [0.06, 2.24, 0.17], [11.00, fy + 1.12, side * 2.55], m.wood);
       box(floorInterior, [0.96, 0.06, 0.17], [10.55, fy + 2.24, side * 2.55], m.wood);
@@ -801,7 +807,9 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
   // ============================================================================
   // Grand Front Entrance Porch Frame, Step, Pillars & Glowing Lamp (Ground Floor)
   box(staticGroup, [0.85, 0.14, 2.15], [5.72, 0.05, 0], m.pillarTile);
-  box(staticGroup, [0.75, 0.16, 2.25], [5.78, 2.52, 0], m.whiteBand);
+  box(staticGroup, [0.92, 0.18, 2.75], [5.74, 2.52, 0.22], m.whiteBand);
+  // Structural tie-beam & corbel pedestal bridging porch slab (y=2.60) seamlessly up to upper brick column (y=3.06) without any floating air gap
+  box(staticGroup, [0.64, 0.48, 2.15], [5.78, 2.83, 0.45], m.trim);
   for (const side of [-1, 1]) {
     box(staticGroup, [0.22, 2.48, 0.18], [5.95, 1.24, side * 0.68], m.wood);
     box(staticGroup, [0.26, 2.52, 0.22], [5.68, 1.26, side * 0.96], m.pillarTile);
@@ -957,9 +965,10 @@ function buildBoundaryAndBackyard(staticGroup, m) {
 }
 
 function buildSideAndRearElevations(staticGroup, m, floors) {
-  for (const x of [6.06, 14.28]) {
-    for (const z of [-5.32, 5.32]) {
-      box(staticGroup, [0.36, 15.35, 0.36], [x, 7.675, z], m.trim);
+  // Building corner pilasters pushed slightly outward so they never jut into interior rooms or z-fight walls
+  for (const x of [6.00, 14.36]) {
+    for (const z of [-5.40, 5.40]) {
+      box(staticGroup, [0.26, 15.35, 0.26], [x, 7.675, z], m.trim);
     }
   }
 
@@ -990,8 +999,8 @@ function buildSideAndRearElevations(staticGroup, m, floors) {
     }
   }
 
-  // REAR ELEVATION: Central Brick Column starts at y = 3.05 so it NEVER blocks the Ground-Floor Back Door!
-  box(staticGroup, [0.32, 12.6, 2.15], [14.42, 9.35, 0], m.brick, { uvScale: 2.5 });
+  // REAR ELEVATION: Central Brick Column meets rear porch canopy cleanly at y = 2.94
+  box(staticGroup, [0.34, 12.72, 2.15], [14.39, 9.29, 0], m.brick, { uvScale: 2.5 });
   for (let level = 0; level < floors.length; level++) {
     const floorY = floors[level];
     backWindow(staticGroup, m, { x: 14.54, y: floorY + 1.48, z: 0, width: 0.85, height: 2.05, frosted: true, openable: true });
@@ -1054,10 +1063,10 @@ export function buildHouse(scene, m) {
   // Build ALL 5 floors hollow & furnished + continuous staircase + 10 openable flats + bathrooms!
   buildAllFloorsAndInteriors(staticGroup, group, m, animatedFans, flatDoors, floorInteriors);
 
-  // Front Red-Brick Vertical Column starts at 1st floor (y = 3.05..15.65) so Ground-Floor Front Door is 100% clear!
-  box(staticGroup, [0.36, 12.6, 2.05], [5.72, 9.35, 0.45], m.brick, { uvScale: 2.5 });
+  // Front Red-Brick Vertical Column rests cleanly on the porch beam (y = 3.05..15.65) and attaches flush into front wall x=6.08
+  box(staticGroup, [0.56, 12.6, 2.05], [5.82, 9.35, 0.45], m.brick, { uvScale: 2.5 });
   box(staticGroup, [0.26, 0.92, 5.15], [4.76, 5.72, -2.85], m.whiteBand);
-  box(staticGroup, [0.26, 3.6, 0.78], [4.76, 4.38, -5.02], m.whiteBand);
+  box(staticGroup, [0.26, 3.22, 0.78], [4.76, 4.58, -5.02], m.whiteBand);
 
   const floors = [3.05, 6.1, 9.15, 12.2];
   for (let level = 0; level < floors.length; level++) {
@@ -1065,7 +1074,8 @@ export function buildHouse(scene, m) {
     for (const side of [-1, 1]) {
       const zCenter = side === -1 ? -3.28 : 3.35;
       const width = side === -1 ? 3.65 : 3.55;
-      box(staticGroup, [1.58, 0.24, width + 0.14], [5.46, floorY, zCenter], m.whiteBand);
+      // Balcony slab ends cleanly outside exterior wall face (x=6.01) so it never pokes into interior floors
+      box(staticGroup, [1.34, 0.22, width + 0.14], [5.34, floorY, zCenter], m.whiteBand);
       box(staticGroup, [0.18, 0.44, width + 0.12], [4.77, floorY - 0.09, zCenter], side === 1 ? m.whiteBand : m.plaster);
       box(staticGroup, [1.45, 2.85, 0.16], [5.48, floorY + 1.47, zCenter + side * (width / 2)], m.plaster);
       // Half-open sliding glass door/window on outer half (side * 4.02), leaving inner half (side * 2.55) open to walk onto balcony!

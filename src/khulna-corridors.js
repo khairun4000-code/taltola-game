@@ -1336,10 +1336,22 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   cornerCng.rotation.y = 0.08;
   staticG.add(cornerCng);
 
-  // Utility Poles + Overhead Wires + Lush Palms/Broadleaf Trees
+  // Utility Poles placed cleanly along the West footpath clear of the curved carriageway + Overhead Wires + Palms/Trees
+  const crossLaneRoadX = (zVal) => {
+    for (let i = 0; i < crossLanePts.length - 1; i++) {
+      const [x0, z0] = crossLanePts[i];
+      const [x1, z1] = crossLanePts[i + 1];
+      if (zVal <= z1 || i === crossLanePts.length - 2) {
+        const t = THREE.MathUtils.clamp((zVal - z0) / Math.max(0.001, z1 - z0), 0, 1);
+        return x0 + (x1 - x0) * t;
+      }
+    }
+    return ox;
+  };
   const poles = [];
   for (const pz of [oz - 28, oz - 4, oz + 20, oz + 42]) {
-    addUtilityPoleAndLamp(staticG, dynamicG, bank, ox - 2.45, pz, 1, false, poles);
+    const poleX = Math.min(ox - 3.65, crossLaneRoadX(pz) - 3.45);
+    addUtilityPoleAndLamp(staticG, dynamicG, bank, poleX, pz, 1, false, poles);
   }
   for (let i = 0; i < poles.length - 1; i++) {
     helpers.addWire?.(staticG, poles[i], poles[i + 1], m.wire, 0.42, 0.016);
@@ -1347,9 +1359,9 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   helpers.addPalm?.(dynamicG, ox - 3.6, 0, oz - 6.0, 6.8, 0.4, 0.35);
   helpers.addPalm?.(dynamicG, ox + 3.8, 0, oz - 12.2, 7.2, -0.3, 0.4);
   helpers.addPalm?.(dynamicG, ox - 4.4, 0, oz + 35.2, 7.0, 0.35, 0.25);
-  helpers.addBroadleafTree?.(treesG, ox - 4.0, 0, oz + 16.5, 1.0, 771);
+  helpers.addBroadleafTree?.(treesG, ox - 5.1, 0, oz + 16.5, 1.0, 771);
   helpers.addBroadleafTree?.(treesG, ox - 7.6, 0, oz + 1.8, 0.92, 783);
-  helpers.addBroadleafTree?.(treesG, ox - 4.2, 0, oz - 27.5, 0.95, 797);
+  helpers.addBroadleafTree?.(treesG, ox - 6.6, 0, oz - 27.5, 0.95, 797);
   helpers.addBroadleafTree?.(treesG, ox + 4.1, 0, oz + 35.8, 0.96, 809);
 }
 
