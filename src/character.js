@@ -176,6 +176,7 @@ export function createPlayerCharacter(scene, manager) {
   let hipsBone = null;
   let spineBone = null;
   let spine1Bone = null;
+  let spine2Bone = null;
   let leftUpLeg = null;
   let leftLeg = null;
   let leftFoot = null;
@@ -191,6 +192,22 @@ export function createPlayerCharacter(scene, manager) {
   const jawRestQ = new THREE.Quaternion();
   const lLidRestQ = new THREE.Quaternion();
   const rLidRestQ = new THREE.Quaternion();
+  const restHipsQ = new THREE.Quaternion();
+  const restSpineQ = new THREE.Quaternion();
+  const restSpine1Q = new THREE.Quaternion();
+  const restSpine2Q = new THREE.Quaternion();
+  const restNeckQ = new THREE.Quaternion();
+  const restHeadQ = new THREE.Quaternion();
+  const restLeftUpLegQ = new THREE.Quaternion();
+  const restLeftLegQ = new THREE.Quaternion();
+  const restLeftFootQ = new THREE.Quaternion();
+  const restRightUpLegQ = new THREE.Quaternion();
+  const restRightLegQ = new THREE.Quaternion();
+  const restRightFootQ = new THREE.Quaternion();
+  const restLeftArmQ = new THREE.Quaternion();
+  const restLeftForeArmQ = new THREE.Quaternion();
+  const restRightArmQ = new THREE.Quaternion();
+  const restRightForeArmQ = new THREE.Quaternion();
 
   const actions = {};
   const meshEntries = [];
@@ -429,6 +446,7 @@ export function createPlayerCharacter(scene, manager) {
     hipsBone = findBoneBySuffix(model, 'Hips');
     spineBone = findBoneBySuffix(model, 'Spine');
     spine1Bone = findBoneBySuffix(model, 'Spine1');
+    spine2Bone = findBoneBySuffix(model, 'Spine2');
     leftUpLeg = findBoneBySuffix(model, 'LeftUpLeg');
     leftLeg = findBoneBySuffix(model, 'LeftLeg');
     leftFoot = findBoneBySuffix(model, 'LeftFoot');
@@ -452,6 +470,24 @@ export function createPlayerCharacter(scene, manager) {
 
     playClip('Idle', { fade: 0.01 });
     mixer.update(0);
+
+    // Snapshot exact clean straight-ahead Idle rest quaternions so IK & head lock NEVER drift or spin!
+    if (hipsBone) restHipsQ.copy(hipsBone.quaternion);
+    if (spineBone) restSpineQ.copy(spineBone.quaternion);
+    if (spine1Bone) restSpine1Q.copy(spine1Bone.quaternion);
+    if (spine2Bone) restSpine2Q.copy(spine2Bone.quaternion);
+    if (neckBone) restNeckQ.copy(neckBone.quaternion);
+    if (headBone) restHeadQ.copy(headBone.quaternion);
+    if (leftUpLeg) restLeftUpLegQ.copy(leftUpLeg.quaternion);
+    if (leftLeg) restLeftLegQ.copy(leftLeg.quaternion);
+    if (leftFoot) restLeftFootQ.copy(leftFoot.quaternion);
+    if (rightUpLeg) restRightUpLegQ.copy(rightUpLeg.quaternion);
+    if (rightLeg) restRightLegQ.copy(rightLeg.quaternion);
+    if (rightFoot) restRightFootQ.copy(rightFoot.quaternion);
+    if (leftArm) restLeftArmQ.copy(leftArm.quaternion);
+    if (leftForeArm) restLeftForeArmQ.copy(leftForeArm.quaternion);
+    if (rightArm) restRightArmQ.copy(rightArm.quaternion);
+    if (rightForeArm) restRightForeArmQ.copy(rightForeArm.quaternion);
 
     // Preserve Blender's Z=0 shoe-sole grounding
     const box = new THREE.Box3().setFromObject(model);
@@ -855,6 +891,30 @@ export function createPlayerCharacter(scene, manager) {
     root.updateMatrixWorld(true);
   }
 
+  function resetUpperAndLimbBonesToRest() {
+    if (hipsBone) hipsBone.quaternion.copy(restHipsQ);
+    if (spineBone) spineBone.quaternion.copy(restSpineQ);
+    if (spine1Bone) spine1Bone.quaternion.copy(restSpine1Q);
+    if (spine2Bone) spine2Bone.quaternion.copy(restSpine2Q);
+    if (neckBone) neckBone.quaternion.copy(restNeckQ);
+    if (headBone) headBone.quaternion.copy(restHeadQ);
+    if (leftUpLeg) leftUpLeg.quaternion.copy(restLeftUpLegQ);
+    if (leftLeg) leftLeg.quaternion.copy(restLeftLegQ);
+    if (leftFoot) leftFoot.quaternion.copy(restLeftFootQ);
+    if (rightUpLeg) rightUpLeg.quaternion.copy(restRightUpLegQ);
+    if (rightLeg) rightLeg.quaternion.copy(restRightLegQ);
+    if (rightFoot) rightFoot.quaternion.copy(restRightFootQ);
+    if (leftArm) leftArm.quaternion.copy(restLeftArmQ);
+    if (leftForeArm) leftForeArm.quaternion.copy(restLeftForeArmQ);
+    if (rightArm) rightArm.quaternion.copy(restRightArmQ);
+    if (rightForeArm) rightForeArm.quaternion.copy(restRightForeArmQ);
+  }
+
+  function lockHeadAndNeckStraight() {
+    if (neckBone) neckBone.quaternion.copy(restNeckQ);
+    if (headBone) headBone.quaternion.copy(restHeadQ);
+  }
+
   function applyRickshawRidingPose(ride) {
     if (!ride || !ride.active || !ride.anchors) return;
     const a = ride.anchors;
@@ -863,32 +923,36 @@ export function createPlayerCharacter(scene, manager) {
     ikRight.set(Math.cos(h), 0, -Math.sin(h));
 
     if (ride.seat === 'passenger') {
-      // Lock seated hips cleanly onto the rear floral passenger cushion under the hood
+      lockHeadAndNeckStraight();
       ikTarget.copy(a.passengerSeat);
       ikTarget.y += 0.14;
       alignHipsToWorldPoint(ikTarget);
       return;
     }
 
-    // 1. Lock hips dead-center onto the leather saddle (zero bobbing, zero jumping!)
+    // 1. Hard-reset ALL torso/head/limb bones to exact saved neutral rest pose (ZERO drift, ZERO spin!)
+    resetUpperAndLimbBonesToRest();
+
+    // 2. Gentle non-accumulating forward lean from rest pose + lock neck/head 100% straight forward
+    if (spineBone) {
+      eulerTemp.set(0.18, 0, 0);
+      qTempA.setFromEuler(eulerTemp);
+      spineBone.quaternion.copy(restSpineQ).multiply(qTempA);
+    }
+    if (spine1Bone) {
+      eulerTemp.set(0.10, 0, 0);
+      qTempA.setFromEuler(eulerTemp);
+      spine1Bone.quaternion.copy(restSpine1Q).multiply(qTempA);
+    }
+    lockHeadAndNeckStraight();
+    root.updateMatrixWorld(true);
+
+    // 3. Lock hips dead-center onto the leather saddle
     ikTarget.copy(a.saddle);
     ikTarget.y += 0.05;
     alignHipsToWorldPoint(ikTarget);
 
-    // 2. Gentle forward cycling lean on torso
-    if (spineBone) {
-      eulerTemp.set(0.22, 0, 0);
-      qTempA.setFromEuler(eulerTemp);
-      spineBone.quaternion.multiply(qTempA);
-    }
-    if (spine1Bone) {
-      eulerTemp.set(0.14, 0, 0);
-      qTempA.setFromEuler(eulerTemp);
-      spine1Bone.quaternion.multiply(qTempA);
-    }
-    root.updateMatrixWorld(true);
-
-    // 3. Exact 2-Bone World-Space IK: lock Left & Right shoes directly onto the spinning 3D Pedals!
+    // 4. Exact 2-Bone World-Space IK: lock Left & Right shoes directly onto the spinning 3D Pedals!
     ikPole.copy(a.saddle).addScaledVector(ikFwd, 0.75).addScaledVector(ikRight, 0.18);
     ikPole.y += 0.15;
     solveTwoBoneIK(leftUpLeg, leftLeg, leftFoot, a.pedalL, ikPole);
@@ -897,7 +961,7 @@ export function createPlayerCharacter(scene, manager) {
     ikPole.y += 0.15;
     solveTwoBoneIK(rightUpLeg, rightLeg, rightFoot, a.pedalR, ikPole);
 
-    // 4. Exact 2-Bone World-Space IK: lock Left & Right hands directly onto the steering green handlebar grips!
+    // 5. Exact 2-Bone World-Space IK: lock Left & Right hands directly onto the steering green handlebar grips!
     if (a.gripL && a.gripR) {
       ikPole.copy(a.saddle).addScaledVector(ikFwd, 0.10).addScaledVector(ikRight, 0.55);
       ikPole.y += 0.12;
@@ -907,6 +971,7 @@ export function createPlayerCharacter(scene, manager) {
       ikPole.y += 0.12;
       solveTwoBoneIK(rightArm, rightForeArm, rightHand, a.gripR, ikPole);
     }
+    lockHeadAndNeckStraight();
   }
 
   function applyVehicleAnimPose(va) {
@@ -917,6 +982,8 @@ export function createPlayerCharacter(scene, manager) {
     const p = THREE.MathUtils.clamp(va.progress || 0, 0, 1);
 
     if (va.type === 'rickshaw_mount_driver' || va.type === 'rickshaw_dismount_driver') {
+      resetUpperAndLimbBonesToRest();
+      root.updateMatrixWorld(true);
       const u = va.type === 'rickshaw_dismount_driver' ? (1 - p) : p;
       const swingArc = Math.sin(u * Math.PI);
       if (va.anchors && rightUpLeg && rightLeg && rightFoot) {
@@ -1143,46 +1210,51 @@ export function createPlayerCharacter(scene, manager) {
     if (isVehicleAnim) {
       if (vehicleAnim.clip) {
         targetClip = vehicleAnim.clip;
-        targetScale = needsCleanIdleReset ? 1.0 : (vehicleAnim.timeScale ?? 1.0);
+        targetScale = vehicleAnim.timeScale ?? 1.0;
         loopOnce = Boolean(vehicleAnim.loopOnce);
-        fadeTime = 0.06;
+        fadeTime = 0.0;
       }
     } else if (isRidingRickshaw) {
       if (rickshawRide.seat === 'passenger') {
         targetClip = 'Sit';
         targetScale = 0.45;
         loopOnce = false;
-        fadeTime = 0.10;
+        fadeTime = 0.0;
       } else {
         targetClip = 'Idle';
         targetScale = 1.0;
         loopOnce = false;
-        fadeTime = 0.05;
+        fadeTime = 0.0;
       }
     }
 
-    playClip(targetClip, {
-      fade: fadeTime,
-      loopOnce,
-      timeScale: targetScale,
-    });
-    if (activeAction) {
-      activeAction.timeScale = targetScale;
-    }
-
-    if (needsCleanIdleReset && activeAction) {
-      activeAction.time = 0.05;
-      mixer.update(0.0001);
+    if (needsCleanIdleReset) {
+      mixer.stopAllAction();
+      activeAction = null;
+      activeClipName = null;
     } else {
+      playClip(targetClip, {
+        fade: fadeTime,
+        loopOnce,
+        timeScale: targetScale,
+      });
+      if (activeAction) {
+        activeAction.timeScale = targetScale;
+      }
       mixer.update(dt);
     }
 
     if (isVehicleAnim) {
       applyVehicleAnimPose(vehicleAnim);
+      lockHeadAndNeckStraight();
     } else if (isRidingRickshaw) {
       applyRickshawRidingPose(rickshawRide);
+      lockHeadAndNeckStraight();
     }
     applyProceduralHeadAndFace(dt, Boolean(isRidingRickshaw || isVehicleAnim));
+    if (isRidingRickshaw || isVehicleAnim) {
+      lockHeadAndNeckStraight();
+    }
   }
 
   return {
