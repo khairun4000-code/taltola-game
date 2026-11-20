@@ -187,7 +187,7 @@
         <div id="pause-tab-map" class="gta-tab-panel city-map-body" data-pause-panel="map">
           <div class="city-map-canvas-wrap">
             <canvas id="city-map-canvas" width="760" height="720"></canvas>
-            <p class="city-map-hint">CLICK OR DOUBLE-CLICK MAP = SET YELLOW GPS WAYPOINT · FAST TRAVEL = SELECT LANDMARK ON RIGHT</p>
+            <p class="city-map-hint">CLICK MAP = SET BLUE GPS ROUTE · FAST TRAVEL = SELECT LANDMARK ON RIGHT</p>
           </div>
           <aside class="city-map-sidebar">
             <div class="city-sidebar-title">FAST TRAVEL LANDMARKS</div>
@@ -411,39 +411,13 @@
     <div id="walk-hud" class="walk-hud hidden">
       <div class="crosshair" aria-hidden="true"></div>
       <div id="interact-prompt" class="interact-prompt hidden">Press [E] to Open Gate</div>
-      <div id="emote-bar" class="emote-bar">
-        <button type="button" id="run-pill-button" class="emote-pill"><kbd>SHIFT / R</kbd> SPRINT</button>
-        <button type="button" class="emote-pill" data-game-emote="pocket">IDLE</button>
-        <button type="button" class="emote-pill" data-game-emote="dance1"><kbd>1</kbd> DANCE 1</button>
-        <button type="button" class="emote-pill" data-game-emote="dance2"><kbd>2</kbd> DANCE 2</button>
-        <button type="button" class="emote-pill" data-game-emote="wave"><kbd>3</kbd> WAVE</button>
-        <button type="button" class="emote-pill" data-game-emote="kick"><kbd>4</kbd> KICK</button>
-        <button type="button" class="emote-pill" data-game-emote="combo"><kbd>5</kbd> COMBO</button>
-        <button type="button" class="emote-pill" data-game-emote="flex"><kbd>6</kbd> FLEX</button>
-        <button type="button" class="emote-pill" data-game-emote="phone"><kbd>7</kbd> CALL</button>
-        <button type="button" class="emote-pill" data-game-emote="mobile"><kbd>8</kbd> TEXT</button>
-        <button type="button" class="emote-pill" data-game-emote="laugh"><kbd>9</kbd> LAUGH</button>
-      </div>
       <div id="car-hud" class="car-hud hidden">
-        <div class="car-hud-top">
-          <div id="car-badge" class="car-badge">BMW M3 COMPETITION</div>
-          <div class="car-gear-box"><span id="car-gear">N</span></div>
-        </div>
         <div class="forza-gauge-wrap">
           <canvas id="forza-tacho-canvas" width="280" height="224"></canvas>
           <span id="car-speed" class="sr-only">0</span>
+          <span id="car-gear" class="sr-only">N</span>
         </div>
-        <div class="car-rpm-track"><div id="car-rpm-fill" class="car-rpm-fill"></div></div>
-        <div class="car-hud-actions">
-          <button type="button" id="car-seat-btn" class="car-chip hidden"><kbd>G</kbd> <span id="car-seat-label">PASSENGER</span></button>
-          <button type="button" id="car-pov-btn" class="car-chip"><kbd>V</kbd> <span id="car-cam-label">CAMERA</span></button>
-          <button type="button" id="car-paint-btn" class="car-chip">🎨 <span id="car-paint-name">Green</span></button>
-          <button type="button" id="car-horn-btn" class="car-chip"><kbd>H</kbd> HORN</button>
-          <button type="button" id="car-exit-btn" class="car-chip car-chip-exit"><kbd>F / T</kbd> EXIT</button>
-        </div>
-        <div class="car-drive-hint"><kbd>W/S</kbd> DRIVE · <kbd>A/D</kbd> STEER · <kbd>L</kbd> LIGHTS · <kbd>SHIFT</kbd> NITRO</div>
       </div>
-      <div class="walk-controls"><span id="look-control"><kbd>2x CLICK</kbd> MOUSE</span><span><kbd>C</kbd> FREECAM</span><span><kbd>P</kbd> PHONE</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>F</kbd> ENTER</span><span><kbd>E</kbd> INTERACT</span><span><kbd>ESC</kbd> MENU</span><span><kbd>TAB</kbd> HUD</span></div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
       <div id="partner-status-pill" class="partner-status-pill hidden"><span class="partner-dot"></span> <span id="partner-status-text">Partner spawning...</span></div>
       <button id="minimap-dock" class="minimap-dock" type="button" title="Open City Map &amp; Menu [ESC]">
