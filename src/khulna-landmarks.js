@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { buildCNGAuto } from './khulna-vehicles.js';
 
@@ -270,17 +271,104 @@ function addRedGreenFenceSpan(staticG, lm, x0, z0, x1, z1, posts = 8) {
   }
 }
 
-function addAliaOfficeFurniture(staticG, dynamicG, lm, cx, cz, fy, labelTitle) {
-  box(staticG, [1.65, 0.78, 0.85], [cx - 0.6, fy + 0.39, cz], lm.teakWood);
-  box(staticG, [0.58, 0.50, 0.58], [cx - 1.75, fy + 0.25, cz], lm.steelMat);
-  box(staticG, [0.12, 0.62, 0.56], [cx - 2.02, fy + 0.68, cz], lm.steelMat);
-  for (const vz of [-0.55, 0.55]) {
-    box(staticG, [0.48, 0.45, 0.48], [cx + 0.65, fy + 0.225, cz + vz], lm.teakWood);
-    box(staticG, [0.08, 0.48, 0.46], [cx + 0.88, fy + 0.62, cz + vz], lm.teakWood);
+function addCeilingFan(staticG, lm, x, y, z) {
+  cylinder(staticG, 0.025, 0.025, 0.42, [x, y - 0.21, z], lm.steelMat, 6);
+  cylinder(staticG, 0.14, 0.14, 0.08, [x, y - 0.44, z], lm.whitePlaster, 10);
+  for (let b = 0; b < 3; b++) {
+    const a = (b / 3) * Math.PI * 2;
+    rotBox(staticG, [0.56, 0.018, 0.11], [x + Math.cos(a) * 0.34, y - 0.44, z + Math.sin(a) * 0.34], lm.whitePlaster, -a);
   }
-  box(staticG, [0.55, 2.05, 2.1], [cx - 2.55, fy + 1.025, cz - 1.5], lm.teakWood);
-  box(staticG, [0.55, 2.05, 1.8], [cx - 2.55, fy + 1.025, cz + 1.6], lm.steelMat);
-  box(dynamicG, [1.4, 0.08, 0.35], [cx, fy + 3.25, cz], lm.bulbGlow, { castShadow: false });
+}
+
+function addWallClock(staticG, dynamicG, lm, x, y, z, rotY = Math.PI * 0.5) {
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 16), lm.teakWood);
+  rim.rotation.z = Math.PI * 0.5;
+  rim.rotation.y = rotY - Math.PI * 0.5;
+  rim.position.set(x, y, z);
+  staticG.add(rim);
+  const face = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.045, 16), lm.chalkLine);
+  face.rotation.z = Math.PI * 0.5;
+  face.rotation.y = rotY - Math.PI * 0.5;
+  face.position.set(x, y, z);
+  dynamicG.add(face);
+}
+
+function addAliaOfficeFurniture(staticG, dynamicG, lm, cx, cz, fy, labelTitle) {
+  const officeDado = new THREE.MeshStandardMaterial({ color: 0x2b6e63, roughness: 0.78 });
+  const rugMat = new THREE.MeshStandardMaterial({ color: 0x7c2d2d, roughness: 0.92 });
+  const cushionMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.65 });
+  const screenMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, emissive: 0x38bdf8, emissiveIntensity: 0.75 });
+  const acMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.32 });
+
+  // 1) Painted Lower Wall Dado Paneling (Teal-Green) + Patterned Office Rug
+  box(staticG, [0.06, 1.15, 7.8], [180.22, fy + 0.58, cz], officeDado);
+  box(staticG, [6.8, 1.15, 0.06], [cx - 0.1, fy + 0.58, cz - 3.95], officeDado);
+  box(staticG, [6.8, 1.15, 0.06], [cx - 0.1, fy + 0.58, cz + 3.95], officeDado);
+  box(staticG, [3.6, 0.025, 4.4], [cx - 0.2, fy + 0.015, cz], rugMat);
+
+  // 2) Executive Teak Desk + Computer Monitor + Keyboard + Files + Pen Cup + Tea Cup + Nameplate
+  box(staticG, [1.75, 0.78, 0.92], [cx - 0.55, fy + 0.39, cz], lm.teakWood);
+  box(staticG, [1.82, 0.06, 0.98], [cx - 0.55, fy + 0.79, cz], lm.warmOchre);
+  // Desktop Monitor + Stand + Keyboard + Mouse
+  box(staticG, [0.06, 0.34, 0.54], [cx - 0.78, fy + 1.04, cz - 0.05], lm.steelMat);
+  box(staticG, [0.03, 0.28, 0.48], [cx - 0.74, fy + 1.04, cz - 0.05], screenMat);
+  box(staticG, [0.16, 0.08, 0.14], [cx - 0.78, fy + 0.85, cz - 0.05], lm.steelMat);
+  box(staticG, [0.16, 0.025, 0.38], [cx - 0.48, fy + 0.83, cz - 0.05], lm.steelMat);
+  box(staticG, [0.09, 0.025, 0.06], [cx - 0.48, fy + 0.83, cz + 0.22], lm.steelMat);
+  // Colorful stacked office file folders + pen holder + tea cup + nameplate
+  box(staticG, [0.28, 0.04, 0.22], [cx - 0.45, fy + 0.84, cz - 0.34], lm.awningBlue);
+  box(staticG, [0.28, 0.04, 0.22], [cx - 0.44, fy + 0.88, cz - 0.34], lm.flowerRed);
+  box(staticG, [0.28, 0.04, 0.22], [cx - 0.46, fy + 0.92, cz - 0.34], lm.emeraldMat);
+  cylinder(staticG, 0.035, 0.035, 0.09, [cx - 0.36, fy + 0.86, cz + 0.34], lm.goldMat, 8);
+  cylinder(staticG, 0.035, 0.03, 0.07, [cx - 0.22, fy + 0.85, cz + 0.24], lm.chalkLine, 8);
+  box(staticG, [0.08, 0.09, 0.28], [cx - 0.12, fy + 0.86, cz], lm.goldMat);
+
+  // 3) Cushioned Executive Chair + 2 Visitor Chairs + Waiting Guest Sofa & Coffee Table
+  box(staticG, [0.60, 0.12, 0.60], [cx - 1.72, fy + 0.46, cz], cushionMat);
+  box(staticG, [0.12, 0.68, 0.56], [cx - 1.98, fy + 0.82, cz], cushionMat);
+  cylinder(staticG, 0.04, 0.05, 0.42, [cx - 1.72, fy + 0.22, cz], lm.steelMat, 8);
+  for (const vz of [-0.62, 0.62]) {
+    box(staticG, [0.50, 0.08, 0.50], [cx + 0.72, fy + 0.44, cz + vz], cushionMat);
+    box(staticG, [0.08, 0.48, 0.48], [cx + 0.94, fy + 0.70, cz + vz], cushionMat);
+    for (const [lx, lz] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) {
+      box(staticG, [0.04, 0.42, 0.04], [cx + 0.72 + lx, fy + 0.21, cz + vz + lz], lm.steelMat);
+    }
+  }
+  // Waiting Sofa & Coffee Table along side wall
+  box(staticG, [2.1, 0.42, 0.72], [cx + 0.4, fy + 0.21, cz - 3.35], cushionMat);
+  box(staticG, [2.1, 0.46, 0.16], [cx + 0.4, fy + 0.62, cz - 3.65], cushionMat);
+  box(staticG, [1.1, 0.42, 0.55], [cx + 0.4, fy + 0.21, cz - 2.35], lm.teakWood);
+
+  // 4) Tall Wooden Bookshelf & Steel Almirah packed with colorful books & registers
+  box(staticG, [0.56, 2.15, 2.2], [cx - 2.95, fy + 1.075, cz - 1.7], lm.teakWood);
+  const bookCols = [lm.flowerRed, lm.awningBlue, lm.emeraldMat, lm.flowerGold, lm.terracottaTile];
+  for (let shelf = 0; shelf < 4; shelf++) {
+    const sy = fy + 0.35 + shelf * 0.46;
+    for (let bi = 0; bi < 7; bi++) {
+      box(staticG, [0.24, 0.30, 0.22], [cx - 2.72, sy, cz - 2.45 + bi * 0.25], bookCols[(shelf + bi) % bookCols.length]);
+    }
+  }
+  box(staticG, [0.58, 2.15, 1.8], [cx - 2.95, fy + 1.075, cz + 1.8], lm.steelMat);
+  // Water Dispenser + Corner Potted Plant
+  box(staticG, [0.36, 0.92, 0.36], [cx - 2.85, fy + 0.46, cz + 3.25], lm.chalkLine);
+  cylinder(staticG, 0.14, 0.14, 0.42, [cx - 2.85, fy + 1.12, cz + 3.25], lm.awningBlue, 10);
+  cylinder(staticG, 0.18, 0.14, 0.36, [cx + 2.45, fy + 0.18, cz + 3.25], lm.terracottaTile, 8);
+  box(staticG, [0.55, 0.72, 0.55], [cx + 2.45, fy + 0.66, cz + 3.25], lm.emeraldMat);
+
+  // 5) Ceiling Fan + Split AC + Tube Lights + Wall Clock + Notice Board
+  addCeilingFan(staticG, lm, cx - 0.1, fy + 3.25, cz);
+  box(staticG, [0.24, 0.32, 1.05], [180.32, fy + 2.72, cz], acMat);
+  addWallClock(staticG, dynamicG, lm, 180.26, fy + 2.45, cz - 2.2, Math.PI * 0.5);
+  box(dynamicG, [1.5, 0.07, 0.12], [cx - 0.2, fy + 3.24, cz - 1.8], lm.bulbGlow, { castShadow: false });
+  box(dynamicG, [1.5, 0.07, 0.12], [cx - 0.2, fy + 3.24, cz + 1.8], lm.bulbGlow, { castShadow: false });
+  addSignBoard(
+    dynamicG,
+    { title: 'নোটিশ বোর্ড · খুলনা আলিয়া মাদ্রাসা', subtitle: 'অফিস সময়: সকাল ৮:৩০ – বিকাল ৪:০০', bg: '#0f3d2e', fg: '#ffffff', accent: '#fde047' },
+    [cx - 0.2, fy + 1.75, cz + 3.86],
+    Math.PI,
+    2.1,
+    0.85
+  );
   if (labelTitle) {
     addSignBoard(
       dynamicG,
@@ -294,18 +382,81 @@ function addAliaOfficeFurniture(staticG, dynamicG, lm, cx, cz, fy, labelTitle) {
 }
 
 function addAliaClassroomFurniture(staticG, dynamicG, lm, cx, cz, fy, roomName) {
-  box(staticG, [0.10, 1.25, 3.4], [cx - 2.75, fy + 1.55, cz], lm.emeraldDark);
-  box(staticG, [0.14, 0.08, 3.5], [cx - 2.72, fy + 0.92, cz], lm.teakWood);
-  box(staticG, [0.75, 0.82, 1.35], [cx - 1.85, fy + 0.41, cz], lm.teakWood);
-  box(staticG, [0.46, 0.46, 0.46], [cx - 2.35, fy + 0.23, cz], lm.steelMat);
+  const classDado = new THREE.MeshStandardMaterial({ color: 0x4b748f, roughness: 0.80 });
+  const notebookMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.90 });
+
+  // 1) Painted Classroom Lower Dado Wall Band (Sky-Slate Blue) + Raised Wooden Teacher Podium
+  box(staticG, [0.06, 1.12, 7.8], [180.22, fy + 0.56, cz], classDado);
+  box(staticG, [6.8, 1.12, 0.06], [cx - 0.1, fy + 0.56, cz - 3.95], classDado);
+  box(staticG, [6.8, 1.12, 0.06], [cx - 0.1, fy + 0.56, cz + 3.95], classDado);
+  box(staticG, [1.55, 0.16, 4.4], [cx - 2.35, fy + 0.08, cz], lm.warmOchre);
+
+  // 2) Large Framed Green Chalkboard with Real Lesson Text + Chalk Tray + Chalk & Duster
+  box(staticG, [0.12, 1.45, 3.65], [180.28, fy + 1.62, cz], lm.teakWood);
+  addSignBoard(
+    dynamicG,
+    {
+      title: 'বিসমিল্লাহির রাহমানির রাহিম · আল-কুরআন ও হাদিস',
+      subtitle: 'খুলনা আলিয়া কামিল মাদ্রাসা · আজকের পাঠ ও তারিখ',
+      bg: '#134e3a',
+      fg: '#f8fafc',
+      accent: '#fde68a',
+      border: '#784421',
+    },
+    [180.36, fy + 1.62, cz],
+    Math.PI * 0.5,
+    3.45,
+    1.28
+  );
+  box(staticG, [0.18, 0.07, 3.55], [180.38, fy + 0.92, cz], lm.teakWood);
+  box(staticG, [0.06, 0.04, 0.18], [180.42, fy + 0.98, cz - 0.6], lm.warmOchre); // Wooden duster
+  box(staticG, [0.03, 0.03, 0.12], [180.42, fy + 0.97, cz + 0.4], lm.chalkLine); // Chalk piece
+
+  // 3) Teacher's Desk + Chair + Attendance Register Book + Water Bottle
+  box(staticG, [0.78, 0.80, 1.42], [cx - 1.95, fy + 0.56, cz], lm.teakWood);
+  box(staticG, [0.34, 0.04, 0.44], [cx - 1.92, fy + 0.98, cz - 0.15], notebookMat);
+  cylinder(staticG, 0.04, 0.04, 0.22, [cx - 1.85, fy + 1.07, cz + 0.42], lm.awningBlue, 8);
+  box(staticG, [0.46, 0.46, 0.46], [cx - 2.55, fy + 0.39, cz], lm.steelMat);
+  box(staticG, [0.08, 0.48, 0.46], [cx - 2.76, fy + 0.72, cz], lm.steelMat);
+
+  // 4) 3 Rows x 2 Columns of Detailed Bangladeshi High-Desk & Low-Bench Sets with Open Notebooks & Books!
+  const bookCols = [lm.awningBlue, lm.flowerRed, lm.emeraldMat, lm.flowerGold];
   for (let row = 0; row < 3; row++) {
-    const rx = cx - 0.55 + row * 1.15;
-    for (const colZ of [cz - 1.55, cz + 1.55]) {
-      box(staticG, [0.46, 0.74, 2.15], [rx, fy + 0.37, colZ], lm.teakWood);
-      box(staticG, [0.34, 0.44, 2.15], [rx + 0.44, fy + 0.22, colZ], lm.warmOchre);
+    const rx = cx - 0.55 + row * 1.18;
+    for (let ci = 0; ci < 2; ci++) {
+      const colZ = ci === 0 ? (cz - 1.62) : (cz + 1.62);
+      // High wooden writing desk + side legs + under-desk book shelf
+      box(staticG, [0.46, 0.05, 2.25], [rx, fy + 0.74, colZ], lm.teakWood);
+      box(staticG, [0.38, 0.04, 2.15], [rx, fy + 0.54, colZ], lm.warmOchre);
+      for (const lz of [-1.02, 1.02]) {
+        box(staticG, [0.44, 0.74, 0.06], [rx, fy + 0.37, colZ + lz], lm.teakWood);
+      }
+      // Low wooden sitting bench + legs
+      box(staticG, [0.34, 0.05, 2.25], [rx + 0.46, fy + 0.44, colZ], lm.warmOchre);
+      for (const lz of [-1.02, 1.02]) {
+        box(staticG, [0.32, 0.44, 0.06], [rx + 0.46, fy + 0.22, colZ + lz], lm.teakWood);
+      }
+      // Open student notebooks & colorful textbooks scattered on the desks!
+      box(staticG, [0.22, 0.025, 0.30], [rx, fy + 0.78, colZ - 0.55], notebookMat);
+      box(staticG, [0.20, 0.035, 0.26], [rx, fy + 0.785, colZ + 0.48], bookCols[(row + ci) % bookCols.length]);
     }
   }
-  box(dynamicG, [2.2, 0.08, 0.4], [cx, fy + 3.25, cz], lm.bulbGlow, { castShadow: false });
+
+  // 5) 2 Ceiling Fans + 2 LED Tube Lights + Wall Clock + Class Routine Board + Dustbin
+  addCeilingFan(staticG, lm, cx - 0.2, fy + 3.25, cz - 1.65);
+  addCeilingFan(staticG, lm, cx - 0.2, fy + 3.25, cz + 1.65);
+  box(dynamicG, [2.1, 0.06, 0.12], [cx + 0.2, fy + 3.24, cz - 2.6], lm.bulbGlow, { castShadow: false });
+  box(dynamicG, [2.1, 0.06, 0.12], [cx + 0.2, fy + 3.24, cz + 2.6], lm.bulbGlow, { castShadow: false });
+  addWallClock(staticG, dynamicG, lm, 180.26, fy + 2.62, cz + 2.65, Math.PI * 0.5);
+  cylinder(staticG, 0.16, 0.13, 0.36, [cx + 2.55, fy + 0.18, cz - 3.35], lm.steelMat, 8);
+  addSignBoard(
+    dynamicG,
+    { title: 'ক্লাস রুটিন ও সময়সূচী', subtitle: 'সকাল ৯:০০ – দুপুর ২:৩০ · আলিয়া মাদ্রাসা', bg: '#1e3a8a', fg: '#ffffff', accent: '#fde047' },
+    [cx + 0.4, fy + 1.75, cz - 3.86],
+    0,
+    1.85,
+    0.78
+  );
   addSignBoard(
     dynamicG,
     { title: roomName, subtitle: '২য় তলা · CLASSROOM', bg: '#1e3a8a', fg: '#ffffff', accent: '#fde047' },
@@ -319,16 +470,91 @@ function addAliaClassroomFurniture(staticG, dynamicG, lm, cx, cz, fy, roomName) 
 function buildAliaMadrasahCampus(staticG, dynamicG, lm, m) {
   // Real-photo Khulna Alia Kamil Madrasah Campus (খুলনা আলিয়া কামিল মাদ্রাসা)
   // Spawn is at (216, 108) looking West toward the Main Walkable Building (185, 108) & Big Front Buildings!
+  const lightGrassMat = new THREE.MeshStandardMaterial({ color: 0x6ea84f, roughness: 0.94, metalness: 0.01 });
+  const softTuftMat = new THREE.MeshStandardMaterial({ color: 0x5c9640, roughness: 0.92, metalness: 0.01 });
 
-  // 1) Concrete Entrance Driveway + Front Courtyard Green Lawns (x = 191..228, z = 108)
+  // 1) Concrete Entrance Driveway + Real 3D Grass Field Model (grass_field.glb) on BOTH Right (North) & Left (South) sides!
   box(staticG, [36.0, 0.07, 5.6], [208.5, 0.025, 108.0], lm.stonePlinth, { castShadow: false, uvScale: 2.8 });
   box(staticG, [34.0, 0.22, 0.36], [208.5, 0.11, 105.0], lm.darkConcrete);
   box(staticG, [34.0, 0.22, 0.36], [208.5, 0.11, 111.0], lm.darkConcrete);
   addRedGreenFenceSpan(staticG, lm, 195.0, 105.0, 222.0, 105.0, 14);
   addRedGreenFenceSpan(staticG, lm, 195.0, 111.0, 222.0, 111.0, 14);
 
-  // Open Green Courtyard Field right in front flanking the walkway so all big buildings stand prominently in front!
-  box(staticG, [32.0, 0.05, 56.0], [208.0, 0.012, 108.0], lm.moss, { castShadow: false });
+  // Dark natural soil base matching grass_field.glb Material.001 (removes the old flat green painted layer!)
+  const soilBedMat = new THREE.MeshStandardMaterial({ color: 0x261d14, roughness: 0.99, metalness: 0.0 });
+  box(staticG, [32.0, 0.04, 22.8], [208.0, 0.012, 93.2], soilBedMat, { castShadow: false });
+  box(staticG, [32.0, 0.04, 22.8], [208.0, 0.012, 122.8], soilBedMat, { castShadow: false });
+
+  // Load real 3D Grass Field Clumps (extracted from user's grass_field.glb) & cover BOTH fields densely!
+  const grassLoader = new GLTFLoader();
+  grassLoader.load('./assets/alia_grass_clumps.glb', (gltf) => {
+    const clumpTemplates = [];
+    gltf.scene.updateMatrixWorld(true);
+    gltf.scene.traverse((child) => {
+      if (!child.isMesh || !child.geometry) return;
+      const geom = child.geometry.clone();
+      geom.computeBoundingBox();
+      const bb = geom.boundingBox;
+      if (bb) {
+        const cx = (bb.min.x + bb.max.x) * 0.5;
+        const cz = (bb.min.z + bb.max.z) * 0.5;
+        geom.translate(-cx, -bb.min.y, -cz);
+      }
+      const srcMat = Array.isArray(child.material) ? child.material[0] : child.material;
+      const mat = new THREE.MeshStandardMaterial({
+        color: srcMat?.color ? srcMat.color.clone() : new THREE.Color(0x3f7d24),
+        roughness: 0.92,
+        metalness: 0.0,
+        side: THREE.DoubleSide,
+      });
+      clumpTemplates.push({ geom, mat });
+    });
+    if (!clumpTemplates.length) return;
+
+    let seed = 195201;
+    const rand = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    const fieldRects = [
+      { x0: 192.4, x1: 223.6, z0: 82.0, z1: 104.4 },  // Right-hand (North) grass field
+      { x0: 192.4, x1: 223.6, z0: 111.6, z1: 134.0 }, // Left-hand (South) grass field
+    ];
+    const perClumpCount = 1350; // 3 clumps x 1,350 = 4,050 dense real 3D grass clumps in just 3 GPU draw calls!
+    const dummy = new THREE.Object3D();
+    const col = new THREE.Color();
+
+    for (let ci = 0; ci < clumpTemplates.length; ci++) {
+      const { geom, mat } = clumpTemplates[ci];
+      const inst = new THREE.InstancedMesh(geom, mat, perClumpCount);
+      inst.castShadow = false;
+      inst.receiveShadow = true;
+      for (let i = 0; i < perClumpCount; i++) {
+        const rect = fieldRects[i % 2];
+        const gx = rect.x0 + rand() * (rect.x1 - rect.x0);
+        const gz = rect.z0 + rand() * (rect.z1 - rect.z0);
+        if (gx > 200.2 && gx < 204.2 && gz > 102.0 && gz < 104.5) {
+          dummy.position.set(gx + 6.5, 0.025, gz - 4.0);
+        } else {
+          dummy.position.set(gx, 0.025, gz);
+        }
+        dummy.rotation.set((rand() - 0.5) * 0.14, rand() * Math.PI * 2, (rand() - 0.5) * 0.14);
+        const sx = 0.13 + rand() * 0.085;
+        const sy = 0.055 + rand() * 0.048;
+        const sz = 0.13 + rand() * 0.085;
+        dummy.scale.set(sx, sy, sz);
+        dummy.updateMatrix();
+        inst.setMatrixAt(i, dummy.matrix);
+        col.setHSL(0.26 + (rand() - 0.5) * 0.05, 0.54 + rand() * 0.18, 0.30 + rand() * 0.15);
+        inst.setColorAt(i, col);
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+      dynamicG.add(inst);
+    }
+  }, undefined, (err) => {
+    console.warn('Alia Madrasah grass_field GLB load warning:', err);
+  });
 
   // Tall Coconut Palms flanking the main building entrance just like the real photo
   addCoconutPalm(staticG, lm, 196.5, 101.2, 11.2, 0.8, -0.5);

@@ -181,7 +181,7 @@ timeToggleButton?.addEventListener('click', cycleTimeOfDay);
 function renderActiveScene() {
   const needsBloom = Boolean(
     bloomPass && bloomPass.strength > 0.05
-    && (quality === 'ultra' || timeOfDayId === 'sunset' || timeOfDayId === 'night')
+    && (timeOfDayId === 'sunset' || timeOfDayId === 'night')
   );
   if (composer && !inStudio && !ultraFastMode && quality !== 'low' && needsBloom) {
     composer.render();
@@ -213,6 +213,8 @@ let runModeToggle = false;
 let shiftHeld = false;
 let doubleTapSprint = false;
 let lastForwardDownTime = 0;
+let lastSpaceDownTime = 0;
+let doubleSpaceJumpPending = false;
 let airPeakY = EYE_HEIGHT;
 let isFlipping = false;
 let landRecoveryTimer = 0;
@@ -220,6 +222,16 @@ let landRecoveryClip = null;
 let inWater = false;
 let wallAhead = false;
 const wallProbePos = new THREE.Vector3();
+const ledgeHangState = {
+  active: false,
+  yaw: 0,
+  dirX: 0,
+  dirZ: 0,
+  grabX: 0,
+  grabY: 0,
+  grabZ: 0,
+  ledgeTopY: 0,
+};
 const climbState = {
   active: false,
   timer: 0,
@@ -293,13 +305,24 @@ const carCamLookTarget = new THREE.Vector3();
 let carOrbitYaw = 0;
 let carOrbitPitch = 0.24;
 let carOrbitLastMove = 0;
+const freeCamBokehEl = document.querySelector('#freecam-bokeh');
 const freeCam = {
   active: false,
   pos: new THREE.Vector3(),
   euler: new THREE.Euler(0, 0, 0, 'YXZ'),
   fwd: new THREE.Vector3(),
   right: new THREE.Vector3(),
+  fov: 60,
+  targetFov: 60,
+  speed: 12.0,
 };
+
+function syncFreeCamBokeh() {
+  if (!freeCamBokehEl) return;
+  const zoomFrac = freeCam.active ? THREE.MathUtils.clamp((54 - freeCam.fov) / 36, 0, 1) : 0;
+  freeCamBokehEl.style.setProperty('--bokeh-blur', `${(zoomFrac * 9.5).toFixed(1)}px`);
+  freeCamBokehEl.classList.toggle('active', zoomFrac > 0.05);
+}
 
 function toggleFreeCam() {
   if (inStudio || !started) return;
@@ -308,9 +331,31 @@ function toggleFreeCam() {
   if (freeCam.active) {
     freeCam.pos.copy(camera.position);
     freeCam.euler.setFromQuaternion(camera.quaternion, 'YXZ');
+    freeCam.fov = 60;
+    freeCam.targetFov = 60;
+    freeCam.speed = 12.0;
     freeCursorMode = false;
     if (!controls.pointerLocked) controls.lock();
+  } else {
+    camera.fov = 60;
+    camera.updateProjectionMatrix();
+    syncFreeCamBokeh();
   }
+}
+
+function getLiveMapHeadingYaw() {
+  const drivingCar = getDrivingCar();
+  if (drivingCar) return drivingCar.state.heading + Math.PI;
+  if (freeCam.active) return freeCam.euler.y;
+  controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
+  return controls.euler.y;
+}
+
+function getLiveMapPos() {
+  const drivingCar = getDrivingCar();
+  if (drivingCar) return drivingCar.state.pos;
+  if (freeCam.active) return freeCam.pos;
+  return playerPos;
 }
 let sun;
 let ambientLight;
@@ -1103,7 +1148,7 @@ function applyQuality(nextQuality) {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMappingExposure = isUltra ? 1.12 : (isHigh ? 1.08 : (isLow ? 1.05 : 1.06));
   if (composer) {
-    composer.setPixelRatio(activeRatio);
+    composer.setPixelRatio(Math.min(activeRatio, 1.25));
     composer.setSize(window.innerWidth, window.innerHeight);
     bloomPass?.setSize?.(
       Math.max(256, Math.floor(window.innerWidth * 0.5)),
@@ -1550,13 +1595,14 @@ function syncCarHUD() {
   const driving = Boolean(activeCar);
   if (carToggleButton) {
     carToggleButton.innerHTML = driving
-      ? (activeCar.state.isRickshaw ? 'EXIT RICKSHAW <span>[T]</span>' : 'EXIT CAR <span>[T]</span>')
+      ? (activeCar.state.isRickshaw ? 'EXIT RICKSHAW <span>[T]</span>' : (activeCar.state.isBike ? 'EXIT BIKE <span>[T]</span>' : 'EXIT CAR <span>[T]</span>'))
       : 'DRIVE CAR <span>[T]</span>';
   }
   carHud?.classList.toggle('hidden', !driving);
   emoteBar?.classList.toggle('hidden', driving);
   if (driving && activeCar) {
     const isRick = Boolean(activeCar.state.isRickshaw);
+    const isBike = Boolean(activeCar.state.isBike);
     const isPass = isRick && activeCar.state.rideSeat === 'passenger';
     if (carBadgeEl) {
       if (isRick) {
@@ -1573,12 +1619,12 @@ function syncCarHUD() {
       }
     }
     if (carSeatBtn) carSeatBtn.classList.toggle('hidden', !isRick);
-    if (carHudDoorsEl) carHudDoorsEl.classList.toggle('hidden', isRick);
+    if (carHudDoorsEl) carHudDoorsEl.classList.toggle('hidden', isRick || isBike);
     if (carSeatLabelEl && isRick) {
       carSeatLabelEl.textContent = isPass ? 'ড্রাইভার সিট' : 'প্যাসেঞ্জার সিট';
     }
     if (carCamLabelEl) {
-      const camNames = { chase: '৩য় পার্সন', hood: 'বোনট ভিউ', front: 'ফ্রন্ট ভিউ' };
+      const camNames = { chase: '৩য় পার্সন', hood: 'বোনট ভিউ', pov: 'POV স্পিডো', front: 'ফ্রন্ট ভিউ' };
       carCamLabelEl.textContent = isRick ? 'ক্যামেরা' : (camNames[activeCar.state.cameraMode] || '৩য় পার্সন');
     }
     carPovBtn?.classList.remove('active');
@@ -1633,7 +1679,15 @@ function startVehicleTransition(type, car, seatMode = 'driver') {
   vehicleTransition.beltCue = false;
   if (vehicleFadeEl) vehicleFadeEl.style.opacity = '0';
 
-  if (type === 'rickshaw_mount_driver') {
+  if (type === 'bike_mount') {
+    vehicleTransition.duration = 0.72;
+    vehicleTransition.startPos.set(st.pos.x + rx * 0.74 - sinH * 0.18, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.74 - cosH * 0.18);
+    vehicleTransition.endPos.set(st.pos.x - sinH * 0.18, st.pos.y + 0.04 + EYE_HEIGHT, st.pos.z - cosH * 0.18);
+  } else if (type === 'bike_dismount') {
+    vehicleTransition.duration = 0.64;
+    vehicleTransition.startPos.set(st.pos.x - sinH * 0.18, st.pos.y + 0.04 + EYE_HEIGHT, st.pos.z - cosH * 0.18);
+    vehicleTransition.endPos.set(st.pos.x + rx * 0.88 - sinH * 0.18, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.88 - cosH * 0.18);
+  } else if (type === 'rickshaw_mount_driver') {
     vehicleTransition.duration = 0.78;
     vehicleTransition.startPos.set(st.pos.x + rx * 0.78 - sinH * 0.05, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.78 - cosH * 0.05);
     vehicleTransition.endPos.set(st.pos.x - sinH * 0.05, st.pos.y + 0.16 + EYE_HEIGHT, st.pos.z - cosH * 0.05);
@@ -1756,7 +1810,7 @@ function updateVehicleTransition(delta) {
   let facingYaw = st.heading;
   let hideMesh = false;
 
-  if (vt.type === 'rickshaw_mount_driver' || vt.type === 'rickshaw_dismount_driver') {
+  if (vt.type === 'bike_mount' || vt.type === 'bike_dismount' || vt.type === 'rickshaw_mount_driver' || vt.type === 'rickshaw_dismount_driver') {
     playerPos.lerpVectors(vt.startPos, vt.endPos, ease);
     clip = 'Idle';
     timeScale = 0.0;
@@ -1851,14 +1905,14 @@ function updateVehicleTransition(delta) {
   }
 
   // Smooth cinematic camera framing the mount/dismount/door-open/seatbelt animation clearly!
-  const camDist = st.isRickshaw ? 3.2 : 4.2;
-  const camSide = st.isRickshaw ? 1.85 : 2.35;
+  const camDist = (st.isRickshaw || st.isBike) ? 3.2 : 4.2;
+  const camSide = (st.isRickshaw || st.isBike) ? 1.85 : 2.35;
   carCamDesired.set(
     st.pos.x + rx * camSide - sinH * (camDist * 0.55),
-    st.pos.y + 1.85,
+    st.pos.y + 1.75,
     st.pos.z + rz * camSide - cosH * (camDist * 0.55),
   );
-  carCamLookTarget.set(playerPos.x, playerPos.y - 0.45, playerPos.z);
+  carCamLookTarget.set(playerPos.x, playerPos.y - 0.50, playerPos.z);
   camera.position.lerp(carCamDesired, Math.min(1, delta * 7.5));
   camera.lookAt(carCamLookTarget);
 
@@ -1881,7 +1935,7 @@ function updateVehicleTransition(delta) {
         facingYaw,
         clip,
         timeScale,
-        anchors: st.isRickshaw ? car.getRickshawAnchors?.() : null,
+        anchors: st.isRickshaw ? car.getRickshawAnchors?.() : (st.isBike ? car.getBikeRiderAnchors?.() : null),
         handTarget: vt.handTarget,
       },
     });
@@ -1893,9 +1947,9 @@ function updateVehicleTransition(delta) {
     vt.active = false;
     vt.type = null;
     car.setDriverDoorOpen?.(0);
-    if (doneType === 'rickshaw_mount_driver' || doneType === 'rickshaw_mount_passenger' || doneType === 'car_enter') {
+    if (doneType === 'bike_mount' || doneType === 'rickshaw_mount_driver' || doneType === 'rickshaw_mount_passenger' || doneType === 'car_enter') {
       car.enterCar(doneSeat);
-      if (!car.state.isRickshaw && controls.isLocked) {
+      if (!car.state.isRickshaw && !car.state.isBike && controls.isLocked) {
         controls.unlock();
       }
       syncCarHUD();
@@ -1917,8 +1971,13 @@ function toggleCarDriving(targetCar = null, seatMode = 'driver') {
   const activeCar = getDrivingCar();
   if (activeCar) {
     const wasRick = Boolean(activeCar.state.isRickshaw);
+    const wasBike = Boolean(activeCar.state.isBike);
     const wasPass = wasRick && activeCar.state.rideSeat === 'passenger';
-    if (wasRick) {
+    if (wasBike) {
+      activeCar.exitCar(playerPos);
+      syncCarHUD();
+      startVehicleTransition('bike_dismount', activeCar, 'driver');
+    } else if (wasRick) {
       activeCar.exitCar(playerPos);
       syncCarHUD();
       startVehicleTransition(
@@ -1937,8 +1996,9 @@ function toggleCarDriving(targetCar = null, seatMode = 'driver') {
   if (liftKeypadOpen) closeLiftKeypad(false);
   if (!started) beginWalking();
   const isRick = Boolean(carToEnter.state.isRickshaw);
+  const isBike = Boolean(carToEnter.state.isBike);
   startVehicleTransition(
-    isRick ? (seatMode === 'passenger' ? 'rickshaw_mount_passenger' : 'rickshaw_mount_driver') : 'car_enter',
+    isBike ? 'bike_mount' : (isRick ? (seatMode === 'passenger' ? 'rickshaw_mount_passenger' : 'rickshaw_mount_driver') : 'car_enter'),
     carToEnter,
     seatMode,
   );
@@ -2359,6 +2419,11 @@ window.addEventListener('pointerup', () => {
 });
 
 canvas.addEventListener('wheel', (event) => {
+  if (freeCam.active && !inStudio) {
+    event.preventDefault();
+    freeCam.targetFov = THREE.MathUtils.clamp(freeCam.targetFov + event.deltaY * 0.045, 18, 82);
+    return;
+  }
   if (!inStudio) return;
   event.preventDefault();
   studioOrbit.targetDistance = THREE.MathUtils.clamp(
@@ -2366,7 +2431,6 @@ canvas.addEventListener('wheel', (event) => {
     0.92,
     3.6
   );
-  // Automatically shift vertical focus between face (1.54m) and full body (0.86m) as user zooms in/out
   const zoomT = THREE.MathUtils.clamp((studioOrbit.targetDistance - 1.18) / 1.48, 0, 1);
   studioOrbit.targetLookY = THREE.MathUtils.lerp(1.54, 0.86, zoomT);
 }, { passive: false });
@@ -2545,14 +2609,12 @@ resumeButton?.addEventListener('click', beginWalking);
 mapHudButton?.addEventListener('click', (e) => {
   e.stopPropagation();
   if (inStudio) return;
-  controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
-  khulnaMapUI?.toggleMap(playerPos, controls.euler.y);
+  khulnaMapUI?.toggleMap(getLiveMapPos(), getLiveMapHeadingYaw());
 });
 minimapDock?.addEventListener('click', (e) => {
   e.stopPropagation();
   if (inStudio) return;
-  controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
-  khulnaMapUI?.openMap(playerPos, controls.euler.y);
+  khulnaMapUI?.openMap(getLiveMapPos(), getLiveMapHeadingYaw());
 });
 spawnSelect?.addEventListener('change', () => {
   const lm = khulnaMapUI?.landmarks?.find((l) => l.id === spawnSelect.value);
@@ -2701,8 +2763,7 @@ controls.addEventListener('unlock', () => {
   if (!inStudio && started && !referenceModal.open) {
     // GTA-style [ESC]: unlocking pointer opens the Khulna City Map directly instead of a pause screen!
     pause.classList.add('hidden');
-    controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
-    khulnaMapUI?.openMap(playerPos, controls.euler.y);
+    khulnaMapUI?.openMap(getLiveMapPos(), getLiveMapHeadingYaw());
     return;
   }
   walkHud.classList.add('hidden');
@@ -2826,7 +2887,16 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (freeCam.active) {
-    if (event.code === 'Space') event.preventDefault();
+    if (event.code === 'Space' || event.code.startsWith('Arrow')) event.preventDefault();
+    if (event.code === 'ArrowUp' || event.code === 'ArrowRight') {
+      freeCam.speed = THREE.MathUtils.clamp(freeCam.speed * 1.32, 1.5, 90.0);
+    } else if (event.code === 'ArrowDown' || event.code === 'ArrowLeft') {
+      freeCam.speed = THREE.MathUtils.clamp(freeCam.speed / 1.32, 1.5, 90.0);
+    } else if (event.code === 'Equal' || event.code === 'NumpadAdd') {
+      freeCam.targetFov = THREE.MathUtils.clamp(freeCam.targetFov - 5, 18, 82);
+    } else if (event.code === 'Minus' || event.code === 'NumpadSubtract') {
+      freeCam.targetFov = THREE.MathUtils.clamp(freeCam.targetFov + 5, 18, 82);
+    }
     keys.add(event.code);
     return;
   }
@@ -2848,8 +2918,7 @@ window.addEventListener('keydown', (event) => {
       khulnaMapUI.closeMap();
       if (!inStudio && started) controls.lock();
     } else if (!liftKeypadOpen) {
-      controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
-      khulnaMapUI?.openMap(playerPos, controls.euler.y);
+      khulnaMapUI?.openMap(getLiveMapPos(), getLiveMapHeadingYaw());
     }
     return;
   }
@@ -3067,6 +3136,18 @@ window.addEventListener('keydown', (event) => {
   keys.add(event.code);
   if (event.code === 'Space' && controls.isLocked) {
     event.preventDefault();
+    if (!event.repeat) {
+      const nowSp = performance.now();
+      if (nowSp - lastSpaceDownTime < 360) {
+        doubleSpaceJumpPending = true;
+        if (!grounded && !ledgeHangState.active && !climbState.active && verticalVelocity > 0.5) {
+          verticalVelocity = Math.max(verticalVelocity, 8.35);
+        }
+      } else {
+        doubleSpaceJumpPending = false;
+      }
+      lastSpaceDownTime = nowSp;
+    }
     jumpBuffer = 0.15;
   }
 });
@@ -3930,8 +4011,10 @@ function updateHUDPrompt() {
         promptText = `[E / F] এখানে বসুন: ${nearSeat.label} (Sit Down)`;
       } else if (inWater) {
         promptText = '[SPACE] পানি থেকে লাফিয়ে উঠুন · [WASD] সাঁতার (Swim)';
+      } else if (ledgeHangState.active) {
+        promptText = '[W / SPACE] দেয়াল টপকে উঠুন (Climb Over) · [S] ছেড়ে দিন (Drop)';
       } else if (wallAhead && !climbState.active) {
-        promptText = '[F / SPACE] দেয়াল বেয়ে উঠুন (Wall Climb)';
+        promptText = '[SPACE / F] দেয়াল ধরে ঝুলুন (Grab Wall)';
       } else {
         promptText = carPrompt || null;
       }
@@ -4076,27 +4159,43 @@ function updateStudioCamera(delta) {
 function updateMovement(delta) {
   if (!started || (pause && !pause.classList.contains('hidden'))) return;
 
-  // Dedicated [C] Free Cam flying mode (camera detaches and flies anywhere in 3D space!)
+  // Dedicated [C] Free Cam flying mode (WASD fly, Arrow keys speed slow/fast, Scroll/+/- zoom + Portrait Mode bokeh!)
   if (freeCam.active) {
     const dt = Math.min(delta, 0.05);
     camera.quaternion.setFromEuler(freeCam.euler);
     freeCam.fwd.set(0, 0, -1).applyQuaternion(camera.quaternion);
     freeCam.right.set(1, 0, 0).applyQuaternion(camera.quaternion);
-    const fIn = Number(keys.has('KeyW') || keys.has('ArrowUp')) - Number(keys.has('KeyS') || keys.has('ArrowDown'));
-    const rIn = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft'));
+    const fIn = Number(keys.has('KeyW')) - Number(keys.has('KeyS'));
+    const rIn = Number(keys.has('KeyD')) - Number(keys.has('KeyA'));
     const uIn = Number(keys.has('KeyE') || keys.has('Space')) - Number(keys.has('KeyQ') || keys.has('ControlLeft'));
-    const flySpeed = (keys.has('ShiftLeft') || keys.has('ShiftRight')) ? 34.0 : 12.0;
+    const flySpeed = freeCam.speed * ((keys.has('ShiftLeft') || keys.has('ShiftRight')) ? 2.4 : 1.0);
     freeCam.pos.addScaledVector(freeCam.fwd, fIn * flySpeed * dt);
     freeCam.pos.addScaledVector(freeCam.right, rIn * flySpeed * dt);
     freeCam.pos.y = Math.max(0.35, freeCam.pos.y + uIn * flySpeed * dt);
     camera.position.copy(freeCam.pos);
+    freeCam.fov = THREE.MathUtils.lerp(freeCam.fov, freeCam.targetFov, Math.min(1, dt * 10));
+    if (Math.abs(camera.fov - freeCam.fov) > 0.04) {
+      camera.fov = freeCam.fov;
+      camera.updateProjectionMatrix();
+    }
+    syncFreeCamBokeh();
     return;
   }
 
-  // Always update all drivable cars & rickshaws
+  // Always update all drivable cars, bikes & rickshaws (distance-cull far parked vehicles for 60 FPS!)
   if (cars.length) {
+    const activeRef = getDrivingCar();
+    const refX = activeRef ? activeRef.state.pos.x : playerPos.x;
+    const refZ = activeRef ? activeRef.state.pos.z : playerPos.z;
     for (const car of cars) {
-      car.update(delta, keys, house, environment, cars);
+      const dxV = car.state.pos.x - refX;
+      const dzV = car.state.pos.z - refZ;
+      const dSq = dxV * dxV + dzV * dzV;
+      const vis = car.state.driving || dSq < 150 * 150;
+      if (car.group.visible !== vis) car.group.visible = vis;
+      if (vis || Math.abs(car.state.speed) > 0.05) {
+        car.update(delta, keys, house, environment, cars);
+      }
     }
     if (updateVehicleTransition(delta)) {
       return;
@@ -4110,17 +4209,22 @@ function updateMovement(delta) {
       const cosH = Math.cos(st.heading);
       const speedKmh = Math.abs(st.speed) * 3.6;
 
-      // Dynamic speed-rush FOV while driving (wide natural cockpit FOV in 1st-Person Interior POV)
-      const isInteriorPov = st.cameraMode === 'interior' && !st.isRickshaw;
-      const targetFov = isInteriorPov
-        ? THREE.MathUtils.clamp(68 + speedKmh * 0.08, 68, 78)
+      const isBikePov = st.isBike && st.cameraMode === 'pov';
+      const isInteriorPov = st.cameraMode === 'interior' && !st.isRickshaw && !st.isBike;
+      const targetFov = (isInteriorPov || isBikePov)
+        ? THREE.MathUtils.clamp(68 + speedKmh * 0.09, 68, 80)
         : THREE.MathUtils.clamp(60 + speedKmh * 0.12, 60, 75);
       if (Math.abs(camera.fov - targetFov) > 0.05) {
         camera.fov += (targetFov - camera.fov) * Math.min(1, delta * 7.5);
         camera.updateProjectionMatrix();
       }
 
-      if (isInteriorPov && drivingCar.getInteriorCameraPose?.(carCamDesired, carCamLookTarget)) {
+      if (isBikePov && drivingCar.getBikePovCameraPose?.(carCamDesired, carCamLookTarget)) {
+        if (baseCamNear === 0) baseCamNear = camera.near;
+        syncCameraNear(0.045);
+        camera.position.copy(carCamDesired);
+        camera.lookAt(carCamLookTarget);
+      } else if (isInteriorPov && drivingCar.getInteriorCameraPose?.(carCamDesired, carCamLookTarget)) {
         if (baseCamNear === 0) baseCamNear = camera.near;
         syncCameraNear(0.045);
         camera.position.copy(carCamDesired);
@@ -4135,12 +4239,11 @@ function updateMovement(delta) {
           camera.position.copy(carCamDesired);
           camera.lookAt(carCamLookTarget);
         } else if (st.cameraMode === 'front') {
-          carCamDesired.set(st.pos.x + sinH * 4.4, st.pos.y + 1.55, st.pos.z + cosH * 4.4);
-          carCamLookTarget.set(st.pos.x, st.pos.y + 1.0, st.pos.z);
+          carCamDesired.set(st.pos.x + sinH * (st.isBike ? 3.2 : 4.4), st.pos.y + (st.isBike ? 1.35 : 1.55), st.pos.z + cosH * (st.isBike ? 3.2 : 4.4));
+          carCamLookTarget.set(st.pos.x, st.pos.y + 0.95, st.pos.z);
           camera.position.lerp(carCamDesired, Math.min(1, delta * 9.0));
           camera.lookAt(carCamLookTarget);
         } else {
-          // GTA V-style 360-deg Free-Look Orbit Chase Cam around the active car or rickshaw
           const nowOrbit = performance.now();
           const recentlyMovedMouse = (nowOrbit - carOrbitLastMove) < 2200;
           if (Math.abs(st.speed) > 1.4 && !recentlyMovedMouse) {
@@ -4163,7 +4266,27 @@ function updateMovement(delta) {
       }
 
       if (playerCharacter) {
-        if (st.isRickshaw) {
+        if (st.isBike) {
+          playerCharacter.update(delta, {
+            position: playerPos,
+            yaw: st.heading + Math.PI,
+            speed: Math.abs(st.speed),
+            maxSpeed: 30.0,
+            grounded: true,
+            isSprinting: false,
+            inStudio: false,
+            hideMesh: isBikePov,
+            bikeRide: {
+              active: true,
+              heading: st.heading,
+              steerAngle: st.steerAngle,
+              roll: st.roll,
+              sportLean: Boolean(st.bikeSportLean),
+              speed: st.speed,
+              anchors: drivingCar.getBikeRiderAnchors?.(),
+            },
+          });
+        } else if (st.isRickshaw) {
           const anchors = drivingCar.getRickshawAnchors?.();
           const isPassenger = st.rideSeat === 'passenger';
           const seatBackOffset = isPassenger ? 0.62 : 0.05;
@@ -4315,7 +4438,29 @@ function updateMovement(delta) {
   let maxSpeed = inWater ? (isSprinting ? 4.4 : 2.9) : (isSprinting ? 7.65 : 3.45);
   if (landRecoveryTimer > 0) maxSpeed *= 0.45;
 
-  if (climbState.active) {
+  if (ledgeHangState.active) {
+    playerPos.set(ledgeHangState.grabX, ledgeHangState.grabY, ledgeHangState.grabZ);
+    horizontalVelocity.set(0, 0);
+    verticalVelocity = 0;
+    grounded = false;
+    if (forwardInput > 0.2 || jumpBuffer > 0) {
+      jumpBuffer = 0;
+      ledgeHangState.active = false;
+      climbState.active = true;
+      climbState.timer = 0;
+      climbState.duration = 0.72;
+      climbState.startX = ledgeHangState.grabX;
+      climbState.startY = ledgeHangState.grabY;
+      climbState.startZ = ledgeHangState.grabZ;
+      climbState.targetX = ledgeHangState.grabX + ledgeHangState.dirX * 0.96;
+      climbState.targetY = ledgeHangState.ledgeTopY;
+      climbState.targetZ = ledgeHangState.grabZ + ledgeHangState.dirZ * 0.96;
+      climbState.yaw = ledgeHangState.yaw;
+    } else if (forwardInput < -0.2) {
+      ledgeHangState.active = false;
+      verticalVelocity = -0.6;
+    }
+  } else if (climbState.active) {
     climbState.timer += delta;
     const t = Math.min(1, climbState.timer / climbState.duration);
     // Smooth climb curve: rise vertically up wall first, then mantle forward onto ledge
@@ -4396,15 +4541,29 @@ function updateMovement(delta) {
 
   if (jumpBuffer > 0) jumpBuffer = Math.max(0, jumpBuffer - delta);
 
-  if (!climbState.active && jumpBuffer > 0 && coyoteTimer > 0 && !(insideLiftNow && environment?.tower?.state?.liftPhase === 'moving')) {
-    if (wallAhead && forwardInput > 0.2 && !inWater) {
-      // Automatic Wall Climb when jumping forward into a wall/railing/compound wall!
+  if (!climbState.active && !ledgeHangState.active && jumpBuffer > 0 && coyoteTimer > 0 && !(insideLiftNow && environment?.tower?.state?.liftPhase === 'moving')) {
+    if (wallAhead && !inWater) {
+      // Grab the wall top with both hands & hang! Press [W] to vault/climb over!
       jumpBuffer = 0;
       coyoteTimer = 0;
-      startWallClimb();
+      controls.getHorizontalVectors(forwardVec, rightVec);
+      ledgeHangState.active = true;
+      ledgeHangState.dirX = forwardVec.x;
+      ledgeHangState.dirZ = forwardVec.z;
+      ledgeHangState.yaw = Math.atan2(forwardVec.x, forwardVec.z);
+      ledgeHangState.grabX = playerPos.x;
+      ledgeHangState.grabY = groundY + EYE_HEIGHT + 0.92;
+      ledgeHangState.grabZ = playerPos.z;
+      ledgeHangState.ledgeTopY = groundY + EYE_HEIGHT + 2.35;
+      grounded = false;
+      verticalVelocity = 0;
+      horizontalVelocity.set(0, 0);
+      if (playerCharacter) playerCharacter.state.emote = null;
     } else {
-      const doFlip = isSprinting && !inWater && !diveState.active;
-      verticalVelocity = inWater ? 6.45 : (doFlip ? 6.95 : 6.25);
+      const isHighJump = doubleSpaceJumpPending;
+      doubleSpaceJumpPending = false;
+      const doFlip = isSprinting && !inWater && !diveState.active && !isHighJump;
+      verticalVelocity = inWater ? 6.45 : (isHighJump ? 8.35 : (doFlip ? 6.95 : 6.25));
       isFlipping = doFlip;
       grounded = false;
       inWater = false;
@@ -4414,9 +4573,22 @@ function updateMovement(delta) {
       landRecoveryTimer = 0;
       landRecoveryClip = null;
     }
+  } else if (!grounded && !climbState.active && !ledgeHangState.active && !inWater && wallAhead && playerPos.y > groundY + EYE_HEIGHT + 0.45 && forwardInput > 0.15) {
+    // Mid-air wall grab when jumping toward a wall!
+    controls.getHorizontalVectors(forwardVec, rightVec);
+    ledgeHangState.active = true;
+    ledgeHangState.dirX = forwardVec.x;
+    ledgeHangState.dirZ = forwardVec.z;
+    ledgeHangState.yaw = Math.atan2(forwardVec.x, forwardVec.z);
+    ledgeHangState.grabX = playerPos.x;
+    ledgeHangState.grabY = groundY + EYE_HEIGHT + 0.92;
+    ledgeHangState.grabZ = playerPos.z;
+    ledgeHangState.ledgeTopY = groundY + EYE_HEIGHT + 2.35;
+    verticalVelocity = 0;
+    horizontalVelocity.set(0, 0);
   }
 
-  if (climbState.active) {
+  if (climbState.active || ledgeHangState.active) {
     // Climb arc controls playerPos.y directly
   } else if (inWater) {
     const waterEyeY = EYE_HEIGHT - 0.55;
@@ -4548,6 +4720,7 @@ function updateMovement(delta) {
       moveDirZ: wishDir.z,
       inStudio: false,
       hideMesh: hidePlayerMesh,
+      ledgeHang: ledgeHangState.active ? ledgeHangState : null,
     });
     syncEmoteUI(playerCharacter.state.emote);
   }
@@ -4568,6 +4741,8 @@ window.addEventListener('resize', () => {
 
 let fpsFrames = 0;
 let fpsTime = performance.now();
+let shadowFrameCounter = 0;
+let lastFullMapUpdate = 0;
 function animate() {
   if (!ready) return;
   const delta = Math.min(clock.getDelta(), 0.05);
@@ -4598,11 +4773,15 @@ function animate() {
     if (skySystem) skySystem.update(elapsed, camera.position);
     if (environment && !deepInTowerUpper) environment.update(elapsed, playerPos, isLow);
 
-    if (khulnaMapUI && !khulnaMapUI.isOpen && nowPerf - lastMinimapUpdate > 100) {
+    const liveYaw = getLiveMapHeadingYaw();
+    const mapPos = getLiveMapPos();
+    if (khulnaMapUI && khulnaMapUI.isOpen && nowPerf - lastFullMapUpdate > 45) {
+      lastFullMapUpdate = nowPerf;
+      khulnaMapUI.renderFullMap(mapPos, liveYaw);
+    } else if (khulnaMapUI && !khulnaMapUI.isOpen && nowPerf - lastMinimapUpdate > 85) {
       lastMinimapUpdate = nowPerf;
-      controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
-      const info = environment?.city?.findNearestRoadAndDistrict?.(playerPos.x, playerPos.z);
-      khulnaMapUI.renderMinimap(playerPos, controls.euler.y, info);
+      const info = environment?.city?.findNearestRoadAndDistrict?.(mapPos.x, mapPos.z);
+      khulnaMapUI.renderMinimap(mapPos, liveYaw, info);
     }
 
     if (!started) {

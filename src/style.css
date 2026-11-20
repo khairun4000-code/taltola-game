@@ -771,6 +771,20 @@ body.freecam-active #gta-cheat-toast {
   visibility: hidden !important;
 }
 
+/* Free Cam Portrait Mode Bokeh Depth-of-Field Blur Overlay (intensifies smoothly as you zoom in!) */
+.freecam-bokeh {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  mask-image: radial-gradient(circle at 50% 50%, transparent 24%, rgba(0, 0, 0, 0.45) 48%, #000000 76%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 24%, rgba(0, 0, 0, 0.45) 48%, #000000 76%);
+  transition: opacity 0.14s ease;
+}
+
 /* Smooth black fade-in / fade-out overlay for entering and exiting cars */
 .vehicle-fade {
   position: fixed;

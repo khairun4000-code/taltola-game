@@ -7,8 +7,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
   const mapModal = document.querySelector('#city-map-modal');
   const mapList = document.querySelector('#city-landmark-list');
   const mapCloseBtn = document.querySelector('#close-city-map');
-  const mapToggleBtn = document.querySelector('#map-hud-button');
-  const miniDock = document.querySelector('#minimap-dock');
+  const myLocBtn = document.querySelector('#map-my-location-btn');
   const gpsReadout = document.querySelector('#gps-readout');
 
   const miniCtx = miniCanvas ? miniCanvas.getContext('2d') : null;
@@ -19,6 +18,9 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
 
   let isOpen = false;
   let lastMiniDraw = 0;
+  let pingUntil = 0;
+  let lastPlayerPos = { x: 0, z: 0 };
+  let lastPlayerYaw = 0;
 
   // Pre-render static vector base layer of full Khulna map offscreen for instant 120 FPS blitting!
   const baseW = 760;
@@ -145,21 +147,40 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
       fullCtx.textAlign = 'left';
     }
 
-    // Player pulse dot
+    lastPlayerPos = { x: playerPos.x, z: playerPos.z };
+    lastPlayerYaw = yaw;
+    const now = performance.now();
+    const blinkPhase = (now * 0.0055) % (Math.PI * 2);
+    const pulseT = (now * 0.0014) % 1.0;
+    const isPinging = now < pingUntil;
     const [pbx, pbz] = worldToBasePx(playerPos.x, playerPos.z);
     const px = (pbx / baseW) * fullCanvas.width;
     const py = (pbz / baseH) * fullCanvas.height;
+
     fullCtx.save();
+    const maxR = isPinging ? 44 : 24;
+    fullCtx.beginPath();
+    fullCtx.arc(px, py, 6 + pulseT * maxR, 0, Math.PI * 2);
+    fullCtx.strokeStyle = isPinging
+      ? `rgba(250, 204, 21, ${(1 - pulseT) * 0.95})`
+      : `rgba(56, 189, 248, ${(1 - pulseT) * 0.85})`;
+    fullCtx.lineWidth = isPinging ? 3.2 : 2.2;
+    fullCtx.stroke();
+
+    const blinkAlpha = 0.58 + 0.42 * (0.5 + 0.5 * Math.sin(blinkPhase * 1.4));
     fullCtx.translate(px, py);
     fullCtx.rotate(-yaw);
-    fullCtx.fillStyle = '#38bdf8';
+    fullCtx.globalAlpha = blinkAlpha;
+    fullCtx.shadowColor = isPinging ? '#facc15' : '#38bdf8';
+    fullCtx.shadowBlur = isPinging ? 16 : 10;
+    fullCtx.fillStyle = isPinging ? '#facc15' : '#38bdf8';
     fullCtx.strokeStyle = '#ffffff';
-    fullCtx.lineWidth = 2;
+    fullCtx.lineWidth = 2.2;
     fullCtx.beginPath();
-    fullCtx.moveTo(0, -10);
-    fullCtx.lineTo(7, 8);
-    fullCtx.lineTo(0, 4);
-    fullCtx.lineTo(-7, 8);
+    fullCtx.moveTo(0, -12);
+    fullCtx.lineTo(8, 9);
+    fullCtx.lineTo(0, 4.5);
+    fullCtx.lineTo(-8, 9);
     fullCtx.closePath();
     fullCtx.fill();
     fullCtx.stroke();
@@ -210,18 +231,26 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
       miniCtx.stroke();
     }
 
-    // Center player heading arrow
+    const pulseM = (now * 0.0014) % 1.0;
+    const blinkM = 0.65 + 0.35 * (0.5 + 0.5 * Math.sin(now * 0.008));
     miniCtx.save();
+    miniCtx.beginPath();
+    miniCtx.arc(w * 0.5, h * 0.5, 4 + pulseM * 14, 0, Math.PI * 2);
+    miniCtx.strokeStyle = `rgba(56, 189, 248, ${(1 - pulseM) * 0.78})`;
+    miniCtx.lineWidth = 1.6;
+    miniCtx.stroke();
+
     miniCtx.translate(w * 0.5, h * 0.5);
     miniCtx.rotate(-yaw);
+    miniCtx.globalAlpha = blinkM;
     miniCtx.fillStyle = '#38bdf8';
     miniCtx.strokeStyle = '#ffffff';
-    miniCtx.lineWidth = 1.5;
+    miniCtx.lineWidth = 1.6;
     miniCtx.beginPath();
-    miniCtx.moveTo(0, -7);
-    miniCtx.lineTo(5, 6);
+    miniCtx.moveTo(0, -8);
+    miniCtx.lineTo(5.5, 6.5);
     miniCtx.lineTo(0, 3);
-    miniCtx.lineTo(-5, 6);
+    miniCtx.lineTo(-5.5, 6.5);
     miniCtx.closePath();
     miniCtx.fill();
     miniCtx.stroke();
@@ -291,15 +320,11 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     closeMap();
   });
 
-  mapToggleBtn?.addEventListener('click', (e) => {
+  myLocBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
-    // Triggers toggle callback handled in main
-    document.dispatchEvent(new CustomEvent('taltola-toggle-map'));
-  });
-
-  miniDock?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.dispatchEvent(new CustomEvent('taltola-toggle-map'));
+    pingUntil = performance.now() + 2600;
+    populateLandmarkButtons(lastPlayerPos.x, lastPlayerPos.z);
+    renderFullMap(lastPlayerPos, lastPlayerYaw);
   });
 
   return {

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import worldData from './data/khulna-world-data.json';
 import { clampToKhulnaBounds, worldXZToLatLon } from './khulna-geo.js';
+import { createKhulnaStreetPropsSystem } from './khulna-street-props.js';
 import {
   generateNormalAndRoughnessMaps,
   attachDerivedPBRMaps,
@@ -27,67 +28,130 @@ function seeded(seed) {
 function createCityTextures(renderer) {
   const maxAniso = Math.min(8, renderer?.capabilities?.getMaxAnisotropy?.() || 4);
 
-  function buildFacadeTex(cols, rows, isLowRise) {
+  function buildFacadeTexPair(cols, rows, isLowRise) {
+    const S = 512;
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = S;
+    canvas.height = S;
     const ctx = canvas.getContext('2d');
+
+    const eCanvas = document.createElement('canvas');
+    eCanvas.width = S;
+    eCanvas.height = S;
+    const eCtx = eCanvas.getContext('2d');
+    eCtx.fillStyle = '#000000';
+    eCtx.fillRect(0, 0, S, S);
+
     const rnd = seeded(isLowRise ? 4109 : 8821);
+    ctx.fillStyle = '#ebe6dc';
+    ctx.fillRect(0, 0, S, S);
 
-    ctx.fillStyle = '#e5e2dc';
-    ctx.fillRect(0, 0, 256, 256);
-
-    // Subtle tropical dampness & plaster streak variation
+    for (let i = 0; i < 65; i++) {
+      const y = rnd() * S;
+      ctx.fillStyle = `rgba(48, 54, 46, ${0.025 + rnd() * 0.055})`;
+      ctx.fillRect(0, y, S, 4 + rnd() * 16);
+    }
     for (let i = 0; i < 42; i++) {
-      const y = rnd() * 256;
-      ctx.fillStyle = `rgba(55, 62, 58, ${0.02 + rnd() * 0.045})`;
-      ctx.fillRect(0, y, 256, 4 + rnd() * 14);
+      const x = rnd() * S;
+      const h = 26 + rnd() * 110;
+      ctx.fillStyle = `rgba(38, 42, 34, ${0.03 + rnd() * 0.06})`;
+      ctx.fillRect(x, rnd() * (S - h), 3 + rnd() * 7, h);
     }
 
-    const cw = 256 / cols;
-    const rh = 256 / rows;
+    const cw = S / cols;
+    const rh = S / rows;
     for (let r = 0; r < rows; r++) {
-      // Concrete slab/cornice band per floor
-      ctx.fillStyle = 'rgba(30, 35, 38, 0.16)';
-      ctx.fillRect(0, r * rh, 256, Math.max(2, rh * 0.1));
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
-      ctx.fillRect(0, r * rh + Math.max(2, rh * 0.1), 256, 2);
+      const isGround = r === rows - 1;
+      ctx.fillStyle = 'rgba(28, 32, 36, 0.24)';
+      ctx.fillRect(0, r * rh, S, Math.max(5, rh * 0.11));
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.34)';
+      ctx.fillRect(0, r * rh + Math.max(5, rh * 0.11), S, 4);
+      for (let c = 0; c <= cols; c++) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.fillRect(c * cw - 6, r * rh, 12, rh);
+      }
 
       for (let c = 0; c < cols; c++) {
-        const wx = c * cw + cw * 0.18;
-        const wy = r * rh + rh * 0.25;
-        const ww = cw * 0.64;
-        const wh = rh * 0.56;
+        const wx = c * cw + cw * 0.16;
+        const wy = r * rh + rh * 0.22;
+        const ww = cw * 0.68;
+        const wh = rh * 0.60;
 
-        // Sill shadow & recessed balcony/window cavity
-        ctx.fillStyle = 'rgba(20, 26, 32, 0.22)';
-        ctx.fillRect(wx - 2, wy - 2, ww + 4, wh + 4);
+        if (isGround && !isLowRise && c % 2 === 0) {
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(wx - 4, wy - 6, ww + 8, wh + 14);
+          for (let sy = wy; sy < wy + wh + 6; sy += 8) {
+            ctx.fillStyle = sy % 16 === 0 ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.22)';
+            ctx.fillRect(wx - 2, sy, ww + 4, 4);
+          }
+          ctx.fillStyle = (c % 4 === 0) ? '#065f46' : '#991b1b';
+          ctx.fillRect(wx - 6, wy - 18, ww + 12, 16);
+          eCtx.fillStyle = '#fde68a';
+          eCtx.fillRect(wx - 4, wy - 16, ww + 8, 12);
+          continue;
+        }
 
-        const lit = rnd() > 0.78;
-        ctx.fillStyle = isLowRise
-          ? (lit ? '#3e4e58' : '#243038')
-          : (lit ? '#537080' : '#1f2b36');
+        ctx.fillStyle = 'rgba(18, 24, 30, 0.34)';
+        ctx.fillRect(wx - 5, wy - 6, ww + 10, 8);
+        ctx.fillStyle = '#d6d3cb';
+        ctx.fillRect(wx - 4, wy - 3, ww + 8, wh + 8);
+
+        const lit = rnd() > 0.34;
+        const warmLight = rnd() > 0.30;
+        const grad = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+        if (lit) {
+          grad.addColorStop(0, warmLight ? '#5a503a' : '#3d5668');
+          grad.addColorStop(1, '#1d2730');
+        } else {
+          grad.addColorStop(0, '#1e2c38');
+          grad.addColorStop(1, '#111920');
+        }
+        ctx.fillStyle = grad;
         ctx.fillRect(wx, wy, ww, wh);
 
-        // Glass mullion cross & grill lines
-        ctx.fillStyle = 'rgba(220, 230, 236, 0.35)';
-        ctx.fillRect(wx + ww * 0.48, wy, 2, wh);
-        ctx.fillRect(wx, wy + wh * 0.5, ww, 2);
+        ctx.fillStyle = warmLight ? 'rgba(196, 152, 112, 0.32)' : 'rgba(120, 158, 182, 0.28)';
+        ctx.fillRect(wx + 2, wy + 2, ww * 0.16, wh - 4);
+        ctx.fillRect(wx + ww * 0.82, wy + 2, ww * 0.16, wh - 4);
 
-        // Occasional AC outdoor compressor box or awning
-        if (!isLowRise && rnd() > 0.72) {
-          ctx.fillStyle = '#d4d8dc';
-          ctx.fillRect(wx + ww * 0.62, wy + wh - 7, ww * 0.32, 6);
+        if (lit) {
+          const eGrad = eCtx.createLinearGradient(wx, wy, wx, wy + wh);
+          if (warmLight) {
+            eGrad.addColorStop(0, '#ffdf8c');
+            eGrad.addColorStop(0.65, '#f59e0b');
+            eGrad.addColorStop(1, '#92400e');
+          } else {
+            eGrad.addColorStop(0, '#e0f2fe');
+            eGrad.addColorStop(0.65, '#7dd3fc');
+            eGrad.addColorStop(1, '#1e3a8a');
+          }
+          eCtx.fillStyle = eGrad;
+          eCtx.fillRect(wx + 4, wy + 4, ww - 8, wh - 8);
+          eCtx.fillStyle = '#090d14';
+          eCtx.fillRect(wx + 2, wy + 2, ww * 0.14, wh - 4);
+          eCtx.fillRect(wx + ww * 0.84, wy + 2, ww * 0.14, wh - 4);
+          eCtx.fillRect(wx + ww * 0.48, wy, 4, wh);
+          eCtx.fillRect(wx, wy + wh * 0.50, ww, 4);
         }
+
+        ctx.fillStyle = 'rgba(22, 28, 34, 0.65)';
+        for (let gx = 0.25; gx < 0.9; gx += 0.25) { ctx.fillRect(wx + ww * gx, wy, 2, wh); }
+        for (let gy = 0.33; gy < 0.9; gy += 0.33) { ctx.fillRect(wx, wy + wh * gy, ww, 2); }
+        ctx.fillStyle = 'rgba(232, 238, 244, 0.55)';
+        ctx.fillRect(wx + ww * 0.48, wy, 4, wh);
+        ctx.fillRect(wx, wy + wh * 0.50, ww, 3);
       }
     }
 
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
-    tex.anisotropy = maxAniso;
-    return tex;
+    const mapTex = new THREE.CanvasTexture(canvas);
+    mapTex.colorSpace = THREE.SRGBColorSpace;
+    mapTex.wrapS = mapTex.wrapT = THREE.RepeatWrapping;
+    mapTex.anisotropy = maxAniso;
+
+    const emissiveTex = new THREE.CanvasTexture(eCanvas);
+    emissiveTex.colorSpace = THREE.SRGBColorSpace;
+    emissiveTex.wrapS = emissiveTex.wrapT = THREE.RepeatWrapping;
+    emissiveTex.anisotropy = maxAniso;
+    return { mapTex, emissiveTex };
   }
 
   const aniso = renderer ? Math.min(4, renderer.capabilities.getMaxAnisotropy()) : 4;
@@ -317,14 +381,20 @@ function createCityTextures(renderer) {
     return tex;
   }
 
-  const highRiseTex = buildFacadeTex(3, 5, false);
-  const lowRiseTex = buildFacadeTex(3, 2, true);
+  const highPair = buildFacadeTexPair(3, 5, false);
+  const lowPair = buildFacadeTexPair(3, 2, true);
+  const highRiseTex = highPair.mapTex;
+  const lowRiseTex = lowPair.mapTex;
+  const highEmissiveTex = highPair.emissiveTex;
+  const lowEmissiveTex = lowPair.emissiveTex;
   highRiseTex.anisotropy = aniso;
   lowRiseTex.anisotropy = aniso;
 
   return {
     highRiseTex,
     lowRiseTex,
+    highEmissiveTex,
+    lowEmissiveTex,
     roadMajorTex: buildRoadTexture({
       baseHex: '#555c64',
       grainBase: 92,
@@ -712,9 +782,340 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
     group.add(mesh);
   }
 
-  // 4. Generic 12,756 OSM cube buildings removed per user request: keep only clean map, roads, parks/fields & showcase buildings.
+
+  // 4. Instanced City Building Pools (6 architectural palettes × 2 LOD heights + parapet trim = max 13 draw calls!)
+  const STYLE_COLORS = [
+    0xece3d3, // 0: Warm Cream Plaster
+    0xc46750, // 1: Khulna Red Brick
+    0xd4a46b, // 2: Terracotta / Ochre
+    0xf2f5f8, // 3: Modern White / Concrete Glass
+    0xb8cec6, // 4: Mint / Seafoam Mid-rise
+    0x9ba6ad, // 5: Low Semi-Pucca / Tin Shop
+  ];
+
+  // Use two unit BoxGeometries with origin at y=0 (scale Y directly by total height!)
+  const makeUnitBox = (repX, repY) => {
+    const g = new THREE.BoxGeometry(1, 1, 1);
+    g.translate(0, 0.5, 0);
+    const uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++) {
+      uv.setXY(i, uv.getX(i) * repX, uv.getY(i) * repY);
+    }
+    return g;
+  };
+  const lowBoxGeo = makeUnitBox(2, 2);
+  const highBoxGeo = makeUnitBox(3, 5);
+  const roofBoxGeo = makeUnitBox(1, 1);
+
+  const MAX_INST_LOW = 2800;
+  const MAX_INST_HIGH = 2800;
+  const MAX_INST_ROOF = 4500;
+
+  const lowPools = [];
+  const highPools = [];
+  const buildingNightMats = [];
+  const lowPBR = generateNormalAndRoughnessMaps(tex.lowRiseTex.image, { strength: 2.2, roughBase: 0.80 });
+  const highPBR = generateNormalAndRoughnessMaps(tex.highRiseTex.image, { strength: 2.2, roughBase: 0.72 });
+  for (let s = 0; s < 6; s++) {
+    const lowMat = new THREE.MeshStandardMaterial({
+      color: STYLE_COLORS[s],
+      map: tex.lowRiseTex,
+      emissive: new THREE.Color(0xffdfa0),
+      emissiveMap: tex.lowEmissiveTex,
+      emissiveIntensity: 0.10,
+      normalMap: lowPBR.normalMap,
+      roughnessMap: lowPBR.roughnessMap,
+      normalScale: new THREE.Vector2(0.95, 0.95),
+      roughness: 0.78,
+      metalness: 0.05,
+      envMapIntensity: 0.85,
+    });
+    const highMat = new THREE.MeshStandardMaterial({
+      color: STYLE_COLORS[s],
+      map: tex.highRiseTex,
+      emissive: new THREE.Color(0xffe4a8),
+      emissiveMap: tex.highEmissiveTex,
+      emissiveIntensity: 0.12,
+      normalMap: highPBR.normalMap,
+      roughnessMap: highPBR.roughnessMap,
+      normalScale: new THREE.Vector2(0.95, 0.95),
+      roughness: 0.70,
+      metalness: 0.10,
+      envMapIntensity: 1.05,
+    });
+    buildingNightMats.push(lowMat, highMat);
+
+    const mLow = new THREE.InstancedMesh(lowBoxGeo, lowMat, MAX_INST_LOW);
+    const mHigh = new THREE.InstancedMesh(highBoxGeo, highMat, MAX_INST_HIGH);
+    mLow.count = 0;
+    mHigh.count = 0;
+    mLow.frustumCulled = false;
+    mHigh.frustumCulled = false;
+    mLow.receiveShadow = true;
+    mHigh.receiveShadow = true;
+    mHigh.castShadow = false;
+    group.add(mLow, mHigh);
+    lowPools.push(mLow);
+    highPools.push(mHigh);
+  }
+
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x5c5e61, roughness: 0.90, metalness: 0.04 });
+  const roofPool = new THREE.InstancedMesh(roofBoxGeo, roofMat, MAX_INST_ROOF);
+  roofPool.count = 0;
+  roofPool.frustumCulled = false;
+  group.add(roofPool);
+
+  // 4B. 3D Architectural Detail Pools on Khulna City Houses (Balconies, Shop Awnings, Rooftop Mumties, Gazi Water Tanks, AC Units — 5 draw calls!)
+  const MAX_DET = 1600;
+  const balconyMat = new THREE.MeshStandardMaterial({ color: 0xded7c8, roughness: 0.82, metalness: 0.08 });
+  const balconyPool = new THREE.InstancedMesh(roofBoxGeo, balconyMat, MAX_DET);
+  const awningMat = new THREE.MeshStandardMaterial({ color: 0x1d5f7a, roughness: 0.58, metalness: 0.25 });
+  const awningPool = new THREE.InstancedMesh(roofBoxGeo, awningMat, MAX_DET);
+  const mumtyMat = new THREE.MeshStandardMaterial({ color: 0xd9d2c5, roughness: 0.86, metalness: 0.04 });
+  const mumtyPool = new THREE.InstancedMesh(roofBoxGeo, mumtyMat, MAX_DET);
+  const tankGeo = new THREE.CylinderGeometry(0.55, 0.58, 1.25, 8);
+  tankGeo.translate(0, 0.625, 0);
+  const tankMat = new THREE.MeshStandardMaterial({ color: 0x141a20, roughness: 0.42, metalness: 0.15 });
+  const waterTankPool = new THREE.InstancedMesh(tankGeo, tankMat, MAX_DET);
+  const acMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.48, metalness: 0.25 });
+  const acPool = new THREE.InstancedMesh(roofBoxGeo, acMat, MAX_DET);
+  for (const p of [balconyPool, awningPool, mumtyPool, waterTankPool, acPool]) {
+    p.count = 0;
+    p.frustumCulled = false;
+    group.add(p);
+  }
+
+  // 4C. Khulna Citywide Utility Poles, Tangled Overhead Wires, House Drop Lines, Posters & Election Banners!
+  const streetProps = createKhulnaStreetPropsSystem(group, worldData);
+
+  // Fast Spatial Road-Segment Grid so ZERO buildings ever sit in the middle of any Khulna road!
+  const ROAD_CELL = 40;
+  const roadSegGrid = new Map();
+  for (const r of worldData.roads) {
+    const pts = r.p;
+    if (!pts || pts.length < 4) continue;
+    const roadHW = r.w ? (r.w * 0.5) : (r.t <= 1 ? 6.5 : (r.t <= 3 ? 4.8 : 3.2));
+    for (let i = 0; i < pts.length - 2; i += 2) {
+      const ax = pts[i], az = pts[i + 1], bx = pts[i + 2], bz = pts[i + 3];
+      const pad = roadHW + 8.0;
+      const c0 = Math.floor((Math.min(ax, bx) - pad) / ROAD_CELL);
+      const c1 = Math.floor((Math.max(ax, bx) + pad) / ROAD_CELL);
+      const r0 = Math.floor((Math.min(az, bz) - pad) / ROAD_CELL);
+      const r1 = Math.floor((Math.max(az, bz) + pad) / ROAD_CELL);
+      const seg = { ax, az, bx, bz, hw: roadHW };
+      for (let gx = c0; gx <= c1; gx++) {
+        for (let gz = r0; gz <= r1; gz++) {
+          const k = (gx + 500) * 1000 + (gz + 500);
+          let arr = roadSegGrid.get(k);
+          if (!arr) { arr = []; roadSegGrid.set(k, arr); }
+          arr.push(seg);
+        }
+      }
+    }
+  }
+
+  function isOverlappingAnyRoad(cx, cz, bw = 8, bd = 8) {
+    const gx = Math.floor(cx / ROAD_CELL);
+    const gz = Math.floor(cz / ROAD_CELL);
+    const segs = roadSegGrid.get((gx + 500) * 1000 + (gz + 500));
+    if (!segs) return false;
+    const bRadius = Math.min(bw, bd) * 0.44 + 1.15;
+    for (let i = 0; i < segs.length; i++) {
+      const s = segs[i];
+      const vx = s.bx - s.ax;
+      const vz = s.bz - s.az;
+      const lenSq = vx * vx + vz * vz;
+      let t = 0;
+      if (lenSq > 1e-4) {
+        t = THREE.MathUtils.clamp(((cx - s.ax) * vx + (cz - s.az) * vz) / lenSq, 0, 1);
+      }
+      const px = s.ax + vx * t;
+      const pz = s.az + vz * t;
+      const dx = cx - px;
+      const dz = cz - pz;
+      const clearDist = s.hw + bRadius;
+      if (dx * dx + dz * dz < clearDist * clearDist) return true;
+    }
+    return false;
+  }
+
+  // Exclude generic raw OSM placeholder cubes inside all AAA Showcase Corridors, Landmarks, AND any road!
+  function isHeroExcludedBuilding(cx, cz, bw = 8, bd = 8) {
+    // 1) AAA Slice 3: Taltola House compound + tight Cross Rd neighborhood frontage (keeps nearby OSM blocks intact!)
+    if (cx >= 401 && cx <= 439 && cz >= 942 && cz <= 1012) return true;
+    // 2) AAA Slice 1: Haji Mohsin Road Extended AAA Corridor (z = -150..+150, East & West flanks)
+    if (cx >= -66 && cx <= 70 && cz >= -152 && cz <= 152) return true;
+    // 3) Khulna Alia Kamil Madrasah full 3D campus footprint
+    if (cx >= 134 && cx <= 232 && cz >= 62 && cz <= 156) return true;
+    // 4) Khulna District Stadium ring stands & floodlight towers
+    if (cx >= -152 && cx <= 24 && cz >= -828 && cz <= -646) return true;
+    // 5) Khulna Circuit House heritage pavilions & Boro Maath foreground
+    if (cx >= 72 && cx <= 136 && cz >= -720 && cz <= -648) return true;
+    // 6) PTI More roundabout traffic island
+    if (cx >= -318 && cx <= -280 && cz >= -78 && cz <= -42) return true;
+    // 7) AAA Slice 2: Rupsha Strand Road, Natun Bazar Launch Ghat & Rupsha Ferry Terminal Waterfront
+    if (cx >= 1038 && cx <= 1290 && cz >= -55 && cz <= 695) return true;
+    // 8) Remove any building whose footprint falls inside a road!
+    if (isOverlappingAnyRoad(cx, cz, bw, bd)) return true;
+    return false;
+  }
+
+  // 5. Spatial Hash for O(1) Building Collision Lookup across all 12,756 buildings
   const collisionGrid = new Map();
-  function refreshActiveChunks() {}
+  for (const [, list] of Object.entries(worldData.chunks)) {
+    for (const b of list) {
+      const [cx, cz, bw, bd, yaw, floors] = b;
+      if (isHeroExcludedBuilding(cx, cz, bw, bd)) continue;
+      const cosY = Math.cos(-yaw);
+      const sinY = Math.sin(-yaw);
+      const hw = bw * 0.5;
+      const hd = bd * 0.5;
+      const maxR = Math.hypot(hw, hd) + 0.5;
+      const c0 = Math.floor((cx - maxR) / COLLISION_CELL);
+      const c1 = Math.floor((cx + maxR) / COLLISION_CELL);
+      const r0 = Math.floor((cz - maxR) / COLLISION_CELL);
+      const r1 = Math.floor((cz + maxR) / COLLISION_CELL);
+      const entry = { cx, cz, hw, hd, cosY, sinY, h: floors * FLOOR_HEIGHT };
+      for (let gx = c0; gx <= c1; gx++) {
+        for (let gz = r0; gz <= r1; gz++) {
+          const k = (gx + 500) * 1000 + (gz + 500);
+          let arr = collisionGrid.get(k);
+          if (!arr) {
+            arr = [];
+            collisionGrid.set(k, arr);
+          }
+          arr.push(entry);
+        }
+      }
+    }
+  }
+
+  // 6. Chunk Streaming State (rebuild InstancedMesh buffers ONLY when crossing 240m chunk boundary or quality change)
+  const chunkSize = worldData.meta.chunkSize || 240;
+  let lastChunkKey = '';
+  const dummy = new THREE.Object3D();
+
+  function refreshActiveChunks(playerX, playerZ, qualityMode = 'high') {
+    streetProps.refreshActiveChunks(playerX, playerZ, qualityMode);
+    const ringRadius = qualityMode === 'low' ? 1 : (qualityMode === 'medium' ? 1 : 2);
+    const maxDistSq = Math.pow((ringRadius + 0.85) * chunkSize, 2);
+    const detailDistSq = qualityMode === 'low' ? 155 * 155 : 260 * 260;
+    const pCx = Math.floor(playerX / chunkSize);
+    const pCz = Math.floor(playerZ / chunkSize);
+    const nextKey = `${pCx},${pCz},${ringRadius},${qualityMode}`;
+    if (nextKey === lastChunkKey) return;
+    lastChunkKey = nextKey;
+
+    const lowCounts = [0, 0, 0, 0, 0, 0];
+    const highCounts = [0, 0, 0, 0, 0, 0];
+    let roofCount = 0;
+    let balCount = 0;
+    let awnCount = 0;
+    let mumCount = 0;
+    let tankCount = 0;
+    let acCount = 0;
+
+    for (let dx = -ringRadius; dx <= ringRadius; dx++) {
+      for (let dz = -ringRadius; dz <= ringRadius; dz++) {
+        const list = worldData.chunks[`${pCx + dx},${pCz + dz}`];
+        if (!list) continue;
+        for (let i = 0; i < list.length; i++) {
+          const [cx, cz, bw, bd, yaw, floors, style] = list[i];
+          if (isHeroExcludedBuilding(cx, cz, bw, bd)) continue;
+          const d2 = (cx - playerX) * (cx - playerX) + (cz - playerZ) * (cz - playerZ);
+          if (d2 > maxDistSq) continue;
+
+          const h = floors * FLOOR_HEIGHT;
+          dummy.position.set(cx, 0, cz);
+          dummy.rotation.set(0, -yaw, 0);
+          dummy.scale.set(bw, h, bd);
+          dummy.updateMatrix();
+
+          const st = style % 6;
+          if (floors <= 2) {
+            const idx = lowCounts[st];
+            if (idx < MAX_INST_LOW) {
+              lowPools[st].setMatrixAt(idx, dummy.matrix);
+              lowCounts[st]++;
+            }
+          } else {
+            const idx = highCounts[st];
+            if (idx < MAX_INST_HIGH) {
+              highPools[st].setMatrixAt(idx, dummy.matrix);
+              highCounts[st]++;
+            }
+            if (roofCount < MAX_INST_ROOF && d2 < 260000) {
+              dummy.position.set(cx, h, cz);
+              dummy.scale.set(Math.max(0.6, bw + 0.30), 0.72, Math.max(0.6, bd + 0.30));
+              dummy.updateMatrix();
+              roofPool.setMatrixAt(roofCount++, dummy.matrix);
+            }
+          }
+
+          if (d2 < detailDistSq) {
+            const cosY = Math.cos(-yaw);
+            const sinY = Math.sin(-yaw);
+            if (floors >= 3 && balCount < MAX_DET) {
+              const offZ = bd * 0.5 + 0.45;
+              dummy.position.set(cx + sinY * offZ, FLOOR_HEIGHT * 1.98, cz + cosY * offZ);
+              dummy.rotation.set(0, -yaw, 0);
+              dummy.scale.set(Math.max(2.2, bw * 0.62), 0.95, 0.92);
+              dummy.updateMatrix();
+              balconyPool.setMatrixAt(balCount++, dummy.matrix);
+            }
+            if (awnCount < MAX_DET && (i & 1) === 0) {
+              const offZ = bd * 0.5 + 0.55;
+              dummy.position.set(cx + sinY * offZ, 2.85, cz + cosY * offZ);
+              dummy.rotation.set(0.22, -yaw, 0);
+              dummy.scale.set(Math.max(2.4, bw * 0.78), 0.14, 1.15);
+              dummy.updateMatrix();
+              awningPool.setMatrixAt(awnCount++, dummy.matrix);
+            }
+            if (floors >= 3 && mumCount < MAX_DET) {
+              dummy.position.set(cx, h + 0.35, cz);
+              dummy.rotation.set(0, -yaw, 0);
+              dummy.scale.set(Math.min(3.4, bw * 0.36), 2.25, Math.min(3.4, bd * 0.36));
+              dummy.updateMatrix();
+              mumtyPool.setMatrixAt(mumCount++, dummy.matrix);
+            }
+            if (floors >= 2 && tankCount < MAX_DET) {
+              const tx = cx + cosY * (bw * 0.24);
+              const tz = cz - sinY * (bw * 0.24);
+              dummy.position.set(tx, h + 0.45, tz);
+              dummy.rotation.set(0, 0, 0);
+              dummy.scale.set(1, 1, 1);
+              dummy.updateMatrix();
+              waterTankPool.setMatrixAt(tankCount++, dummy.matrix);
+            }
+            if (floors >= 3 && acCount < MAX_DET && (i % 3 === 0)) {
+              const offX = bw * 0.5 + 0.20;
+              dummy.position.set(cx + cosY * offX, FLOOR_HEIGHT * 1.45, cz - sinY * offX);
+              dummy.rotation.set(0, -yaw, 0);
+              dummy.scale.set(0.36, 0.56, 0.80);
+              dummy.updateMatrix();
+              acPool.setMatrixAt(acCount++, dummy.matrix);
+            }
+          }
+        }
+      }
+    }
+
+    for (let s = 0; s < 6; s++) {
+      lowPools[s].count = lowCounts[s];
+      lowPools[s].instanceMatrix.needsUpdate = true;
+      highPools[s].count = highCounts[s];
+      highPools[s].instanceMatrix.needsUpdate = true;
+    }
+    roofPool.count = roofCount;
+    roofPool.instanceMatrix.needsUpdate = true;
+    balconyPool.count = balCount; balconyPool.instanceMatrix.needsUpdate = true;
+    awningPool.count = awnCount; awningPool.instanceMatrix.needsUpdate = true;
+    mumtyPool.count = mumCount; mumtyPool.instanceMatrix.needsUpdate = true;
+    waterTankPool.count = tankCount; waterTankPool.instanceMatrix.needsUpdate = true;
+    acPool.count = acCount; acPool.instanceMatrix.needsUpdate = true;
+  }
+
+  // Initialize around Taltola House or Origin cleanly on frame 0
   refreshActiveChunks(420, 975, 'high');
 
   function applyCityCollisions(pos, radius) {
@@ -788,6 +1189,15 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
     }
   }
 
+  function setNightFactor(nightFactor = 0) {
+    const nf = THREE.MathUtils.clamp(nightFactor, 0, 1);
+    const glow = 0.08 + nf * 1.55;
+    for (let i = 0; i < buildingNightMats.length; i++) {
+      buildingNightMats[i].emissiveIntensity = glow;
+    }
+    streetProps.setNightFactor(nf);
+  }
+
   function setQualityMode(qualityMode) {
     const nextWaterMat = waterShaderMat || waterLowMat;
     for (const wm of waterMeshes) {
@@ -822,10 +1232,12 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
     isInWater,
     findNearestRoadAndDistrict,
     animateWater,
+    setNightFactor,
     setQualityMode,
     setFogBounds,
     setVisible(visible) {
       group.visible = visible;
+      streetProps.setVisible(visible);
     },
   };
 }

@@ -13,6 +13,8 @@ export const PHONE_CHEAT_CODES = [
   { code: '4444', carId: 'toyota_fortuner', label: 'Toyota Fortuner 2021' },
   { code: '5555', carId: 'toyota_hiace', label: 'Toyota HiAce 2005' },
   { code: '6666', carId: 'bangladeshi_rickshaw_taltola', label: 'Bangladeshi Rickshaw' },
+  { code: '7777', carId: 'bike_125cc', label: '125cc Naked Motorcycle' },
+  { code: '8888', carId: 'honda_nxr_bros', label: 'Honda NXR Bros 2003' },
 ];
 
 export function createGTAPhoneUI({

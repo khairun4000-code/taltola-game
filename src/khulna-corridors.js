@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { attachDerivedPBRMaps, upgradeWetAsphaltMaterial } from './aaa-shaders.js';
 import { buildBanglaTruck, buildCNGAuto } from './khulna-vehicles.js';
+import { decorateCorridorPole } from './khulna-street-props.js';
 
 function seeded(seed = 7731) {
   let s = seed >>> 0;
@@ -644,6 +645,8 @@ function addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDirX = 1, has
     addCyl(staticG, 0.34, 0.34, 1.05, [px + armDirX * 0.45, 6.82, pz - 0.25], bank.transformerMat, 10);
     addCyl(staticG, 0.28, 0.28, 0.92, [px + armDirX * 0.45, 6.76, pz + 0.32], bank.transformerMat, 10);
   }
+  // Attach authentic Bengali pole posters (ব্যাচে পড়ানো হয়, ছাত্র চাই, বাসা ভাড়া, নির্বাচনী পোস্টার) & high election banners!
+  decorateCorridorPole(dynamicG, px, pz, armDirX < 0 ? Math.PI : 0, Math.round(px * 3 + pz));
   if (wireTargets) wireTargets.push([px, 8.75, pz]);
 }
 
@@ -731,8 +734,11 @@ function buildHajiMohsinCorridor(staticG, dynamicG, bank, m, helpers, treesG = s
   }
   for (const arr of [eastWires, westWires]) {
     for (let i = 0; i < arr.length - 1; i++) {
-      helpers.addWire?.(staticG, arr[i], arr[i + 1], wireMat, 0.45, 0.016);
-      helpers.addWire?.(staticG, [arr[i][0], arr[i][1] - 0.65, arr[i][2]], [arr[i + 1][0], arr[i + 1][1] - 0.65, arr[i + 1][2]], wireMat, 0.52, 0.022);
+      // Dense Bangladeshi multi-strand tangled overhead wire bundle between poles
+      helpers.addWire?.(staticG, arr[i], arr[i + 1], wireMat, 0.42, 0.016);
+      helpers.addWire?.(staticG, [arr[i][0], arr[i][1] - 0.55, arr[i][2]], [arr[i + 1][0], arr[i + 1][1] - 0.55, arr[i + 1][2]], wireMat, 0.62, 0.020);
+      helpers.addWire?.(staticG, [arr[i][0], arr[i][1] - 2.95, arr[i][2]], [arr[i + 1][0], arr[i + 1][1] - 3.15, arr[i + 1][2]], wireMat, 0.88, 0.024);
+      helpers.addWire?.(staticG, [arr[i][0], arr[i][1] - 3.35, arr[i][2]], [arr[i + 1][0], arr[i + 1][1] - 3.05, arr[i + 1][2]], wireMat, 1.05, 0.018);
     }
   }
 
@@ -1130,6 +1136,8 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   }
   for (let i = 0; i < poles.length - 1; i++) {
     helpers.addWire?.(staticG, poles[i], poles[i + 1], m.wire, 0.42, 0.016);
+    helpers.addWire?.(staticG, [poles[i][0], poles[i][1] - 2.90, poles[i][2]], [poles[i + 1][0], poles[i + 1][1] - 3.10, poles[i + 1][2]], m.wire, 0.85, 0.022);
+    helpers.addWire?.(staticG, [poles[i][0], poles[i][1] - 3.30, poles[i][2]], [poles[i + 1][0], poles[i + 1][1] - 3.00, poles[i + 1][2]], m.wire, 1.02, 0.018);
   }
   helpers.addPalm?.(dynamicG, ox - 3.6, 0, oz - 6.0, 6.8, 0.4, 0.35);
   helpers.addPalm?.(dynamicG, ox + 3.8, 0, oz - 12.2, 7.2, -0.3, 0.4);
