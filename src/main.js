@@ -1001,6 +1001,7 @@ function buildStudioEnvironment() {
 
 function setMode(studioMode) {
   inStudio = studioMode;
+  document.body.classList.toggle('in-game', !inStudio);
   if (inStudio) {
     liftKeypadOpen = false;
     liftKeypad?.classList.add('hidden');
@@ -2356,6 +2357,24 @@ function bindGtaPauseSettingsUI() {
     setMode(true);
   });
 
+  document.querySelector('#gta-drive-car-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    khulnaMapUI?.closeMap?.();
+    toggleCarDriving();
+  });
+
+  document.querySelector('#gta-open-phone-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    khulnaMapUI?.closeMap?.();
+    gtaPhoneUI?.open?.();
+  });
+
+  document.querySelector('#gta-lift-panel-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    khulnaMapUI?.closeMap?.();
+    openLiftKeypad();
+  });
+
   document.querySelector('#gta-toggle-doors-btn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     house?.toggleAllDoors?.();
@@ -2363,6 +2382,32 @@ function bindGtaPauseSettingsUI() {
     environment?.altapoleTower?.toggleGate?.();
     syncHUDButtons(false, true);
     gtaPhoneUI?.showToast?.('🚪 সব দরজা ও গেট আপডেট হয়েছে!');
+  });
+
+  document.querySelector('#gta-freecam-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    khulnaMapUI?.closeMap?.();
+    toggleFreeCam();
+  });
+
+  document.querySelector('#gta-reference-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    khulnaMapUI?.closeMap?.();
+    referenceModal?.showModal?.();
+  });
+
+  document.querySelectorAll('[data-gta-emote]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const emoteName = btn.dataset.gtaEmote;
+      khulnaMapUI?.closeMap?.();
+      if (started && !inStudio) controls.lock();
+      if (playerCharacter && emoteName) {
+        controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
+        const next = playerCharacter.triggerEmote(emoteName, controls.euler.y);
+        syncEmoteUI(next);
+      }
+    });
   });
 
   document.querySelector('#gta-reset-settings-btn')?.addEventListener('click', (e) => {

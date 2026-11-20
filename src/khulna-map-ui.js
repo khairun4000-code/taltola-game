@@ -18,6 +18,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     map: 'খুলনা শহর মানচিত্র ও ফাস্ট ট্র্যাভেল',
     graphics: 'গ্রাফিক্স ও ডিসপ্লে সেটিংস (Graphics)',
     settings: 'গেম ও ক্যামেরা সেটিংস (Settings)',
+    game: 'গেম অ্যাকশন, স্টুডিও ও ইমোট (Game & Actions)',
     controls: 'কিবোর্ড ও মাউস কন্ট্রোলস (Controls)',
   };
   let activeTab = 'map';

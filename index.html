@@ -39,7 +39,7 @@
           <option value="ultra">ULTRA 4K ★</option>
         </select>
         <button id="time-toggle-button" class="text-button hidden" type="button">TIME: GOLDEN <span>[N]</span></button>
-        <button id="map-hud-button" class="text-button hidden" type="button">CITY MAP <span>[ESC]</span></button>
+        <button id="map-hud-button" class="text-button hidden" type="button">MENU <span>[ESC]</span></button>
         <button id="studio-toggle-button" class="text-button" type="button">CHARACTER STUDIO <span>★</span></button>
         <button id="car-toggle-button" class="text-button hidden" type="button">DRIVE CAR <span>[T]</span></button>
         <button id="lift-hud-button" class="text-button hidden" type="button">LIFT PANEL <span>[L]</span></button>
@@ -178,6 +178,7 @@
           <button type="button" class="gta-tab-btn active" role="tab" aria-selected="true" data-pause-tab="map">MAP <span>ম্যাপ</span></button>
           <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="graphics">GRAPHICS <span>গ্রাফিক্স</span></button>
           <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="settings">SETTINGS <span>সেটিংস</span></button>
+          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="game">GAME <span>অ্যাকশন</span></button>
           <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="controls">CONTROLS <span>কন্ট্রোলস</span></button>
         </nav>
 
@@ -296,13 +297,51 @@
 
             <div class="gta-setting-card">
               <div class="gta-setting-head">
-                <strong>কুইক অ্যাকশন (Quick Actions)</strong>
-                <small>সরাসরি স্টুডিও, দরজা বা ডিফল্ট সেটিংস রিসেট করুন</small>
+                <strong>সেটিংস রিসেট (Reset Defaults)</strong>
+                <small>সব গ্রাফিক্স, FOV ও মাউস সেটিংস আগের অবস্থায় ফিরিয়ে আনুন</small>
               </div>
               <div class="gta-pill-group">
-                <button type="button" class="gta-pill gta-action-pill" id="gta-open-studio-btn">★ ক্যারেক্টার স্টুডিও</button>
-                <button type="button" class="gta-pill gta-action-pill" id="gta-toggle-doors-btn">🚪 সব দরজা ও গেট</button>
-                <button type="button" class="gta-pill gta-action-pill" id="gta-reset-settings-btn">↺ রিসেট ডিফল্ট</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-reset-settings-btn">↺ রিসেট ডিফল্ট সেটিংস</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: GAME & ACTIONS (All moved from main screen HUD!) -->
+        <div id="pause-tab-game" class="gta-tab-panel gta-settings-panel hidden" data-pause-panel="game">
+          <div class="gta-settings-grid">
+            <div class="gta-setting-card gta-setting-wide">
+              <div class="gta-setting-head">
+                <strong>গেম ফিচার ও টুলস (Game Features &amp; Tools)</strong>
+                <small>মেইন স্ক্রিনের সব কন্ট্রোল ও মোড এখান থেকে সরাসরি চালু করুন</small>
+              </div>
+              <div class="gta-pill-group">
+                <button type="button" class="gta-pill gta-action-pill" id="gta-open-studio-btn">★ ক্যারেক্টার স্টুডিও (Character Studio)</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-drive-car-btn">🚗 গাড়ি / রিকশা ড্রাইভ [T]</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-open-phone-btn">📱 স্মার্টফোন ও চিট কোড [P]</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-lift-panel-btn">🛗 লিফট কন্ট্রোল প্যানেল [L]</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-toggle-doors-btn">🚪 সব দরজা ও গেট [G]</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-freecam-btn">🎥 ফ্রি ক্যাম সিনেমা মোড [C]</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-reference-btn">🖼 অরিজিনাল রেফারেন্স ভিউ</button>
+              </div>
+            </div>
+
+            <div class="gta-setting-card gta-setting-wide">
+              <div class="gta-setting-head">
+                <strong>ক্যারেক্টার ইমোট ও নাচ (Emotes &amp; Style · [1–9])</strong>
+                <small>যেকোনো স্টাইল বা নাচে ক্লিক করলে গেমে ফিরে গিয়ে ক্যারেক্টার অ্যাকশন করবে</small>
+              </div>
+              <div class="gta-pill-group">
+                <button type="button" class="gta-pill" data-gta-emote="pocket">😎 স্টাইল দাঁড়ানো</button>
+                <button type="button" class="gta-pill" data-gta-emote="dance1">🕺 [1] নাচ ১</button>
+                <button type="button" class="gta-pill" data-gta-emote="dance2">💃 [2] নাচ ২</button>
+                <button type="button" class="gta-pill" data-gta-emote="wave">👋 [3] সালাম / হাই</button>
+                <button type="button" class="gta-pill" data-gta-emote="kick">🥋 [4] ফ্লাইং কিক</button>
+                <button type="button" class="gta-pill" data-gta-emote="combo">🥊 [5] বক্সিং কম্বো</button>
+                <button type="button" class="gta-pill" data-gta-emote="flex">💪 [6] বডি ফ্লেক্স</button>
+                <button type="button" class="gta-pill" data-gta-emote="phone">📞 [7] ফোনে কথা</button>
+                <button type="button" class="gta-pill" data-gta-emote="mobile">🎮 [8] মোবাইল গেম</button>
+                <button type="button" class="gta-pill" data-gta-emote="laugh">😂 [9] হাসি</button>
               </div>
             </div>
           </div>
