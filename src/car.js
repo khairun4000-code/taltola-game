@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
+import { rigAllCarDoors, createInteriorCockpitRig } from './car-interior.js';
 
 const BMW_BODY_PAINT_MATS = ['Mesheszx1Mtl', 'Meshesbody151Mtl'];
 const BMW_WHEEL_RIM_MATS = ['Meshesm8rim1Mtl'];
@@ -90,6 +91,12 @@ export const CAR_FLEET_CONFIGS = [
     hoodHeight: 1.28,
     hoodForward: 0.65,
     isBMW: true,
+    doorSplitRegions: [
+      { key: 'FL', side: 1, minAbsX: 0.62, minY: 0.30, maxY: 1.32, minZ: -0.10, maxZ: 0.88 },
+      { key: 'FR', side: -1, minAbsX: 0.62, minY: 0.30, maxY: 1.32, minZ: -0.10, maxZ: 0.88 },
+      { key: 'RL', side: 1, minAbsX: 0.62, minY: 0.30, maxY: 1.32, minZ: -1.02, maxZ: -0.10 },
+      { key: 'RR', side: -1, minAbsX: 0.62, minY: 0.30, maxY: 1.32, minZ: -1.02, maxZ: -0.10 },
+    ],
   },
   {
     id: 'toyota_alphard',
@@ -118,6 +125,12 @@ export const CAR_FLEET_CONFIGS = [
     hoodForward: 0.95,
     isBMW: false,
     shadowOnlyExterior: true,
+    doorSplitRegions: [
+      { key: 'FL', side: 1, minAbsX: 0.68, minY: 0.34, maxY: 1.86, minZ: 0.38, maxZ: 1.44 },
+      { key: 'FR', side: -1, minAbsX: 0.68, minY: 0.34, maxY: 1.86, minZ: 0.38, maxZ: 1.44 },
+      { key: 'RL', side: 1, minAbsX: 0.68, minY: 0.34, maxY: 1.86, minZ: -0.96, maxZ: 0.38, sliding: true },
+      { key: 'RR', side: -1, minAbsX: 0.68, minY: 0.34, maxY: 1.86, minZ: -0.96, maxZ: 0.38, sliding: true },
+    ],
   },
   {
     id: 'toyota_corolla',
@@ -146,6 +159,12 @@ export const CAR_FLEET_CONFIGS = [
     hoodHeight: 1.28,
     hoodForward: 0.72,
     isBMW: false,
+    doorRegexMap: {
+      FL: /door_FL|doorglass_FL/i,
+      FR: /door_FR|doorglass_FR/i,
+      RL: /door_RL|doorglass_RL/i,
+      RR: /door_RR|doorglass_RR/i,
+    },
   },
   {
     id: 'toyota_fortuner',
@@ -175,6 +194,12 @@ export const CAR_FLEET_CONFIGS = [
     hoodForward: 0.85,
     isBMW: false,
     shadowOnlyExterior: true,
+    doorGroupNames: {
+      FL: 'Dummy003',
+      FR: 'Dummy001',
+      RL: 'Dummy005',
+      RR: 'Dummy004',
+    },
   },
   {
     id: 'toyota_hiace',
@@ -203,6 +228,12 @@ export const CAR_FLEET_CONFIGS = [
     hoodHeight: 1.58,
     hoodForward: 1.45,
     isBMW: false,
+    doorSplitRegions: [
+      { key: 'FL', side: 1, minAbsX: 0.66, minY: 0.32, maxY: 1.92, minZ: 0.72, maxZ: 1.92 },
+      { key: 'FR', side: -1, minAbsX: 0.66, minY: 0.32, maxY: 1.92, minZ: 0.72, maxZ: 1.92 },
+      { key: 'RL', side: 1, minAbsX: 0.66, minY: 0.32, maxY: 1.92, minZ: -0.82, maxZ: 0.72, sliding: true },
+      { key: 'RR', side: -1, minAbsX: 0.66, minY: 0.32, maxY: 1.92, minZ: -0.82, maxZ: 0.72, sliding: true },
+    ],
   },
   {
     id: 'bangladeshi_rickshaw_taltola',
@@ -512,8 +543,11 @@ export function createDrivableCar(scene, manager, config) {
 
   let riggedWheels = [];
   let rickshawParts = null;
-  let driverDoorPivot = null;
-  let driverDoorOpen = 0;
+  let carDoors = {};
+  let driverDoorOverride = null;
+  let exteriorWrapper = null;
+  const cockpitRig = config.isRickshaw ? null : createInteriorCockpitRig(config, paintPresets[0].hex);
+  if (cockpitRig) bodyTiltGroup.add(cockpitRig.group);
   let paintMaterials = [];
   let glossyMaterials = [];
   let carShadowMeshes = [];
@@ -1063,39 +1097,18 @@ export function createDrivableCar(scene, manager, config) {
           if (config.wheelNameRegex) {
             riggedWheels = rigGenericCarWheels(orientedWrapper, config.wheelNameRegex);
           }
-          const doorParts = [];
-          orientedWrapper.traverse((ch) => {
-            if (ch.name && /door_FL|doorglass_FL/i.test(ch.name)) {
-              doorParts.push(ch);
-            }
-          });
-          if (doorParts.length > 0) {
-            orientedWrapper.updateMatrixWorld(true);
-            const doorBox = new THREE.Box3();
-            const invW = new THREE.Matrix4().copy(orientedWrapper.matrixWorld).invert();
-            const tmpB = new THREE.Box3();
-            for (const dp of doorParts) {
-              tmpB.setFromObject(dp);
-              if (!tmpB.isEmpty()) {
-                tmpB.applyMatrix4(invW);
-                doorBox.union(tmpB);
-              }
-            }
-            if (!doorBox.isEmpty()) {
-              const hingePivot = new THREE.Group();
-              hingePivot.name = 'DriverDoorHinge';
-              hingePivot.position.set(doorBox.max.x, (doorBox.min.y + doorBox.max.y) * 0.5, doorBox.max.z);
-              orientedWrapper.add(hingePivot);
-              orientedWrapper.updateMatrixWorld(true);
-              for (const dp of doorParts) {
-                hingePivot.attach(dp);
-              }
-              driverDoorPivot = hingePivot;
-            }
-          }
         }
       }
 
+      if (!config.isRickshaw) {
+        const wheelMeshSet = new Set();
+        for (const w of riggedWheels) {
+          w.wheelRoot.traverse((ch) => { if (ch.isMesh) wheelMeshSet.add(ch); });
+        }
+        carDoors = rigAllCarDoors(orientedWrapper, config, wheelMeshSet);
+      }
+
+      exteriorWrapper = orientedWrapper;
       bodyTiltGroup.add(orientedWrapper);
       state.loaded = true;
       setQualityMode(currentQuality);
@@ -1110,11 +1123,90 @@ export function createDrivableCar(scene, manager, config) {
   const steerAxisY = new THREE.Vector3(0, 1, 0);
   const steerDeltaQ = new THREE.Quaternion();
 
-  function setDriverDoorOpen(amount) {
-    driverDoorOpen = THREE.MathUtils.clamp(amount, 0, 1);
-    if (driverDoorPivot) {
-      driverDoorPivot.rotation.y = driverDoorOpen * 1.08;
+  function applyDoorPose(door) {
+    if (!door || !door.pivot) return;
+    const amt = THREE.MathUtils.clamp(door.current, 0, 1);
+    if (door.sliding) {
+      const popOut = Math.min(1, amt * 3.5) * 0.11;
+      door.pivot.position.set(
+        door.restPos.x + door.side * popOut,
+        door.restPos.y,
+        door.restPos.z - amt * 0.80,
+      );
+    } else {
+      door.pivot.rotation.y = door.side * amt * 1.10;
     }
+  }
+
+  function setDriverDoorOpen(amount) {
+    if (amount === null || amount === undefined) {
+      driverDoorOverride = null;
+      return;
+    }
+    const clamped = THREE.MathUtils.clamp(amount, 0, 1);
+    driverDoorOverride = clamped;
+    if (carDoors.FL) {
+      carDoors.FL.current = clamped;
+      carDoors.FL.target = clamped > 0.05 ? 1 : 0;
+      applyDoorPose(carDoors.FL);
+    }
+    if (clamped <= 0.001) driverDoorOverride = null;
+  }
+
+  function toggleDoor(key) {
+    if (config.isRickshaw) return false;
+    const door = carDoors[key];
+    if (!door) return false;
+    driverDoorOverride = null;
+    const nextOpen = door.target < 0.5 ? 1 : 0;
+    door.target = nextOpen;
+    playDoorSound(nextOpen === 0);
+    return nextOpen === 1;
+  }
+
+  function toggleAllDoors() {
+    if (config.isRickshaw) return false;
+    const list = Object.values(carDoors);
+    if (!list.length) return false;
+    driverDoorOverride = null;
+    const anyClosed = list.some((d) => d.target < 0.5);
+    const nextTarget = anyClosed ? 1 : 0;
+    for (const d of list) d.target = nextTarget;
+    playDoorSound(nextTarget === 0);
+    return nextTarget === 1;
+  }
+
+  function getDoorStates() {
+    const out = { FL: false, FR: false, RL: false, RR: false, anyOpen: false, allOpen: false, count: 0 };
+    const keysList = ['FL', 'FR', 'RL', 'RR'];
+    let openCount = 0;
+    for (const k of keysList) {
+      if (carDoors[k]) {
+        out.count++;
+        const isOpen = carDoors[k].target >= 0.5;
+        out[k] = isOpen;
+        if (isOpen) openCount++;
+      }
+    }
+    out.anyOpen = openCount > 0;
+    out.allOpen = out.count > 0 && openCount === out.count;
+    return out;
+  }
+
+  function syncInteriorVisibility() {
+    const inInterior = Boolean(state.driving && state.cameraMode === 'interior' && cockpitRig);
+    if (cockpitRig) cockpitRig.group.visible = inInterior;
+    if (exteriorWrapper) exteriorWrapper.visible = !inInterior;
+  }
+
+  function getInteriorCameraPose(outEye, outLook) {
+    if (!cockpitRig) return false;
+    root.updateMatrixWorld(true);
+    outEye.copy(cockpitRig.getEyeLocal());
+    outLook.copy(cockpitRig.getLookLocal());
+    bodyTiltGroup.localToWorld(outEye);
+    bodyTiltGroup.localToWorld(outLook);
+    return true;
   }
 
   const anchorCache = {
@@ -1143,8 +1235,12 @@ export function createDrivableCar(scene, manager, config) {
     root.rotation.y = state.heading;
     bodyTiltGroup.rotation.x = state.pitch;
     bodyTiltGroup.rotation.z = state.roll;
-    if (driverDoorPivot) {
-      driverDoorPivot.rotation.y = driverDoorOpen * 1.08;
+    for (const d of Object.values(carDoors)) {
+      applyDoorPose(d);
+    }
+    syncInteriorVisibility();
+    if (cockpitRig && cockpitRig.group.visible) {
+      cockpitRig.update(state);
     }
 
     if (rickshawParts) {
@@ -1274,13 +1370,24 @@ export function createDrivableCar(scene, manager, config) {
     for (const mat of paintMaterials) {
       mat.color.set(preset.hex);
     }
+    cockpitRig?.setPaintColor(preset.hex);
     return preset;
   }
 
   function cycleCameraMode() {
-    const order = ['chase', 'hood', 'front'];
+    const order = config.isRickshaw ? ['chase', 'hood', 'front'] : ['chase', 'interior', 'hood', 'front'];
     const idx = order.indexOf(state.cameraMode);
     state.cameraMode = order[(idx + 1) % order.length];
+    syncInteriorVisibility();
+    return state.cameraMode;
+  }
+
+  function setCameraMode(mode) {
+    const allowed = config.isRickshaw ? ['chase', 'hood', 'front'] : ['chase', 'interior', 'hood', 'front'];
+    if (allowed.includes(mode)) {
+      state.cameraMode = mode;
+      syncInteriorVisibility();
+    }
     return state.cameraMode;
   }
 
@@ -1289,6 +1396,7 @@ export function createDrivableCar(scene, manager, config) {
     state.rideSeat = (config.isRickshaw && seatMode === 'passenger') ? 'passenger' : 'driver';
     ensureAudio();
     for (const m of drlMats) m.emissiveIntensity = 4.5;
+    syncInteriorVisibility();
   }
 
   function toggleRideSeat() {
@@ -1300,6 +1408,7 @@ export function createDrivableCar(scene, manager, config) {
   function exitCar(playerPos) {
     state.driving = false;
     state.rideSeat = 'driver';
+    syncInteriorVisibility();
     updateEngineAudio(false, 920, 0);
     for (const m of drlMats) m.emissiveIntensity = 1.8;
     for (const m of tailMats) m.emissiveIntensity = 1.6;
@@ -1345,6 +1454,13 @@ export function createDrivableCar(scene, manager, config) {
 
   function update(delta, keys, houseRef, envRef, allCars = []) {
     const dt = Math.min(delta, 0.05);
+
+    // Smoothly animate all 4 doors whether parked or driving
+    for (const d of Object.values(carDoors)) {
+      if (d.key === 'FL' && driverDoorOverride !== null) continue;
+      d.current = THREE.MathUtils.lerp(d.current, d.target, Math.min(1, dt * 8.5));
+      if (Math.abs(d.current - d.target) < 0.002) d.current = d.target;
+    }
 
     const isPassengerSitting = config.isRickshaw && state.rideSeat === 'passenger';
     if (!state.driving || isPassengerSitting) {
@@ -1483,6 +1599,11 @@ export function createDrivableCar(scene, manager, config) {
     getPrompt,
     cyclePaintColor,
     cycleCameraMode,
+    setCameraMode,
+    toggleDoor,
+    toggleAllDoors,
+    getDoorStates,
+    getInteriorCameraPose,
     playHorn,
     playDoorSound,
     playSeatbeltSound,

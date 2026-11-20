@@ -41,9 +41,16 @@ const carSeatBtn = document.querySelector('#car-seat-btn');
 const carSeatLabelEl = document.querySelector('#car-seat-label');
 const carPaintBtn = document.querySelector('#car-paint-btn');
 const carPaintNameEl = document.querySelector('#car-paint-name');
-const carCamBtn = document.querySelector('#car-cam-btn');
+const carPovBtn = document.querySelector('#car-pov-btn');
+const carCamLabelEl = document.querySelector('#car-cam-label');
+const carHudDoorsEl = document.querySelector('#car-hud-doors');
+const carDoorPanel = document.querySelector('#car-door-panel');
+const carDoorTitle = document.querySelector('#car-door-title');
+const carDoorAllBtn = document.querySelector('#car-door-all-btn');
+const carDoorButtons = Array.from(document.querySelectorAll('[data-car-door]'));
 const carHornBtn = document.querySelector('#car-horn-btn');
 const carExitBtn = document.querySelector('#car-exit-btn');
+let carDoorCursorMode = false;
 const hudToggleButton = document.querySelector('#hud-toggle-button');
 const emoteBar = document.querySelector('#emote-bar');
 const liftHudButton = document.querySelector('#lift-hud-button');
@@ -1457,6 +1464,35 @@ function toggleHudVisibility(forceHidden = null) {
   }
 }
 
+function getTargetCarForDoors() {
+  const driving = getDrivingCar();
+  if (driving && !driving.state.isRickshaw) return driving;
+  const near = findNearestEnterableCar(playerPos);
+  if (near && !near.state.isRickshaw) return near;
+  return null;
+}
+
+function syncCarDoorUI() {
+  const driving = getDrivingCar();
+  const nearCar = (!driving && started && !inStudio) ? findNearestEnterableCar(playerPos) : null;
+  const showNearbyPanel = Boolean(nearCar && !nearCar.state.isRickshaw && !liftKeypadOpen && !khulnaMapUI?.isOpen);
+  carDoorPanel?.classList.toggle('hidden', !showNearbyPanel);
+  if (showNearbyPanel && carDoorTitle) {
+    carDoorTitle.textContent = `${nearCar.state.name} · দরজা`;
+  }
+  const targetCar = (driving && !driving.state.isRickshaw) ? driving : (showNearbyPanel ? nearCar : null);
+  const ds = targetCar?.getDoorStates?.() || { FL: false, FR: false, RL: false, RR: false, anyOpen: false, allOpen: false };
+  for (const btn of carDoorButtons) {
+    const key = btn.dataset.carDoor;
+    if (key === 'ALL') btn.classList.toggle('open', Boolean(ds.allOpen));
+    else btn.classList.toggle('open', Boolean(ds[key]));
+  }
+  if (carDoorAllBtn) {
+    carDoorAllBtn.classList.toggle('open', Boolean(ds.allOpen));
+    carDoorAllBtn.textContent = ds.allOpen ? 'সব দরজা বন্ধ করুন (CLOSE ALL)' : 'সব দরজা খুলুন (OPEN ALL)';
+  }
+}
+
 function syncCarHUD() {
   if (!cars.length) return;
   const activeCar = getDrivingCar();
@@ -1477,9 +1513,15 @@ function syncCarHUD() {
         : activeCar.state.badge;
     }
     if (carSeatBtn) carSeatBtn.classList.toggle('hidden', !isRick);
+    if (carHudDoorsEl) carHudDoorsEl.classList.toggle('hidden', isRick);
     if (carSeatLabelEl && isRick) {
       carSeatLabelEl.textContent = isPass ? 'ড্রাইভার সিট' : 'প্যাসেঞ্জার সিট';
     }
+    if (carCamLabelEl) {
+      const camNames = { chase: 'POV ককপিট', interior: 'POV চালু ✓', hood: 'বোনট ভিউ', front: 'ফ্রন্ট ভিউ' };
+      carCamLabelEl.textContent = isRick ? 'ক্যামেরা' : (camNames[activeCar.state.cameraMode] || 'POV ককপিট');
+    }
+    carPovBtn?.classList.toggle('active', !isRick && activeCar.state.cameraMode === 'interior');
     if (carSpeedEl) carSpeedEl.textContent = String(Math.round(Math.abs(activeCar.state.speed) * 3.6));
     if (carGearEl) carGearEl.textContent = isRick ? (isPass ? 'P' : 'D') : String(activeCar.state.gear);
     if (carRpmFill) {
@@ -1490,6 +1532,7 @@ function syncCarHUD() {
       carPaintNameEl.textContent = activeCar.state.paintName.split(' ').pop();
     }
   }
+  syncCarDoorUI();
 }
 
 const vehicleTransition = {
@@ -1709,12 +1752,16 @@ function updateVehicleTransition(delta) {
     car.setDriverDoorOpen?.(0);
     if (doneType === 'rickshaw_mount_driver' || doneType === 'rickshaw_mount_passenger' || doneType === 'car_enter') {
       car.enterCar(doneSeat);
+      if (!car.state.isRickshaw && controls.isLocked) {
+        controls.unlock();
+      }
       syncCarHUD();
       updateHUDPrompt();
     } else {
       playerPos.copy(vt.endPos);
       controls.euler.set(-0.04, st.heading + Math.PI, 0, 'YXZ');
       camera.quaternion.setFromEuler(controls.euler);
+      if (baseCamNear > 0) syncCameraNear(baseCamNear);
       syncCarHUD();
       updateHUDPrompt();
     }
@@ -2045,6 +2092,11 @@ canvas.addEventListener('pointerdown', (event) => {
     return;
   }
   if (!controls.isLocked) {
+    const activeDrive = getDrivingCar();
+    if (activeDrive && !activeDrive.state.isRickshaw) {
+      return;
+    }
+    carDoorCursorMode = false;
     beginWalking();
     return;
   }
@@ -2306,9 +2358,28 @@ carPaintBtn?.addEventListener('click', (e) => {
   getDrivingCar()?.cyclePaintColor();
   syncCarHUD();
 });
-carCamBtn?.addEventListener('click', (e) => {
+carPovBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
   getDrivingCar()?.cycleCameraMode();
+  syncCarHUD();
+});
+for (const btn of carDoorButtons) {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const targetCar = getTargetCarForDoors();
+    if (!targetCar) return;
+    const key = btn.dataset.carDoor;
+    if (key === 'ALL') targetCar.toggleAllDoors?.();
+    else targetCar.toggleDoor?.(key);
+    syncCarDoorUI();
+  });
+}
+carDoorAllBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const targetCar = getTargetCarForDoors();
+  if (!targetCar) return;
+  targetCar.toggleAllDoors?.();
+  syncCarDoorUI();
 });
 carHornBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -2367,6 +2438,7 @@ interactPrompt?.addEventListener('click', () => {
 
 controls.addEventListener('lock', () => {
   if (inStudio) return;
+  carDoorCursorMode = false;
   started = true;
   document.querySelector('#look-control kbd').textContent = controls.fallback ? 'DRAG' : 'MOUSE';
   intro.classList.add('hidden');
@@ -2376,7 +2448,7 @@ controls.addEventListener('lock', () => {
 
 controls.addEventListener('unlock', () => {
   keys.clear();
-  if (liftKeypadOpen || khulnaMapUI?.isOpen) {
+  if (liftKeypadOpen || khulnaMapUI?.isOpen || getDrivingCar() || vehicleTransition.active || carDoorCursorMode) {
     pause.classList.add('hidden');
     walkHud.classList.remove('hidden');
     return;
@@ -2593,7 +2665,23 @@ window.addEventListener('keydown', (event) => {
     if ((event.code === 'KeyV' || event.code === 'KeyB') && !event.repeat) {
       event.preventDefault();
       activeCar.cycleCameraMode();
+      syncCarHUD();
       return;
+    }
+    if (!activeCar.state.isRickshaw && !event.repeat) {
+      const doorKeyMap = { Digit1: 'FL', Digit2: 'FR', Digit3: 'RL', Digit4: 'RR' };
+      if (doorKeyMap[event.code]) {
+        event.preventDefault();
+        activeCar.toggleDoor?.(doorKeyMap[event.code]);
+        syncCarDoorUI();
+        return;
+      }
+      if (event.code === 'Digit0' || event.code === 'KeyO') {
+        event.preventDefault();
+        activeCar.toggleAllDoors?.();
+        syncCarDoorUI();
+        return;
+      }
     }
     if (!activeCar.state.isRickshaw && event.code === 'KeyG' && !event.repeat) {
       event.preventDefault();
@@ -2607,6 +2695,23 @@ window.addEventListener('keydown', (event) => {
     }
     keys.add(event.code);
     return;
+  }
+
+  // [O] Free mouse cursor when standing near a car to click Door Buttons directly!
+  if (event.code === 'KeyO' && !event.repeat) {
+    const nearCar = findNearestEnterableCar(playerPos);
+    if (nearCar && !nearCar.state.isRickshaw) {
+      event.preventDefault();
+      if (controls.isLocked) {
+        carDoorCursorMode = true;
+        controls.unlock();
+      } else {
+        carDoorCursorMode = false;
+        controls.lock();
+      }
+      syncCarDoorUI();
+      return;
+    }
   }
 
   // Toggle Lift Keypad with [L] key anytime
@@ -3487,6 +3592,7 @@ const FLOOR_NAMES_BN = ['নিচতলা (1st Floor)', '২য় তলা (2nd
 
 function updateHUDPrompt() {
   if (!house || !interactPrompt) return;
+  syncCarDoorUI();
   let promptText = null;
   if (controls.isLocked || liftKeypadOpen) {
     if (getDrivingCar()) {
@@ -3671,32 +3777,43 @@ function updateMovement(delta) {
       const cosH = Math.cos(st.heading);
       const speedKmh = Math.abs(st.speed) * 3.6;
 
-      // Dynamic speed-rush FOV while driving
-      const targetFov = THREE.MathUtils.clamp(60 + speedKmh * 0.12, 60, 75);
+      // Dynamic speed-rush FOV while driving (wide natural cockpit FOV in 1st-Person Interior POV)
+      const isInteriorPov = st.cameraMode === 'interior' && !st.isRickshaw;
+      const targetFov = isInteriorPov
+        ? THREE.MathUtils.clamp(68 + speedKmh * 0.08, 68, 78)
+        : THREE.MathUtils.clamp(60 + speedKmh * 0.12, 60, 75);
       if (Math.abs(camera.fov - targetFov) > 0.05) {
         camera.fov += (targetFov - camera.fov) * Math.min(1, delta * 7.5);
         camera.updateProjectionMatrix();
       }
 
-      if (st.cameraMode === 'hood') {
-        const eyeBack = (st.isRickshaw && st.rideSeat === 'passenger') ? -0.58 : st.hoodForward;
-        const eyeH = (st.isRickshaw && st.rideSeat === 'passenger') ? 1.48 : st.hoodHeight;
-        carCamDesired.set(st.pos.x + sinH * eyeBack, st.pos.y + eyeH, st.pos.z + cosH * eyeBack);
-        carCamLookTarget.set(st.pos.x + sinH * 14.0, st.pos.y + eyeH - 0.16, st.pos.z + cosH * 14.0);
+      if (isInteriorPov && drivingCar.getInteriorCameraPose?.(carCamDesired, carCamLookTarget)) {
+        if (baseCamNear === 0) baseCamNear = camera.near;
+        syncCameraNear(0.045);
         camera.position.copy(carCamDesired);
         camera.lookAt(carCamLookTarget);
-      } else if (st.cameraMode === 'front') {
-        carCamDesired.set(st.pos.x + sinH * 4.4, st.pos.y + 1.55, st.pos.z + cosH * 4.4);
-        carCamLookTarget.set(st.pos.x, st.pos.y + 1.0, st.pos.z);
-        camera.position.lerp(carCamDesired, Math.min(1, delta * 9.0));
-        camera.lookAt(carCamLookTarget);
       } else {
-        // Dynamic smooth Chase Cam behind the active car or rickshaw
-        const backDist = st.camBack + Math.min(1.4, speedKmh * 0.014);
-        carCamDesired.set(st.pos.x - sinH * backDist, st.pos.y + st.camHeight, st.pos.z - cosH * backDist);
-        carCamLookTarget.set(st.pos.x + sinH * 4.5, st.pos.y + 1.05, st.pos.z + cosH * 4.5);
-        camera.position.lerp(carCamDesired, Math.min(1, delta * 8.5));
-        camera.lookAt(carCamLookTarget);
+        if (baseCamNear > 0) syncCameraNear(baseCamNear);
+        if (st.cameraMode === 'hood') {
+          const eyeBack = (st.isRickshaw && st.rideSeat === 'passenger') ? -0.58 : st.hoodForward;
+          const eyeH = (st.isRickshaw && st.rideSeat === 'passenger') ? 1.48 : st.hoodHeight;
+          carCamDesired.set(st.pos.x + sinH * eyeBack, st.pos.y + eyeH, st.pos.z + cosH * eyeBack);
+          carCamLookTarget.set(st.pos.x + sinH * 14.0, st.pos.y + eyeH - 0.16, st.pos.z + cosH * 14.0);
+          camera.position.copy(carCamDesired);
+          camera.lookAt(carCamLookTarget);
+        } else if (st.cameraMode === 'front') {
+          carCamDesired.set(st.pos.x + sinH * 4.4, st.pos.y + 1.55, st.pos.z + cosH * 4.4);
+          carCamLookTarget.set(st.pos.x, st.pos.y + 1.0, st.pos.z);
+          camera.position.lerp(carCamDesired, Math.min(1, delta * 9.0));
+          camera.lookAt(carCamLookTarget);
+        } else {
+          // Dynamic smooth Chase Cam behind the active car or rickshaw
+          const backDist = st.camBack + Math.min(1.4, speedKmh * 0.014);
+          carCamDesired.set(st.pos.x - sinH * backDist, st.pos.y + st.camHeight, st.pos.z - cosH * backDist);
+          carCamLookTarget.set(st.pos.x + sinH * 4.5, st.pos.y + 1.05, st.pos.z + cosH * 4.5);
+          camera.position.lerp(carCamDesired, Math.min(1, delta * 8.5));
+          camera.lookAt(carCamLookTarget);
+        }
       }
 
       if (playerCharacter) {

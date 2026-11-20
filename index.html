@@ -209,6 +209,19 @@
         <button type="button" class="emote-pill" data-game-emote="mobile"><kbd>8</kbd> গেম</button>
         <button type="button" class="emote-pill" data-game-emote="laugh"><kbd>9</kbd> হাসি</button>
       </div>
+      <div id="car-door-panel" class="car-door-panel hidden">
+        <div class="car-door-header">
+          <span id="car-door-title">গাড়ির দরজা কন্ট্রোল (CAR DOORS)</span>
+          <small>[O] মাউস ফ্রি</small>
+        </div>
+        <div class="car-door-grid">
+          <button type="button" class="car-door-btn" data-car-door="FL">FL ড্রাইভার</button>
+          <button type="button" class="car-door-btn" data-car-door="FR">FR সামনের ডান</button>
+          <button type="button" class="car-door-btn" data-car-door="RL">RL পেছনের বাম</button>
+          <button type="button" class="car-door-btn" data-car-door="RR">RR পেছনের ডান</button>
+          <button type="button" id="car-door-all-btn" class="car-door-btn car-door-all">সব দরজা খুলুন / বন্ধ (ALL)</button>
+        </div>
+      </div>
       <div id="car-hud" class="car-hud hidden">
         <div class="car-hud-top">
           <div id="car-badge" class="car-badge">BMW M3 COMPETITION</div>
@@ -221,12 +234,19 @@
         <div class="car-rpm-track"><div id="car-rpm-fill" class="car-rpm-fill"></div></div>
         <div class="car-hud-actions">
           <button type="button" id="car-seat-btn" class="car-chip hidden"><kbd>G</kbd> <span id="car-seat-label">প্যাসেঞ্জার সিট</span></button>
+          <button type="button" id="car-pov-btn" class="car-chip car-chip-pov"><kbd>V</kbd> <span id="car-cam-label">POV ককপিট</span></button>
           <button type="button" id="car-paint-btn" class="car-chip"><kbd>C</kbd> <span id="car-paint-name">Green</span></button>
-          <button type="button" id="car-cam-btn" class="car-chip"><kbd>V</kbd> ক্যামেরা</button>
           <button type="button" id="car-horn-btn" class="car-chip"><kbd>H</kbd> হর্ন</button>
           <button type="button" id="car-exit-btn" class="car-chip car-chip-exit"><kbd>E / T</kbd> নামুন</button>
         </div>
-        <div class="car-drive-hint"><kbd>W/S</kbd> চলুন/ব্রেক · <kbd>A/D</kbd> স্টিয়ারিং · <kbd>SHIFT</kbd> দ্রুত · <kbd>TAB</kbd> UI লুকান · <kbd>ESC</kbd> ম্যাপ</div>
+        <div id="car-hud-doors" class="car-hud-doors">
+          <button type="button" class="car-door-mini" data-car-door="FL">FL</button>
+          <button type="button" class="car-door-mini" data-car-door="FR">FR</button>
+          <button type="button" class="car-door-mini" data-car-door="RL">RL</button>
+          <button type="button" class="car-door-mini" data-car-door="RR">RR</button>
+          <button type="button" class="car-door-mini car-door-mini-all" data-car-door="ALL">সব দরজা</button>
+        </div>
+        <div class="car-drive-hint"><kbd>W/S</kbd> চলুন/ব্রেক · <kbd>A/D</kbd> স্টিয়ারিং · <kbd>V</kbd> POV ভিউ · <kbd>1-4</kbd> দরজা · <kbd>ESC</kbd> ম্যাপ</div>
       </div>
       <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360°</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>F</kbd> রিকশা চালান</span><span><kbd>G</kbd> রিকশা প্যাসেঞ্জার</span><span><kbd>T</kbd> গাড়ি</span><span><kbd>ESC</kbd> ম্যাপ</span><span><kbd>TAB</kbd> বাটন লুকান</span><span><kbd>V</kbd> VIEW</span></div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
