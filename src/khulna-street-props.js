@@ -298,35 +298,30 @@ export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0, pole
 
   const sAbs = Math.abs(seed) + 17;
 
-  // 1. Mount crisp 4-corner high-res Leader Poster at the LOWER BASE of ~65% of poles (খাম্বার গোড়ায়!)
-  const hasBaseNeta = hashRand(sAbs * 2.9) < 0.65;
-  if (hasBaseNeta) {
-    const nIdx = Math.abs(seed) % 3;
-    const spec = NETA_POSTER_SPECS[nIdx];
-    const pH = nIdx === 2 ? 1.48 : 1.32;
-    const pW = pH * spec.aspect;
-    const pY = 1.62;
-    const pxOff = poleRadius + 0.06;
+  // 1. Mount crisp 4-corner high-res Leader Poster (from user's 3 uploaded neta images) on corridor poles!
+  const nIdx = Math.abs(seed) % 3;
+  const spec = NETA_POSTER_SPECS[nIdx];
+  const pH = nIdx === 2 ? 1.56 : 1.42;
+  const pW = pH * spec.aspect;
+  const pY = 1.72;
+  const pxOff = poleRadius + 0.07;
 
-    const board = new THREE.Mesh(new THREE.PlaneGeometry(pW, pH), assets.netaMats[nIdx]);
-    board.position.set(pxOff, pY, 0);
-    board.rotation.y = Math.PI * 0.5;
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.03, pH + 0.07, pW + 0.07), assets.steelMat);
-    frame.position.set(pxOff - 0.02, pY, 0);
-    grp.add(frame, board);
-  } else {
-    // 2. Only SOME of the remaining poles get 1 or 2 small Bengali stickers (others stay completely clean!)
-    const roll = hashRand(sAbs * 3.7);
-    const posterCount = roll < 0.45 ? 0 : (roll < 0.78 ? 1 : 2);
+  const board = new THREE.Mesh(new THREE.PlaneGeometry(pW, pH), assets.netaMats[nIdx]);
+  board.position.set(pxOff, pY, 0);
+  board.rotation.y = Math.PI * 0.5;
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(0.032, pH + 0.07, pW + 0.07), assets.steelMat);
+  frame.position.set(pxOff - 0.02, pY, 0);
+  grp.add(frame, board);
+
+  // 2. Only SOME poles (~35%) also have 1 small Bengali sticker higher up (rest stay clean!)
+  const roll = hashRand(sAbs * 3.7);
+  if (roll < 0.35) {
     const sleeveGeo = new THREE.CylinderGeometry(poleRadius + 0.008, poleRadius + 0.014, 0.72, 10, 1, true);
-    const heights = [1.65, 2.55];
-    for (let i = 0; i < posterCount; i++) {
-      const kIdx = Math.floor(hashRand(sAbs * 19.3 + i * 31.7) * POSTER_KIND_COUNT) % POSTER_KIND_COUNT;
-      const pm = new THREE.Mesh(sleeveGeo, assets.posterMats[kIdx]);
-      pm.position.y = heights[i] + (hashRand(sAbs + i * 7) - 0.5) * 0.14;
-      pm.rotation.y = hashRand(sAbs * 5 + i * 13) * Math.PI * 2;
-      grp.add(pm);
-    }
+    const kIdx = Math.floor(hashRand(sAbs * 19.3) * POSTER_KIND_COUNT) % POSTER_KIND_COUNT;
+    const pm = new THREE.Mesh(sleeveGeo, assets.posterMats[kIdx]);
+    pm.position.y = 3.15;
+    pm.rotation.y = hashRand(sAbs * 5) * Math.PI * 2;
+    grp.add(pm);
   }
 
   // 3. Dense Bangladeshi round black ISP/dish wire coils hanging around mid-upper pole (3-4 coils per pole!)

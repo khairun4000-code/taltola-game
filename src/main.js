@@ -12,7 +12,7 @@ import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { createKhulnaMapUI } from './khulna-map-ui.js';
 import { createGTAPhoneUI } from './gta-phone.js';
 import { createAtmosphericSkyAndPMREM, TIME_OF_DAY_PRESETS } from './aaa-shaders.js';
-import { createDrivableCarFleet } from './car.js';
+import { CAR_FLEET_CONFIGS, createDrivableCar, createDrivableCarFleet } from './car.js';
 import './style.css';
 
 const canvas = document.querySelector('#scene');
@@ -280,6 +280,8 @@ let house;
 let studioGroup;
 let playerCharacter;
 let cars = [];
+const MAX_CHEAT_SPAWNED_VEHICLES = 2;
+const cheatSpawnedCars = [];
 let bmwCar;
 function getDrivingCar() {
   return cars.find((c) => c.state.driving) || null;
@@ -2108,16 +2110,53 @@ async function initialize() {
       }
     },
     onPhoneInteract: () => playerCharacter?.triggerPhoneTap?.(),
+    getSpawnLimitInfo: () => ({ count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES }),
+    onClearSpawnedVehicles: () => {
+      const cleared = cheatSpawnedCars.length;
+      for (const sc of cheatSpawnedCars) {
+        if (sc.state.driving) {
+          sc.exitCar(playerPos);
+        }
+        const idx = cars.indexOf(sc);
+        if (idx !== -1) cars.splice(idx, 1);
+        sc.destroy?.();
+      }
+      cheatSpawnedCars.length = 0;
+      syncCarHUD();
+      updateHUDPrompt();
+      return { cleared, count: 0, max: MAX_CHEAT_SPAWNED_VEHICLES };
+    },
     onSpawnCheatVehicle: (carId) => {
-      const targetCar = cars.find((c) => c.state.id === carId);
-      if (!targetCar) return false;
+      if (cheatSpawnedCars.length >= MAX_CHEAT_SPAWNED_VEHICLES) {
+        return { ok: false, reason: 'limit', count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES };
+      }
+      const baseCfg = CAR_FLEET_CONFIGS.find((c) => c.id === carId);
+      if (!baseCfg) {
+        return { ok: false, reason: 'not_found', count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES };
+      }
       controls.getHorizontalVectors(forwardVec, rightVec);
-      const dist = targetCar.state.isRickshaw ? 3.8 : 5.6;
-      const sx = playerPos.x + forwardVec.x * dist;
-      const sz = playerPos.z + forwardVec.z * dist;
+      const dist = baseCfg.isRickshaw ? 3.8 : 5.6;
+      let sx = playerPos.x + forwardVec.x * dist;
+      let sz = playerPos.z + forwardVec.z * dist;
+      // Offset 2nd spawned vehicle slightly to the side if 1st spawned vehicle is right in front
+      if (cheatSpawnedCars.some((c) => Math.hypot(c.state.pos.x - sx, c.state.pos.z - sz) < 3.4)) {
+        const sideStep = baseCfg.isRickshaw ? 2.2 : 3.4;
+        sx += rightVec.x * sideStep;
+        sz += rightVec.z * sideStep;
+      }
       const heading = Math.atan2(forwardVec.x, forwardVec.z) + Math.PI * 0.5;
-      targetCar.spawnAt?.(sx, sz, heading);
-      return true;
+      const spawnedCar = createDrivableCar(scene, undefined, {
+        ...baseCfg,
+        id: `${baseCfg.id}_spawn_${Date.now()}_${cheatSpawnedCars.length + 1}`,
+        spawnPos: [sx, 0.01, sz],
+        spawnHeading: heading,
+      });
+      spawnedCar.setQualityMode?.(quality);
+      const selectiveEnv = quality === 'ultra' ? null : (skySystem?.getEnvTexture?.() || null);
+      spawnedCar.setEnvironmentMap?.(selectiveEnv);
+      cars.push(spawnedCar);
+      cheatSpawnedCars.push(spawnedCar);
+      return { ok: true, count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES };
     },
     onTeleportLandmark: (lm) => warpToLandmark(lm, false),
     onEnterSelfieMode: () => {
@@ -4100,6 +4139,8 @@ function updateHUDPrompt() {
       }
     } else if (Math.abs(lx) < 16 && Math.abs(lz) < 16) {
       zone = 'তালতলার বাসা · TOOTPARA TALTOLA HOSPITAL CROSS RD';
+    } else if (x >= 144 && x <= 192 && z >= -524 && z <= -292) {
+      zone = 'ALTAPOLE LANE · আলতাপোল লেন, খুলনা';
     } else if (Math.abs(x) < 35 && Math.abs(z) < 42) {
       zone = 'HAJI MOHSIN ROAD · হাজী মহসিন রোড, খুলনা';
     } else {

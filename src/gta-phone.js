@@ -22,6 +22,8 @@ export function createGTAPhoneUI({
   onOpenChange,
   onPhoneInteract,
   onSpawnCheatVehicle,
+  onClearSpawnedVehicles,
+  getSpawnLimitInfo,
   onTeleportLandmark,
   onEnterSelfieMode,
   onExitSelfieMode,
@@ -110,7 +112,30 @@ export function createGTAPhoneUI({
 
   function populateCheatList() {
     if (!cheatListEl) return;
+    const info = getSpawnLimitInfo?.() || { count: 0, max: 2 };
     cheatListEl.innerHTML = '';
+
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 6px 6px;font-size:11px;color:#cbd5e1;border-bottom:1px solid rgba(255,255,255,0.12);margin-bottom:4px;';
+    headerRow.innerHTML = `<span>স্পন ভেহিকল: <strong style="color:${info.count >= info.max ? '#f87171' : '#86efac'}">${info.count}/${info.max}</strong></span>`;
+    if (info.count > 0 && onClearSpawnedVehicles) {
+      const clearBtn = document.createElement('button');
+      clearBtn.type = 'button';
+      clearBtn.textContent = 'সব স্পন সরান';
+      clearBtn.style.cssText = 'background:#ef4444;color:#fff;border:none;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;';
+      clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPhoneInteract?.();
+        const res = onClearSpawnedVehicles();
+        playTone(440, 330, 0.1, 0.07);
+        populateCheatList();
+        if (dialStatus) dialStatus.textContent = `✓ স্পন করা ভেহিকল সরানো হয়েছে (0/${res?.max ?? 2})`;
+        showToast('🗑️ স্পন করা ভেহিকল সরানো হয়েছে — এখন আবার সর্বোচ্চ ২টি স্পন করতে পারবেন।');
+      });
+      headerRow.appendChild(clearBtn);
+    }
+    cheatListEl.appendChild(headerRow);
+
     for (const item of PHONE_CHEAT_CODES) {
       const row = document.createElement('button');
       row.type = 'button';
@@ -165,7 +190,13 @@ export function createGTAPhoneUI({
     } else if (appName === 'selfie') {
       onEnterSelfieMode?.();
     } else if (appName === 'dial') {
-      if (dialStatus) dialStatus.textContent = 'চিট কোড ডায়াল করে কল চাপুন';
+      populateCheatList();
+      const info = getSpawnLimitInfo?.() || { count: 0, max: 2 };
+      if (dialStatus) {
+        dialStatus.textContent = info.count >= info.max
+          ? `সর্বোচ্চ ${info.max}টি ভেহিকল স্পন হয়ে গেছে (${info.count}/${info.max}) · নতুন নামাতে আগে সরান`
+          : `চিট কোড ডায়াল করে কল চাপুন (সর্বোচ্চ ${info.max}টি: ${info.count}/${info.max})`;
+      }
     }
   }
 
@@ -174,15 +205,24 @@ export function createGTAPhoneUI({
     if (!code) return;
     const match = PHONE_CHEAT_CODES.find((c) => c.code === code);
     if (match) {
-      playTone(880, 1320, 0.16, 0.10);
-      const ok = onSpawnCheatVehicle?.(match.carId, match.label);
-      if (ok) {
-        if (dialStatus) dialStatus.textContent = `✓ ${match.label} স্পন হয়েছে!`;
-        showToast(`🚗 CHEAT ACTIVATED: ${match.label} স্পন হয়েছে!`);
+      const raw = onSpawnCheatVehicle?.(match.carId, match.label);
+      const res = typeof raw === 'object' && raw !== null ? raw : { ok: Boolean(raw), count: 1, max: 2 };
+      if (res.ok) {
+        playTone(880, 1320, 0.16, 0.10);
+        populateCheatList();
+        if (dialStatus) dialStatus.textContent = `✓ ${match.label} স্পন হয়েছে! (${res.count}/${res.max})`;
+        showToast(`🚗 CHEAT ACTIVATED: ${match.label} স্পন হয়েছে! (${res.count}/${res.max})`);
         dialValue = '';
         if (dialDisplay) dialDisplay.textContent = '—';
         setTimeout(() => close(), 420);
+      } else if (res.reason === 'limit') {
+        playTone(300, 210, 0.22, 0.10);
+        populateCheatList();
+        const msg = `⚠️ সর্বোচ্চ ${res.max}টি ভেহিকল স্পন করা যাবে (${res.count}/${res.max})! এর বেশি নয়।`;
+        if (dialStatus) dialStatus.textContent = msg;
+        showToast(msg);
       } else if (dialStatus) {
+        playTone(320, 240, 0.18, 0.09);
         dialStatus.textContent = 'গাড়িটি পাওয়া যায়নি';
       }
     } else {

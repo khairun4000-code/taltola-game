@@ -2812,6 +2812,16 @@ export function createDrivableCar(scene, manager, config) {
       state.roll = 0;
       syncTransform();
     },
+    destroy() {
+      state.driving = false;
+      updateEngineAudio(false, 920, 0);
+      for (const p of tireSmokePuffs) {
+        scene.remove(p.mesh);
+        p.mesh.material?.dispose?.();
+      }
+      tireSmokePuffs.length = 0;
+      if (root.parent) root.parent.remove(root);
+    },
     setVisibilityAndShadow,
     setEnvironmentMap,
     setQualityMode,

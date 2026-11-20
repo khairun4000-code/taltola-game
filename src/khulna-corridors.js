@@ -1184,10 +1184,11 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
 
   const poles = [];
   const taltolaPoleSpecs = [
-    [oz - 28, 2], // মোটা কংক্রিটের খাম্বা
-    [oz - 4,  0], // চিকন স্টিলের খাম্বা
-    [oz + 20, 2], // মোটা কংক্রিটের খাম্বা
-    [oz + 42, 0], // চিকন স্টিলের খাম্বা
+    [oz - 28, 2, 0], // মোটা কংক্রিটের খাম্বা + Z X হুজ্জা
+    [oz - 4,  0, 1], // চিকন স্টিলের খাম্বা + সাবিদ ফালা
+    [oz + 10, 2, 2], // মোটা কংক্রিটের খাম্বা + পি.টি.আই রাফিন
+    [oz + 24, 0, 0], // চিকন স্টিলের খাম্বা + Z X হুজ্জা
+    [oz + 42, 2, 1], // মোটা কংক্রিটের খাম্বা + সাবিদ ফালা
   ];
   for (const [pz, tier] of taltolaPoleSpecs) {
     const poleX = Math.min(ox - 3.65, crossLaneRoadX(pz) - 3.45);
@@ -1251,10 +1252,241 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
 }
 
 /**
- * Builds ALL three GTA-VI-quality sliced Showcase Corridors:
+ * Builds the realistic Altapole Lane (আলতাপোল লেন) Corridor along its real OSM trace
+ * connecting Lower Jessore Road (z = -519) to South Central Road (z = -296) at x ≈ 166..170.
+ */
+function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG = staticG) {
+  const lanePts = [
+    [166, -519],
+    [166, -499],
+    [165, -477],
+    [167, -447],
+    [170, -405],
+    [168, -373],
+    [167, -360],
+    [163, -344],
+    [160, -320],
+    [157, -296],
+  ];
+
+  const laneCenterX = (zVal) => {
+    for (let i = 0; i < lanePts.length - 1; i++) {
+      const [x0, z0] = lanePts[i];
+      const [x1, z1] = lanePts[i + 1];
+      if (zVal <= z1 || i === lanePts.length - 2) {
+        const t = THREE.MathUtils.clamp((zVal - z0) / Math.max(0.001, z1 - z0), 0, 1);
+        return x0 + (x1 - x0) * t;
+      }
+    }
+    return 166;
+  };
+
+  // 1) Continuous Paved Asphalt Lane + Concrete Sub-base + Red-Brick Footpaths on East & West
+  buildPavedSegmentRoad(staticG, lanePts, 4.8, 0.028, m.road, 5.2);
+  buildPavedSegmentRoad(staticG, lanePts, 6.4, -0.055, m.darkConcrete, 3.0);
+  for (const side of [-1, 1]) {
+    const swPts = lanePts.map(([x, z]) => [x + side * 3.05, z]);
+    buildPavedSegmentRoad(staticG, swPts, 1.35, 0.065, m.brick, 2.2);
+  }
+
+  // Zebra crosswalks at North (Lower Jessore Rd) & South (South Central Rd) entries
+  for (const cz of [-514.5, -301.5]) {
+    const cx = laneCenterX(cz);
+    for (let sx = -1.4; sx <= 1.4; sx += 0.56) {
+      addBox(staticG, [0.28, 0.014, 1.75], [cx + sx, 0.036, cz], bank.modernWhite, { castShadow: false });
+    }
+  }
+
+  // North & South Entry Street Signpoles
+  addCyl(staticG, 0.06, 0.08, 3.7, [169.4, 1.85, -513.0], bank.darkMetal, 8);
+  addIlluminatedSign(dynamicG, bank, {
+    title: 'আলতাপোল লেন · লোয়ার যশোর রোড মোড়',
+    subtitle: 'ALTAPOLE LANE · WARD 23 · KHULNA',
+    bg: '#0f3d2e',
+    accent: '#d9ed9c',
+  }, [169.4, 3.45, -513.0], 0, 3.8, 1.12);
+
+  addCyl(staticG, 0.06, 0.08, 3.7, [160.5, 1.85, -303.0], bank.darkMetal, 8);
+  addIlluminatedSign(dynamicG, bank, {
+    title: 'আলতাপোল লেন · সাউথ সেন্ট্রাল রোড সংযোগ',
+    subtitle: 'ALTAPOLE LANE · SOUTH ENTRY',
+    bg: '#0c4a6e',
+    accent: '#fde047',
+  }, [160.5, 3.45, -303.0], Math.PI, 3.8, 1.12);
+
+  // 2) Authentic Khulna Multi-Story Houses & Local Shopfronts along BOTH sides of Altapole Lane
+  const wallMats = [bank.terracotta, bank.creamTrim, bank.sagePlaster, bank.ochrePlaster, bank.brickRed, bank.modernWhite];
+  const eastSpecs = [
+    { z: -496, len: 14.5, floors: 4, shop: true, kind: 'pharmacy', sign: { title: 'আলতাপোল ফার্মেসি ও মেডিকেল কর্নার', subtitle: 'ALTAPOLE PHARMACY · 24/7 MEDICINE', bg: '#065f46', accent: '#fef08a' } },
+    { z: -475, len: 15.0, floors: 5, shop: false, kind: 'pharmacy', sign: null },
+    { z: -452, len: 15.5, floors: 4, shop: true, kind: 'clinic', sign: { title: 'খুলনা জেনারেল স্টোর ও কনফেকশনারি', subtitle: 'ALTAPOLE LANE · DAILY NEEDS', bg: '#1e3a8a', accent: '#fde047' } },
+    { z: -428, len: 14.0, floors: 3, shop: true, kind: 'pharmacy', sign: { title: 'আলতাপোল টি স্টল ও বেকারি', subtitle: 'FRESH TEA · SINGARA · BAKERY', bg: '#7c2d12', accent: '#fde047' } },
+    { z: -404, len: 15.5, floors: 5, shop: false, kind: 'pharmacy', sign: null },
+    { z: -380, len: 14.5, floors: 4, shop: true, kind: 'pharmacy', sign: { title: 'নিউ মদিনা টেইলার্স ও লন্ড্রি', subtitle: 'NEW MADINA TAILORS · ALTAPOLE', bg: '#312e81', accent: '#a5f3fc' } },
+    { z: -355, len: 15.0, floors: 3, shop: false, kind: 'pharmacy', sign: null },
+    { z: -330, len: 15.0, floors: 4, shop: true, kind: 'atm', sign: { title: 'মায়ের দোয়া এন্টারপ্রাইজ ও ফ্লেক্সিলোড', subtitle: 'BKASH · NAGAD · GROCERY', bg: '#701a75', accent: '#fde047' } },
+  ];
+  eastSpecs.forEach((sp, i) => {
+    const rx = laneCenterX(sp.z);
+    const wX = 9.4;
+    const cx = rx + 4.1 + wX * 0.5;
+    const b = buildDetailedBuilding(staticG, dynamicG, bank, {
+      cx,
+      cz: sp.z,
+      widthX: wX,
+      lengthZ: sp.len,
+      floors: sp.floors,
+      facing: -1,
+      wallMat: wallMats[i % wallMats.length],
+      accentMat: bank.creamTrim,
+      shutterMat: i % 2 === 0 ? bank.shutterSteel : bank.shutterBlue,
+      hasShopArcade: sp.shop,
+      displayKind: sp.kind,
+      seed: 9101 + i * 37,
+    });
+    if (sp.sign) {
+      addIlluminatedSign(dynamicG, bank, sp.sign, [cx + b.frontLocalX - 0.24, b.signY, sp.z], -Math.PI / 2, Math.min(sp.len - 2.2, 6.2), 0.92);
+    }
+  });
+
+  // West side: Residential Houses + Real Local Landmark: Masjid Wali Asr (Shia Mosque, Altapole Lane)
+  const westSpecs = [
+    { z: -494, len: 15.0, floors: 4, shop: true, kind: 'pharmacy', sign: { title: 'আলতাপোল লেন হার্ডওয়্যার ও ইলেকট্রিক', subtitle: 'HARDWARE & SANITARY STORE', bg: '#1e293b', accent: '#fbbf24' } },
+    { z: -471, len: 14.5, floors: 3, shop: false, kind: 'pharmacy', sign: null },
+    { z: -446, len: 15.0, floors: 5, shop: false, kind: 'pharmacy', sign: null },
+    { z: -396, len: 15.0, floors: 4, shop: true, kind: 'clinic', sign: { title: 'বিসমিল্লাহ ডায়াগনস্টিক ও ডেন্টাল', subtitle: 'ALTAPOLE LANE HEALTHCARE', bg: '#0c4a6e', accent: '#bae6fd' } },
+    { z: -372, len: 14.5, floors: 5, shop: false, kind: 'pharmacy', sign: null },
+    { z: -346, len: 15.0, floors: 3, shop: true, kind: 'pharmacy', sign: { title: 'সততা ভ্যারাইটিজ ও স্টেশনারি', subtitle: 'BOOKS · PHOTOCOPY · STATIONERY', bg: '#14532d', accent: '#d9ed9c' } },
+    { z: -322, len: 14.5, floors: 4, shop: false, kind: 'pharmacy', sign: null },
+  ];
+  westSpecs.forEach((sp, i) => {
+    const rx = laneCenterX(sp.z);
+    const wX = 9.2;
+    const cx = rx - 4.1 - wX * 0.5;
+    const b = buildDetailedBuilding(staticG, dynamicG, bank, {
+      cx,
+      cz: sp.z,
+      widthX: wX,
+      lengthZ: sp.len,
+      floors: sp.floors,
+      facing: 1,
+      wallMat: wallMats[(i + 2) % wallMats.length],
+      accentMat: bank.creamTrim,
+      shutterMat: i % 2 === 1 ? bank.shutterSteel : bank.shutterBlue,
+      hasShopArcade: sp.shop,
+      displayKind: sp.kind,
+      seed: 9503 + i * 41,
+    });
+    if (sp.sign) {
+      addIlluminatedSign(dynamicG, bank, sp.sign, [cx + b.frontLocalX + 0.24, b.signY, sp.z], Math.PI / 2, Math.min(sp.len - 2.2, 6.0), 0.92);
+    }
+  });
+
+  // Real Altapole Lane Landmark: Masjid Wali Asr (Shia Mosque & Islamic Education Center) at z = -421
+  const mRx = laneCenterX(-421);
+  const mCx = mRx - 9.4;
+  addBox(staticG, [10.4, 0.45, 16.4], [mCx, 0.22, -421], bank.dampPlinth, { uvScale: 2.0 });
+  addBox(staticG, [10.0, 8.2, 16.0], [mCx, 4.3, -421], bank.modernWhite, { uvScale: 2.6 });
+  addBox(staticG, [10.3, 0.45, 16.3], [mCx, 8.5, -421], bank.deckGreen, { uvScale: 2.2 });
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(2.6, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), bank.deckGreen);
+  dome.position.set(mCx, 8.65, -421);
+  staticG.add(dome);
+  for (const mz of [-428.0, -414.0]) {
+    addCyl(staticG, 0.48, 0.56, 12.6, [mCx + 4.4, 6.3, mz], bank.modernWhite, 10);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.62, 1.5, 10), bank.deckGreen);
+    cap.position.set(mCx + 4.4, 13.35, mz);
+    staticG.add(cap);
+  }
+  addIlluminatedSign(dynamicG, bank, {
+    title: 'মসজিদ ওয়ালি আসর (শিয়া মসজিদ) · আলতাপোল লেন',
+    subtitle: 'MASJID WALI ASR · ISLAMIC EDUCATION CENTER',
+    bg: '#064e3b',
+    accent: '#fef08a',
+  }, [mCx + 5.18, 3.65, -421], Math.PI / 2, 7.6, 1.05);
+
+  // Weathered Brick Compound Walls & BIG High-Quality Leader Wall Posters along Altapole Lane gaps
+  for (const [wz, side, pIdx] of [[-484, 1, 0], [-462, -1, 1], [-416, 1, 2], [-362, -1, 0], [-338, 1, 1]]) {
+    const rx = laneCenterX(wz);
+    const wx = rx + side * 4.05;
+    addBox(staticG, [0.34, 2.25, 6.2], [wx, 1.12, wz], bank.brickRed, { uvScale: 2.2 });
+    addBox(staticG, [0.46, 0.14, 6.4], [wx, 2.28, wz], bank.creamTrim);
+    addBigNetaWallPoster(dynamicG, pIdx, wx - side * 0.22, 1.30, wz, side > 0 ? -Math.PI / 2 : Math.PI / 2, 1.90);
+  }
+
+  // 3) Alternating Thick Concrete & Slim Steel Utility Poles with the 3 HD Leader Posters + Overhead Khulna Wires
+  const lanePoles = [];
+  const poleSpecs = [
+    [-504, 2],
+    [-476, 0],
+    [-448, 2],
+    [-420, 0],
+    [-392, 2],
+    [-364, 0],
+    [-336, 2],
+    [-308, 0],
+  ];
+  for (const [pz, tier] of poleSpecs) {
+    const px = laneCenterX(pz) + 3.45;
+    addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, -1, pz === -448, lanePoles, tier);
+  }
+  for (let i = 0; i < lanePoles.length - 1; i++) {
+    const wireSpecs = [
+      [0.0, 0.0, 0.42, 0.016],
+      [-0.32, -0.50, 0.58, 0.017],
+      [0.30, -0.56, 0.54, 0.016],
+      [-0.22, -2.65, 0.96, 0.022],
+      [0.24, -3.05, 1.28, 0.019],
+      [-0.14, -3.40, 1.48, 0.017],
+      [0.18, -3.60, 1.12, 0.015],
+    ];
+    for (let k = 0; k < wireSpecs.length; k++) {
+      const [lat, dy, sag, rad] = wireSpecs[k];
+      helpers.addWire?.(
+        staticG,
+        [lanePoles[i][0] + lat, lanePoles[i][1] + dy, lanePoles[i][2]],
+        [lanePoles[i + 1][0] + lat, lanePoles[i + 1][1] + dy, lanePoles[i + 1][2]],
+        m.wire,
+        sag,
+        rad,
+      );
+    }
+    for (const [sDir, dzOff, endY] of [[1, -4.5, 4.4], [-1, 3.5, 5.2], [1, 6.0, 6.1]]) {
+      helpers.addWire?.(
+        staticG,
+        [lanePoles[i][0], lanePoles[i][1] - 3.15, lanePoles[i][2]],
+        [lanePoles[i][0] + sDir * 6.8, endY, lanePoles[i][2] + dzOff],
+        m.wire,
+        0.65,
+        0.014,
+      );
+    }
+  }
+
+  // 4) Parked Green CNG Auto-Rickshaw & Tropical Coconut Palms / Rain-Trees along Altapole Lane
+  const laneCng = buildCNGAuto({
+    tire: bank.darkSlate, rim: bank.aluminum, darkTrim: bank.darkMetal, chrome: bank.aluminum,
+    windshield: bank.windowGlass, headlight: bank.lampBulb, taillight: bank.ferryOrange, amber: bank.ferryOrange,
+    cngGreen: bank.deckGreen, cngYellow: bank.tinBlue, cngRexine: bank.darkSlate,
+  });
+  laneCng.position.set(laneCenterX(-434) - 1.55, 0.08, -434);
+  laneCng.rotation.y = 0.06;
+  staticG.add(laneCng);
+
+  for (const [tz, side, isPalm] of [
+    [-506, -1, true], [-462, -1, false], [-436, 1, true], [-388, 1, false], [-358, -1, true], [-314, 1, false],
+  ]) {
+    const px = laneCenterX(tz) + side * 3.75;
+    if (isPalm) helpers.addPalm?.(dynamicG, px, 0, tz, 6.9, (tz % 5) * 0.2, 0.35);
+    else helpers.addBroadleafTree?.(treesG, px, 0, tz, 0.96, 880 + Math.abs(tz));
+  }
+}
+
+/**
+ * Builds ALL four GTA-VI-quality sliced Showcase Corridors:
  * 1) Haji Mohsin Road Corridor (z = -140..+140)
  * 2) Rupsha Strand Road, Natun Bazar Launch Ghat & Rupsha Ferry Terminal
  * 3) Tootpara Taltola House Neighborhood (420, 975)
+ * 4) Altapole Lane Corridor (আলতাপোল লেন · x ≈ 166, z = -519..-296)
  */
 export function buildKhulnaCorridors(parent, m, helpers = {}) {
   const group = new THREE.Group();
@@ -1277,12 +1509,14 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
   const hajiSlice = makeSlice('KhulnaSlice_HajiMohsin', 0, 0, 215);
   const rupshaSlice = makeSlice('KhulnaSlice_RupshaWaterfront', 1160, 320, 440);
   const taltolaSlice = makeSlice('KhulnaSlice_TaltolaHouse', 420, 975, 260);
+  const altapoleSlice = makeSlice('KhulnaSlice_AltapoleLane', 166, -408, 250);
 
   buildHajiMohsinCorridor(hajiSlice.staticG, hajiSlice.dynamicG, bank, m, helpers, hajiSlice.treesG);
   const riverVessels = buildRupshaWaterfrontCorridor(rupshaSlice.staticG, rupshaSlice.dynamicG, bank, m, helpers);
   buildTaltolaNeighborhoodCorridor(taltolaSlice.staticG, taltolaSlice.dynamicG, bank, m, helpers, taltolaSlice.treesG);
+  buildAltapoleLaneCorridor(altapoleSlice.staticG, altapoleSlice.dynamicG, bank, m, helpers, altapoleSlice.treesG);
 
-  const slices = [hajiSlice, rupshaSlice, taltolaSlice];
+  const slices = [hajiSlice, rupshaSlice, taltolaSlice, altapoleSlice];
   for (const s of slices) {
     mergeCorridorStatic(s.staticG);
     if (s !== rupshaSlice) mergeCorridorStatic(s.dynamicG);
