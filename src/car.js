@@ -1250,13 +1250,16 @@ export function createDrivableCar(scene, manager, config) {
 
   function getPrompt(playerPos) {
     if (state.driving) {
-      return config.isRickshaw
-        ? '[E / T] রিকশা থেকে নামুন · [U] সিট বদলান (Driver / Passenger)'
-        : `[E / T] ${state.name} গাড়ি থেকে নামুন (Exit Car)`;
+      if (config.isRickshaw) {
+        return state.rideSeat === 'passenger'
+          ? '[G / E] রিকশা থেকে নামুন · [F] সামনের ড্রাইভার সিটে যান'
+          : '[F / E] রিকশা থেকে নামুন · [G] পেছনের প্যাসেঞ্জার সিটে বসুন';
+      }
+      return `[E / T] ${state.name} গাড়ি থেকে নামুন (Exit Car)`;
     }
     if (isPlayerNear(playerPos)) {
       return config.isRickshaw
-        ? '[E / F] রিকশা চালান (Drive) · [U] প্যাসেঞ্জার সিটে বসুন (Passenger)'
+        ? '[F] সামনের সিটে উঠে চালান (Drive) · [G] পেছনের প্যাসেঞ্জার সিটে বসুন (Sit)'
         : `[E / F] ${state.name} গাড়িতে উঠুন ও চালান (Drive ${state.name})`;
     }
     return null;
@@ -1268,7 +1271,8 @@ export function createDrivableCar(scene, manager, config) {
   function update(delta, keys, houseRef, envRef, allCars = []) {
     const dt = Math.min(delta, 0.05);
 
-    if (!state.driving) {
+    const isPassengerSitting = config.isRickshaw && state.rideSeat === 'passenger';
+    if (!state.driving || isPassengerSitting) {
       if (Math.abs(state.speed) > 0.05) {
         state.speed *= Math.max(0, 1 - dt * 4.2);
         fwd.set(Math.sin(state.heading), 0, Math.cos(state.heading));

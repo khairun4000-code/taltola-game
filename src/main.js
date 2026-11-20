@@ -1532,13 +1532,13 @@ function startVehicleTransition(type, car, seatMode = 'driver') {
     vehicleTransition.startPos.set(st.pos.x - sinH * 0.05, st.pos.y + 0.16 + EYE_HEIGHT, st.pos.z - cosH * 0.05);
     vehicleTransition.endPos.set(st.pos.x + rx * 0.92 - sinH * 0.05, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * 0.05);
   } else if (type === 'rickshaw_mount_passenger') {
-    vehicleTransition.duration = 0.68;
-    vehicleTransition.startPos.set(st.pos.x + rx * 0.95 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.95 - cosH * 0.62);
-    vehicleTransition.endPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.34 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
+    vehicleTransition.duration = 0.54;
+    vehicleTransition.startPos.set(st.pos.x + rx * 0.92 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * 0.62);
+    vehicleTransition.endPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.24 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
   } else if (type === 'rickshaw_dismount_passenger') {
-    vehicleTransition.duration = 0.62;
-    vehicleTransition.startPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.34 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
-    vehicleTransition.endPos.set(st.pos.x + rx * 1.05 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.05 - cosH * 0.62);
+    vehicleTransition.duration = 0.50;
+    vehicleTransition.startPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.24 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
+    vehicleTransition.endPos.set(st.pos.x + rx * 1.00 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.00 - cosH * 0.62);
   } else if (type === 'car_enter') {
     vehicleTransition.duration = 1.85;
     vehicleTransition.startPos.set(st.pos.x + rx * 1.38 + sinH * 0.10, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.38 + cosH * 0.10);
@@ -1576,15 +1576,14 @@ function updateVehicleTransition(delta) {
     timeScale = 0.0;
     facingYaw = st.heading;
   } else if (vt.type === 'rickshaw_mount_passenger' || vt.type === 'rickshaw_dismount_passenger') {
-    // Crisp parabolic hop up into the floral passenger seat (or hop down onto the road!)
     playerPos.lerpVectors(vt.startPos, vt.endPos, ease);
-    const hopArc = Math.sin(p * Math.PI) * 0.52;
+    const hopArc = Math.sin(p * Math.PI) * 0.28;
     playerPos.y += hopArc;
-    clip = p < 0.78 ? 'Jump' : (vt.type === 'rickshaw_mount_passenger' ? 'Sit' : 'Idle');
-    timeScale = p < 0.78 ? 1.15 : 0.6;
+    clip = p < 0.65 ? 'Jump' : (vt.type === 'rickshaw_mount_passenger' ? 'Sit' : 'Idle');
+    timeScale = p < 0.65 ? 1.0 : 0.5;
     facingYaw = vt.type === 'rickshaw_mount_passenger'
-      ? THREE.MathUtils.lerp(st.heading - Math.PI * 0.5, st.heading, ease)
-      : THREE.MathUtils.lerp(st.heading, st.heading + Math.PI * 0.5, ease);
+      ? THREE.MathUtils.lerp(st.heading - Math.PI * 0.45, st.heading, ease)
+      : THREE.MathUtils.lerp(st.heading, st.heading + Math.PI * 0.45, ease);
   } else if (vt.type === 'car_enter') {
     // 4-Stage realistic Car Entry: 1) Open Door -> 2) Sit Inside -> 3) Close Door -> 4) Buckle Seatbelt
     vt.handTarget.set(st.pos.x + rx * 0.92 - sinH * 0.15, st.pos.y + 0.92, st.pos.z + rz * 0.92 - cosH * 0.15);
@@ -2531,16 +2530,9 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  // [U] Sit directly in Rickshaw Passenger Seat (when near a rickshaw) OR switch Driver <-> Passenger Seat!
-  if (event.code === 'KeyU' && !event.repeat) {
+  // [G] Sit directly in Rickshaw Back Passenger Seat (when near a rickshaw)!
+  if (event.code === 'KeyG' && !event.repeat) {
     const curCar = getDrivingCar();
-    if (curCar?.state.isRickshaw) {
-      event.preventDefault();
-      curCar.toggleRideSeat();
-      syncCarHUD();
-      updateHUDPrompt();
-      return;
-    }
     if (!curCar) {
       const nearCar = findNearestEnterableCar(playerPos);
       if (nearCar?.state.isRickshaw) {
@@ -2554,7 +2546,35 @@ window.addEventListener('keydown', (event) => {
   // Dedicated Driving Controls when inside any drivable car or rickshaw
   const activeCar = getDrivingCar();
   if (activeCar) {
-    if ((event.code === 'KeyE' || event.code === 'KeyF') && !event.repeat) {
+    if (activeCar.state.isRickshaw) {
+      if (event.code === 'KeyE' && !event.repeat) {
+        event.preventDefault();
+        toggleCarDriving();
+        return;
+      }
+      if (event.code === 'KeyF' && !event.repeat) {
+        event.preventDefault();
+        if (activeCar.state.rideSeat === 'passenger') {
+          activeCar.toggleRideSeat();
+          syncCarHUD();
+          updateHUDPrompt();
+        } else {
+          toggleCarDriving();
+        }
+        return;
+      }
+      if (event.code === 'KeyG' && !event.repeat) {
+        event.preventDefault();
+        if (activeCar.state.rideSeat === 'driver') {
+          activeCar.toggleRideSeat();
+          syncCarHUD();
+          updateHUDPrompt();
+        } else {
+          toggleCarDriving();
+        }
+        return;
+      }
+    } else if ((event.code === 'KeyE' || event.code === 'KeyF') && !event.repeat) {
       event.preventDefault();
       toggleCarDriving();
       return;
@@ -2575,7 +2595,7 @@ window.addEventListener('keydown', (event) => {
       activeCar.cycleCameraMode();
       return;
     }
-    if (event.code === 'KeyG' && !event.repeat) {
+    if (!activeCar.state.isRickshaw && event.code === 'KeyG' && !event.repeat) {
       event.preventDefault();
       house?.toggleAllDoors();
       environment?.tower?.toggleGate?.();

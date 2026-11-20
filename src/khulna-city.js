@@ -750,20 +750,20 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
       map: tex.lowRiseTex,
       normalMap: lowPBR.normalMap,
       roughnessMap: lowPBR.roughnessMap,
-      normalScale: new THREE.Vector2(0.7, 0.7),
-      roughness: 0.82,
-      metalness: 0.04,
-      envMapIntensity: 0.65,
+      normalScale: new THREE.Vector2(0.95, 0.95),
+      roughness: 0.78,
+      metalness: 0.05,
+      envMapIntensity: 0.85,
     });
     const highMat = new THREE.MeshStandardMaterial({
       color: STYLE_COLORS[s],
       map: tex.highRiseTex,
       normalMap: highPBR.normalMap,
       roughnessMap: highPBR.roughnessMap,
-      normalScale: new THREE.Vector2(0.7, 0.7),
-      roughness: 0.74,
-      metalness: 0.08,
-      envMapIntensity: 0.85,
+      normalScale: new THREE.Vector2(0.95, 0.95),
+      roughness: 0.70,
+      metalness: 0.10,
+      envMapIntensity: 1.05,
     });
 
     const mLow = new THREE.InstancedMesh(lowBoxGeo, lowMat, MAX_INST_LOW);
@@ -786,8 +786,59 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
   roofPool.frustumCulled = false;
   group.add(roofPool);
 
-  // Exclude generic raw OSM placeholder cubes inside all AAA Showcase Corridors & Landmarks ("ম্যাপ কেটে কেটে")
-  function isHeroExcludedBuilding(cx, cz) {
+  // Fast Spatial Road-Segment Grid so ZERO buildings ever sit in the middle of any Khulna road!
+  const ROAD_CELL = 40;
+  const roadSegGrid = new Map();
+  for (const r of worldData.roads) {
+    const pts = r.p;
+    if (!pts || pts.length < 4) continue;
+    const roadHW = r.w ? (r.w * 0.5) : (r.t <= 1 ? 6.5 : (r.t <= 3 ? 4.8 : 3.2));
+    for (let i = 0; i < pts.length - 2; i += 2) {
+      const ax = pts[i], az = pts[i + 1], bx = pts[i + 2], bz = pts[i + 3];
+      const pad = roadHW + 8.0;
+      const c0 = Math.floor((Math.min(ax, bx) - pad) / ROAD_CELL);
+      const c1 = Math.floor((Math.max(ax, bx) + pad) / ROAD_CELL);
+      const r0 = Math.floor((Math.min(az, bz) - pad) / ROAD_CELL);
+      const r1 = Math.floor((Math.max(az, bz) + pad) / ROAD_CELL);
+      const seg = { ax, az, bx, bz, hw: roadHW };
+      for (let gx = c0; gx <= c1; gx++) {
+        for (let gz = r0; gz <= r1; gz++) {
+          const k = (gx + 500) * 1000 + (gz + 500);
+          let arr = roadSegGrid.get(k);
+          if (!arr) { arr = []; roadSegGrid.set(k, arr); }
+          arr.push(seg);
+        }
+      }
+    }
+  }
+
+  function isOverlappingAnyRoad(cx, cz, bw = 8, bd = 8) {
+    const gx = Math.floor(cx / ROAD_CELL);
+    const gz = Math.floor(cz / ROAD_CELL);
+    const segs = roadSegGrid.get((gx + 500) * 1000 + (gz + 500));
+    if (!segs) return false;
+    const bRadius = Math.min(bw, bd) * 0.44 + 1.15;
+    for (let i = 0; i < segs.length; i++) {
+      const s = segs[i];
+      const vx = s.bx - s.ax;
+      const vz = s.bz - s.az;
+      const lenSq = vx * vx + vz * vz;
+      let t = 0;
+      if (lenSq > 1e-4) {
+        t = THREE.MathUtils.clamp(((cx - s.ax) * vx + (cz - s.az) * vz) / lenSq, 0, 1);
+      }
+      const px = s.ax + vx * t;
+      const pz = s.az + vz * t;
+      const dx = cx - px;
+      const dz = cz - pz;
+      const clearDist = s.hw + bRadius;
+      if (dx * dx + dz * dz < clearDist * clearDist) return true;
+    }
+    return false;
+  }
+
+  // Exclude generic raw OSM placeholder cubes inside all AAA Showcase Corridors, Landmarks, AND any road!
+  function isHeroExcludedBuilding(cx, cz, bw = 8, bd = 8) {
     // 1) AAA Slice 3: Taltola House compound + tight Cross Rd neighborhood frontage (keeps nearby OSM blocks intact!)
     if (cx >= 401 && cx <= 439 && cz >= 942 && cz <= 1012) return true;
     // 2) AAA Slice 1: Haji Mohsin Road Extended AAA Corridor (z = -150..+150, East & West flanks)
@@ -802,6 +853,8 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
     if (cx >= -318 && cx <= -280 && cz >= -78 && cz <= -42) return true;
     // 7) AAA Slice 2: Rupsha Strand Road, Natun Bazar Launch Ghat & Rupsha Ferry Terminal Waterfront
     if (cx >= 1038 && cx <= 1290 && cz >= -55 && cz <= 695) return true;
+    // 8) Remove any building whose footprint falls inside a road!
+    if (isOverlappingAnyRoad(cx, cz, bw, bd)) return true;
     return false;
   }
 
@@ -810,7 +863,7 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
   for (const [, list] of Object.entries(worldData.chunks)) {
     for (const b of list) {
       const [cx, cz, bw, bd, yaw, floors] = b;
-      if (isHeroExcludedBuilding(cx, cz)) continue;
+      if (isHeroExcludedBuilding(cx, cz, bw, bd)) continue;
       const cosY = Math.cos(-yaw);
       const sinY = Math.sin(-yaw);
       const hw = bw * 0.5;
@@ -859,7 +912,7 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
         if (!list) continue;
         for (let i = 0; i < list.length; i++) {
           const [cx, cz, bw, bd, yaw, floors, style] = list[i];
-          if (isHeroExcludedBuilding(cx, cz)) continue;
+          if (isHeroExcludedBuilding(cx, cz, bw, bd)) continue;
           const d2 = (cx - playerX) * (cx - playerX) + (cz - playerZ) * (cz - playerZ);
           if (d2 > maxDistSq) continue;
 

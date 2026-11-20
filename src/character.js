@@ -515,7 +515,7 @@ export function createPlayerCharacter(scene, manager) {
     return state.expression;
   }
 
-  function applyProceduralHeadAndFace(dt) {
+  function applyProceduralHeadAndFace(dt, lockHeadStraight = false) {
     // 1. Natural involuntary eye blink every 3.0 - 5.4s (crisp close, soft open, tiny micro-asymmetry)
     blinkElapsed += dt;
     let blinkAmt = 0;
@@ -722,7 +722,7 @@ export function createPlayerCharacter(scene, manager) {
     headYawSmooth += (targetYaw - headYawSmooth) * nodLerp;
     headRollSmooth += (targetRoll - headRollSmooth) * nodLerp;
 
-    if (headBone && neckBone) {
+    if (headBone && neckBone && !lockHeadStraight) {
       const basePitch = state.straightGaze ? 0 : 0.03;
       const baseYaw   = state.straightGaze ? 0 : 0.22;
       const baseRoll  = state.straightGaze ? 0 : -0.04;
@@ -917,22 +917,32 @@ export function createPlayerCharacter(scene, manager) {
     const p = THREE.MathUtils.clamp(va.progress || 0, 0, 1);
 
     if (va.type === 'rickshaw_mount_driver' || va.type === 'rickshaw_dismount_driver') {
-      // High leg-swing over the rickshaw frame bar!
       const u = va.type === 'rickshaw_dismount_driver' ? (1 - p) : p;
       const swingArc = Math.sin(u * Math.PI);
       if (va.anchors && rightUpLeg && rightLeg && rightFoot) {
         root.updateMatrixWorld(true);
-        rightUpLeg.getWorldPosition(ikTarget);
-        ikTarget.addScaledVector(ikRight, -0.12 - (1 - u) * 0.25);
-        ikTarget.addScaledVector(ikFwd, 0.18 * swingArc);
-        ikTarget.y = (va.anchors.saddle.y - 0.75) + swingArc * 0.72;
-        ikPole.copy(ikTarget).addScaledVector(ikFwd, 0.55).addScaledVector(ikUp, 0.35);
+        ikTarget.copy(va.anchors.pedalR);
+        ikTarget.addScaledVector(ikRight, (1 - u) * 0.65);
+        ikTarget.y = THREE.MathUtils.lerp(0.12, va.anchors.pedalR.y, u) + swingArc * 0.58;
+        ikPole.copy(va.anchors.saddle).addScaledVector(ikFwd, 0.65).addScaledVector(ikRight, -0.25);
+        ikPole.y += 0.25;
         solveTwoBoneIK(rightUpLeg, rightLeg, rightFoot, ikTarget, ikPole);
       }
-      if (va.anchors && u > 0.35 && leftArm && rightArm) {
-        ikPole.copy(va.anchors.saddle).addScaledVector(ikRight, 0.5);
+      if (va.anchors && u > 0.45 && leftUpLeg && leftLeg && leftFoot) {
+        const lu = (u - 0.45) / 0.55;
+        ikTarget.copy(va.anchors.pedalL);
+        ikTarget.addScaledVector(ikRight, (1 - lu) * 0.35);
+        ikTarget.y = THREE.MathUtils.lerp(0.12, va.anchors.pedalL.y, lu);
+        ikPole.copy(va.anchors.saddle).addScaledVector(ikFwd, 0.65).addScaledVector(ikRight, 0.20);
+        ikPole.y += 0.15;
+        solveTwoBoneIK(leftUpLeg, leftLeg, leftFoot, ikTarget, ikPole);
+      }
+      if (va.anchors && u > 0.40 && leftArm && rightArm) {
+        ikPole.copy(va.anchors.saddle).addScaledVector(ikRight, 0.50);
+        ikPole.y += 0.12;
         solveTwoBoneIK(leftArm, leftForeArm, leftHand, va.anchors.gripL, ikPole);
-        ikPole.copy(va.anchors.saddle).addScaledVector(ikRight, -0.5);
+        ikPole.copy(va.anchors.saddle).addScaledVector(ikRight, -0.50);
+        ikPole.y += 0.12;
         solveTwoBoneIK(rightArm, rightForeArm, rightHand, va.anchors.gripR, ikPole);
       }
     } else if (va.type === 'car_enter' || va.type === 'car_exit') {
@@ -1127,25 +1137,27 @@ export function createPlayerCharacter(scene, manager) {
       fadeTime = 0.35;
     }
 
+    const needsCleanIdleReset = (isRidingRickshaw && rickshawRide.seat !== 'passenger')
+      || (isVehicleAnim && (vehicleAnim.type === 'rickshaw_mount_driver' || vehicleAnim.type === 'rickshaw_dismount_driver'));
+
     if (isVehicleAnim) {
       if (vehicleAnim.clip) {
         targetClip = vehicleAnim.clip;
-        targetScale = vehicleAnim.timeScale ?? 1.0;
+        targetScale = needsCleanIdleReset ? 1.0 : (vehicleAnim.timeScale ?? 1.0);
         loopOnce = Boolean(vehicleAnim.loopOnce);
-        fadeTime = 0.08;
+        fadeTime = 0.06;
       }
     } else if (isRidingRickshaw) {
       if (rickshawRide.seat === 'passenger') {
         targetClip = 'Sit';
-        targetScale = 0.5;
+        targetScale = 0.45;
         loopOnce = false;
-        fadeTime = 0.12;
+        fadeTime = 0.10;
       } else {
-        // Freeze Idle at 0 speed so hips have ZERO bounce while 2-bone IK drives exact pedaling!
         targetClip = 'Idle';
-        targetScale = 0.0;
+        targetScale = 1.0;
         loopOnce = false;
-        fadeTime = 0.06;
+        fadeTime = 0.05;
       }
     }
 
@@ -1158,13 +1170,19 @@ export function createPlayerCharacter(scene, manager) {
       activeAction.timeScale = targetScale;
     }
 
-    mixer.update(dt);
+    if (needsCleanIdleReset && activeAction) {
+      activeAction.time = 0.05;
+      mixer.update(0.0001);
+    } else {
+      mixer.update(dt);
+    }
+
     if (isVehicleAnim) {
       applyVehicleAnimPose(vehicleAnim);
     } else if (isRidingRickshaw) {
       applyRickshawRidingPose(rickshawRide);
     }
-    applyProceduralHeadAndFace(dt);
+    applyProceduralHeadAndFace(dt, Boolean(isRidingRickshaw || isVehicleAnim));
   }
 
   return {
