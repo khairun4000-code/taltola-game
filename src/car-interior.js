@@ -11,6 +11,8 @@ function splitMeshIntoDoorRegions(mesh, orientedWrapper, regions) {
   const posAttr = geom.attributes.position;
   const normAttr = geom.attributes.normal;
   const uvAttr = geom.attributes.uv;
+  const skinIdxAttr = geom.attributes.skinIndex;
+  const skinWgtAttr = geom.attributes.skinWeight;
   const indexAttr = geom.index;
 
   // Transform from mesh local space into orientedWrapper space
@@ -68,6 +70,8 @@ function splitMeshIntoDoorRegions(mesh, orientedWrapper, regions) {
     const newPos = [];
     const newNorm = [];
     const newUV = [];
+    const newSkinIdx = [];
+    const newSkinWgt = [];
     const newIdx = [];
 
     for (let k = 0; k < triIndices.length; k++) {
@@ -79,6 +83,22 @@ function splitMeshIntoDoorRegions(mesh, orientedWrapper, regions) {
         newPos.push(posAttr.getX(oldI), posAttr.getY(oldI), posAttr.getZ(oldI));
         if (normAttr) newNorm.push(normAttr.getX(oldI), normAttr.getY(oldI), normAttr.getZ(oldI));
         if (uvAttr) newUV.push(uvAttr.getX(oldI), uvAttr.getY(oldI));
+        if (skinIdxAttr) {
+          newSkinIdx.push(
+            skinIdxAttr.getX(oldI),
+            skinIdxAttr.getY(oldI),
+            skinIdxAttr.getZ(oldI),
+            skinIdxAttr.getW(oldI),
+          );
+        }
+        if (skinWgtAttr) {
+          newSkinWgt.push(
+            skinWgtAttr.getX(oldI),
+            skinWgtAttr.getY(oldI),
+            skinWgtAttr.getZ(oldI),
+            skinWgtAttr.getW(oldI),
+          );
+        }
       }
       newIdx.push(mapped);
     }
@@ -88,7 +108,11 @@ function splitMeshIntoDoorRegions(mesh, orientedWrapper, regions) {
     if (newNorm.length > 0) sub.setAttribute('normal', new THREE.Float32BufferAttribute(newNorm, 3));
     else sub.computeVertexNormals();
     if (newUV.length > 0) sub.setAttribute('uv', new THREE.Float32BufferAttribute(newUV, 2));
+    if (newSkinIdx.length > 0) sub.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(newSkinIdx, 4));
+    if (newSkinWgt.length > 0) sub.setAttribute('skinWeight', new THREE.Float32BufferAttribute(newSkinWgt, 4));
     sub.setIndex(newIdx);
+    sub.computeBoundingBox();
+    sub.computeBoundingSphere();
     return sub;
   }
 
@@ -96,6 +120,9 @@ function splitMeshIntoDoorRegions(mesh, orientedWrapper, regions) {
   const bodyGeom = buildSubGeometry(buckets.BODY);
   if (bodyGeom) {
     mesh.geometry = bodyGeom;
+    if (mesh.isSkinnedMesh && bodyGeom.boundingSphere) {
+      mesh.boundingSphere = bodyGeom.boundingSphere.clone();
+    }
   } else {
     mesh.visible = false;
   }
