@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { box, cylinder, rodBetween } from './scene-utils.js';
 import { attachDerivedPBRMaps } from './aaa-shaders.js';
 import { decorateCorridorPole } from './khulna-street-props.js';
 import { buildCNGAuto, buildEasybike } from './khulna-vehicles.js';
@@ -1185,8 +1186,43 @@ export function buildRoyalMoreDistrict(parent, m) {
     addOrnamentalPalm(staticG, bank, px, pz, h, sd);
   }
 
-  // Batch all static geometry into minimal GPU draw calls for locked 60+ FPS!
-  mergeStaticMeshes(staticG);
+  // Safely normalize (non-indexed + position/normal/uv) and batch all static geometry for locked 60+ FPS!
+  staticG.updateWorldMatrix(true, true);
+  const invRoot = staticG.matrixWorld.clone().invert();
+  const buckets = new Map();
+  staticG.traverse((obj) => {
+    if (!obj.isMesh || obj.isInstancedMesh || Array.isArray(obj.material) || !obj.material) return;
+    const key = `${obj.material.uuid}-${obj.castShadow}-${obj.receiveShadow}`;
+    if (!buckets.has(key)) {
+      buckets.set(key, { material: obj.material, cast: obj.castShadow, receive: obj.receiveShadow, meshes: [], geometries: [] });
+    }
+    const b = buckets.get(key);
+    const g = obj.geometry.index ? obj.geometry.toNonIndexed() : obj.geometry.clone();
+    g.applyMatrix4(invRoot.clone().multiply(obj.matrixWorld));
+    g.clearGroups();
+    for (const attr of Object.keys(g.attributes)) {
+      if (attr !== 'position' && attr !== 'normal' && attr !== 'uv') g.deleteAttribute(attr);
+    }
+    if (!g.attributes.normal) g.computeVertexNormals();
+    if (!g.attributes.uv) {
+      g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    }
+    b.meshes.push(obj);
+    b.geometries.push(g);
+  });
+  for (const b of buckets.values()) {
+    if (b.meshes.length < 2) continue;
+    const merged = mergeGeometries(b.geometries, false);
+    for (const g of b.geometries) g.dispose();
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, b.material);
+    mesh.castShadow = b.cast;
+    mesh.receiveShadow = b.receive;
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
+    for (const orig of b.meshes) orig.removeFromParent();
+    staticG.add(mesh);
+  }
 
   const maxDistSq = 380 * 380;
 
