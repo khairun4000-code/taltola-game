@@ -61,6 +61,15 @@ export const HIACE_PAINT_PRESETS = [
   { name: 'Forest Green', hex: '#244a38' },
 ];
 
+export const TOWNACE_PAINT_PRESETS = [
+  { name: 'Factory Original', hex: '#ffffff' },
+  { name: 'Pearl White', hex: '#f2f5f8' },
+  { name: 'Silver Metallic', hex: '#bfc6ce' },
+  { name: 'Champagne Beige', hex: '#dcd0b8' },
+  { name: 'Khulna Sky Blue', hex: '#8db4d8' },
+  { name: 'Emerald Green', hex: '#4a7c66' },
+];
+
 export const RICKSHAW_PAINT_PRESETS = [
   { name: 'Classic Art', hex: '#ffffff' },
   { name: 'Dhaka Red', hex: '#ffd6d6' },
@@ -153,7 +162,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.55,
     width: 1.82,
     rotateY: 0, // Raw Corolla already faces +Z
-    spawnPos: [-0.35, 0.01, 4.8],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z + 17.5],
     spawnHeading: 0.0,
     paintPresets: COROLLA_PAINT_PRESETS,
     bodyPaintMats: ['e180body'],
@@ -249,6 +258,34 @@ export const CAR_FLEET_CONFIGS = [
     ],
   },
   {
+    id: 'toyota_townace',
+    name: 'Toyota TownAce GL 2005',
+    badge: 'TOYOTA TOWNACE GL 2005',
+    assetUrl: './assets/toyota_townace.glb',
+    targetLength: 4.50,
+    width: 1.78,
+    rotateY: 0, // Raw TownAce already faces +Z
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z - 17.8],
+    spawnHeading: 0.0,
+    paintPresets: TOWNACE_PAINT_PRESETS,
+    bodyPaintMats: ['Material'],
+    glassMats: ['Material.004'],
+    tailMats: ['Material.002'],
+    headlightMats: ['Material.006'],
+    wheelNameRegex: /^Cylinder(\.\d+)?$/i,
+    maxSpeed: 21.0,
+    boostMaxSpeed: 28.5,
+    engineForce: 12.0,
+    engineBaseFreq: 32,
+    engineRangeFreq: 112,
+    hornFreqs: [400, 505],
+    camBack: 5.8,
+    camHeight: 2.42,
+    hoodHeight: 1.52,
+    hoodForward: 1.15,
+    isBMW: false,
+  },
+  {
     id: 'bangladeshi_rickshaw_taltola',
     name: 'Bangladeshi Rickshaw',
     badge: 'BANGLADESHI RICKSHAW',
@@ -337,7 +374,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 2.12,
     width: 0.82,
     rotateY: Math.PI,
-    spawnPos: [1.35, 0.01, 7.6],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 2.15, 0.01, TALTOLA_HOUSE_OFFSET.z - 1.6],
     spawnHeading: 0.0,
     paintPresets: BIKE_PAINT_PRESETS,
     bodyPaintMats: ['FairingGasTank'],
@@ -1227,6 +1264,7 @@ export function createDrivableCar(scene, manager, config) {
       toyota_fortuner: { x: -0.38, y: 0.58, z:  0.08, wy: 0.26, wz: 0.44 },
       toyota_alphard:  { x: -0.38, y: 0.60, z:  0.34, wy: 0.26, wz: 0.44 },
       toyota_hiace:    { x: -0.38, y: 0.62, z:  0.84, wy: 0.26, wz: 0.44 },
+      toyota_townace:  { x: -0.38, y: 0.62, z:  0.28, wy: 0.26, wz: 0.36 },
     };
     const sp = seatPresets[config.id] || { x: -0.36, y: 0.42, z: 0.0, wy: 0.24, wz: 0.42 };
     const seatX = sp.x;
