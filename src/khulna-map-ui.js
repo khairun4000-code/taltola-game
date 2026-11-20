@@ -22,6 +22,11 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     controls: 'KEYBOARD & MOUSE CONTROLS',
   };
   let activeTab = 'map';
+  let partnerInfo = null;
+
+  function setPartnerInfo(info) {
+    partnerInfo = info || null;
+  }
 
   function setActiveTab(nextTab = 'map') {
     activeTab = TAB_TITLES[nextTab] ? nextTab : 'map';
@@ -443,6 +448,27 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     fullCtx.fill();
     fullCtx.stroke();
     fullCtx.restore();
+
+    if (partnerInfo) {
+      const [abx, abz] = worldToBasePx(partnerInfo.x, partnerInfo.z);
+      const ax = (abx / baseW) * fullCanvas.width;
+      const ay = (abz / baseH) * fullCanvas.height;
+      const labelText = `${partnerInfo.name}${partnerInfo.inCar ? ' · Car' : ''}`;
+      fullCtx.save();
+      fullCtx.beginPath();
+      fullCtx.arc(ax, ay, 8.5, 0, Math.PI * 2);
+      fullCtx.fillStyle = '#f59e0b';
+      fullCtx.fill();
+      fullCtx.strokeStyle = '#ffffff';
+      fullCtx.lineWidth = 2.0;
+      fullCtx.stroke();
+      fullCtx.font = '700 11px "Manrope", sans-serif';
+      fullCtx.fillStyle = '#0c1512';
+      fullCtx.fillText(labelText, ax + 12, ay + 4);
+      fullCtx.fillStyle = '#fcd34d';
+      fullCtx.fillText(labelText, ax + 11, ay + 3);
+      fullCtx.restore();
+    }
   }
 
   function renderMinimap(playerPos, yaw, districtInfo) {
@@ -560,6 +586,22 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     miniCtx.stroke();
     miniCtx.restore();
 
+    if (partnerInfo) {
+      const adx = partnerInfo.x - playerPos.x;
+      const adz = partnerInfo.z - playerPos.z;
+      if (Math.abs(adx) <= spanMeters * 0.48 && Math.abs(adz) <= spanMeters * 0.48) {
+        const amx = w * 0.5 + (adx / spanMeters) * w;
+        const amy = h * 0.5 + (adz / spanMeters) * h;
+        miniCtx.beginPath();
+        miniCtx.arc(amx, amy, 5.2, 0, Math.PI * 2);
+        miniCtx.fillStyle = '#f59e0b';
+        miniCtx.fill();
+        miniCtx.strokeStyle = '#0f1714';
+        miniCtx.lineWidth = 1.6;
+        miniCtx.stroke();
+      }
+    }
+
     if (gpsReadout && districtInfo) {
       const text = gpsWaypoint
         ? `🔵 GPS: ${gpsRouteDistM}m`
@@ -645,6 +687,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     },
     landmarks: visibleLandmarks,
     setActiveTab,
+    setPartnerInfo,
     openMap,
     closeMap,
     toggleMap,

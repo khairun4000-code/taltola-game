@@ -7,7 +7,8 @@ import { FirstPersonControls } from './controls.js';
 import { createMaterials } from './materials.js';
 import { buildHouse } from './house.js';
 import { buildEnvironment } from './environment.js';
-import { createPlayerCharacter } from './character.js';
+import { createPlayerCharacter, CHARACTER_ROSTER } from './character.js';
+import { createAutonomousPartner } from './autonomous-partner.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { createKhulnaMapUI } from './khulna-map-ui.js';
 import { createGTAPhoneUI } from './gta-phone.js';
@@ -76,6 +77,9 @@ const liftDoorCloseBtn = document.querySelector('#lift-door-close-btn');
 const liftExitBtn = document.querySelector('#lift-exit-btn');
 const interactPrompt = document.querySelector('#interact-prompt');
 const locationTagText = document.querySelector('.location-tag');
+const partnerStatusPill = document.querySelector('#partner-status-pill');
+const partnerStatusText = document.querySelector('#partner-status-text');
+const charSelectCards = Array.from(document.querySelectorAll('[data-char-select]'));
 const qualityInputs = [
   document.querySelector('#quality'),
   document.querySelector('#pause-quality'),
@@ -165,7 +169,13 @@ function applyTimeOfDay(nextId) {
   const selectiveEnv = quality === 'ultra' ? null : (skySystem?.getEnvTexture?.() || null);
   sceneMaterials?.setEnvironmentMap?.(selectiveEnv);
   environment?.tower?.setEnvironmentMap?.(selectiveEnv);
-  playerCharacter?.setEnvironmentMap?.(selectiveEnv);
+  if (Object.keys(characterActors).length) {
+    for (const actor of Object.values(characterActors)) {
+      actor?.setEnvironmentMap?.(selectiveEnv);
+    }
+  } else {
+    playerCharacter?.setEnvironmentMap?.(selectiveEnv);
+  }
   for (const c of cars) c?.setEnvironmentMap?.(selectiveEnv);
   if (timeToggleButton) {
     timeToggleButton.innerHTML = `TIME: ${preset.shortLabel} <span>[N]</span>`;
@@ -262,16 +272,21 @@ const wishDir = new THREE.Vector3();
 const studioOrbit = {
   angle: 0.0,
   pitch: 0.05,
-  distance: 2.65,
-  targetY: 0.86,
+  distance: 3.45,
+  targetY: 0.88,
+  lookX: 0.0,
   targetAngle: 0.0,
   targetPitch: 0.05,
-  targetDistance: 2.65,
-  targetLookY: 0.86,
+  targetDistance: 3.45,
+  targetLookY: 0.88,
+  targetLookX: 0.0,
   autoSpin: false,
   dragging: false,
   lastX: 0,
   lastY: 0,
+  downX: 0,
+  downY: 0,
+  _lastMs: 0,
 };
 
 let quality = localStorage.getItem('taltola_quality') || 'medium';
@@ -285,6 +300,21 @@ let environment;
 let house;
 let studioGroup;
 let playerCharacter;
+const characterActors = {};
+let selectedCharacterId = (() => {
+  try {
+    return localStorage.getItem('taltola_character') || 'sabit';
+  } catch {
+    return 'sabit';
+  }
+})();
+if (!CHARACTER_ROSTER.some((c) => c.id === selectedCharacterId)) selectedCharacterId = 'sabit';
+const autonomousPartner = createAutonomousPartner();
+const studioRaycaster = new THREE.Raycaster();
+const studioPointerNdc = new THREE.Vector2();
+let studioPadRings = {};
+let currentStudioCamPreset = 'full';
+let lastPartnerHudText = '';
 let cars = [];
 const MAX_CHEAT_SPAWNED_VEHICLES = 2;
 const cheatSpawnedCars = [];
@@ -978,34 +1008,95 @@ function buildStudioEnvironment() {
   group.name = 'CharacterStudioStage';
   scene.add(group);
 
-  // Sleek circular studio turntable platform
-  const platformMat = new THREE.MeshLambertMaterial({ color: 0x232e2a });
-  const rimMat = new THREE.MeshBasicMaterial({ color: 0xd9ed9c });
-  const innerMat = new THREE.MeshLambertMaterial({ color: 0x2c3934 });
+  // Dual side-by-side studio stage for choosing between Sabit & Huzzatullah
+  const platformMat = new THREE.MeshLambertMaterial({ color: 0x202a27 });
+  const innerMat = new THREE.MeshLambertMaterial({ color: 0x2a3631 });
 
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.25, 0.08, 40), platformMat);
-  base.position.set(0, -0.04, 0);
-  group.add(base);
+  const stage = new THREE.Mesh(new THREE.CylinderGeometry(1.78, 1.92, 0.08, 48), platformMat);
+  stage.position.set(0, -0.04, 0);
+  stage.scale.set(1.12, 1.0, 0.72);
+  group.add(stage);
 
-  const topDisc = new THREE.Mesh(new THREE.CylinderGeometry(1.06, 1.06, 0.015, 40), innerMat);
-  topDisc.position.set(0, 0.002, 0);
-  group.add(topDisc);
+  studioPadRings = {};
+  for (const cfg of CHARACTER_ROSTER) {
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.60, 0.60, 0.015, 36), innerMat);
+    disc.position.set(cfg.studioX, 0.002, 0);
+    group.add(disc);
 
-  const ring = new THREE.Mesh(new THREE.RingGeometry(1.05, 1.08, 48), rimMat);
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(0, 0.011, 0);
-  group.add(ring);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x4c625a });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.585, 0.615, 42), ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(cfg.studioX, 0.012, 0);
+    group.add(ring);
+    studioPadRings[cfg.id] = ring;
+  }
 
   return group;
 }
 
+function selectActiveCharacter(charId, { triggerGreeting = true, refreshCam = true } = {}) {
+  const targetProfile = CHARACTER_ROSTER.find((c) => c.id === charId) || CHARACTER_ROSTER[0];
+  const partnerProfile = CHARACTER_ROSTER.find((c) => c.id !== targetProfile.id) || CHARACTER_ROSTER[1];
+  const prevActor = playerCharacter;
+
+  selectedCharacterId = targetProfile.id;
+  try {
+    localStorage.setItem('taltola_character', selectedCharacterId);
+  } catch {}
+
+  const nextActor = characterActors[targetProfile.id];
+  const partnerActor = characterActors[partnerProfile.id];
+  if (nextActor) {
+    if (prevActor && prevActor !== nextActor) {
+      nextActor.state.studioAnim = prevActor.state.studioAnim || 'idle';
+      nextActor.state.cameraMode = prevActor.state.cameraMode || 'back';
+      nextActor.state.straightGaze = prevActor.state.straightGaze;
+      nextActor.state.talking = prevActor.state.talking;
+      nextActor.state.expression = prevActor.state.expression;
+    }
+    playerCharacter = nextActor;
+    if (triggerGreeting && inStudio) {
+      nextActor.state.studioAnim = 'greet';
+      nextActor.state.emoteClock = 0;
+      document.querySelectorAll('[data-anim]').forEach((b) => {
+        b.classList.toggle('active', b.dataset.anim === 'greet');
+      });
+    }
+  }
+  if (partnerActor) {
+    partnerActor.state.talking = false;
+    partnerActor.state.expression = 'normal';
+    partnerActor.state.studioAnim = 'idle';
+    if (!inStudio) {
+      autonomousPartner.setActor(partnerActor, partnerProfile);
+    } else {
+      autonomousPartner.setActor(partnerActor, partnerProfile);
+    }
+  }
+
+  for (const card of charSelectCards) {
+    card.classList.toggle('active', card.dataset.charSelect === targetProfile.id);
+  }
+  for (const [id, ring] of Object.entries(studioPadRings)) {
+    const active = id === targetProfile.id;
+    ring.material.color.setHex(active ? 0xd9ed9c : 0x455852);
+    ring.scale.setScalar(active ? 1.04 : 0.96);
+  }
+  if (inStudio && refreshCam) {
+    studioOrbit.dragging = false;
+    setStudioCameraPreset(currentStudioCamPreset);
+  }
+}
+
 function setMode(studioMode) {
+  const wasInStudio = inStudio;
   inStudio = studioMode;
   document.body.classList.toggle('in-game', !inStudio);
   if (inStudio) {
     liftKeypadOpen = false;
     liftKeypad?.classList.add('hidden');
     khulnaMapUI?.closeMap?.();
+    partnerStatusPill?.classList.add('hidden');
     if (controls.isLocked) controls.unlock();
     started = false;
     scene.background.setHex(0x18211e);
@@ -1042,10 +1133,14 @@ function setMode(studioMode) {
     document.body.classList.remove('hud-hidden');
     if (skySystem?.skyDome) skySystem.skyDome.visible = false;
     scene.environment = null;
-    playerCharacter?.setEnvironmentMap?.(null);
+    for (const actor of Object.values(characterActors)) {
+      actor?.setEnvironmentMap?.(null);
+    }
     if (brandTitle) brandTitle.textContent = 'CHARACTER STUDIO';
-    if (brandSubtitle) brandSubtitle.textContent = 'FULL HUMAN 3D MODEL · DRAG TO ROTATE 360°';
+    if (brandSubtitle) brandSubtitle.textContent = 'SELECT HERO · DRAG TO ROTATE 360°';
     if (studioToggleButton) studioToggleButton.innerHTML = 'PLAY STREET GAME <span>→</span>';
+    setStudioCameraPreset('full');
+    selectActiveCharacter(selectedCharacterId, { triggerGreeting: false, refreshCam: true });
     applyQuality(quality);
   } else {
     scene.background.setHex(0xdccbb6);
@@ -1078,6 +1173,9 @@ function setMode(studioMode) {
     isThirdPersonEyeFallback = false;
     smoothedCamDist = 1.95;
     beginWalking();
+    if (wasInStudio || Math.hypot(autonomousPartner.position.x, autonomousPartner.position.z) < 2.0) {
+      autonomousPartner.relocateNearPlayer(playerPos, cars, environment, true);
+    }
   }
 }
 
@@ -1232,7 +1330,13 @@ function applyQuality(nextQuality) {
   environment?.setQualityMode?.(quality);
   environment?.tower?.setQualityMode?.(quality);
   environment?.city?.refreshActiveChunks?.(playerPos.x, playerPos.z, quality);
-  playerCharacter?.setQualityMode?.(quality);
+  if (Object.keys(characterActors).length) {
+    for (const actor of Object.values(characterActors)) {
+      actor?.setQualityMode?.(quality);
+    }
+  } else {
+    playerCharacter?.setQualityMode?.(quality);
+  }
   for (const c of cars) {
     c?.setQualityMode?.(quality);
   }
@@ -2163,6 +2267,7 @@ function toggleCarDriving(targetCar = null, seatMode = 'driver') {
   }
   const carToEnter = targetCar || findNearestCar(playerPos) || bmwCar;
   if (!carToEnter) return;
+  autonomousPartner.onPlayerEnterCar(carToEnter);
   if (sittingState.active) standUpFromSeat();
   if (liftKeypadOpen) closeLiftKeypad(false);
   if (!started) beginWalking();
@@ -2470,7 +2575,10 @@ async function initialize() {
   environment = buildEnvironment(scene, materials, renderer, skySystem);
   // Keep reference to environment group so we can hide/show it cleanly
   environment.group = scene.getObjectByName('Lane and tropical surroundings');
-  playerCharacter = createPlayerCharacter(scene, manager);
+  for (const cfg of CHARACTER_ROSTER) {
+    characterActors[cfg.id] = createPlayerCharacter(scene, manager, cfg);
+  }
+  selectActiveCharacter(selectedCharacterId, { triggerGreeting: false, refreshCam: false });
   khulnaMapUI = createKhulnaMapUI({
     onWarpToLandmark: (lm) => warpToLandmark(lm),
     onSyncSettings: () => syncGtaPauseSettingsUI(),
@@ -2652,6 +2760,9 @@ async function initialize() {
   setStudioCameraPreset('full');
   const startInStudio = params.get('studio') === '1';
   setMode(startInStudio);
+  if (!startInStudio) {
+    autonomousPartner.relocateNearPlayer(playerPos, cars, environment, true);
+  }
   syncHUDButtons(false, true);
   if (typeof renderer.compileAsync === 'function') {
     await Promise.race([
@@ -2672,7 +2783,11 @@ async function initialize() {
     controls,
     house,
     environment,
-    playerCharacter,
+    get playerCharacter() { return playerCharacter; },
+    characterActors,
+    autonomousPartner,
+    selectActiveCharacter,
+    get selectedCharacterId() { return selectedCharacterId; },
     bmwCar,
     cars,
     getDrivingCar,
@@ -2710,24 +2825,39 @@ async function initialize() {
 }
 
 function setStudioCameraPreset(preset) {
+  currentStudioCamPreset = preset || 'full';
   studioOrbit.autoSpin = preset === 'spin';
+  const activeCfg = CHARACTER_ROSTER.find((c) => c.id === selectedCharacterId) || CHARACTER_ROSTER[0];
+  const isNarrowMobile = window.innerWidth <= 760;
+  const wideOffset = window.innerWidth > 860 ? 0.36 : 0.0;
   if (preset === 'face') {
-    studioOrbit.targetAngle = 0.0;
+    studioOrbit.targetAngle = activeCfg.studioYaw ? -activeCfg.studioYaw * 0.5 : 0.0;
     studioOrbit.targetPitch = 0.04;
     studioOrbit.targetDistance = 1.28;
-    studioOrbit.targetLookY = 1.54;
+    studioOrbit.targetLookY = isNarrowMobile ? 1.38 : 1.54;
+    studioOrbit.targetLookX = activeCfg.studioX + wideOffset * 0.45;
   } else if (preset === 'side') {
     studioOrbit.targetAngle = 0.78;
     studioOrbit.targetPitch = 0.05;
-    studioOrbit.targetDistance = 2.35;
-    studioOrbit.targetLookY = 0.90;
+    studioOrbit.targetDistance = isNarrowMobile ? 3.05 : 2.85;
+    studioOrbit.targetLookY = isNarrowMobile ? 0.72 : 0.90;
+    studioOrbit.targetLookX = activeCfg.studioX + wideOffset * 0.20;
   } else {
-    // 'full' or 'spin'
+    // 'full' or 'spin': frame BOTH characters side-by-side clear of the Studio control card!
     studioOrbit.targetAngle = 0.0;
     studioOrbit.targetPitch = 0.05;
-    studioOrbit.targetDistance = 2.65;
-    studioOrbit.targetLookY = 0.86;
+    studioOrbit.targetDistance = isNarrowMobile ? 5.35 : (window.innerWidth > 860 ? 3.45 : 3.75);
+    studioOrbit.targetLookY = isNarrowMobile ? 0.56 : 0.88;
+    studioOrbit.targetLookX = wideOffset;
   }
+}
+
+// Dual-Character Hero Selection (Side-by-Side cards in Studio)
+for (const card of charSelectCards) {
+  card.addEventListener('click', () => {
+    const cid = card.dataset.charSelect;
+    if (cid) selectActiveCharacter(cid, { triggerGreeting: true, refreshCam: true });
+  });
 }
 
 // Studio UI Button Listeners
@@ -2802,11 +2932,14 @@ gameTalkBtn?.addEventListener('click', (e) => {
 // Studio Orbit Drag & Wheel Zoom
 canvas.addEventListener('pointerdown', (event) => {
   if (inStudio) {
-    studioOrbit.dragging = true;
-    studioOrbit.autoSpin = false;
-    studioOrbit.lastX = event.clientX;
-    studioOrbit.lastY = event.clientY;
-    canvas.setPointerCapture?.(event.pointerId);
+    if (event.button === 0) {
+      studioOrbit.dragging = true;
+      studioOrbit.autoSpin = false;
+      studioOrbit.lastX = event.clientX;
+      studioOrbit.lastY = event.clientY;
+      studioOrbit.downX = event.clientX;
+      studioOrbit.downY = event.clientY;
+    }
     return;
   }
   if (liftKeypadOpen) {
@@ -2867,6 +3000,10 @@ window.addEventListener('mousemove', (event) => {
 
 window.addEventListener('pointermove', (event) => {
   if (!inStudio || !studioOrbit.dragging) return;
+  if ((event.buttons & 1) === 0) {
+    studioOrbit.dragging = false;
+    return;
+  }
   const dx = event.clientX - studioOrbit.lastX;
   const dy = event.clientY - studioOrbit.lastY;
   studioOrbit.lastX = event.clientX;
@@ -2875,7 +3012,33 @@ window.addEventListener('pointermove', (event) => {
   studioOrbit.targetPitch = THREE.MathUtils.clamp(studioOrbit.targetPitch + dy * 0.005, -0.35, 0.65);
 });
 
-window.addEventListener('pointerup', () => {
+window.addEventListener('pointerup', (event) => {
+  if (inStudio && studioOrbit.dragging && event.button === 0) {
+    const moveDist = Math.hypot(event.clientX - studioOrbit.downX, event.clientY - studioOrbit.downY);
+    if (moveDist <= 6 && event.target === canvas) {
+      const rect = canvas.getBoundingClientRect();
+      studioPointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      studioPointerNdc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      studioRaycaster.setFromCamera(studioPointerNdc, camera);
+      const targets = [];
+      const ownerByMesh = new Map();
+      for (const cfg of CHARACTER_ROSTER) {
+        const actor = characterActors[cfg.id];
+        if (!actor) continue;
+        for (const m of actor.getPickMeshes?.() || []) {
+          targets.push(m);
+          ownerByMesh.set(m, cfg.id);
+        }
+      }
+      const hits = studioRaycaster.intersectObjects(targets, false);
+      if (hits.length) {
+        const hitId = ownerByMesh.get(hits[0].object);
+        if (hitId) {
+          selectActiveCharacter(hitId, { triggerGreeting: true, refreshCam: true });
+        }
+      }
+    }
+  }
   studioOrbit.dragging = false;
 });
 
@@ -4567,14 +4730,20 @@ function updateHUDPrompt() {
 }
 
 function updateStudioCamera(delta) {
+  const nowCam = performance.now();
+  const camDt = studioOrbit._lastMs
+    ? Math.min(0.35, Math.max(delta, (nowCam - studioOrbit._lastMs) / 1000))
+    : Math.max(delta, 0.016);
+  studioOrbit._lastMs = nowCam;
   if (studioOrbit.autoSpin) {
-    studioOrbit.targetAngle += delta * 0.55;
+    studioOrbit.targetAngle += camDt * 0.55;
   }
-  const smooth = Math.min(1, delta * 9.0);
+  const smooth = 1 - Math.exp(-10.0 * camDt);
   studioOrbit.angle += (studioOrbit.targetAngle - studioOrbit.angle) * smooth;
   studioOrbit.pitch += (studioOrbit.targetPitch - studioOrbit.pitch) * smooth;
   studioOrbit.distance += (studioOrbit.targetDistance - studioOrbit.distance) * smooth;
   studioOrbit.targetY += (studioOrbit.targetLookY - studioOrbit.targetY) * smooth;
+  studioOrbit.lookX += (studioOrbit.targetLookX - studioOrbit.lookX) * smooth;
 
   const r = studioOrbit.distance;
   // DSLR 85mm portrait lens FOV (24° close-up -> 39° full-body) eliminates wide-angle selfie distortion!
@@ -4584,15 +4753,17 @@ function updateStudioCamera(delta) {
     camera.fov += (studioFov - camera.fov) * smooth;
     camera.updateProjectionMatrix();
   }
-  const cx = Math.sin(studioOrbit.angle) * Math.cos(studioOrbit.pitch) * r;
+  const cx = studioOrbit.lookX + Math.sin(studioOrbit.angle) * Math.cos(studioOrbit.pitch) * r;
   const cz = Math.cos(studioOrbit.angle) * Math.cos(studioOrbit.pitch) * r;
   const cy = studioOrbit.targetY + Math.sin(studioOrbit.pitch) * r;
 
   camera.position.set(cx, cy, cz);
-  camera.lookAt(0, studioOrbit.targetY, 0);
+  camera.lookAt(studioOrbit.lookX, studioOrbit.targetY, 0);
 
-  if (playerCharacter) {
-    playerCharacter.update(delta, {
+  for (const cfg of CHARACTER_ROSTER) {
+    const actor = characterActors[cfg.id];
+    if (!actor) continue;
+    actor.update(delta, {
       position: playerPos,
       yaw: 0,
       speed: 0,
@@ -4600,6 +4771,8 @@ function updateStudioCamera(delta) {
       grounded: true,
       isSprinting: false,
       inStudio: true,
+      studioPos: { x: cfg.studioX, y: 0, z: 0 },
+      studioYaw: cfg.studioYaw,
     });
   }
 }
@@ -4639,7 +4812,7 @@ function updateMovement(delta) {
       const dxV = car.state.pos.x - refX;
       const dzV = car.state.pos.z - refZ;
       const dSq = dxV * dxV + dzV * dzV;
-      const vis = car.state.driving || dSq < 150 * 150;
+      const vis = car.state.driving || car.state.aiDriving || dSq < 150 * 150;
       if (car.group.visible !== vis) car.group.visible = vis;
       if (vis || Math.abs(car.state.speed) > 0.05) {
         car.update(delta, keys, house, environment, cars);
@@ -5206,16 +5379,41 @@ function animate() {
   } else {
     if (environment?.tower) environment.tower.update(delta, playerPos, isLow);
     updateMovement(delta);
+    autonomousPartner.update(delta, {
+      playerPos,
+      playerCharacter,
+      cars,
+      environment,
+      inStudio,
+      quality,
+    });
     // Smart indoor building & exterior culling + active chunk streaming across Khulna City
     const { nearTaltolaVis, deepInTowerUpper } = syncSceneVisibility();
     const activeCar = getDrivingCar();
     const nowPerf = performance.now();
+    const partnerLive = autonomousPartner.getHUDStatus();
+    if (partnerStatusPill && partnerStatusText) {
+      if (started && partnerLive) {
+        partnerStatusPill.classList.remove('hidden');
+        const nextText = `${partnerLive.name} · ${partnerLive.statusText}`;
+        if (nextText !== lastPartnerHudText) {
+          lastPartnerHudText = nextText;
+          partnerStatusText.textContent = nextText;
+        }
+      } else {
+        partnerStatusPill.classList.add('hidden');
+      }
+    }
+    khulnaMapUI?.setPartnerInfo?.(
+      partnerLive ? { name: partnerLive.name, x: partnerLive.x, z: partnerLive.z, inCar: partnerLive.inCar } : null,
+    );
     const isShadowSceneDynamic = (
       !started
       || horizontalVelocity.lengthSq() > 0.01
       || Math.abs(verticalVelocity) > 0.05
       || Boolean(activeCar && Math.abs(activeCar.state.speed) > 0.08)
       || Boolean(playerCharacter?.state?.emote || playerCharacter?.state?.attackTimer > 0)
+      || Boolean(partnerLive && Math.hypot(partnerLive.x - playerPos.x, partnerLive.z - playerPos.z) < 28)
     );
     if (sun?.castShadow) {
       updateSunShadowTarget(activeCar ? activeCar.state.pos : playerPos, nowPerf, isShadowSceneDynamic);

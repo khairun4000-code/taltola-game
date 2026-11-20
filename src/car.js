@@ -1144,6 +1144,7 @@ export function createDrivableCar(scene, manager, config) {
     badge: config.badge || config.name.toUpperCase(),
     loaded: false,
     driving: false,
+    aiDriving: false,
     cameraMode: 'chase', // 'chase' | 'hood' | 'front'
     pos: new THREE.Vector3(...(config.spawnPos || [-0.35, 0.01, 4.8])),
     heading: config.spawnHeading ?? 0.0,
@@ -2333,7 +2334,7 @@ export function createDrivableCar(scene, manager, config) {
     bodyTiltGroup.rotation.x = state.pitch;
     bodyTiltGroup.rotation.z = state.roll;
     if (carDriverRig) {
-      carDriverRig.rigGroup.visible = state.driving && state.cameraMode !== 'interior';
+      carDriverRig.rigGroup.visible = (state.driving && state.cameraMode !== 'interior') || state.aiDriving;
       carDriverRig.wheelSpin.rotation.z = -state.steerAngle * 2.65;
     }
     if (bikeDriverRig) {
@@ -2536,7 +2537,31 @@ export function createDrivableCar(scene, manager, config) {
     return state.headlightsMode;
   }
 
+  let aiControlInput = null;
+
+  function enterAICar() {
+    if (state.driving || config.isRickshaw || config.isBike) return false;
+    state.aiDriving = true;
+    aiControlInput = { throttle: 0, brake: 0, steerInput: 0, handbrake: false };
+    for (const m of drlMats) m.emissiveIntensity = 3.8;
+    return true;
+  }
+
+  function exitAICar() {
+    state.aiDriving = false;
+    aiControlInput = null;
+    for (const m of drlMats) m.emissiveIntensity = 1.8;
+    for (const m of tailMats) m.emissiveIntensity = 1.6;
+  }
+
+  function setAIControl(input) {
+    if (!state.aiDriving) return;
+    aiControlInput = input || { throttle: 0, brake: 0, steerInput: 0, handbrake: false };
+  }
+
   function enterCar(seatMode = 'driver') {
+    state.aiDriving = false;
+    aiControlInput = null;
     state.driving = true;
     state.cameraMode = 'chase';
     state.rideSeat = (config.isRickshaw && seatMode === 'passenger') ? 'passenger' : 'driver';
@@ -2597,6 +2622,9 @@ export function createDrivableCar(scene, manager, config) {
       if (config.isBike) {
         return `[F] Ride ${state.name}`;
       }
+      if (state.aiDriving) {
+        return `[F] Take Over & Drive ${state.name}`;
+      }
       return `[F] Enter & Drive ${state.name}`;
     }
     return null;
@@ -2617,7 +2645,8 @@ export function createDrivableCar(scene, manager, config) {
     }
 
     const isPassengerSitting = config.isRickshaw && state.rideSeat === 'passenger';
-    if (!state.driving || isPassengerSitting) {
+    const isAIDriven = Boolean(state.aiDriving && !state.driving);
+    if ((!state.driving && !isAIDriven) || isPassengerSitting) {
       let moved = false;
       if (Math.abs(state.speed) > 0.05) {
         state.speed *= Math.max(0, 1 - dt * 4.2);
@@ -2644,12 +2673,18 @@ export function createDrivableCar(scene, manager, config) {
       return;
     }
 
-    const throttle = (keys.has('KeyW') || keys.has('ArrowUp')) ? 1 : 0;
-    const brake = (keys.has('KeyS') || keys.has('ArrowDown')) ? 1 : 0;
-    const steerInput = (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0)
-      - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0);
-    const handbrake = keys.has('Space');
-    const shiftPressed = keys.has('ShiftLeft') || keys.has('ShiftRight');
+    const throttle = isAIDriven
+      ? (aiControlInput?.throttle || 0)
+      : ((keys.has('KeyW') || keys.has('ArrowUp')) ? 1 : 0);
+    const brake = isAIDriven
+      ? (aiControlInput?.brake || 0)
+      : ((keys.has('KeyS') || keys.has('ArrowDown')) ? 1 : 0);
+    const steerInput = isAIDriven
+      ? (aiControlInput?.steerInput || 0)
+      : ((keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0)
+        - (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0));
+    const handbrake = isAIDriven ? Boolean(aiControlInput?.handbrake) : keys.has('Space');
+    const shiftPressed = isAIDriven ? Boolean(aiControlInput?.shift) : (keys.has('ShiftLeft') || keys.has('ShiftRight'));
     let boost = 1.0;
     if (config.isRickshaw) {
       if (state.boostCooldown > 0) {
@@ -2854,6 +2889,9 @@ export function createDrivableCar(scene, manager, config) {
     group: root,
     state,
     enterCar,
+    enterAICar,
+    exitAICar,
+    setAIControl,
     toggleRideSeat,
     exitCar,
     distanceToPlayer,

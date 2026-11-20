@@ -6,6 +6,35 @@ const MODEL_URL = './assets/player-bangladeshi.glb?v=v8clean';
 const DRACO_PATH = './draco/gltf/';
 const PLAYER_EYE_HEIGHT = 1.68;
 
+export const CHARACTER_ROSTER = [
+  {
+    id: 'sabit',
+    name: 'Sabit · Cream Panjabi',
+    shortName: 'Sabit',
+    subtitle: 'Classic Hero · Cream Panjabi',
+    modelUrl: './assets/player-bangladeshi.glb?v=v8clean',
+    studioX: -0.68,
+    studioYaw: 0.14,
+  },
+  {
+    id: 'kurta_blue',
+    name: 'Huzzatullah · Blue Panjabi',
+    shortName: 'Huzzatullah',
+    subtitle: 'HD Face · Blue Panjabi',
+    modelUrl: './assets/player-kurta-blue.glb?v=v2hd',
+    studioX: 0.68,
+    studioYaw: -0.14,
+  },
+];
+
+const CLIP_FALLBACKS = {
+  Angry1: 'Flex',
+  Angry2: 'Combo',
+  Greet: 'Wave',
+  StandingRelax: 'Idle',
+  Dribble: 'Dance1',
+};
+
 // Full Apple ARKit 52-Blendshape speech visemes (driven across AvatarHead, AvatarEyelashes & AvatarTeethLower!)
 const SPEECH_VISEMES = {
   SIL: { jawOpen: 0.00, mouthClose: 0.04, mouthSmileLeft: 0.08, mouthSmileRight: 0.07 },
@@ -82,6 +111,11 @@ const EMOTE_CLIP_MAP = {
   swim: 'Swim',
   hit: 'HitBody',
   idlelook: 'IdleLook',
+  greet: 'Greet',
+  angry1: 'Angry1',
+  angry2: 'Angry2',
+  dribble: 'Dribble',
+  relax: 'StandingRelax',
 };
 
 const EMOTE_DURATIONS = {
@@ -132,9 +166,10 @@ function findBoneBySuffix(rootObj, suffix) {
  * and drives locomotion, parkour (Climb, Fall, JumpDown, Flip, Dive, Swim),
  * 4-move combat, lifestyle emotes, and crisp 4K PBR rendering across all quality tiers.
  */
-export function createPlayerCharacter(scene, manager) {
+export function createPlayerCharacter(scene, manager, options = {}) {
+  const modelUrl = options.modelUrl || MODEL_URL;
   const root = new THREE.Group();
-  root.name = 'PlayerCharacter';
+  root.name = options.id ? `PlayerCharacter_${options.id}` : 'PlayerCharacter';
   scene.add(root);
 
   const modelHolder = new THREE.Group();
@@ -218,6 +253,10 @@ export function createPlayerCharacter(scene, manager) {
   const lLidRestQ = new THREE.Quaternion();
   const rLidRestQ = new THREE.Quaternion();
   const restHipsQ = new THREE.Quaternion();
+  const restHipsPos = new THREE.Vector3();
+  const _hipsParentQuat = new THREE.Quaternion();
+  const _hipsUpLocal = new THREE.Vector3(0, 1, 0);
+  const _hipsDelta = new THREE.Vector3();
   const restSpineQ = new THREE.Quaternion();
   const restSpine1Q = new THREE.Quaternion();
   const restSpine2Q = new THREE.Quaternion();
@@ -389,8 +428,15 @@ export function createPlayerCharacter(scene, manager) {
     }
   }
 
+  function resolveClipAction(clipName) {
+    if (actions[clipName]) return actions[clipName];
+    const fb = CLIP_FALLBACKS[clipName];
+    if (fb && actions[fb]) return actions[fb];
+    return actions.Idle || null;
+  }
+
   function playClip(clipName, { fade = 0.16, loopOnce = false, timeScale = 1.0, restart = false } = {}) {
-    const action = actions[clipName] || actions.Idle;
+    const action = resolveClipAction(clipName);
     if (!action) return;
 
     action.timeScale = timeScale;
@@ -419,7 +465,7 @@ export function createPlayerCharacter(scene, manager) {
   const loader = new GLTFLoader(manager);
   loader.setDRACOLoader(dracoLoader);
 
-  loader.load(MODEL_URL, (gltf) => {
+  loader.load(modelUrl, (gltf) => {
     const model = gltf.scene;
     model.name = 'BangladeshiPlayerRig';
     modelHolder.add(model);
@@ -444,6 +490,9 @@ export function createPlayerCharacter(scene, manager) {
       srcMat.alphaTest = isHair ? 0.34 : isFacialHair ? 0.20 : 0;
       // DoubleSide keeps open-hem panjabi & lashes solid; keep eyeballs & oral teeth FrontSide for crisp studio shading
       srcMat.side = (isTeeth || isTongue || isEyeBall) ? THREE.FrontSide : THREE.DoubleSide;
+      if (options.id === 'kurta_blue' && 'metalness' in srcMat) {
+        srcMat.metalness = 0.0;
+      }
       if (srcMat.map) {
         srcMat.map.anisotropy = 4;
         srcMat.map.minFilter = THREE.LinearMipmapLinearFilter;
@@ -561,7 +610,10 @@ export function createPlayerCharacter(scene, manager) {
     mixer.update(0);
 
     // Snapshot exact clean straight-ahead Idle rest quaternions so IK & head lock NEVER drift or spin!
-    if (hipsBone) restHipsQ.copy(hipsBone.quaternion);
+    if (hipsBone) {
+      restHipsQ.copy(hipsBone.quaternion);
+      restHipsPos.copy(hipsBone.position);
+    }
     if (spineBone) restSpineQ.copy(spineBone.quaternion);
     if (spine1Bone) restSpine1Q.copy(spine1Bone.quaternion);
     if (spine2Bone) restSpine2Q.copy(spine2Bone.quaternion);
@@ -1382,12 +1434,15 @@ export function createPlayerCharacter(scene, manager) {
     moveDirX = 0,
     moveDirZ = 0,
     inStudio = false,
+    studioPos = null,
+    studioYaw = 0,
     hideMesh = false,
     rickshawRide = null,
     bikeRide = null,
     carDrive = null,
     ledgeHang = null,
     vehicleAnim = null,
+    customClip = null,
   }) {
     const dt = Math.min(Math.max(delta || 0.016, 0.001), 0.05);
     const isRidingRickshaw = Boolean(rickshawRide && rickshawRide.active);
@@ -1401,8 +1456,12 @@ export function createPlayerCharacter(scene, manager) {
     if (!inStudio && position) {
       root.position.set(position.x, position.y - PLAYER_EYE_HEIGHT, position.z);
     } else if (inStudio) {
-      root.position.set(0, 0, 0);
-      root.rotation.y = 0;
+      if (studioPos) {
+        root.position.set(studioPos.x || 0, studioPos.y || 0, studioPos.z || 0);
+      } else {
+        root.position.set(0, 0, 0);
+      }
+      root.rotation.y = studioYaw || 0;
     }
 
     // Smooth vertical holder offset for horizontal swimming so head & swimming arms sit cleanly on the water surface
@@ -1526,6 +1585,12 @@ export function createPlayerCharacter(scene, manager) {
     } else if (state.emote === 'sit') {
       targetClip = 'Sit';
       idleStillClock = 0;
+    } else if (customClip) {
+      idleStillClock = 0;
+      targetClip = typeof customClip === 'string' ? customClip : (customClip.name || 'Idle');
+      loopOnce = typeof customClip === 'object' ? Boolean(customClip.loopOnce) : false;
+      targetScale = (typeof customClip === 'object' && customClip.timeScale) ? customClip.timeScale : 1.0;
+      fadeTime = 0.16;
     } else if (horizSpeed > 0.18) {
       idleStillClock = 0;
       const sprint = isSprinting || horizSpeed > maxSpeed * 1.06;
@@ -1590,6 +1655,14 @@ export function createPlayerCharacter(scene, manager) {
         activeAction.timeScale = targetScale;
       }
       mixer.update(dt);
+      // Lock root horizontal drift (world X/Z) in-place while preserving vertical motion for Jump/Sit/Flip
+      if (hipsBone && hipsBone.parent && !isVehicleAnim && !isRidingRickshaw && !isRidingBike && !isDrivingCar) {
+        hipsBone.parent.getWorldQuaternion(_hipsParentQuat).invert();
+        _hipsUpLocal.set(0, 1, 0).applyQuaternion(_hipsParentQuat).normalize();
+        _hipsDelta.copy(hipsBone.position).sub(restHipsPos);
+        const vert = _hipsDelta.dot(_hipsUpLocal);
+        hipsBone.position.copy(restHipsPos).addScaledVector(_hipsUpLocal, vert);
+      }
     }
 
     if (isVehicleAnim) {
@@ -1680,6 +1753,7 @@ export function createPlayerCharacter(scene, manager) {
     setQualityMode,
     setEnvironmentMap,
     cycleCameraMode,
+    getPickMeshes: () => meshEntries.map((m) => m.mesh),
     update,
   };
 }

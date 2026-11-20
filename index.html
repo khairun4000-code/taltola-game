@@ -56,7 +56,23 @@
       <div class="studio-card">
         <p class="eyebrow"><span></span> 3D CHARACTER SHOWCASE</p>
         <h2>Character Studio</h2>
-        <p class="studio-hint">Drag to orbit 360° · Scroll to zoom</p>
+        <p class="studio-hint">Side-by-side heroes · Click any character or card to select, drag to orbit 360°</p>
+
+        <div class="studio-group">
+          <label>HERO SELECT (SIDE BY SIDE)</label>
+          <div class="studio-char-grid">
+            <button type="button" class="studio-char-card active" data-char-select="sabit">
+              <span class="char-badge">CLASSIC</span>
+              <strong>Sabit</strong>
+              <small>Cream Panjabi · Khulna Hero</small>
+            </button>
+            <button type="button" class="studio-char-card" data-char-select="kurta_blue">
+              <span class="char-badge is-new">HD · NEW</span>
+              <strong>Huzzatullah</strong>
+              <small>Blue Panjabi · 36 Animations</small>
+            </button>
+          </div>
+        </div>
 
         <div class="studio-group">
           <label>CAMERA ANGLE</label>
@@ -444,6 +460,7 @@
       </div>
       <div class="walk-controls"><span id="look-control"><kbd>2x CLICK</kbd> MOUSE</span><span><kbd>C</kbd> FREECAM</span><span><kbd>P</kbd> PHONE</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>F</kbd> ENTER</span><span><kbd>E</kbd> INTERACT</span><span><kbd>ESC</kbd> MENU</span><span><kbd>TAB</kbd> HUD</span></div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
+      <div id="partner-status-pill" class="partner-status-pill hidden"><span class="partner-dot"></span> <span id="partner-status-text">Partner spawning...</span></div>
       <button id="minimap-dock" class="minimap-dock" type="button" title="Open City Map &amp; Menu [ESC]">
         <canvas id="khulna-minimap" width="148" height="148"></canvas>
         <div class="minimap-footer">
