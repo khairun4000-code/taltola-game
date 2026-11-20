@@ -476,33 +476,54 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
     }
   };
 
-  const isInsidePtiPitchZone = (x, z) => x >= -374 && x <= -252 && z >= -232 && z <= 16;
+  const isInsidePtiPitchZone = (x, z) => x >= -370 && x <= -256 && z >= -228 && z <= 12;
 
-  for (const r of roadList) {
+  for (let rIdx = 0; rIdx < roadList.length; rIdx++) {
+    const r = roadList[rIdx];
     if (!tierPredicate(r)) continue;
     const pts = r.p;
     const halfW = (r.w + extraWidth) * 0.5;
+    // Micro-stagger overlapping same-tier roads (e.g. dual-carriageway Khan Jahan Ali Rd) to prevent coplanar Z-fighting!
+    const roadY = yHeight + (rIdx % 5) * 0.0028;
+
+    const addRoadQuad = (ax, az, bx, bz, cx, cz, dx, dz, uLen) => {
+      positions.push(
+        ax, roadY, az,
+        bx, roadY, bz,
+        cx, roadY, cz,
+        dx, roadY, dz
+      );
+      for (let k = 0; k < 4; k++) normals.push(0, 1, 0);
+      uvs.push(0, 0, 1, 0, 1, uLen, 0, uLen);
+      indices.push(vBase, vBase + 1, vBase + 2, vBase, vBase + 2, vBase + 3);
+      vBase += 4;
+    };
+
     for (let i = 0; i < pts.length - 2; i += 2) {
       const x0 = pts[i];
       const z0 = pts[i + 1];
       const x1 = pts[i + 2];
       const z1 = pts[i + 3];
-      // Skip underlying OSM road triangles inside PTI More & Ahsan Ahmed Rd where dedicated pitch-asphalt roads sit (ZERO Z-fighting!)
-      if (isInsidePtiPitchZone((x0 + x1) * 0.5, (z0 + z1) * 0.5)) continue;
+      // Skip ANY OSM road segment touching the PTI More & Ahsan Ahmed Rd pitch-asphalt zone (ZERO Z-fighting!)
+      if (
+        isInsidePtiPitchZone(x0, z0)
+        || isInsidePtiPitchZone(x1, z1)
+        || isInsidePtiPitchZone((x0 + x1) * 0.5, (z0 + z1) * 0.5)
+      ) continue;
       const dx = x1 - x0;
       const dz = z1 - z0;
       const len = Math.hypot(dx, dz);
       if (len < 0.25) continue;
       const nx = (-dz / len) * halfW;
       const nz = (dx / len) * halfW;
-      addTriQuad(
+      addRoadQuad(
         x0 - nx, z0 - nz,
         x0 + nx, z0 + nz,
         x1 + nx, z1 + nz,
         x1 - nx, z1 - nz,
         len * 0.1
       );
-      if (i > 0 && !isInsidePtiPitchZone(x0, z0)) addCap(x0, z0, halfW * 0.99, 8);
+      if (i > 0) addCap(x0, z0, halfW * 0.99, 8);
     }
     if (pts.length >= 4) {
       if (!isInsidePtiPitchZone(pts[0], pts[1])) addCap(pts[0], pts[1], halfW * 0.99, 8);

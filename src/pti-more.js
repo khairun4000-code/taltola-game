@@ -876,7 +876,7 @@ function addSidewalkAlongPolyline(staticG, bank, phys, pts, roadHalfW, sideSign,
 
 function addZebraCrosswalk(parent, bank, cx, cz, yaw, roadWidth = 8.4) {
   const grp = new THREE.Group();
-  grp.position.set(cx, 0.092, cz);
+  grp.position.set(cx, 0.104, cz);
   grp.rotation.y = yaw;
   const count = Math.floor(roadWidth / 0.90);
   const start = -((count - 1) * 0.90) * 0.5;
@@ -966,9 +966,11 @@ function addDoubleArmLamp(staticG, dynamicG, bank, x, z, rotY = 0) {
 }
 
 function buildPtiJunctionAndFootpaths(staticG, dynamicG, bank, phys) {
-  // Clean, elevated Bangladeshi Pitch-Asphalt Junction Apron (top at y = 0.078m — cleanly above all 4 arms with ZERO Z-fighting!)
-  const jDisc = new THREE.Mesh(new THREE.CylinderGeometry(16.8, 17.0, 0.04, 48), bank.pitchJunction);
-  jDisc.position.set(-307.2, 0.058, -48.0);
+  // Single flat Bangladeshi Pitch-Asphalt Junction Circle (y = 0.088m — zero bottom face, cleanly above all 4 arms with ZERO Z-fighting!)
+  const jDiscGeo = new THREE.CircleGeometry(16.8, 48);
+  jDiscGeo.rotateX(-Math.PI * 0.5);
+  const jDisc = new THREE.Mesh(jDiscGeo, bank.pitchJunction);
+  jDisc.position.set(-307.2, 0.088, -48.0);
   jDisc.receiveShadow = true;
   staticG.add(jDisc);
 
@@ -977,57 +979,57 @@ function buildPtiJunctionAndFootpaths(staticG, dynamicG, bank, phys) {
   const IZ = -48.0;
   phys.addCircle(IX, IZ, 3.15, 7.5);
 
-  cylinder(staticG, 3.05, 3.18, 0.30, [IX, 0.20, IZ], bank.curbYellowBlack, 24);
-  cylinder(staticG, 2.75, 2.86, 0.38, [IX, 0.26, IZ], bank.marbleWhite, 24);
-  cylinder(staticG, 2.35, 2.45, 0.46, [IX, 0.31, IZ], bank.grassTurf, 20);
+  cylinder(staticG, 3.05, 3.18, 0.30, [IX, 0.22, IZ], bank.curbYellowBlack, 24);
+  cylinder(staticG, 2.75, 2.86, 0.38, [IX, 0.28, IZ], bank.marbleWhite, 24);
+  cylinder(staticG, 2.35, 2.45, 0.46, [IX, 0.33, IZ], bank.grassTurf, 20);
 
-  cylinder(staticG, 0.85, 1.05, 0.85, [IX, 0.85, IZ], bank.ptiTerracotta, 8);
-  cylinder(staticG, 0.55, 0.72, 1.45, [IX, 1.90, IZ], bank.marbleWhite, 8);
-  cylinder(staticG, 0.18, 0.24, 3.85, [IX, 4.50, IZ], bank.steelDark, 10);
+  cylinder(staticG, 0.85, 1.05, 0.85, [IX, 0.87, IZ], bank.ptiTerracotta, 8);
+  cylinder(staticG, 0.55, 0.72, 1.45, [IX, 1.92, IZ], bank.marbleWhite, 8);
+  cylinder(staticG, 0.18, 0.24, 3.85, [IX, 4.52, IZ], bank.steelDark, 10);
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI * 0.25;
     const gx = IX + Math.cos(a) * 0.88;
     const gz = IZ + Math.sin(a) * 0.88;
-    rodBetween(staticG, [IX, 6.00, IZ], [gx, 6.27, gz], 0.04, bank.steelDark, 6);
+    rodBetween(staticG, [IX, 6.02, IZ], [gx, 6.29, gz], 0.04, bank.steelDark, 6);
     const globe = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), bank.lampGlow);
-    globe.position.set(gx, 6.43, gz);
+    globe.position.set(gx, 6.45, gz);
     dynamicG.add(globe);
   }
   const topFinial = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), bank.goldMetal);
-  topFinial.position.set(IX, 6.60, IZ);
+  topFinial.position.set(IX, 6.62, IZ);
   staticG.add(topFinial);
 
   for (let i = 0; i < 10; i++) {
     const a = (i / 10) * Math.PI * 2;
-    cylinder(staticG, 0.045, 0.055, 0.72, [IX + Math.cos(a) * 2.68, 0.71, IZ + Math.sin(a) * 2.68], bank.steelDark, 6);
+    cylinder(staticG, 0.045, 0.055, 0.72, [IX + Math.cos(a) * 2.68, 0.73, IZ + Math.sin(a) * 2.68], bank.steelDark, 6);
     if (i % 2 === 0) {
       box(
         staticG,
         [0.48, 0.34, 0.48],
-        [IX + Math.cos(a) * 1.65, 0.61, IZ + Math.sin(a) * 1.65],
+        [IX + Math.cos(a) * 1.65, 0.63, IZ + Math.sin(a) * 1.65],
         i % 4 === 0 ? bank.flowerRed : bank.flowerGold,
       );
     }
   }
 
-  // Clean, Non-Overlapping Bangladeshi Pitch-Asphalt Road Arms (y = 0.056m, ending right at the 16.8m junction rim — ZERO Z-fighting!)
+  // Clean, Non-Overlapping Bangladeshi Pitch-Asphalt Road Arms (y = 0.052m, cleanly bridging outside city roads to the 16.8m junction circle!)
   const kjaSePts = [[-252.0, 16.0], [-284.0, -22.0], [-298.5, -36.5]];
-  addPitchRoadAlongPolyline(staticG, [[-244.0, 25.0], ...kjaSePts], 6.0, bank.pitchHighway, 0.056);
+  addPitchRoadAlongPolyline(staticG, [[-236.0, 34.0], ...kjaSePts], 6.0, bank.pitchHighway, 0.052);
   addSidewalkAlongPolyline(staticG, bank, phys, kjaSePts, 5.8, 1, { walkWidth: 1.9, curbMat: bank.curbYellowBlack });
   addSidewalkAlongPolyline(staticG, bank, phys, kjaSePts, 5.8, -1, { walkWidth: 1.9, curbMat: bank.curbYellowBlack });
 
   const kjaNwPts = [[-321.0, -52.0], [-338.0, -61.8], [-372.0, -82.0]];
-  addPitchRoadAlongPolyline(staticG, [...kjaNwPts, [-382.0, -88.0]], 5.9, bank.pitchHighway, 0.056);
+  addPitchRoadAlongPolyline(staticG, [...kjaNwPts, [-390.0, -93.0]], 5.9, bank.pitchHighway, 0.052);
   addSidewalkAlongPolyline(staticG, bank, phys, kjaNwPts, 5.7, 1, { walkWidth: 1.9, curbMat: bank.curbYellowBlack });
   addSidewalkAlongPolyline(staticG, bank, phys, kjaNwPts, 5.7, -1, { walkWidth: 1.9, curbMat: bank.curbYellowBlack });
 
   const ahsanPts = [[-299.6, -59.5], [-298.9, -76.0], [-298.3, -95.0], [-301.5, -162.0], [-304.7, -230.0]];
-  addPitchRoadAlongPolyline(staticG, [...ahsanPts, [-305.2, -238.0]], 4.05, bank.pitchAhsan, 0.056);
+  addPitchRoadAlongPolyline(staticG, [...ahsanPts, [-305.5, -244.0]], 4.05, bank.pitchAhsan, 0.052);
   addSidewalkAlongPolyline(staticG, bank, phys, ahsanPts, 3.85, 1, { walkWidth: 1.95, curbMat: bank.curbRedWhite });
   addSidewalkAlongPolyline(staticG, bank, phys, ahsanPts, 3.85, -1, { walkWidth: 1.95, curbMat: bank.curbRedWhite });
 
   const miaPts = [[-313.8, -34.0], [-313.4, -10.0], [-313.1, 14.0]];
-  addPitchRoadAlongPolyline(staticG, [...miaPts, [-312.9, 22.0]], 2.55, bank.pitchLane, 0.056);
+  addPitchRoadAlongPolyline(staticG, [...miaPts, [-312.8, 28.0]], 2.55, bank.pitchLane, 0.052);
   addSidewalkAlongPolyline(staticG, bank, phys, miaPts, 2.35, 1, { walkWidth: 1.55, curbMat: bank.curbYellowBlack });
   addSidewalkAlongPolyline(staticG, bank, phys, miaPts, 2.35, -1, { walkWidth: 1.55, curbMat: bank.curbYellowBlack });
 

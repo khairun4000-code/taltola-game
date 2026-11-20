@@ -11,6 +11,7 @@ export class FirstPersonControls extends EventTarget {
     this.dragging = false;
     this.lastX = 0;
     this.lastY = 0;
+    this.sensitivity = 1.0;
     this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
     this.vector = new THREE.Vector3();
     this.onPointerLockChange = this.onPointerLockChange.bind(this);
@@ -115,6 +116,10 @@ export class FirstPersonControls extends EventTarget {
     if (event.code === 'Escape' && this.isLocked && this.fallback) this.unlock();
   }
 
+  setSensitivity(val) {
+    this.sensitivity = THREE.MathUtils.clamp(Number(val) || 1.0, 0.35, 2.5);
+  }
+
   onMouseMove(event) {
     if (!this.isLocked || (this.fallback && !this.dragging)) return;
     if (event.type === 'pointermove' && !this.fallback) return;
@@ -124,9 +129,10 @@ export class FirstPersonControls extends EventTarget {
     this.lastX = event.clientX;
     this.lastY = event.clientY;
     if (Math.abs(movementX) > 260 || Math.abs(movementY) > 260) return;
+    const scale = 0.0022 * this.sensitivity;
     this.euler.setFromQuaternion(this.camera.quaternion, 'YXZ');
-    this.euler.y -= movementX * 0.0022;
-    this.euler.x = THREE.MathUtils.clamp(this.euler.x - movementY * 0.0022, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05);
+    this.euler.y -= movementX * scale;
+    this.euler.x = THREE.MathUtils.clamp(this.euler.x - movementY * scale, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05);
     this.camera.quaternion.setFromEuler(this.euler);
   }
 

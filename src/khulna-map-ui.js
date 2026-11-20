@@ -1,14 +1,56 @@
 import worldData from './data/khulna-world-data.json';
 import { worldXZToLatLon } from './khulna-geo.js';
 
-export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
+export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettings, onResumeGame }) {
   const miniCanvas = document.querySelector('#khulna-minimap');
   const fullCanvas = document.querySelector('#city-map-canvas');
   const mapModal = document.querySelector('#city-map-modal');
   const mapList = document.querySelector('#city-landmark-list');
   const mapCloseBtn = document.querySelector('#close-city-map');
+  const resumeGameBtn = document.querySelector('#pause-resume-game-btn');
   const myLocBtn = document.querySelector('#map-my-location-btn');
+  const pauseMenuTitle = document.querySelector('#pause-menu-title');
+  const tabButtons = Array.from(document.querySelectorAll('[data-pause-tab]'));
+  const tabPanels = Array.from(document.querySelectorAll('[data-pause-panel]'));
   const gpsReadout = document.querySelector('#gps-readout');
+
+  const TAB_TITLES = {
+    map: 'খুলনা শহর মানচিত্র ও ফাস্ট ট্র্যাভেল',
+    graphics: 'গ্রাফিক্স ও ডিসপ্লে সেটিংস (Graphics)',
+    settings: 'গেম ও ক্যামেরা সেটিংস (Settings)',
+    controls: 'কিবোর্ড ও মাউস কন্ট্রোলস (Controls)',
+  };
+  let activeTab = 'map';
+
+  function setActiveTab(nextTab = 'map') {
+    activeTab = TAB_TITLES[nextTab] ? nextTab : 'map';
+    for (const btn of tabButtons) {
+      const match = btn.dataset.pauseTab === activeTab;
+      btn.classList.toggle('active', match);
+      btn.setAttribute('aria-selected', match ? 'true' : 'false');
+    }
+    for (const panel of tabPanels) {
+      panel.classList.toggle('hidden', panel.dataset.pausePanel !== activeTab);
+    }
+    if (pauseMenuTitle) {
+      pauseMenuTitle.textContent = TAB_TITLES[activeTab];
+    }
+    if (myLocBtn) {
+      myLocBtn.classList.toggle('hidden', activeTab !== 'map');
+    }
+    if (activeTab === 'map' && isOpen) {
+      renderFullMap(lastPlayerPos, lastPlayerYaw);
+    } else if (isOpen) {
+      onSyncSettings?.();
+    }
+  }
+
+  for (const btn of tabButtons) {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setActiveTab(btn.dataset.pauseTab);
+    });
+  }
 
   const miniCtx = miniCanvas ? miniCanvas.getContext('2d') : null;
   const fullCtx = fullCanvas ? fullCanvas.getContext('2d') : null;
@@ -503,12 +545,14 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     }
   }
 
-  function openMap(playerPos, yaw) {
+  function openMap(playerPos, yaw, initialTab = 'map') {
     if (!mapModal) return;
     isOpen = true;
     lastPlayerPos = { x: playerPos.x, z: playerPos.z };
     lastPlayerYaw = yaw;
     populateLandmarkButtons(playerPos.x, playerPos.z);
+    setActiveTab(initialTab);
+    onSyncSettings?.();
     renderFullMap(playerPos, yaw);
     mapModal.classList.remove('hidden');
     onOpenChange?.(true);
@@ -521,9 +565,9 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     onOpenChange?.(false);
   }
 
-  function toggleMap(playerPos, yaw) {
+  function toggleMap(playerPos, yaw, initialTab = 'map') {
     if (isOpen) closeMap();
-    else openMap(playerPos, yaw);
+    else openMap(playerPos, yaw, initialTab);
   }
 
   // Clicking (or double-clicking) anywhere on the map sets (or clears) a GTA V-style Yellow GPS Road Route!
@@ -553,6 +597,13 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
   mapCloseBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     closeMap();
+    onResumeGame?.();
+  });
+
+  resumeGameBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeMap();
+    onResumeGame?.();
   });
 
   myLocBtn?.addEventListener('click', (e) => {
@@ -566,7 +617,11 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange }) {
     get isOpen() {
       return isOpen;
     },
+    get activeTab() {
+      return activeTab;
+    },
     landmarks: visibleLandmarks,
+    setActiveTab,
     openMap,
     closeMap,
     toggleMap,

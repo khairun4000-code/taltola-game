@@ -276,6 +276,10 @@ const studioOrbit = {
 
 let quality = localStorage.getItem('taltola_quality') || 'medium';
 if (!['low', 'medium', 'high', 'ultra'].includes(quality)) quality = 'medium';
+let baseWalkFov = THREE.MathUtils.clamp(Number(localStorage.getItem('taltola_fov')) || 60, 48, 75);
+let mouseSensitivity = THREE.MathUtils.clamp(Number(localStorage.getItem('taltola_mouse_sens')) || 1.0, 0.4, 2.4);
+let shadowsOverride = localStorage.getItem('taltola_shadows') || 'auto'; // 'auto' | 'on' | 'off'
+controls.setSensitivity(mouseSensitivity);
 let sceneMaterials;
 let environment;
 let house;
@@ -1145,7 +1149,7 @@ function applyQuality(nextQuality) {
     ultra: Math.min(dpr * 1.25, 1.65),
   };
   const shadowSizes = { low: 512, medium: 1024, high: 1536, ultra: 2048 };
-  const useShadows = !isLow;
+  const useShadows = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : !isLow);
   const activeRatio = ratios[quality] ?? ratios.high;
 
   renderer.setPixelRatio(activeRatio);
@@ -2173,7 +2177,7 @@ function handleDoorInteraction(allowClimbFallback = false) {
     return true;
   }
   const nearSeat = findNearestSeat(playerPos);
-  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house?.getPrompt(playerPos));
+  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house?.getPrompt(playerPos));
   if (nearSeat && (!hasDoorOrLiftPrompt || nearSeat.dist < 1.25)) {
     sitOnSeat(nearSeat);
     return true;
@@ -2193,6 +2197,10 @@ function handleDoorInteraction(allowClimbFallback = false) {
     if (altTowerRes === 'open_lift_keypad' || environment?.altapoleTower?.isInsideLift(playerPos)) {
       openLiftKeypad();
     }
+    syncHUDButtons(false, true);
+    return true;
+  }
+  if (environment?.landmarks?.aliaMadrasah?.toggleGate?.(playerPos)) {
     syncHUDButtons(false, true);
     return true;
   }
@@ -2228,6 +2236,158 @@ function toggleCameraView() {
   syncHUDButtons(false, true);
 }
 
+function syncGtaPauseSettingsUI() {
+  document.querySelectorAll('[data-gta-quality]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.gtaQuality === quality);
+  });
+  document.querySelectorAll('[data-gta-time]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.gtaTime === timeOfDayId);
+  });
+  const shadowsOn = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : quality !== 'low');
+  document.querySelectorAll('[data-gta-shadow]').forEach((btn) => {
+    btn.classList.toggle('active', (btn.dataset.gtaShadow === 'on') === shadowsOn);
+  });
+  const isHudHidden = document.body.classList.contains('hud-hidden');
+  document.querySelectorAll('[data-gta-hud]').forEach((btn) => {
+    btn.classList.toggle('active', (btn.dataset.gtaHud === 'hide') === isHudHidden);
+  });
+  const activeCam = playerCharacter?.state?.cameraMode || 'back';
+  document.querySelectorAll('[data-gta-cam]').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.gtaCam === activeCam);
+  });
+  document.querySelectorAll('[data-gta-run]').forEach((btn) => {
+    btn.classList.toggle('active', (btn.dataset.gtaRun === 'on') === Boolean(runModeToggle));
+  });
+  const fovSlider = document.querySelector('#gta-fov-slider');
+  const fovVal = document.querySelector('#gta-fov-value');
+  if (fovSlider) fovSlider.value = String(Math.round(baseWalkFov));
+  if (fovVal) fovVal.textContent = `${Math.round(baseWalkFov)}°`;
+
+  const sensSlider = document.querySelector('#gta-sens-slider');
+  const sensVal = document.querySelector('#gta-sens-value');
+  if (sensSlider) sensSlider.value = mouseSensitivity.toFixed(1);
+  if (sensVal) sensVal.textContent = `${mouseSensitivity.toFixed(1)}x`;
+}
+
+function bindGtaPauseSettingsUI() {
+  document.querySelectorAll('[data-gta-quality]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      try { localStorage.setItem('taltola_quality_manual', '1'); } catch {}
+      applyQuality(btn.dataset.gtaQuality);
+      syncGtaPauseSettingsUI();
+    });
+  });
+
+  document.querySelectorAll('[data-gta-time]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      applyTimeOfDay(btn.dataset.gtaTime);
+      syncGtaPauseSettingsUI();
+    });
+  });
+
+  document.querySelectorAll('[data-gta-shadow]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      shadowsOverride = btn.dataset.gtaShadow === 'on' ? 'on' : 'off';
+      try { localStorage.setItem('taltola_shadows', shadowsOverride); } catch {}
+      applyQuality(quality);
+      syncGtaPauseSettingsUI();
+    });
+  });
+
+  document.querySelectorAll('[data-gta-hud]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleHudVisibility(btn.dataset.gtaHud === 'hide');
+      syncGtaPauseSettingsUI();
+    });
+  });
+
+  document.querySelectorAll('[data-gta-cam]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!playerCharacter) return;
+      playerCharacter.state.cameraMode = btn.dataset.gtaCam;
+      camHideMeshState = false;
+      isThirdPersonEyeFallback = false;
+      smoothedCamDist = btn.dataset.gtaCam === 'front' ? 1.15 : 1.95;
+      syncHUDButtons(false, true);
+      syncGtaPauseSettingsUI();
+    });
+  });
+
+  document.querySelectorAll('[data-gta-run]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      runModeToggle = btn.dataset.gtaRun === 'on';
+      syncHUDButtons(runModeToggle, true);
+      syncGtaPauseSettingsUI();
+    });
+  });
+
+  const fovSlider = document.querySelector('#gta-fov-slider');
+  const fovVal = document.querySelector('#gta-fov-value');
+  fovSlider?.addEventListener('input', (e) => {
+    e.stopPropagation();
+    baseWalkFov = THREE.MathUtils.clamp(Number(fovSlider.value) || 60, 48, 75);
+    try { localStorage.setItem('taltola_fov', String(baseWalkFov)); } catch {}
+    if (fovVal) fovVal.textContent = `${Math.round(baseWalkFov)}°`;
+    if (!inStudio && playerCharacter?.state?.cameraMode !== 'front') {
+      camera.fov = baseWalkFov;
+      camera.updateProjectionMatrix();
+    }
+  });
+
+  const sensSlider = document.querySelector('#gta-sens-slider');
+  const sensVal = document.querySelector('#gta-sens-value');
+  sensSlider?.addEventListener('input', (e) => {
+    e.stopPropagation();
+    mouseSensitivity = THREE.MathUtils.clamp(Number(sensSlider.value) || 1.0, 0.4, 2.4);
+    controls.setSensitivity(mouseSensitivity);
+    try { localStorage.setItem('taltola_mouse_sens', mouseSensitivity.toFixed(1)); } catch {}
+    if (sensVal) sensVal.textContent = `${mouseSensitivity.toFixed(1)}x`;
+  });
+
+  document.querySelector('#gta-open-studio-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    khulnaMapUI?.closeMap?.();
+    setMode(true);
+  });
+
+  document.querySelector('#gta-toggle-doors-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    house?.toggleAllDoors?.();
+    environment?.tower?.toggleGate?.();
+    environment?.altapoleTower?.toggleGate?.();
+    syncHUDButtons(false, true);
+    gtaPhoneUI?.showToast?.('🚪 সব দরজা ও গেট আপডেট হয়েছে!');
+  });
+
+  document.querySelector('#gta-reset-settings-btn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    baseWalkFov = 60;
+    mouseSensitivity = 1.0;
+    shadowsOverride = 'auto';
+    runModeToggle = false;
+    controls.setSensitivity(1.0);
+    try {
+      localStorage.removeItem('taltola_fov');
+      localStorage.removeItem('taltola_mouse_sens');
+      localStorage.removeItem('taltola_shadows');
+    } catch {}
+    toggleHudVisibility(false);
+    if (playerCharacter) playerCharacter.state.cameraMode = 'back';
+    applyQuality('medium');
+    applyTimeOfDay('golden');
+    syncHUDButtons(false, true);
+    syncGtaPauseSettingsUI();
+  });
+
+  syncGtaPauseSettingsUI();
+}
+
 async function initialize() {
   const manager = new THREE.LoadingManager();
   manager.onProgress = (url, loaded, total) => {
@@ -2252,10 +2412,19 @@ async function initialize() {
   playerCharacter = createPlayerCharacter(scene, manager);
   khulnaMapUI = createKhulnaMapUI({
     onWarpToLandmark: (lm) => warpToLandmark(lm),
+    onSyncSettings: () => syncGtaPauseSettingsUI(),
+    onResumeGame: () => {
+      if (started && !inStudio) {
+        pause?.classList.add('hidden');
+        walkHud?.classList.remove('hidden');
+        controls.lock();
+      }
+    },
     onOpenChange: (isOpen) => {
       if (isOpen) {
         if (controls.isLocked) controls.unlock();
         pause?.classList.add('hidden');
+        syncGtaPauseSettingsUI();
       } else {
         pause?.classList.add('hidden');
         if (started && !inStudio) {
@@ -2264,6 +2433,7 @@ async function initialize() {
       }
     },
   });
+  bindGtaPauseSettingsUI();
   gtaPhoneUI = createGTAPhoneUI({
     onOpenChange: (open) => {
       playerCharacter?.setPhoneInHand?.(open);
@@ -2596,13 +2766,13 @@ window.addEventListener('mousemove', (event) => {
   if (!controls.pointerLocked) return;
   if (Math.abs(event.movementX) > 260 || Math.abs(event.movementY) > 260) return;
   if (freeCam.active) {
-    freeCam.euler.y -= event.movementX * 0.0024;
-    freeCam.euler.x = THREE.MathUtils.clamp(freeCam.euler.x - event.movementY * 0.0024, -Math.PI * 0.48, Math.PI * 0.48);
+    freeCam.euler.y -= event.movementX * 0.0024 * mouseSensitivity;
+    freeCam.euler.x = THREE.MathUtils.clamp(freeCam.euler.x - event.movementY * 0.0024 * mouseSensitivity, -Math.PI * 0.48, Math.PI * 0.48);
     return;
   }
   if (!getDrivingCar()) return;
-  carOrbitYaw -= event.movementX * 0.0034;
-  carOrbitPitch = THREE.MathUtils.clamp(carOrbitPitch + event.movementY * 0.0026, 0.04, 0.78);
+  carOrbitYaw -= event.movementX * 0.0034 * mouseSensitivity;
+  carOrbitPitch = THREE.MathUtils.clamp(carOrbitPitch + event.movementY * 0.0026 * mouseSensitivity, 0.04, 0.78);
   carOrbitLastMove = performance.now();
 });
 
@@ -3164,6 +3334,7 @@ window.addEventListener('keydown', (event) => {
       house?.toggleAllDoors();
       environment?.tower?.toggleGate?.();
       environment?.altapoleTower?.toggleGate?.();
+      environment?.landmarks?.aliaMadrasah?.toggleGate?.(activeCar.state.pos);
       environment?.landmarks?.ptiMore?.toggleGate?.(activeCar.state.pos);
       syncHUDButtons();
       return;
@@ -3236,6 +3407,7 @@ window.addEventListener('keydown', (event) => {
       house?.toggleAllDoors();
       environment?.tower?.toggleGate?.();
       environment?.altapoleTower?.toggleGate?.();
+      environment?.landmarks?.aliaMadrasah?.toggleGate?.(activeCar.state.pos);
       environment?.landmarks?.ptiMore?.toggleGate?.(activeCar.state.pos);
       syncHUDButtons();
       return;
@@ -4233,7 +4405,7 @@ function updateHUDPrompt() {
       const nearSeat = findNearestSeat(playerPos);
       const nearCar = findNearestEnterableCar(playerPos);
       const carPrompt = nearCar ? nearCar.getPrompt(playerPos) : null;
-      const doorOrLiftPrompt = environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
+      const doorOrLiftPrompt = environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
       if (carPrompt && !doorOrLiftPrompt && !nearSeat) {
         promptText = carPrompt;
       } else if (nearSeat && (!doorOrLiftPrompt || nearSeat.dist < 1.25)) {
@@ -4742,7 +4914,7 @@ function updateMovement(delta) {
 
   // Smooth dynamic speed-rush FOV boost (and natural portrait FOV when viewing face in Front camera!)
   const isFrontCam = playerCharacter?.state?.cameraMode === 'front';
-  const targetFov = isFrontCam ? (isSprinting ? 48.0 : 42.0) : (isSprinting ? 67.5 : 60.0);
+  const targetFov = isFrontCam ? (isSprinting ? 48.0 : 42.0) : (isSprinting ? Math.min(82.0, baseWalkFov + 7.5) : baseWalkFov);
   if (Math.abs(camera.fov - targetFov) > 0.05) {
     camera.fov += (targetFov - camera.fov) * Math.min(1, delta * 8.5);
     camera.updateProjectionMatrix();

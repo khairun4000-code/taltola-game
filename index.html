@@ -159,20 +159,30 @@
       <div class="scene-caption"><span>22.7988° N</span><i></i><span>89.5734° E</span></div>
     </main>
 
-    <!-- INTERACTIVE KHULNA CITY MAP & FAST TRAVEL ([M] KEY) -->
-    <section id="city-map-modal" class="city-map-modal hidden" role="dialog" aria-label="Khulna City Map and Fast Travel">
+    <!-- GTA V-STYLE PAUSE MENU: KHULNA CITY MAP, GRAPHICS, SETTINGS & CONTROLS ([ESC] KEY) -->
+    <section id="city-map-modal" class="city-map-modal hidden" role="dialog" aria-label="Khulna Pause Menu, Map and Settings">
       <div class="city-map-card">
         <div class="city-map-header">
           <div>
-            <p class="eyebrow">KHULNA OPEN-WORLD GPS NAVIGATOR</p>
-            <h3>খুলনা শহর মানচিত্র ও ফাস্ট ট্র্যাভেল (Click Landmark or Road to Teleport)</h3>
+            <p class="eyebrow">KHULNA OPEN-WORLD · GTA V PAUSE MENU</p>
+            <h3 id="pause-menu-title">খুলনা শহর মানচিত্র ও ফাস্ট ট্র্যাভেল</h3>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <button id="map-my-location-btn" class="text-button" type="button" style="padding:6px 12px;font-size:12px;border-color:#38bdf8;color:#e0f2fe;">📍 আমার লোকেশন</button>
-            <button id="close-city-map" class="lift-close-x" type="button" title="Close Map (Esc)">×</button>
+          <div class="gta-header-actions">
+            <button id="map-my-location-btn" class="text-button" type="button" style="padding:6px 12px;font-size:11.5px;border-color:#38bdf8;color:#e0f2fe;">📍 আমার লোকেশন</button>
+            <button id="pause-resume-game-btn" class="gta-resume-btn" type="button">▶ খেলা চালিয়ে যান</button>
+            <button id="close-city-map" class="lift-close-x" type="button" title="Close Menu (Esc)">×</button>
           </div>
         </div>
-        <div class="city-map-body">
+
+        <nav class="gta-pause-tabs" role="tablist" aria-label="Pause menu sections">
+          <button type="button" class="gta-tab-btn active" role="tab" aria-selected="true" data-pause-tab="map">MAP <span>ম্যাপ</span></button>
+          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="graphics">GRAPHICS <span>গ্রাফিক্স</span></button>
+          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="settings">SETTINGS <span>সেটিংস</span></button>
+          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="controls">CONTROLS <span>কন্ট্রোলস</span></button>
+        </nav>
+
+        <!-- TAB 1: MAP -->
+        <div id="pause-tab-map" class="gta-tab-panel city-map-body" data-pause-panel="map">
           <div class="city-map-canvas-wrap">
             <canvas id="city-map-canvas" width="760" height="720"></canvas>
             <p class="city-map-hint">ম্যাপে ক্লিক বা ডবল ক্লিক = GTA V ইয়েলো জিপিএস রুট (শুধু ডিরেকশন) · টেলিপোর্ট = ডান পাশের লোকেশন লিস্ট</p>
@@ -181,6 +191,161 @@
             <div class="city-sidebar-title">KEY KHULNA LANDMARKS</div>
             <div id="city-landmark-list" class="city-landmark-list"></div>
           </aside>
+        </div>
+
+        <!-- TAB 2: GRAPHICS -->
+        <div id="pause-tab-graphics" class="gta-tab-panel gta-settings-panel hidden" data-pause-panel="graphics">
+          <div class="gta-settings-grid">
+            <div class="gta-setting-card">
+              <div class="gta-setting-head">
+                <strong>গ্রাফিক্স কোয়ালিটি (Graphics Preset)</strong>
+                <small>রেজোলিউশন না কমিয়ে স্মুথ ও শার্প ভিজ্যুয়াল</small>
+              </div>
+              <div class="gta-pill-group" id="gta-quality-group">
+                <button type="button" class="gta-pill" data-gta-quality="low">LOW · Smooth HD</button>
+                <button type="button" class="gta-pill" data-gta-quality="medium">MEDIUM · Balanced</button>
+                <button type="button" class="gta-pill" data-gta-quality="high">HIGH HD</button>
+                <button type="button" class="gta-pill" data-gta-quality="ultra">ULTRA 4K ★</button>
+              </div>
+            </div>
+
+            <div class="gta-setting-card">
+              <div class="gta-setting-head">
+                <strong>আকাশ ও সময় (Time of Day · [N])</strong>
+                <small>সকাল, বিকাল, রাত বা দুপুরের আলো পরিবর্তন করুন</small>
+              </div>
+              <div class="gta-pill-group" id="gta-time-group">
+                <button type="button" class="gta-pill" data-gta-time="golden">☀️ সকাল / গোল্ডেন</button>
+                <button type="button" class="gta-pill" data-gta-time="daylight">🌤️ দুপুর</button>
+                <button type="button" class="gta-pill" data-gta-time="sunset">🌇 বিকাল / সানসেট</button>
+                <button type="button" class="gta-pill" data-gta-time="night">🌙 রাত</button>
+              </div>
+            </div>
+
+            <div class="gta-setting-card">
+              <div class="gta-setting-head">
+                <strong>ক্যামেরা ফিল্ড অব ভিউ (Camera FOV)</strong>
+                <small>হাঁটার সময় স্ক্রিন কতটা ওয়াইড দেখাবে</small>
+              </div>
+              <div class="gta-slider-row">
+                <input id="gta-fov-slider" class="gta-slider" type="range" min="48" max="75" step="1" value="60" />
+                <span id="gta-fov-value" class="gta-slider-val">60°</span>
+              </div>
+            </div>
+
+            <div class="gta-setting-card">
+              <div class="gta-setting-head">
+                <strong>রিয়েল-টাইম শ্যাডো / ছায়া (Shadows)</strong>
+                <small>বিল্ডিং, গাছ ও ক্যারেক্টারের ছায়া চালু বা বন্ধ করুন</small>
+              </div>
+              <div class="gta-pill-group" id="gta-shadow-group">
+                <button type="button" class="gta-pill" data-gta-shadow="on">চালু (ON)</button>
+                <button type="button" class="gta-pill" data-gta-shadow="off">বন্ধ (OFF)</button>
+              </div>
+            </div>
+
+            <div class="gta-setting-card gta-setting-wide">
+              <div class="gta-setting-head">
+                <strong>ক্লিন HUD মোড (Hide UI · [TAB])</strong>
+                <small>সিনেম্যাটিক খেলার জন্য উপরের বাটনগুলো লুকিয়ে শুধু মিনিম্যাপ রাখুন</small>
+              </div>
+              <div class="gta-pill-group" id="gta-hud-group">
+                <button type="button" class="gta-pill" data-gta-hud="show">সব বাটন দেখান (Full HUD)</button>
+                <button type="button" class="gta-pill" data-gta-hud="hide">ক্লিন মোড (শুধু মিনিম্যাপ)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: SETTINGS -->
+        <div id="pause-tab-settings" class="gta-tab-panel gta-settings-panel hidden" data-pause-panel="settings">
+          <div class="gta-settings-grid">
+            <div class="gta-setting-card">
+              <div class="gta-setting-head">
+                <strong>মাউস সেনসিটিভিটি (Mouse Look Speed)</strong>
+                <small>মাউস ঘোরানোর গতি বাড়ান বা কমান</small>
+              </div>
+              <div class="gta-slider-row">
+                <input id="gta-sens-slider" class="gta-slider" type="range" min="0.4" max="2.4" step="0.1" value="1.0" />
+                <span id="gta-sens-value" class="gta-slider-val">1.0x</span>
+              </div>
+            </div>
+
+            <div class="gta-setting-card">
+              <div class="gta-setting-head">
+                <strong>ক্যামেরা ভিউ মোড (Camera View · [V])</strong>
+                <small>থার্ড-পার্সন, ফ্রন্ট ফেস বা ফার্স্ট-পার্সন ভিউ বেছে নিন</small>
+              </div>
+              <div class="gta-pill-group" id="gta-cam-group">
+                <button type="button" class="gta-pill" data-gta-cam="back">পেছন থেকে (Back)</button>
+                <button type="button" class="gta-pill" data-gta-cam="front">সামনে / ফেস (Front)</button>
+                <button type="button" class="gta-pill" data-gta-cam="first">ফার্স্ট পার্সন (1st)</button>
+              </div>
+            </div>
+
+            <div class="gta-setting-card">
+              <div class="gta-setting-head">
+                <strong>অটো-রান মোড (Auto Run · [R])</strong>
+                <small>শিফট না চেপেই সবসময় দৌড়াতে চান কিনা</small>
+              </div>
+              <div class="gta-pill-group" id="gta-run-group">
+                <button type="button" class="gta-pill" data-gta-run="on">চালু (ON)</button>
+                <button type="button" class="gta-pill" data-gta-run="off">বন্ধ (OFF)</button>
+              </div>
+            </div>
+
+            <div class="gta-setting-card">
+              <div class="gta-setting-head">
+                <strong>কুইক অ্যাকশন (Quick Actions)</strong>
+                <small>সরাসরি স্টুডিও, দরজা বা ডিফল্ট সেটিংস রিসেট করুন</small>
+              </div>
+              <div class="gta-pill-group">
+                <button type="button" class="gta-pill gta-action-pill" id="gta-open-studio-btn">★ ক্যারেক্টার স্টুডিও</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-toggle-doors-btn">🚪 সব দরজা ও গেট</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-reset-settings-btn">↺ রিসেট ডিফল্ট</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: CONTROLS -->
+        <div id="pause-tab-controls" class="gta-tab-panel gta-settings-panel hidden" data-pause-panel="controls">
+          <div class="gta-controls-grid">
+            <div class="gta-ctrl-card">
+              <h4>চলাচল ও পারকোর (MOVEMENT)</h4>
+              <div class="gta-ctrl-row"><span>হাঁটা (Move)</span><kbd>W A S D</kbd></div>
+              <div class="gta-ctrl-row"><span>দৌড়ানো (Sprint / Toggle Run)</span><kbd>SHIFT / R</kbd></div>
+              <div class="gta-ctrl-row"><span>লাফ / দেয়াল ধরা (Jump / Grab)</span><kbd>SPACE</kbd></div>
+              <div class="gta-ctrl-row"><span>ডাইভ / পারকোর (Dive)</span><kbd>Q</kbd></div>
+              <div class="gta-ctrl-row"><span>মাউস লক / আনলক (Free Look)</span><kbd>2x CLICK</kbd></div>
+            </div>
+
+            <div class="gta-ctrl-card">
+              <h4>গাড়ি, বাইক ও রিকশা (VEHICLES)</h4>
+              <div class="gta-ctrl-row"><span>গাড়ি / রিকশায় ওঠা ও নামা</span><kbd>F / T</kbd></div>
+              <div class="gta-ctrl-row"><span>রিকশার প্যাসেঞ্জার সিটে বসা</span><kbd>G</kbd></div>
+              <div class="gta-ctrl-row"><span>ড্রাইভিং ক্যামেরা বদলানো</span><kbd>V / B</kbd></div>
+              <div class="gta-ctrl-row"><span>হর্ন / হেডলাইট / বুস্ট</span><kbd>H · L · SHIFT</kbd></div>
+              <div class="gta-ctrl-row"><span>ফোন থেকে গাড়ি স্পন (Cheat)</span><kbd>P</kbd></div>
+            </div>
+
+            <div class="gta-ctrl-card">
+              <h4>দরজা, গেট, লিফট ও জানালা (WORLD)</h4>
+              <div class="gta-ctrl-row"><span>গেট, দরজা, থাই জানালা ও বসা</span><kbd>E</kbd></div>
+              <div class="gta-ctrl-row"><span>লিফট কন্ট্রোল প্যানেল খোলা</span><kbd>L</kbd></div>
+              <div class="gta-ctrl-row"><span>লিফটের ফ্লোর সিলেক্ট</span><kbd>G · 1–9 · R</kbd></div>
+              <div class="gta-ctrl-row"><span>বাসার সব দরজা একসাথে খোলা</span><kbd>G</kbd></div>
+            </div>
+
+            <div class="gta-ctrl-card">
+              <h4>ম্যাপ, ক্যামেরা ও ইমোট (HUD &amp; STYLE)</h4>
+              <div class="gta-ctrl-row"><span>GTA V ম্যাপ ও সেটিংস মেনু</span><kbd>ESC</kbd></div>
+              <div class="gta-ctrl-row"><span>সকাল / বিকাল / রাত বদলানো</span><kbd>N</kbd></div>
+              <div class="gta-ctrl-row"><span>ফ্রি ক্যাম সিনেমা মোড</span><kbd>C</kbd></div>
+              <div class="gta-ctrl-row"><span>ক্লিন HUD (বাটন লুকানো)</span><kbd>TAB</kbd></div>
+              <div class="gta-ctrl-row"><span>নাচ, সালাম, কিক ও ইমোট</span><kbd>1 – 9</kbd></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

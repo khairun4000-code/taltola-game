@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { buildCNGAuto } from './khulna-vehicles.js';
 import { buildRoyalMoreDistrict } from './royal-more.js';
 import { buildPtiMoreDistrict } from './pti-more.js';
+import { buildAliaMadrasahDistrict } from './alia-madrasah.js';
 
 function makeSignTexture({
   title,
@@ -1213,12 +1213,11 @@ export function buildKhulnaLandmarks(parent, m) {
     return slice;
   }
 
-  // Keep only the top high-detail Khulna showcase landmarks (Model Mosque & Madrasah, Circuit House, Stadium, Boro Maath, Shaheed Hadis Park, Royal More)
-  const aliaSlice = makeSlice('KhulnaLandmark_Alia', 205, 130, 260);
+  // Keep only the top high-detail Khulna showcase landmarks (Alia Madrasah & Model Mosque, Circuit House, Stadium, Boro Maath, Shaheed Hadis Park, Royal More, PTI More)
   const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -145, -720, 480);
 
-  buildAliaMadrasahCampus(aliaSlice.staticG, aliaSlice.dynamicG, lm, m);
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
+  const aliaMadrasah = buildAliaMadrasahDistrict(group, m);
   const royalMore = buildRoyalMoreDistrict(group, m);
   const ptiMore = buildPtiMoreDistrict(group, m);
 
@@ -1234,28 +1233,37 @@ export function buildKhulnaLandmarks(parent, m) {
       const want = dx * dx + dz * dz <= s.maxDistSq;
       if (s.root.visible !== want) s.root.visible = want;
     }
+    aliaMadrasah.syncVisibility(playerPos);
     royalMore.syncVisibility(playerPos);
     ptiMore.syncVisibility(playerPos);
   }
 
   return {
     group,
+    aliaMadrasah,
     royalMore,
     ptiMore,
     syncVisibility,
     getGroundHeight(pos) {
-      return Math.max(royalMore.getGroundHeight?.(pos) ?? 0, ptiMore.getGroundHeight?.(pos) ?? 0);
+      return Math.max(
+        aliaMadrasah.getGroundHeight?.(pos) ?? 0,
+        royalMore.getGroundHeight?.(pos) ?? 0,
+        ptiMore.getGroundHeight?.(pos) ?? 0,
+      );
     },
     applyCollisions(pos, radius, footY = 0) {
+      aliaMadrasah.applyCollisions?.(pos, radius, footY);
       royalMore.applyCollisions?.(pos, radius, footY);
       ptiMore.applyCollisions?.(pos, radius, footY);
     },
     setNightFactor(nf) {
+      aliaMadrasah.setNightFactor(nf);
       royalMore.setNightFactor(nf);
       ptiMore.setNightFactor(nf);
     },
     update(time, playerPos = null) {
       if (playerPos) syncVisibility(playerPos);
+      aliaMadrasah.update(time, playerPos);
       royalMore.update(time, playerPos);
       ptiMore.update(time, playerPos);
     },
