@@ -125,6 +125,7 @@ export const CAR_FLEET_CONFIGS = [
     hoodForward: 0.95,
     isBMW: false,
     shadowOnlyExterior: true,
+    doorSplitMode: 'mesh',
     doorSplitRegions: [
       { key: 'FL', side: 1, minAbsX: 0.68, minY: 0.34, maxY: 1.86, minZ: 0.38, maxZ: 1.44 },
       { key: 'FR', side: -1, minAbsX: 0.68, minY: 0.34, maxY: 1.86, minZ: 0.38, maxZ: 1.44 },

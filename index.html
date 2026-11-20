@@ -11,6 +11,20 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
+    <!-- PRIVATE ACCESS LOCK SCREEN (Only authorized players with passcode can enter) -->
+    <section id="private-gate" class="private-gate" aria-label="Private Game Access">
+      <div class="private-gate-card">
+        <p class="eyebrow">PRIVATE ACCESS · TALTOLA KHULNA 3D</p>
+        <h2>প্রাইভেট গেম লক 🔒</h2>
+        <p class="private-gate-desc">এই গেমটি শুধুমাত্র নির্ধারিত প্লেয়ারদের জন্য। প্রবেশ করতে সিক্রেট পাসকোড দিন:</p>
+        <form id="private-gate-form" class="private-gate-form" autocomplete="off">
+          <input id="private-passcode-input" type="password" placeholder="পাসকোড লিখুন..." required />
+          <button type="submit" class="primary-button"><span>প্রবেশ করুন (UNLOCK)</span><b>→</b></button>
+        </form>
+        <p id="private-gate-error" class="private-gate-error hidden">ভুল পাসকোড! আবার চেষ্টা করুন।</p>
+      </div>
+    </section>
+
     <canvas id="scene" aria-label="Interactive 3D Character Studio and Khulna Street Game"></canvas>
     <div id="vignette" class="vignette hidden" aria-hidden="true"></div>
 
