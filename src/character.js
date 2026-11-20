@@ -1011,10 +1011,17 @@ export function createPlayerCharacter(scene, manager) {
     }
 
     if (isRidingRickshaw) {
-      targetClip = 'Idle';
-      targetScale = 0.25;
-      loopOnce = false;
-      fadeTime = 0.08;
+      if (rickshawRide.seat === 'passenger') {
+        targetClip = 'Sit';
+        targetScale = 0.6;
+        loopOnce = false;
+        fadeTime = 0.12;
+      } else {
+        targetClip = 'Idle';
+        targetScale = 0.25;
+        loopOnce = false;
+        fadeTime = 0.08;
+      }
     }
 
     playClip(targetClip, {
@@ -1027,7 +1034,7 @@ export function createPlayerCharacter(scene, manager) {
     }
 
     mixer.update(dt);
-    if (isRidingRickshaw) {
+    if (isRidingRickshaw && rickshawRide.seat !== 'passenger') {
       applyRickshawRidingPose(rickshawRide);
     }
     applyProceduralHeadAndFace(dt);

@@ -37,11 +37,14 @@ const carBadgeEl = document.querySelector('#car-badge');
 const carSpeedEl = document.querySelector('#car-speed');
 const carGearEl = document.querySelector('#car-gear');
 const carRpmFill = document.querySelector('#car-rpm-fill');
+const carSeatBtn = document.querySelector('#car-seat-btn');
+const carSeatLabelEl = document.querySelector('#car-seat-label');
 const carPaintBtn = document.querySelector('#car-paint-btn');
 const carPaintNameEl = document.querySelector('#car-paint-name');
 const carCamBtn = document.querySelector('#car-cam-btn');
 const carHornBtn = document.querySelector('#car-horn-btn');
 const carExitBtn = document.querySelector('#car-exit-btn');
+const hudToggleButton = document.querySelector('#hud-toggle-button');
 const emoteBar = document.querySelector('#emote-bar');
 const liftHudButton = document.querySelector('#lift-hud-button');
 const timeToggleButton = document.querySelector('#time-toggle-button');
@@ -936,6 +939,8 @@ function setMode(studioMode) {
     runToggleButton?.classList.add('hidden');
     liftHudButton?.classList.add('hidden');
     carToggleButton?.classList.add('hidden');
+    hudToggleButton?.classList.add('hidden');
+    document.body.classList.remove('hud-hidden');
     if (skySystem?.skyDome) skySystem.skyDome.visible = false;
     scene.environment = null;
     if (brandTitle) brandTitle.textContent = 'CHARACTER STUDIO';
@@ -963,6 +968,7 @@ function setMode(studioMode) {
     runToggleButton?.classList.remove('hidden');
     liftHudButton?.classList.remove('hidden');
     carToggleButton?.classList.remove('hidden');
+    hudToggleButton?.classList.remove('hidden');
     if (brandTitle) brandTitle.textContent = 'TALTOLA';
     if (brandSubtitle) brandSubtitle.textContent = 'KHULNA · BANGLADESH';
     if (studioToggleButton) studioToggleButton.innerHTML = 'CHARACTER STUDIO <span>★</span>';
@@ -1442,19 +1448,40 @@ function startParkourDive() {
   return true;
 }
 
+function toggleHudVisibility(forceHidden = null) {
+  if (inStudio) return;
+  const nextHidden = forceHidden !== null ? Boolean(forceHidden) : !document.body.classList.contains('hud-hidden');
+  document.body.classList.toggle('hud-hidden', nextHidden);
+  if (hudToggleButton) {
+    hudToggleButton.innerHTML = nextHidden ? 'SHOW UI <span>[TAB]</span>' : 'HIDE UI <span>[TAB]</span>';
+  }
+}
+
 function syncCarHUD() {
   if (!cars.length) return;
   const activeCar = getDrivingCar();
   const driving = Boolean(activeCar);
   if (carToggleButton) {
-    carToggleButton.innerHTML = driving ? 'EXIT CAR <span>[T]</span>' : 'DRIVE CAR <span>[T]</span>';
+    carToggleButton.innerHTML = driving
+      ? (activeCar.state.isRickshaw ? 'EXIT RICKSHAW <span>[T]</span>' : 'EXIT CAR <span>[T]</span>')
+      : 'DRIVE CAR <span>[T]</span>';
   }
   carHud?.classList.toggle('hidden', !driving);
   emoteBar?.classList.toggle('hidden', driving);
   if (driving && activeCar) {
-    if (carBadgeEl) carBadgeEl.textContent = activeCar.state.badge;
+    const isRick = Boolean(activeCar.state.isRickshaw);
+    const isPass = isRick && activeCar.state.rideSeat === 'passenger';
+    if (carBadgeEl) {
+      carBadgeEl.textContent = isRick
+        ? (isPass ? 'RICKSHAW · প্যাসেঞ্জার সিট' : 'RICKSHAW · প্যাডেল ড্রাইভ')
+        : activeCar.state.badge;
+    }
+    if (carSeatBtn) carSeatBtn.classList.toggle('hidden', !isRick);
+    if (carSeatLabelEl && isRick) {
+      carSeatLabelEl.textContent = isPass ? 'ড্রাইভার সিট' : 'প্যাসেঞ্জার সিট';
+    }
     if (carSpeedEl) carSpeedEl.textContent = String(Math.round(Math.abs(activeCar.state.speed) * 3.6));
-    if (carGearEl) carGearEl.textContent = String(activeCar.state.gear);
+    if (carGearEl) carGearEl.textContent = isRick ? (isPass ? 'P' : 'D') : String(activeCar.state.gear);
     if (carRpmFill) {
       const pct = THREE.MathUtils.clamp(((activeCar.state.rpm - 900) / 6900) * 100, 8, 100);
       carRpmFill.style.width = `${pct.toFixed(1)}%`;
@@ -1465,7 +1492,7 @@ function syncCarHUD() {
   }
 }
 
-function toggleCarDriving(targetCar = null) {
+function toggleCarDriving(targetCar = null, seatMode = 'driver') {
   if (!cars.length || inStudio) return;
   const activeCar = getDrivingCar();
   if (activeCar) {
@@ -1480,7 +1507,7 @@ function toggleCarDriving(targetCar = null) {
   if (!carToEnter) return;
   if (sittingState.active) standUpFromSeat();
   if (liftKeypadOpen) closeLiftKeypad(false);
-  carToEnter.enterCar();
+  carToEnter.enterCar(seatMode);
   if (!started) beginWalking();
   syncCarHUD();
   updateHUDPrompt();
@@ -1498,10 +1525,10 @@ function handleDoorInteraction(allowClimbFallback = false) {
   const nearSeat = findNearestSeat(playerPos);
   const nearCar = findNearestEnterableCar(playerPos);
   const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos));
-  // If near a drivable car and no closer seat/door/lift is active, enter & drive it!
-  if (nearCar && !hasDoorOrLiftPrompt && !nearSeat) {
-    toggleCarDriving(nearCar);
-    return;
+  // Prioritize entering a nearby drivable car or rickshaw when standing right next to it (< 3.2m)
+  if (nearCar && (!hasDoorOrLiftPrompt || nearCar.distanceToPlayer(playerPos) < 3.2) && !nearSeat) {
+    toggleCarDriving(nearCar, 'driver');
+    return true;
   }
   // If near a seat and either no door/lift is active or seat is very close (< 1.25m), sit down!
   if (nearSeat && (!hasDoorOrLiftPrompt || nearSeat.dist < 1.25)) {
@@ -1524,8 +1551,8 @@ function handleDoorInteraction(allowClimbFallback = false) {
     return true;
   }
   if (nearCar) {
-    toggleCarDriving(nearCar);
-    return;
+    toggleCarDriving(nearCar, 'driver');
+    return true;
   }
   if (nearSeat) {
     sitOnSeat(nearSeat);
@@ -2020,9 +2047,22 @@ runPillButton?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleRunMode();
 });
+hudToggleButton?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleHudVisibility();
+});
 carToggleButton?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleCarDriving();
+});
+carSeatBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const activeCar = getDrivingCar();
+  if (activeCar?.state.isRickshaw) {
+    activeCar.toggleRideSeat();
+    syncCarHUD();
+    updateHUDPrompt();
+  }
 });
 carPaintBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -2104,8 +2144,14 @@ controls.addEventListener('unlock', () => {
     walkHud.classList.remove('hidden');
     return;
   }
+  if (!inStudio && started && !referenceModal.open) {
+    // GTA-style [ESC]: unlocking pointer opens the Khulna City Map directly instead of a pause screen!
+    pause.classList.add('hidden');
+    controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
+    khulnaMapUI?.openMap(playerPos, controls.euler.y);
+    return;
+  }
   walkHud.classList.add('hidden');
-  if (!inStudio && started && !referenceModal.open) pause.classList.remove('hidden');
 });
 
 document.querySelector('#reference-button').addEventListener('click', () => {
@@ -2213,32 +2259,61 @@ window.addEventListener('keydown', (event) => {
 
   if (!started) return;
 
+  // [TAB] Hide / Show all HUD buttons cleanly anytime
+  if (event.code === 'Tab') {
+    event.preventDefault();
+    if (!event.repeat) toggleHudVisibility();
+    return;
+  }
+
+  // GTA-style [ESC]: opens & closes the Khulna City Map directly (no [M] key needed!)
+  if (event.code === 'Escape' && !event.repeat) {
+    event.preventDefault();
+    if (khulnaMapUI?.isOpen) {
+      khulnaMapUI.closeMap();
+      if (!inStudio && started) controls.lock();
+    } else if (!liftKeypadOpen) {
+      controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
+      khulnaMapUI?.openMap(playerPos, controls.euler.y);
+    }
+    return;
+  }
+  if (khulnaMapUI?.isOpen) return;
+
   if (event.code === 'KeyN' && !event.repeat) {
     event.preventDefault();
     cycleTimeOfDay();
     return;
   }
-  if (event.code === 'KeyM' && !event.repeat) {
-    event.preventDefault();
-    controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
-    khulnaMapUI?.toggleMap(playerPos, controls.euler.y);
-    return;
-  }
-  if (event.code === 'Escape' && khulnaMapUI?.isOpen) {
-    event.preventDefault();
-    khulnaMapUI.closeMap();
-    return;
-  }
-  if (khulnaMapUI?.isOpen) return;
 
-  // Toggle Drivable Car Mode (BMW M3 / Alphard / Corolla) with [T] anytime
+  // Toggle Drivable Vehicle / Rickshaw Mode with [T] anytime
   if (event.code === 'KeyT' && !event.repeat) {
     event.preventDefault();
     toggleCarDriving();
     return;
   }
 
-  // Dedicated Driving Controls when inside any drivable car
+  // [U] Sit directly in Rickshaw Passenger Seat (when near a rickshaw) OR switch Driver <-> Passenger Seat!
+  if (event.code === 'KeyU' && !event.repeat) {
+    const curCar = getDrivingCar();
+    if (curCar?.state.isRickshaw) {
+      event.preventDefault();
+      curCar.toggleRideSeat();
+      syncCarHUD();
+      updateHUDPrompt();
+      return;
+    }
+    if (!curCar) {
+      const nearCar = findNearestEnterableCar(playerPos);
+      if (nearCar?.state.isRickshaw) {
+        event.preventDefault();
+        toggleCarDriving(nearCar, 'passenger');
+        return;
+      }
+    }
+  }
+
+  // Dedicated Driving Controls when inside any drivable car or rickshaw
   const activeCar = getDrivingCar();
   if (activeCar) {
     if ((event.code === 'KeyE' || event.code === 'KeyF') && !event.repeat) {
@@ -3363,11 +3438,14 @@ function updateMovement(delta) {
 
       if (playerCharacter) {
         if (st.isRickshaw) {
-          // Seat the visible Bangladeshi rider directly on the leather rickshaw saddle & sync legs to the spinning pedals!
+          const isPassenger = st.rideSeat === 'passenger';
+          // Seat either on the rear floral Passenger Seat (-0.62m) or the front leather Driver Saddle (-0.05m)!
+          const seatBackOffset = isPassenger ? 0.62 : 0.05;
+          const seatYOffset = isPassenger ? 0.42 : 0.34;
           const riderPos = {
-            x: st.pos.x - sinH * 0.05,
-            y: st.pos.y + 0.34 + EYE_HEIGHT,
-            z: st.pos.z - cosH * 0.05,
+            x: st.pos.x - sinH * seatBackOffset,
+            y: st.pos.y + seatYOffset + EYE_HEIGHT,
+            z: st.pos.z - cosH * seatBackOffset,
           };
           playerCharacter.update(delta, {
             position: riderPos,
@@ -3380,6 +3458,7 @@ function updateMovement(delta) {
             hideMesh: st.cameraMode === 'hood',
             rickshawRide: {
               active: true,
+              seat: st.rideSeat,
               heading: st.heading,
               pedalPhase: st.pedalPhase,
               steerAngle: st.steerAngle,

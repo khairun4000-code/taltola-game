@@ -646,3 +646,11 @@ body.low-perf-ui * {
 .hud-quality-select:hover {
   background: rgba(25, 42, 34, 0.92);
 }
+
+/* [TAB] Clean Cinematic Mode: hides all HUD buttons & overlays cleanly */
+body.hud-hidden #hud-header,
+body.hud-hidden #walk-hud {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}

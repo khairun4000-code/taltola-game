@@ -130,14 +130,35 @@ export const CAR_FLEET_CONFIGS = [
     isBMW: false,
   },
   {
-    id: 'bangladeshi_rickshaw',
+    id: 'bangladeshi_rickshaw_taltola',
     name: 'Bangladeshi Rickshaw',
     badge: 'BANGLADESHI RICKSHAW',
     assetUrl: './assets/bangladeshi_rickshaw.glb',
     targetLength: 2.44,
     width: 1.04,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 1.10, 0.01, TALTOLA_HOUSE_OFFSET.z + 1.4],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.15, 0.01, TALTOLA_HOUSE_OFFSET.z + 0.6],
+    spawnHeading: 0.0,
+    paintPresets: RICKSHAW_PAINT_PRESETS,
+    maxSpeed: 7.8,
+    boostMaxSpeed: 11.8,
+    engineForce: 9.2,
+    camBack: 3.45,
+    camHeight: 2.02,
+    hoodHeight: 1.68,
+    hoodForward: 0.14,
+    isBMW: false,
+    isRickshaw: true,
+  },
+  {
+    id: 'bangladeshi_rickshaw_haji',
+    name: 'Bangladeshi Rickshaw',
+    badge: 'BANGLADESHI RICKSHAW',
+    assetUrl: './assets/bangladeshi_rickshaw.glb',
+    targetLength: 2.44,
+    width: 1.04,
+    rotateY: 0,
+    spawnPos: [1.05, 0.01, 1.8],
     spawnHeading: 0.0,
     paintPresets: RICKSHAW_PAINT_PRESETS,
     maxSpeed: 7.8,
@@ -405,6 +426,7 @@ export function createDrivableCar(scene, manager, config) {
     paintIndex: 0,
     paintName: paintPresets[0].name,
     isRickshaw: Boolean(config.isRickshaw),
+    rideSeat: 'driver',
     halfWidth: (config.width || 1.88) * 0.48,
     halfLength: (config.targetLength || 4.4) * 0.48,
     camBack: config.camBack || 5.4,
@@ -1039,20 +1061,29 @@ export function createDrivableCar(scene, manager, config) {
     return state.cameraMode;
   }
 
-  function enterCar() {
+  function enterCar(seatMode = 'driver') {
     state.driving = true;
+    state.rideSeat = (config.isRickshaw && seatMode === 'passenger') ? 'passenger' : 'driver';
     ensureAudio();
     for (const m of drlMats) m.emissiveIntensity = 4.5;
   }
 
+  function toggleRideSeat() {
+    if (!config.isRickshaw || !state.driving) return state.rideSeat;
+    state.rideSeat = state.rideSeat === 'passenger' ? 'driver' : 'passenger';
+    return state.rideSeat;
+  }
+
   function exitCar(playerPos) {
     state.driving = false;
+    state.rideSeat = 'driver';
     updateEngineAudio(false, 920, 0);
     for (const m of drlMats) m.emissiveIntensity = 1.8;
     for (const m of tailMats) m.emissiveIntensity = 1.6;
 
     const rightVec = new THREE.Vector3(Math.cos(state.heading), 0, -Math.sin(state.heading));
-    const exitOffset = state.pos.x < -0.6 ? 1.60 : -1.60;
+    const exitDist = config.isRickshaw ? 1.15 : 1.60;
+    const exitOffset = state.pos.x < -0.6 ? exitDist : -exitDist;
     playerPos.set(
       state.pos.x + rightVec.x * exitOffset,
       state.pos.y + 1.68,
@@ -1072,12 +1103,12 @@ export function createDrivableCar(scene, manager, config) {
   function getPrompt(playerPos) {
     if (state.driving) {
       return config.isRickshaw
-        ? '[E / T] রিকশা থেকে নামুন (Exit Rickshaw)'
+        ? '[E / T] রিকশা থেকে নামুন · [U] সিট বদলান (Driver / Passenger)'
         : `[E / T] ${state.name} গাড়ি থেকে নামুন (Exit Car)`;
     }
     if (isPlayerNear(playerPos)) {
       return config.isRickshaw
-        ? '[E / F] রিকশায় উঠুন ও প্যাডেল চালান (Ride Rickshaw)'
+        ? '[E / F] রিকশা চালান (Drive) · [U] প্যাসেঞ্জার সিটে বসুন (Passenger)'
         : `[E / F] ${state.name} গাড়িতে উঠুন ও চালান (Drive ${state.name})`;
     }
     return null;
@@ -1218,6 +1249,7 @@ export function createDrivableCar(scene, manager, config) {
     group: root,
     state,
     enterCar,
+    toggleRideSeat,
     exitCar,
     distanceToPlayer,
     isPlayerNear,

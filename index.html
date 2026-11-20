@@ -35,13 +35,14 @@
           <option value="ultra" selected>ULTRA 4K ★</option>
         </select>
         <button id="time-toggle-button" class="text-button hidden" type="button">TIME: GOLDEN <span>[N]</span></button>
-        <button id="map-hud-button" class="text-button hidden" type="button">CITY MAP <span>[M]</span></button>
+        <button id="map-hud-button" class="text-button hidden" type="button">CITY MAP <span>[ESC]</span></button>
         <button id="studio-toggle-button" class="text-button" type="button">CHARACTER STUDIO <span>★</span></button>
         <button id="car-toggle-button" class="text-button hidden" type="button">DRIVE CAR <span>[T]</span></button>
         <button id="lift-hud-button" class="text-button hidden" type="button">LIFT PANEL <span>[L]</span></button>
         <button id="run-toggle-button" class="text-button hidden" type="button">RUN: OFF <span>[SHIFT/R]</span></button>
         <button id="camera-toggle-button" class="text-button hidden" type="button">VIEW: BACK <span>[V]</span></button>
         <button id="gate-toggle-button" class="text-button hidden" type="button">OPEN DOORS <span>[G]</span></button>
+        <button id="hud-toggle-button" class="text-button hidden" type="button">HIDE UI <span>[TAB]</span></button>
         <button id="reference-button" class="text-button" type="button">REFERENCE <span>↗</span></button>
       </div>
     </header>
@@ -159,7 +160,7 @@
             <p class="eyebrow">KHULNA OPEN-WORLD GPS NAVIGATOR</p>
             <h3>খুলনা শহর মানচিত্র ও ফাস্ট ট্র্যাভেল (Click Landmark or Road to Teleport)</h3>
           </div>
-          <button id="close-city-map" class="lift-close-x" type="button" title="Close Map (M / Esc)">×</button>
+          <button id="close-city-map" class="lift-close-x" type="button" title="Close Map (Esc)">×</button>
         </div>
         <div class="city-map-body">
           <div class="city-map-canvas-wrap">
@@ -219,20 +220,21 @@
         </div>
         <div class="car-rpm-track"><div id="car-rpm-fill" class="car-rpm-fill"></div></div>
         <div class="car-hud-actions">
+          <button type="button" id="car-seat-btn" class="car-chip hidden"><kbd>U</kbd> <span id="car-seat-label">প্যাসেঞ্জার সিট</span></button>
           <button type="button" id="car-paint-btn" class="car-chip"><kbd>C</kbd> <span id="car-paint-name">Green</span></button>
           <button type="button" id="car-cam-btn" class="car-chip"><kbd>V</kbd> ক্যামেরা</button>
           <button type="button" id="car-horn-btn" class="car-chip"><kbd>H</kbd> হর্ন</button>
-          <button type="button" id="car-exit-btn" class="car-chip car-chip-exit"><kbd>E / T</kbd> গাড়ি থেকে নামুন</button>
+          <button type="button" id="car-exit-btn" class="car-chip car-chip-exit"><kbd>E / T</kbd> নামুন</button>
         </div>
-        <div class="car-drive-hint"><kbd>W/S</kbd> গ্যাস/ব্রেক · <kbd>A/D</kbd> স্টিয়ারিং · <kbd>SHIFT</kbd> বুস্ট · <kbd>SPACE</kbd> ড্রিফট</div>
+        <div class="car-drive-hint"><kbd>W/S</kbd> চলুন/ব্রেক · <kbd>A/D</kbd> স্টিয়ারিং · <kbd>SHIFT</kbd> দ্রুত · <kbd>TAB</kbd> UI লুকান · <kbd>ESC</kbd> ম্যাপ</div>
       </div>
-      <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360°</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>T</kbd> গাড়ি (CAR)</span><span><kbd>SPACE</kbd> JUMP / FLIP</span><span><kbd>F</kbd> দেয়াল বাওয়া</span><span><kbd>E</kbd> INTERACT / LIFT</span><span><kbd>M</kbd> ম্যাপ</span><span><kbd>V</kbd> VIEW</span></div>
+      <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360°</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>T</kbd> গাড়ি/রিকশা</span><span><kbd>E</kbd> উঠুন / ইন্টারেক্ট</span><span><kbd>U</kbd> রিকশা প্যাসেঞ্জার</span><span><kbd>ESC</kbd> ম্যাপ</span><span><kbd>TAB</kbd> বাটন লুকান</span><span><kbd>V</kbd> VIEW</span></div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
-      <button id="minimap-dock" class="minimap-dock" type="button" title="Open Full Khulna City Map [M]">
+      <button id="minimap-dock" class="minimap-dock" type="button" title="Open Full Khulna City Map [ESC]">
         <canvas id="khulna-minimap" width="148" height="148"></canvas>
         <div class="minimap-footer">
           <span id="gps-readout">22.7988°N · 89.5734°E</span>
-          <kbd>M</kbd>
+          <kbd>ESC</kbd>
         </div>
       </button>
     </div>
