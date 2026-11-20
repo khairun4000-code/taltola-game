@@ -621,9 +621,14 @@ function addIlluminatedSign(dynamicG, bank, opts, pos, rotY, w, h) {
 }
 
 function addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDirX = 1, hasTransformer = false, wireTargets = null) {
-  addCyl(staticG, 0.11, 0.16, 9.2, [px, 4.6, pz], bank.poleConcrete, 8);
+  const seedVal = Math.abs(Math.round(px * 3 + pz));
+  const thicknessMod = hasTransformer ? 2 : (seedVal % 3); // 0 = slim, 1 = medium, 2 = thick concrete pole
+  const rt = thicknessMod === 2 ? 0.19 : (thicknessMod === 1 ? 0.15 : 0.105);
+  const rb = thicknessMod === 2 ? 0.27 : (thicknessMod === 1 ? 0.21 : 0.145);
+  const midR = (rt + rb) * 0.5 + 0.015;
+  addCyl(staticG, rt, rb, 9.2, [px, 4.6, pz], bank.poleConcrete, 8);
   // Concrete footing collar
-  addCyl(staticG, 0.22, 0.24, 0.32, [px, 0.16, pz], bank.dampPlinth, 8);
+  addCyl(staticG, rb + 0.06, rb + 0.09, 0.34, [px, 0.17, pz], bank.dampPlinth, 8);
   // Crossarm & ceramic insulators
   addBox(staticG, [0.12, 0.12, 1.45], [px, 8.65, pz], bank.darkMetal);
   for (const iz of [-0.56, 0, 0.56]) {
@@ -636,7 +641,7 @@ function addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDirX = 1, has
 
   // Tangled black fiber cable coil hung at mid-pole
   const torus = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.04, 6, 14), bank.darkSlate);
-  torus.position.set(px + armDirX * 0.22, 5.4, pz);
+  torus.position.set(px + armDirX * (midR + 0.08), 5.4, pz);
   torus.rotation.y = Math.PI / 2;
   staticG.add(torus);
 
@@ -645,8 +650,8 @@ function addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDirX = 1, has
     addCyl(staticG, 0.34, 0.34, 1.05, [px + armDirX * 0.45, 6.82, pz - 0.25], bank.transformerMat, 10);
     addCyl(staticG, 0.28, 0.28, 0.92, [px + armDirX * 0.45, 6.76, pz + 0.32], bank.transformerMat, 10);
   }
-  // Attach authentic Bengali pole posters (ব্যাচে পড়ানো হয়, ছাত্র চাই, বাসা ভাড়া, নির্বাচনী পোস্টার) & high election banners!
-  decorateCorridorPole(dynamicG, px, pz, armDirX < 0 ? Math.PI : 0, Math.round(px * 3 + pz));
+  // Attach authentic Bengali pole posters & high election banners matching exact pole thickness!
+  decorateCorridorPole(dynamicG, px, pz, armDirX < 0 ? Math.PI : 0, Math.round(px * 3 + pz), midR);
   if (wireTargets) wireTargets.push([px, 8.75, pz]);
 }
 

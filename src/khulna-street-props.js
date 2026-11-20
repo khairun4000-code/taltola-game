@@ -540,7 +540,7 @@ export function setElectionLeaderImages(urls = []) {
  * Adds varied Bangladeshi pole posters (0..4 different types per pole!), dense hanging black cable coils
  * (3-4 coils per pole!), and a BIG high-mounted upright election poster board (নৌকা, ধানের শীষ, দাঁড়িপাল্লা).
  */
-export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0) {
+export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0, poleRadius = 0.19) {
   const assets = getSharedPropsAssets();
   const grp = new THREE.Group();
   grp.position.set(x, 0, z);
@@ -550,7 +550,7 @@ export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0) {
   // Varied poster density per pole: some poles have 1, some 2, some 3 or 4 stacked!
   const countPick = hashRand(sAbs * 3.7);
   const posterCount = countPick < 0.22 ? 1 : (countPick < 0.52 ? 2 : (countPick < 0.80 ? 3 : 4));
-  const sleeveGeo = new THREE.CylinderGeometry(0.148, 0.155, 0.72, 10, 1, true);
+  const sleeveGeo = new THREE.CylinderGeometry(poleRadius + 0.008, poleRadius + 0.014, 0.72, 10, 1, true);
   const heights = [1.45, 2.22, 3.00, 3.76];
   for (let i = 0; i < posterCount; i++) {
     const kIdx = Math.floor(hashRand(sAbs * 19.3 + i * 31.7) * POSTER_KIND_COUNT) % POSTER_KIND_COUNT;
@@ -668,8 +668,8 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
   }
 
   const MAX_POLES = 560;
-  const poleGeo = new THREE.CylinderGeometry(0.095, 0.145, 8.2, 6);
-  poleGeo.translate(0, 4.1, 0);
+  const poleGeo = new THREE.CylinderGeometry(0.135, 0.195, 8.4, 8);
+  poleGeo.translate(0, 4.2, 0);
   const poleInst = new THREE.InstancedMesh(poleGeo, assets.poleMat, MAX_POLES);
   poleInst.frustumCulled = false;
 
@@ -686,7 +686,7 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
   const coilInst = new THREE.InstancedMesh(coilGeo, assets.coilMat, MAX_POLES * 4);
   coilInst.frustumCulled = false;
 
-  const posterGeo = new THREE.CylinderGeometry(0.145, 0.152, 0.72, 8, 1, true);
+  const posterGeo = new THREE.CylinderGeometry(0.184, 0.194, 0.72, 8, 1, true);
   const posterInsts = assets.posterMats.map((m) => {
     const im = new THREE.InstancedMesh(posterGeo, m, 240);
     im.frustumCulled = false;
@@ -761,22 +761,28 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
       const p = activePoles[i];
       activeById.set(p.id, p);
 
+      // Varied pole thickness: some thick heavy concrete poles, some medium, some slim steel poles!
+      const thickRoll = hashRand(p.id * 11.7 + 2.3);
+      const poleScaleXZ = thickRoll < 0.32 ? (0.72 + thickRoll * 0.45) : (thickRoll < 0.62 ? (1.02 + (thickRoll - 0.32) * 0.55) : (1.28 + (thickRoll - 0.62) * 0.72));
+
       // 1. Utility Pole
       dummy.position.set(p.x, 0, p.z);
       dummy.rotation.set(0, p.yaw, 0);
-      dummy.scale.set(1, 1, 1);
+      dummy.scale.set(poleScaleXZ, 1, poleScaleXZ);
       dummy.updateMatrix();
       poleInst.setMatrixAt(pCnt, dummy.matrix);
 
       // 2. Top Cross-arm
       dummy.position.set(p.x, 7.35, p.z);
       dummy.rotation.set(0, p.yaw + Math.PI * 0.5, 0);
+      dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
       armInst.setMatrixAt(pCnt, dummy.matrix);
 
       // 3. Streetlamp cobra head
       dummy.position.set(p.x - p.nx * p.side * 0.85, 8.05, p.z - p.nz * p.side * 0.85);
       dummy.rotation.set(0, p.yaw, 0);
+      dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
       lampInst.setMatrixAt(pCnt, dummy.matrix);
 
@@ -786,10 +792,11 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
         const r1 = hashRand(p.id * 13.7 + c * 17.3);
         const r2 = hashRand(p.id * 29.1 + c * 11.9);
         const ang = r1 * Math.PI * 2;
+        const cRad = 0.21 * Math.max(1.0, poleScaleXZ);
         dummy.position.set(
-          p.x + Math.cos(ang) * 0.21,
+          p.x + Math.cos(ang) * cRad,
           4.25 + c * 0.34 + (r2 - 0.5) * 0.14,
-          p.z + Math.sin(ang) * 0.21,
+          p.z + Math.sin(ang) * cRad,
         );
         dummy.rotation.set((r1 - 0.5) * 0.7, p.yaw + ang, (r2 - 0.5) * 0.6);
         const sc = 0.85 + r2 * 0.45;
@@ -799,7 +806,7 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
       }
       pCnt++;
 
-      // 5. Diverse Pole Posters with varied density (some poles 0-1, some 2-4 different posters!)
+      // 5. Diverse Pole Posters with varied density & matching pole thickness!
       const densityRoll = hashRand(p.id * 4.3 + 1.9);
       const numPosters = densityRoll < 0.12 ? 0 : (densityRoll < 0.34 ? 1 : (densityRoll < 0.62 ? 2 : (densityRoll < 0.84 ? 3 : 4)));
       for (let pi = 0; pi < numPosters; pi++) {
@@ -807,7 +814,7 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
         if (postCnts[pk] < 240) {
           dummy.position.set(p.x, posterHeights[pi] + (hashRand(p.id + pi * 5) - 0.5) * 0.14, p.z);
           dummy.rotation.set(0, p.yaw + hashRand(p.id * 7 + pi * 19) * Math.PI * 2, 0);
-          dummy.scale.set(1, 1, 1);
+          dummy.scale.set(poleScaleXZ, 1, poleScaleXZ);
           dummy.updateMatrix();
           posterInsts[pk].setMatrixAt(postCnts[pk]++, dummy.matrix);
         }
