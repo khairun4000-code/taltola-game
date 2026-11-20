@@ -6,24 +6,23 @@ import { decorateCorridorPole } from './khulna-street-props.js';
 import { buildCNGAuto, buildEasybike } from './khulna-vehicles.js';
 
 /**
- * ROYAL MORE / ROYAL CHATTAR (খুলনা রয়্যালের মোড়)
+ * ROYAL MORE / CHINGRI CHATTAR (খুলনা রয়্যালের মোড় · চিংড়ি চত্বর)
  * Exact real-world OSM roundabout center: (-716.8, -291.8)
  * Intersecting roads:
  *   1) Khan Jahan Ali Road (SE from PTI More / Rupsha)
  *   2) Khan Jahan Ali Road (NW toward Shantidham / Dakbangla)
  *   3) KDA Avenue (West dual carriageway toward Shibbari / Sonadanga)
  *
- * High-detail, GPU-batched (merged static meshes + selective night emissives + distance culling)
- * showcase district featuring:
- *   - Exact roundabout carriageway, dual-lane dividers, slip-road islands, zebra crossings & curbs
- *   - Iconic Royal Chattar Monument (leaping Khulna fish/shrimp sculpture & animated fountain)
- *   - Hotel Royal International (10-story landmark est. 1986)
- *   - Hotel Castle Salam (6-story classic hotel)
- *   - Greenline Paribahan Counter & Luxury AC Coach
- *   - Kacchi Ghor & Prime Bank 24/7 ATM Plaza
- *   - Fatima Hospital & Diagnostic Center
- *   - Royal Sweets, Pharmacy & Islami Bank ATM Corner Arcade
- *   - KMP Traffic Police Control Box & Directional Highway Gantry
+ * Ultra-Detailed GPU-Batched District featuring:
+ *   - Authentic Blender-ported 3-Golda-Prawn Chingri Chattar Fountain with wet chitin PBR,
+ *     48 nozzles, stainless railing, brick basin, animated water jets & night uplights
+ *   - Full Urban Paved Ground Deck (eliminating empty green field around Royal More)
+ *   - Exact OSM Roads + Continuous Raised Tiled Pedestrian Sidewalks (ফুটপাত) & Kerbstones
+ *   - Prominent Hotel Castle Salam (হোটেল ক্যাসেল সালাম · G-8 KDA Avenue)
+ *   - 10-Story Hotel Royal International (হোটেল রয়েল ইন্টারন্যাশনাল · est. 1986)
+ *   - Complete Royal More Bus Counter Strip (Green Line, Sohagh, Hanif, Ena, Eagle, Tungipara)
+ *     with waiting benches, glass booths & 2 parked Luxury AC Coaches
+ *   - Kacchi Ghor & Prime Bank 24/7 ATM Plaza, Fatima Hospital, Royal Sweets Arcade, KMP Police Box
  */
 
 export const ROYAL_MORE_CENTER = { x: -716.8, z: -291.8 };
@@ -54,9 +53,9 @@ function makeLightBoxTexture({
   ctx.fillRect(0, 0, width, height);
 
   const grad = ctx.createLinearGradient(0, 0, 0, height);
-  grad.addColorStop(0, 'rgba(255,255,255,0.16)');
+  grad.addColorStop(0, 'rgba(255,255,255,0.18)');
   grad.addColorStop(0.5, 'rgba(255,255,255,0.0)');
-  grad.addColorStop(1, 'rgba(0,0,0,0.24)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.26)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, width, height);
 
@@ -104,7 +103,7 @@ function makePlasterTexture(baseHex, seedVal = 401, { subtleBrick = false, darkS
     ctx.fillRect(x, 0, 3 + rnd() * 7, h);
   }
   if (subtleBrick) {
-    ctx.strokeStyle = 'rgba(24,18,14,0.20)';
+    ctx.strokeStyle = 'rgba(24,18,14,0.22)';
     ctx.lineWidth = 1.5;
     for (let y = 0; y < 256; y += 16) {
       ctx.beginPath();
@@ -116,6 +115,101 @@ function makePlasterTexture(baseHex, seedVal = 401, { subtleBrick = false, darkS
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+function makeFootpathTileTexture(seedVal = 515) {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+  const rnd = seeded(seedVal);
+
+  ctx.fillStyle = '#b9b4aa';
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Interlocking KCC pedestrian paving slabs (64x64 concrete tiles with subtle variation)
+  for (let gy = 0; gy < 4; gy++) {
+    for (let gx = 0; gx < 4; gx++) {
+      const shade = 172 + Math.floor(rnd() * 24);
+      const warm = (gx + gy) % 2 === 0 ? 6 : -4;
+      ctx.fillStyle = `rgb(${shade + warm}, ${shade + warm - 3}, ${shade - 8})`;
+      ctx.fillRect(gx * 64 + 2, gy * 64 + 2, 60, 60);
+      // Inner bevel groove
+      ctx.strokeStyle = 'rgba(55,52,48,0.34)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(gx * 64 + 1, gy * 64 + 1, 62, 62);
+      // Subtle tactile dots / micro grit
+      for (let d = 0; d < 18; d++) {
+        ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(30,28,25,0.09)';
+        ctx.fillRect(gx * 64 + 4 + rnd() * 54, gy * 64 + 4 + rnd() * 54, 2, 2);
+      }
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+function makeUrbanGroundTexture(seedVal = 619) {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+  const rnd = seeded(seedVal);
+
+  ctx.fillStyle = '#8b8881';
+  ctx.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 3200; i++) {
+    const v = 115 + Math.floor(rnd() * 44);
+    ctx.fillStyle = `rgba(${v},${v - 2},${v - 6},0.28)`;
+    ctx.fillRect(rnd() * 256, rnd() * 256, 2 + rnd() * 5, 2 + rnd() * 5);
+  }
+  ctx.strokeStyle = 'rgba(42,40,38,0.18)';
+  ctx.lineWidth = 2;
+  for (let p = 0; p < 256; p += 64) {
+    ctx.beginPath();
+    ctx.moveTo(p, 0);
+    ctx.lineTo(p, 256);
+    ctx.moveTo(0, p);
+    ctx.lineTo(256, p);
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(36, 34);
+  tex.anisotropy = 4;
+  return tex;
+}
+
+function makeChitinBumpTexture(seedVal = 777) {
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+  const rnd = seeded(seedVal);
+  ctx.fillStyle = '#808080';
+  ctx.fillRect(0, 0, 256, 256);
+  // Fine horizontal chitin ridges + glossy organic micro-pores
+  for (let y = 0; y < 256; y += 8) {
+    const g = ctx.createLinearGradient(0, y, 0, y + 8);
+    g.addColorStop(0, '#9e9e9e');
+    g.addColorStop(0.5, '#727272');
+    g.addColorStop(1, '#585858');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y, 256, 8);
+  }
+  for (let i = 0; i < 900; i++) {
+    const v = 90 + Math.floor(rnd() * 85);
+    ctx.fillStyle = `rgba(${v},${v},${v},0.22)`;
+    ctx.fillRect(rnd() * 256, rnd() * 256, 2 + rnd() * 3, 2);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 3);
   return tex;
 }
 
@@ -155,19 +249,19 @@ function makeShopfrontGlassTexture(kind = 'sweets') {
     ctx.textAlign = 'center';
     ctx.fillText('24/7 ATM', 128, 44);
   } else if (kind === 'bus') {
-    ctx.fillStyle = '#064e3b';
+    ctx.fillStyle = '#0b2942';
     ctx.fillRect(0, 0, 256, 256);
     ctx.fillStyle = '#fef3c7';
-    ctx.fillRect(14, 18, 228, 22);
+    ctx.fillRect(14, 16, 228, 22);
     ctx.fillStyle = '#0f172a';
-    ctx.fillRect(24, 62, 208, 130);
+    ctx.fillRect(20, 56, 216, 134);
     ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(36, 76, 84, 54);
-    ctx.fillRect(136, 76, 84, 54);
+    ctx.fillRect(32, 70, 88, 56);
+    ctx.fillRect(136, 70, 88, 56);
     ctx.fillStyle = '#fde047';
     ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('TICKET COUNTER', 128, 168);
+    ctx.fillText('AC TICKET COUNTER', 128, 168);
   } else if (kind === 'hospital') {
     ctx.fillStyle = '#e0f2fe';
     ctx.fillRect(0, 0, 256, 256);
@@ -181,7 +275,6 @@ function makeShopfrontGlassTexture(kind = 'sweets') {
     ctx.textAlign = 'center';
     ctx.fillText('EMERGENCY 24H', 128, 36);
   } else {
-    // Warm sweets / restaurant / pharmacy display
     ctx.fillStyle = kind === 'kacchi' ? '#451a03' : '#1e293b';
     ctx.fillRect(0, 0, 256, 256);
     ctx.fillStyle = '#fef08a';
@@ -213,6 +306,15 @@ function createRoyalBank(m) {
   const blackWhiteCurbTex = makeCurbStripeTexture('#18181b', '#f8fafc');
   blackWhiteCurbTex.repeat.set(8, 1);
 
+  const footpathTex = makeFootpathTileTexture(515);
+  const footpathMat = new THREE.MeshStandardMaterial({ map: footpathTex, roughness: 0.84, metalness: 0.03 });
+  attachDerivedPBRMaps(footpathMat, footpathTex, { strength: 2.0, roughBase: 0.84, normalScale: 0.55 });
+
+  const urbanGroundTex = makeUrbanGroundTexture(619);
+  const urbanGroundMat = new THREE.MeshStandardMaterial({ map: urbanGroundTex, roughness: 0.90, metalness: 0.02 });
+
+  const chitinBump = makeChitinBumpTexture(777);
+
   const dispAtmTex = makeShopfrontGlassTexture('atm');
   const dispBusTex = makeShopfrontGlassTexture('bus');
   const dispHospTex = makeShopfrontGlassTexture('hospital');
@@ -221,12 +323,16 @@ function createRoyalBank(m) {
 
   const bank = {
     asphalt: m.road || new THREE.MeshStandardMaterial({ color: 0x3b4046, roughness: 0.78, metalness: 0.05 }),
+    footpath: footpathMat,
+    urbanGround: urbanGroundMat,
     brick: m.brick || mkPlaster('#9b4634', 101, 0.88, { subtleBrick: true }),
     concrete: m.concrete || mkPlaster('#a8a69e', 102, 0.88),
     darkConcrete: m.darkConcrete || mkPlaster('#4b4f52', 103, 0.90),
     royalCream: mkPlaster('#efe6d5', 201, 0.74),
-    royalSand: mkPlaster('#d6b992', 202, 0.78),
+    royalSand: mkPlaster('#d8bc94', 202, 0.76),
     royalTerracotta: mkPlaster('#b2523d', 203, 0.82, { subtleBrick: true }),
+    castleBurgundy: mkPlaster('#6f1d28', 211, 0.72),
+    castleIvory: mkPlaster('#f5efe2', 212, 0.70),
     modernWhite: mkPlaster('#eef2f6', 204, 0.68),
     modernSlate: mkPlaster('#334155', 205, 0.62),
     hospitalBlue: mkPlaster('#0284c7', 206, 0.62),
@@ -268,17 +374,62 @@ function createRoyalBank(m) {
     }),
     goldMetal: new THREE.MeshPhysicalMaterial({
       color: 0xf5b82e,
-      roughness: 0.22,
+      roughness: 0.20,
       metalness: 0.88,
-      clearcoat: 0.65,
+      clearcoat: 0.70,
       envMapIntensity: 1.65,
     }),
-    silverSculpture: new THREE.MeshPhysicalMaterial({
-      color: 0xe2e8f0,
-      roughness: 0.18,
-      metalness: 0.92,
-      clearcoat: 0.8,
-      envMapIntensity: 1.8,
+    stainlessChrome: new THREE.MeshPhysicalMaterial({
+      color: 0xe8eef4,
+      roughness: 0.14,
+      metalness: 0.95,
+      clearcoat: 0.90,
+      envMapIntensity: 1.9,
+    }),
+    galvanizedPole: new THREE.MeshStandardMaterial({
+      color: 0xb6bec6,
+      roughness: 0.34,
+      metalness: 0.76,
+      envMapIntensity: 1.3,
+    }),
+    prawnChitin: new THREE.MeshPhysicalMaterial({
+      vertexColors: true,
+      roughness: 0.22,
+      metalness: 0.14,
+      clearcoat: 0.94,
+      clearcoatRoughness: 0.12,
+      bumpMap: chitinBump,
+      bumpScale: 0.035,
+      envMapIntensity: 1.55,
+    }),
+    prawnWhisker: new THREE.MeshPhysicalMaterial({
+      color: 0xd9a24c,
+      roughness: 0.24,
+      metalness: 0.25,
+      clearcoat: 0.85,
+    }),
+    prawnEye: new THREE.MeshPhysicalMaterial({
+      color: 0x0b0f14,
+      roughness: 0.08,
+      metalness: 0.1,
+      clearcoat: 1.0,
+    }),
+    fountainBrickVC: new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.80,
+      metalness: 0.04,
+      bumpMap: chitinBump,
+      bumpScale: 0.025,
+    }),
+    fountainBasinVC: new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.56,
+      metalness: 0.06,
+    }),
+    fountainNozzleTeal: new THREE.MeshStandardMaterial({
+      color: 0x0d7a7e,
+      roughness: 0.32,
+      metalness: 0.65,
     }),
     steelDark: new THREE.MeshStandardMaterial({ color: 0x1e252c, roughness: 0.44, metalness: 0.74 }),
     aluminum: new THREE.MeshStandardMaterial({ color: 0xd1dae2, roughness: 0.24, metalness: 0.88, envMapIntensity: 1.3 }),
@@ -286,19 +437,19 @@ function createRoyalBank(m) {
       color: 0x0ea5e9,
       emissive: 0x0369a1,
       emissiveIntensity: 0.25,
-      roughness: 0.08,
-      metalness: 0.1,
+      roughness: 0.07,
+      metalness: 0.12,
       transparent: true,
-      opacity: 0.86,
+      opacity: 0.84,
       clearcoat: 1.0,
     }),
     sprayJet: new THREE.MeshStandardMaterial({
       color: 0xe0f2fe,
       emissive: 0x7dd3fc,
-      emissiveIntensity: 0.4,
+      emissiveIntensity: 0.42,
       transparent: true,
-      opacity: 0.72,
-      roughness: 0.2,
+      opacity: 0.74,
+      roughness: 0.18,
     }),
     grassTurf: new THREE.MeshStandardMaterial({ color: 0x2f7d3a, roughness: 0.92 }),
     flowerRed: new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.82 }),
@@ -309,6 +460,7 @@ function createRoyalBank(m) {
     uplightCyan: new THREE.MeshStandardMaterial({ color: 0xbae6fd, emissive: 0x38bdf8, emissiveIntensity: 0.65 }),
     uplightGold: new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xf59e0b, emissiveIntensity: 0.75 }),
     busGreen: new THREE.MeshPhysicalMaterial({ color: 0x047857, roughness: 0.20, metalness: 0.25, clearcoat: 0.95, envMapIntensity: 1.5 }),
+    busRed: new THREE.MeshPhysicalMaterial({ color: 0xb91c1c, roughness: 0.20, metalness: 0.25, clearcoat: 0.95, envMapIntensity: 1.5 }),
     busAccent: new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.35 }),
     tireBlack: new THREE.MeshStandardMaterial({ color: 0x16181c, roughness: 0.88 }),
     acBox: mkPlaster('#dde2e6', 299, 0.50, { darkStreak: 0.03 }),
@@ -373,12 +525,79 @@ function addRoadRibbon(parent, pts, width, y, mat, uvScale = 5.5) {
     const [x1, z1] = pts[i + 1];
     const dx = x1 - x0;
     const dz = z1 - z0;
-    const len = Math.hypot(dx, dz) + 0.85;
+    const len = Math.hypot(dx, dz) + 0.9;
     const yaw = Math.atan2(dx, dz);
     addRotBox(parent, [width, 0.04, len], [(x0 + x1) * 0.5, y, (z0 + z1) * 0.5], mat, yaw, {
       castShadow: false,
       uvScale,
     });
+  }
+}
+
+/**
+ * Adds a continuous raised tiled pedestrian sidewalk (ফুটপাত) with painted kerbstone
+ * along one side (`sideSign = +1 or -1`) of a road polyline.
+ */
+function addSidewalkAlongPolyline(staticG, bank, pts, roadHalfW, sideSign, {
+  walkWidth = 2.8,
+  curbMat = bank.curbBlackWhite,
+  addRailing = false,
+} = {}) {
+  const offset = roadHalfW + walkWidth * 0.5 + 0.12;
+  const curbOffset = roadHalfW + 0.16;
+
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, z0] = pts[i];
+    const [x1, z1] = pts[i + 1];
+    const dx = x1 - x0;
+    const dz = z1 - z0;
+    const segLen = Math.hypot(dx, dz);
+    if (segLen < 0.5) continue;
+    const yaw = Math.atan2(dx, dz);
+    // Right-hand perpendicular vector in XZ plane
+    const perpX = dz / segLen;
+    const perpZ = -dx / segLen;
+    const mx = (x0 + x1) * 0.5;
+    const mz = (z0 + z1) * 0.5;
+
+    // Raised tiled pedestrian slab (height = 0.22m)
+    addRotBox(
+      staticG,
+      [walkWidth, 0.22, segLen + 0.7],
+      [mx + perpX * sideSign * offset, 0.11, mz + perpZ * sideSign * offset],
+      bank.footpath,
+      yaw,
+      { castShadow: false, uvScale: 1.9 },
+    );
+
+    // Painted kerbstone along road edge
+    addRotBox(
+      staticG,
+      [0.32, 0.24, segLen + 0.75],
+      [mx + perpX * sideSign * curbOffset, 0.12, mz + perpZ * sideSign * curbOffset],
+      curbMat,
+      yaw,
+      { castShadow: false },
+    );
+
+    // Optional pedestrian safety railing on busy roundabout approaches
+    if (addRailing && segLen > 6) {
+      const railOff = roadHalfW + 0.42;
+      addRotBox(
+        staticG,
+        [0.06, 0.06, segLen - 1.2],
+        [mx + perpX * sideSign * railOff, 0.96, mz + perpZ * sideSign * railOff],
+        bank.steelDark,
+        yaw,
+      );
+      const posts = Math.max(2, Math.floor(segLen / 4.2));
+      for (let p = 0; p <= posts; p++) {
+        const t = (p / posts - 0.5) * (segLen - 1.4);
+        const px = mx + (dx / segLen) * t + perpX * sideSign * railOff;
+        const pz = mz + (dz / segLen) * t + perpZ * sideSign * railOff;
+        cylinder(staticG, 0.035, 0.04, 0.82, [px, 0.58, pz], bank.steelDark, 6);
+      }
+    }
   }
 }
 
@@ -404,15 +623,25 @@ function addDoubleArmLamp(staticG, dynamicG, bank, x, z, rotY = 0) {
     box(g, [1.55, 0.07, 0.08], [sx * 0.78, 7.45, 0], bank.aluminum);
     box(g, [0.48, 0.11, 0.22], [sx * 1.48, 7.52, 0], bank.steelDark);
     const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.05, 0.16), bank.lampGlow);
-    bulb.position.set(sx * 1.48, 7.45, 0);
-    dynamicG.add(bulb);
-    // Align dynamic bulb into world space
     bulb.position.set(
       x + Math.cos(rotY) * (sx * 1.48),
       7.45,
       z - Math.sin(rotY) * (sx * 1.48),
     );
     bulb.rotation.y = rotY;
+    dynamicG.add(bulb);
+  }
+  staticG.add(g);
+}
+
+function addSidewalkBench(staticG, bank, x, z, rotY = 0) {
+  const g = new THREE.Group();
+  g.position.set(x, 0.22, z);
+  g.rotation.y = rotY;
+  box(g, [1.85, 0.08, 0.48], [0, 0.44, 0], bank.royalTerracotta);
+  box(g, [1.85, 0.34, 0.07], [0, 0.70, -0.21], bank.royalTerracotta);
+  for (const sx of [-0.74, 0.74]) {
+    box(g, [0.10, 0.44, 0.44], [sx, 0.22, 0], bank.steelDark);
   }
   staticG.add(g);
 }
@@ -449,28 +678,64 @@ function addOrnamentalPalm(staticG, bank, x, z, height = 7.4, seed = 11) {
   }
 }
 
-/**
- * 1. EXACT ROYAL MORE ROUNDABOUT & INTERSECTING KHULNA ROADS
- * Matches OSM road polylines in khulna-world-data.json 1:1 with high-detail asphalt,
- * painted curbs, medians, zebra crossings, dashed lane rings & slip-road islands.
- */
-function buildRoyalMoreRoads(staticG, dynamicG, bank) {
+/* ============================================================================
+ * 1. URBAN PAVED GROUND + EXACT MAP-MATCHED ROADS + CONTINUOUS FOOTPATHS
+ * ========================================================================== */
+function buildRoyalMoreRoadsAndFootpaths(staticG, dynamicG, bank) {
   const CX = ROYAL_MORE_CENTER.x;
   const CZ = ROYAL_MORE_CENTER.z;
 
-  // Main Circular Roundabout Asphalt Ring (inner r = 4.45m, outer r = 13.5m)
-  const ringGeo = new THREE.RingGeometry(4.45, 13.5, 48);
+  // Dense Urban Paved Concrete Ground Deck covering the surrounding green field (no empty grass field!)
+  box(staticG, [196, 0.028, 178], [-740, 0.014, -296], bank.urbanGround, { castShadow: false });
+
+  // Main Circular Roundabout Asphalt Ring (inner r = 4.45m, outer r = 13.6m)
+  const ringGeo = new THREE.RingGeometry(4.45, 13.6, 56);
   ringGeo.rotateX(-Math.PI / 2);
   const ringMesh = new THREE.Mesh(ringGeo, bank.asphalt);
   ringMesh.position.set(CX, 0.036, CZ);
   ringMesh.receiveShadow = true;
   staticG.add(ringMesh);
 
-  // Dashed White Lane Ring around the Roundabout (r = 8.95m)
+  // Outer Roundabout Raised Footpath Apron Collar segments (where no road enters)
+  const cornerArcs = [
+    [-0.18, 0.44],   // East-SE corner apron
+    [1.06, 2.02],    // South apron (Castle Salam side)
+    [3.56, 4.38],    // North-NW apron
+    [5.02, 5.75],    // NE apron (Police Box / Royal Sweets corner)
+  ];
+  for (const [aStart, aEnd] of cornerArcs) {
+    const segs = 10;
+    const step = (aEnd - aStart) / segs;
+    for (let i = 0; i < segs; i++) {
+      const a0 = aStart + i * step;
+      const a1 = a0 + step;
+      const am = (a0 + a1) * 0.5;
+      const rMid = 15.25;
+      const arcLen = Math.max(0.9, rMid * step + 0.35);
+      addRotBox(
+        staticG,
+        [3.1, 0.22, arcLen],
+        [CX + Math.cos(am) * rMid, 0.11, CZ + Math.sin(am) * rMid],
+        bank.footpath,
+        -am,
+        { castShadow: false, uvScale: 1.8 },
+      );
+      addRotBox(
+        staticG,
+        [0.32, 0.24, arcLen + 0.1],
+        [CX + Math.cos(am) * 13.75, 0.12, CZ + Math.sin(am) * 13.75],
+        bank.curbRedWhite,
+        -am,
+        { castShadow: false },
+      );
+    }
+  }
+
+  // Dashed White Lane Ring around Roundabout (r = 9.0m)
   const dashCount = 24;
   for (let i = 0; i < dashCount; i++) {
     const a = (i / dashCount) * Math.PI * 2;
-    const r = 8.95;
+    const r = 9.0;
     addRotBox(
       staticG,
       [0.18, 0.012, 1.35],
@@ -481,23 +746,53 @@ function buildRoyalMoreRoads(staticG, dynamicG, bank) {
     );
   }
 
-  // Exact Intersecting High-Detail Road Aprons (overlaying OSM splines seamlessly)
+  // Exact OSM Intersecting Road Polylines
   const seKhanJahan = [[-644, -248], [-670, -264], [-686, -276], [-711, -290]];
   const nwKhanJahan = [[-716, -296], [-727.9, -317.9], [-742.2, -337.3], [-756.6, -353.9], [-778.6, -386.1]];
-  const kdaSouthLane = [[-715, -285.3], [-735.8, -277.2], [-766.8, -273.0], [-801.0, -274.8], [-832.4, -283.2]];
-  const kdaNorthLane = [[-721, -296.5], [-742.8, -289.1], [-770.4, -283.7], [-802.5, -284.5], [-832.9, -290.5]];
+  const kdaSouthLane = [[-715, -285.3], [-735.8, -277.2], [-766.8, -273.0], [-801.0, -274.8], [-834.0, -283.2]];
+  const kdaNorthLane = [[-721, -296.5], [-742.8, -289.1], [-770.4, -283.7], [-802.5, -284.5], [-834.0, -290.5]];
   const slipSEtoKDA = [[-686.8, -275.6], [-735.8, -277.2]];
   const slipKDAtoNW = [[-742.8, -289.1], [-735.2, -299.2], [-727.9, -317.9]];
 
   addRoadRibbon(staticG, seKhanJahan, 13.6, 0.033, bank.asphalt, 5.5);
   addRoadRibbon(staticG, nwKhanJahan, 12.0, 0.033, bank.asphalt, 5.5);
-  addRoadRibbon(staticG, kdaSouthLane, 8.2, 0.033, bank.asphalt, 5.5);
-  addRoadRibbon(staticG, kdaNorthLane, 8.2, 0.033, bank.asphalt, 5.5);
+  addRoadRibbon(staticG, kdaSouthLane, 8.4, 0.033, bank.asphalt, 5.5);
+  addRoadRibbon(staticG, kdaNorthLane, 8.4, 0.033, bank.asphalt, 5.5);
   addRoadRibbon(staticG, slipSEtoKDA, 7.6, 0.031, bank.asphalt, 5.5);
   addRoadRibbon(staticG, slipKDAtoNW, 7.2, 0.031, bank.asphalt, 5.5);
 
-  // KDA Avenue Central Raised Median Divider (between South & North carriageways: x = -746 .. -824)
-  const kdaMedianPts = [[-748, -281.8], [-770, -278.4], [-802, -279.6], [-826, -285.8]];
+  // Continuous Raised Tiled Pedestrian Footpaths (ফুটপাত) along EVERY Road Arm!
+  // 1) SE Khan Jahan Ali Road (both sides)
+  const seWalkPts = [[-644, -248], [-670, -264], [-686, -276], [-699, -283.5]];
+  addSidewalkAlongPolyline(staticG, bank, seWalkPts, 6.8, 1, { walkWidth: 3.0, curbMat: bank.curbBlackWhite, addRailing: true });
+  addSidewalkAlongPolyline(staticG, bank, seWalkPts, 6.8, -1, { walkWidth: 3.0, curbMat: bank.curbBlackWhite, addRailing: true });
+
+  // 2) NW Khan Jahan Ali Road (both sides)
+  const nwWalkPts = [[-726.5, -315.5], [-742.2, -337.3], [-756.6, -353.9], [-778.6, -386.1]];
+  addSidewalkAlongPolyline(staticG, bank, nwWalkPts, 6.0, 1, { walkWidth: 2.9, curbMat: bank.curbBlackWhite, addRailing: true });
+  addSidewalkAlongPolyline(staticG, bank, nwWalkPts, 6.0, -1, { walkWidth: 2.9, curbMat: bank.curbBlackWhite, addRailing: false });
+
+  // 3) KDA Avenue South Footpath (Hotel Castle Salam + Bus Counter Strip promenade — wide 3.4m)
+  const kdaSouthWalkPts = [[-735.8, -277.2], [-766.8, -273.0], [-801.0, -274.8], [-834.0, -283.2]];
+  addSidewalkAlongPolyline(staticG, bank, kdaSouthWalkPts, 4.2, -1, { walkWidth: 3.4, curbMat: bank.curbRedWhite, addRailing: true });
+
+  // 4) KDA Avenue North Footpath (Hotel Royal International + Kacchi Ghor / Prime Bank promenade — wide 3.4m)
+  const kdaNorthWalkPts = [[-742.8, -289.1], [-770.4, -283.7], [-802.5, -284.5], [-834.0, -290.5]];
+  addSidewalkAlongPolyline(staticG, bank, kdaNorthWalkPts, 4.2, 1, { walkWidth: 3.4, curbMat: bank.curbRedWhite, addRailing: true });
+
+  // Pedestrian benches along the KDA Avenue footpaths
+  for (const [bx, bz, byaw] of [
+    [-752, -267.8, Math.PI],
+    [-778, -266.8, Math.PI],
+    [-806, -268.2, Math.PI],
+    [-762, -291.2, 0],
+    [-794, -291.5, 0],
+  ]) {
+    addSidewalkBench(staticG, bank, bx, bz, byaw);
+  }
+
+  // KDA Avenue Central Raised Median Divider (between South & North carriageways)
+  const kdaMedianPts = [[-748, -281.8], [-770, -278.4], [-802, -279.6], [-828, -286.2]];
   for (let i = 0; i < kdaMedianPts.length - 1; i++) {
     const [x0, z0] = kdaMedianPts[i];
     const [x1, z1] = kdaMedianPts[i + 1];
@@ -513,7 +808,7 @@ function buildRoyalMoreRoads(staticG, dynamicG, bank) {
     addOrnamentalPalm(staticG, bank, x0 + dx * 0.25, z0 + dz * 0.25, 6.2, 700 + i * 17);
   }
 
-  // SE Khan Jahan Ali Road Raised Center Divider (x = -696..-652)
+  // SE Khan Jahan Ali Road Raised Center Divider
   const seDivStart = [-695.5, -280.2];
   const seDivEnd = [-652.0, -253.5];
   const seDx = seDivEnd[0] - seDivStart[0];
@@ -549,7 +844,7 @@ function buildRoyalMoreRoads(staticG, dynamicG, bank) {
     }
   }
 
-  // Crisp Zebra Crosswalks on all 3 Major Approaches into Royal Circle
+  // Crisp Zebra Crosswalks on all Approaches into Royal Circle
   addZebraCrosswalk(staticG, bank, -701.5, -284.2, seYaw, 11.4);
   addZebraCrosswalk(staticG, bank, -724.5, -310.2, Math.atan2(-11.9, -21.9), 10.2);
   addZebraCrosswalk(staticG, bank, -736.5, -289.8, Math.atan2(-22.0, 5.2), 7.4);
@@ -560,16 +855,16 @@ function buildRoyalMoreRoads(staticG, dynamicG, bank) {
   const gz = -272.2;
   const gPerpX = Math.cos(seYaw);
   const gPerpZ = -Math.sin(seYaw);
-  for (const side of [-7.6, 7.6]) {
+  for (const side of [-7.8, 7.8]) {
     cylinder(staticG, 0.22, 0.28, 6.8, [gx + gPerpX * side, 3.4, gz + gPerpZ * side], bank.steelDark, 10);
   }
-  addRotBox(staticG, [15.8, 0.36, 0.42], [gx, 6.45, gz], bank.steelDark, seYaw);
+  addRotBox(staticG, [16.2, 0.36, 0.42], [gx, 6.45, gz], bank.steelDark, seYaw);
   addSignBox(
     dynamicG,
     bank,
     {
-      title: 'রয়্যালের মোড় (ROYAL MORE) · খুলনা',
-      subtitle: '← কেডিএ অ্যাভিনিউ (সোনাডাঙ্গা)  |  ↑ শিববাড়ি / ডাকবাংলা',
+      title: 'রয়্যালের মোড় · চিংড়ি চত্বর (ROYAL MORE)',
+      subtitle: '← কেডিএ অ্যাভিনিউ (সোনাডাঙ্গা / বাস কাউন্টার)  |  ↑ শিববাড়ি',
       bg: '#065f46',
       accent: '#fef08a',
       width: 640,
@@ -577,146 +872,494 @@ function buildRoyalMoreRoads(staticG, dynamicG, bank) {
     },
     [gx, 6.65, gz],
     seYaw,
-    9.2,
+    9.4,
     1.85,
   );
 }
 
-/**
- * 2. ICONIC ROYAL CHATTAR / ROYAL CIRCLE MONUMENT & ANIMATED FOUNTAIN
- * Center: (-716.8, -291.8), radius 4.45m
- */
-function buildRoyalChattarMonument(staticG, dynamicG, bank) {
+/* ============================================================================
+ * 2. AUTHENTIC CHINGRI CHATTAR (চিংড়ি চত্বর) PRAWN FOUNTAIN
+ * Faithfully ported from the user's `prawn_fountain_blender.py` (Blender Z-up →
+ * Three.js Y-up via (bx, bz, -by)) and upgraded with high-gloss wet chitin PBR,
+ * chitin bump map, long sweeping antennae whiskers, 48 nozzles, chrome railing,
+ * 16 animated water jets & night uplights!
+ * ========================================================================== */
+function buildVertexColoredTube(points, radii, colors, segs = 12) {
+  const n = points.length;
+  const positions = [];
+  const vc = [];
+  const uvs = [];
+  const indices = [];
+
+  const upRef = new THREE.Vector3(0, 1, 0);
+  const fallbackRef = new THREE.Vector3(1, 0, 0);
+
+  for (let i = 0; i < n; i++) {
+    const p = points[i];
+    const t = new THREE.Vector3();
+    if (i === 0) t.subVectors(points[1], points[0]);
+    else if (i === n - 1) t.subVectors(points[n - 1], points[n - 2]);
+    else t.subVectors(points[i + 1], points[i - 1]);
+    if (t.lengthSq() < 1e-8) t.set(0, 1, 0);
+    t.normalize();
+
+    const ref = Math.abs(t.dot(upRef)) > 0.92 ? fallbackRef : upRef;
+    const u = new THREE.Vector3().crossVectors(t, ref).normalize();
+    const v = new THREE.Vector3().crossVectors(t, u).normalize();
+
+    const rx = Array.isArray(radii[i]) ? radii[i][0] : radii[i];
+    const ry = Array.isArray(radii[i]) ? radii[i][1] : radii[i];
+    const c = colors[i];
+
+    for (let j = 0; j <= segs; j++) {
+      const a = (j / segs) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      const vx = p.x + u.x * (ca * rx) + v.x * (sa * ry);
+      const vy = p.y + u.y * (ca * rx) + v.y * (sa * ry);
+      const vz = p.z + u.z * (ca * rx) + v.z * (sa * ry);
+      positions.push(vx, vy, vz);
+      // Slight dorsal sheen variation around circumference
+      const shade = 0.88 + 0.18 * (0.5 + 0.5 * sa);
+      vc.push(
+        Math.min(1, c[0] * shade),
+        Math.min(1, c[1] * shade),
+        Math.min(1, c[2] * shade),
+      );
+      uvs.push(j / segs, i / Math.max(1, n - 1));
+    }
+  }
+
+  const stride = segs + 1;
+  for (let i = 0; i < n - 1; i++) {
+    for (let j = 0; j < segs; j++) {
+      const a = i * stride + j;
+      const b = a + 1;
+      const c = (i + 1) * stride + j;
+      const d = c + 1;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(vc, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  const nonIdx = geo.toNonIndexed();
+  geo.dispose();
+  nonIdx.computeVertexNormals();
+  return nonIdx;
+}
+
+function colorizeGeometry(geo, rgb) {
+  const g = geo.index ? geo.toNonIndexed() : geo.clone();
+  const count = g.attributes.position.count;
+  const cols = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    cols[i * 3] = rgb[0];
+    cols[i * 3 + 1] = rgb[1];
+    cols[i * 3 + 2] = rgb[2];
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  if (!g.attributes.normal) g.computeVertexNormals();
+  if (!g.attributes.uv) {
+    g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(count * 2), 2));
+  }
+  return g;
+}
+
+function buildSingleGoldaPrawnGeometries(rotYAngle) {
+  // Exact Golda Prawn iridescent palette from user's `prawn_fountain_blender.py`
+  const C_YELLOW = [0.90, 0.92, 0.24];
+  const C_GREEN = [0.24, 0.76, 0.34];
+  const C_TEAL = [0.10, 0.56, 0.62];
+  const C_BLUE = [0.10, 0.26, 0.68];
+  const C_DEEPBLUE = [0.06, 0.14, 0.46];
+  const C_ORANGE = [0.96, 0.36, 0.12];
+
+  const v = (bx, by, bz) => new THREE.Vector3(bx, bz, -by); // Blender Z-up -> Three.js Y-up
+  const prawnGeos = [];
+  const whiskerGeos = [];
+  const eyeGeos = [];
+
+  const rotMat = new THREE.Matrix4().makeRotationY(rotYAngle);
+
+  const pushPrawn = (g) => {
+    g.applyMatrix4(rotMat);
+    prawnGeos.push(g);
+  };
+
+  // 1) 6 Bulging Segmented Abdomen Rings curving up from pedestal (1.05,0,1.24) -> (1.98,0,2.60)
+  const abdPts = [
+    v(1.05, 0, 1.24),
+    v(1.28, 0, 1.42),
+    v(1.52, 0, 1.66),
+    v(1.74, 0, 1.94),
+    v(1.90, 0, 2.26),
+    v(1.98, 0, 2.60),
+  ];
+  const abdRad = [
+    [0.14, 0.16],
+    [0.24, 0.27],
+    [0.31, 0.35],
+    [0.36, 0.41],
+    [0.38, 0.43],
+    [0.39, 0.44],
+  ];
+  const abdCol = [C_ORANGE, C_YELLOW, C_GREEN, C_TEAL, C_BLUE, C_BLUE];
+
+  // Add subtle inter-segment bulges so each chitin plate looks sculpted
+  const segPts = [];
+  const segRad = [];
+  const segCol = [];
+  for (let i = 0; i < abdPts.length - 1; i++) {
+    const p0 = abdPts[i];
+    const p1 = abdPts[i + 1];
+    const r0 = abdRad[i];
+    const r1 = abdRad[i + 1];
+    const c0 = abdCol[i];
+    const c1 = abdCol[i + 1];
+    segPts.push(p0.clone());
+    segRad.push([r0[0] * 0.90, r0[1] * 0.90]);
+    segCol.push(c0);
+
+    const mid = p0.clone().lerp(p1, 0.52);
+    segPts.push(mid);
+    segRad.push([(r0[0] + r1[0]) * 0.56, (r0[1] + r1[1]) * 0.56]);
+    segCol.push([
+      (c0[0] + c1[0]) * 0.5,
+      (c0[1] + c1[1]) * 0.5,
+      (c0[2] + c1[2]) * 0.5,
+    ]);
+  }
+  segPts.push(abdPts[abdPts.length - 1].clone());
+  segRad.push(abdRad[abdRad.length - 1]);
+  segCol.push(abdCol[abdCol.length - 1]);
+  pushPrawn(buildVertexColoredTube(segPts, segRad, segCol, 14));
+
+  // 2) Smooth Cephalothorax Carapace curving inward toward central pole (1.97,0,2.55) -> (1.48,0,3.90)
+  const carPts = [
+    v(1.97, 0, 2.55),
+    v(1.96, 0, 2.95),
+    v(1.86, 0, 3.35),
+    v(1.68, 0, 3.68),
+    v(1.48, 0, 3.90),
+  ];
+  const carRad = [
+    [0.40, 0.45],
+    [0.43, 0.49],
+    [0.39, 0.45],
+    [0.30, 0.35],
+    [0.18, 0.21],
+  ];
+  const carCol = [C_BLUE, C_TEAL, C_GREEN, C_YELLOW, C_YELLOW];
+  pushPrawn(buildVertexColoredTube(carPts, carRad, carCol, 14));
+
+  // 3) Serrated Orange-Tipped Rostrum Horn (y = 3.84..4.88)
+  const rosPts = [
+    v(1.48, 0, 3.84),
+    v(1.36, 0, 4.18),
+    v(1.22, 0, 4.54),
+    v(1.06, 0, 4.88),
+  ];
+  const rosRad = [0.13, 0.085, 0.048, 0.015];
+  const rosCol = [C_YELLOW, C_ORANGE, C_ORANGE, C_ORANGE];
+  pushPrawn(buildVertexColoredTube(rosPts, rosRad, rosCol, 10));
+
+  // 4) Antennal Scales + Stalked Glossy Black Eyes + Long Sweeping Antennae Whiskers!
+  for (const sy of [-1, 1]) {
+    const scalePts = [
+      v(1.46, sy * 0.14, 3.82),
+      v(1.32, sy * 0.26, 4.12),
+      v(1.22, sy * 0.30, 4.38),
+    ];
+    pushPrawn(buildVertexColoredTube(scalePts, [[0.06, 0.03], [0.07, 0.025], [0.02, 0.01]], [C_TEAL, C_BLUE, C_ORANGE], 8));
+
+    // Stalked black eye
+    const eyeSphere = new THREE.SphereGeometry(0.068, 10, 8);
+    const ep = v(1.48, sy * 0.22, 3.92);
+    eyeSphere.translate(ep.x, ep.y, ep.z);
+    eyeSphere.applyMatrix4(rotMat);
+    eyeGeos.push(eyeSphere.index ? eyeSphere.toNonIndexed() : eyeSphere);
+
+    // Long sweeping realistic Golda Prawn antennae whisker curving gracefully out & down
+    const wCurve = new THREE.CatmullRomCurve3([
+      v(1.44, sy * 0.18, 3.88),
+      v(1.24, sy * 0.62, 4.42),
+      v(1.42, sy * 1.12, 4.58),
+      v(1.86, sy * 1.38, 4.15),
+    ]);
+    const wGeo = new THREE.TubeGeometry(wCurve, 14, 0.014, 5, false);
+    wGeo.applyMatrix4(rotMat);
+    whiskerGeos.push(wGeo.index ? wGeo.toNonIndexed() : wGeo);
+  }
+
+  // 5) 5-Blade Tail Fan (Telson & Uropods) splayed above the octagonal pedestal
+  for (let b = -2; b <= 2; b++) {
+    const spread = b * 0.15;
+    const bladePts = [
+      v(1.06, spread * 0.3, 1.26),
+      v(0.84, spread * 1.0, 1.12),
+      v(0.62, spread * 1.55, 0.96),
+    ];
+    pushPrawn(buildVertexColoredTube(
+      bladePts,
+      [[0.07, 0.025], [0.10, 0.022], [0.04, 0.012]],
+      [C_ORANGE, C_BLUE, C_DEEPBLUE],
+      8,
+    ));
+  }
+
+  // 6) 4 Pairs of Yellow-Blue Swimmerets (Pleopods) along underside of curved abdomen
+  for (let s = 0; s < 4; s++) {
+    const pBase = abdPts[s + 1];
+    for (const sy of [-1, 1]) {
+      const swPts = [
+        new THREE.Vector3(pBase.x - 0.14, pBase.y - 0.06, pBase.z + sy * 0.18),
+        new THREE.Vector3(pBase.x - 0.36, pBase.y - 0.14, pBase.z + sy * 0.30),
+        new THREE.Vector3(pBase.x - 0.50, pBase.y - 0.26, pBase.z + sy * 0.34),
+      ];
+      pushPrawn(buildVertexColoredTube(swPts, [0.045, 0.036, 0.014], [C_YELLOW, C_TEAL, C_BLUE], 6));
+    }
+  }
+
+  // 7) Long Deep-Blue Cheliped Arms (Claws) & 3 Pairs of Walking Legs gripping the central pole!
+  for (const sy of [-1, 1]) {
+    // Giant blue cheliped claw arm reaching inward to embrace the central pole
+    const armPts = [
+      v(1.66, sy * 0.28, 3.20),
+      v(1.18, sy * 0.52, 3.56),
+      v(0.68, sy * 0.42, 3.92),
+      v(0.30, sy * 0.22, 4.18),
+    ];
+    pushPrawn(buildVertexColoredTube(armPts, [0.075, 0.068, 0.082, 0.045], [C_TEAL, C_BLUE, C_DEEPBLUE, C_DEEPBLUE], 8));
+
+    // Pincer finger split at tip
+    const pincerPts = [
+      v(0.48, sy * 0.30, 4.06),
+      v(0.24, sy * 0.14, 4.30),
+    ];
+    pushPrawn(buildVertexColoredTube(pincerPts, [0.038, 0.015], [C_DEEPBLUE, C_ORANGE], 6));
+
+    // 3 Walking legs bracing against the pedestal & central pole
+    for (let l = 0; l < 3; l++) {
+      const zOff = 2.65 + l * 0.32;
+      const legPts = [
+        v(1.76 - l * 0.08, sy * 0.32, zOff),
+        v(1.12, sy * 0.56, zOff + 0.12),
+        v(0.56, sy * 0.34, zOff - 0.16),
+        v(0.26, sy * 0.18, zOff - 0.32),
+      ];
+      pushPrawn(buildVertexColoredTube(legPts, [0.048, 0.038, 0.030, 0.016], [C_GREEN, C_TEAL, C_BLUE, C_DEEPBLUE], 6));
+    }
+  }
+
+  return { prawnGeos, whiskerGeos, eyeGeos };
+}
+
+function buildChingriChattarMonument(staticG, dynamicG, bank) {
   const CX = ROYAL_MORE_CENTER.x;
   const CZ = ROYAL_MORE_CENTER.z;
+
   const mon = new THREE.Group();
   mon.position.set(CX, 0, CZ);
-  staticG.add(mon);
+  dynamicG.add(mon); // Keep vertex-colored Chingri Chattar cleanly batched here (only 5 draw calls total!)
 
-  // Outer Red-White Painted Concrete Roundabout Curb (r = 4.45m)
-  cylinder(mon, 4.45, 4.58, 0.32, [0, 0.16, 0], bank.curbRedWhite, 36);
-  // Green Lawn Collar + Marigold/Ixora Flower Ring
-  cylinder(mon, 4.18, 4.24, 0.38, [0, 0.20, 0], bank.grassTurf, 32);
-  for (let i = 0; i < 24; i++) {
-    const a = (i / 24) * Math.PI * 2;
-    box(
-      mon,
-      [0.36, 0.24, 0.36],
-      [Math.cos(a) * 3.72, 0.44, Math.sin(a) * 3.72],
-      i % 2 === 0 ? bank.flowerRed : bank.flowerGold,
-    );
-    // Ornamental Black & Gold Roundabout Perimeter Fence Posts
-    cylinder(mon, 0.032, 0.04, 0.72, [Math.cos(a) * 4.30, 0.66, Math.sin(a) * 4.30], bank.steelDark, 6);
+  const brickGeos = [];
+  const basinGeos = [];
+  const nozzleGeos = [];
+  const chromeGeos = [];
+  const allPrawnGeos = [];
+  const allWhiskerGeos = [];
+  const allEyeGeos = [];
+
+  // 1) Outer Dark Concrete Apron (r = 4.48 -> 4.40, y = 0..0.10) & Turquoise Basin Floor (r = 3.48, y = 0.10..0.24)
+  const apron = new THREE.CylinderGeometry(4.40, 4.48, 0.10, 40);
+  apron.translate(0, 0.05, 0);
+  basinGeos.push(colorizeGeometry(apron, [0.22, 0.24, 0.27]));
+
+  const floor = new THREE.CylinderGeometry(3.48, 3.48, 0.14, 36);
+  floor.translate(0, 0.17, 0);
+  basinGeos.push(colorizeGeometry(floor, [0.08, 0.44, 0.52]));
+
+  // Inner turquoise liner wall (r = 3.44..3.52, y = 0.10..0.92)
+  const innerWall = new THREE.CylinderGeometry(3.48, 3.48, 0.82, 36, 1, true);
+  innerWall.translate(0, 0.51, 0);
+  basinGeos.push(colorizeGeometry(innerWall, [0.10, 0.56, 0.62]));
+
+  // 2) Authentic Sandstone / Ochre Brick Ring Wall (7 courses × 42 staggered bricks, r = 3.46..3.98, y = 0.10..0.92)
+  const rnd = seeded(909);
+  const courses = 7;
+  const bricksPerCourse = 42;
+  const courseH = 0.82 / courses;
+  for (let c = 0; c < courses; c++) {
+    const yMid = 0.10 + (c + 0.5) * courseH;
+    const angleOffset = (c % 2) * (Math.PI / bricksPerCourse);
+    for (let b = 0; b < bricksPerCourse; b++) {
+      const a = (b / bricksPerCourse) * Math.PI * 2 + angleOffset;
+      const r = 3.73;
+      const br = new THREE.BoxGeometry(0.50, courseH - 0.012, 0.52);
+      br.rotateY(-a);
+      br.translate(Math.cos(a) * r, yMid, Math.sin(a) * r);
+      // Warm sandstone / ochre brick color variation
+      const v = (rnd() - 0.5) * 0.10;
+      brickGeos.push(colorizeGeometry(br, [0.74 + v, 0.54 + v * 0.8, 0.34 + v * 0.5]));
+    }
   }
-  const fenceRing = new THREE.Mesh(new THREE.TorusGeometry(4.30, 0.035, 8, 36), bank.goldMetal);
-  fenceRing.rotation.x = Math.PI / 2;
-  fenceRing.position.y = 0.98;
-  mon.add(fenceRing);
 
-  // Black Granite Fountain Rim & Shimmering Turquoise Water Basin (r = 3.25m)
-  cylinder(mon, 3.28, 3.38, 0.72, [0, 0.36, 0], bank.blackGranite, 32);
-  cylinder(mon, 3.04, 3.04, 0.62, [0, 0.35, 0], bank.fountainWater, 32);
+  // Light Tan Sandstone Top Coping Cap Ring (y = 0.92..0.98)
+  for (let b = 0; b < 36; b++) {
+    const a = (b / 36) * Math.PI * 2;
+    const cap = new THREE.BoxGeometry(0.62, 0.07, 0.68);
+    cap.rotateY(-a);
+    cap.translate(Math.cos(a) * 3.72, 0.955, Math.sin(a) * 3.72);
+    brickGeos.push(colorizeGeometry(cap, [0.85, 0.77, 0.64]));
+  }
 
-  // Tiered Marble & Terracotta Sculptural Pedestal
-  cylinder(mon, 1.55, 1.85, 0.75, [0, 0.78, 0], bank.marbleWhite, 8);
-  cylinder(mon, 1.25, 1.48, 0.95, [0, 1.55, 0], bank.royalTerracotta, 8);
-  cylinder(mon, 1.38, 1.38, 0.16, [0, 2.06, 0], bank.goldMetal, 8);
-  cylinder(mon, 0.92, 1.12, 1.10, [0, 2.65, 0], bank.marbleWhite, 12);
+  // 3) Fountain Spray Pipe Ring (majorR = 3.34, y = 0.54) + 48 Teal Nozzles
+  const sprayPipe = new THREE.TorusGeometry(3.34, 0.034, 8, 48);
+  sprayPipe.rotateX(Math.PI / 2);
+  sprayPipe.translate(0, 0.54, 0);
+  nozzleGeos.push(sprayPipe.index ? sprayPipe.toNonIndexed() : sprayPipe);
 
-  // Sculpted Wave Arches & 3 Iconic Leaping Khulna Silver-Gold Fish / White Gold Sculptures!
+  for (let i = 0; i < 48; i++) {
+    const a = (i / 48) * Math.PI * 2;
+    const nz = new THREE.CylinderGeometry(0.016, 0.028, 0.14, 6);
+    nz.translate(Math.cos(a) * 3.34, 0.60, Math.sin(a) * 3.34);
+    nozzleGeos.push(nz.index ? nz.toNonIndexed() : nz);
+  }
+
+  // 4) Gleaming Stainless Steel Perimeter Railing (majorR = 3.72, y = 1.32) on 12 Flanged Posts
+  const railTorus = new THREE.TorusGeometry(3.72, 0.046, 10, 48);
+  railTorus.rotateX(Math.PI / 2);
+  railTorus.translate(0, 1.32, 0);
+  chromeGeos.push(railTorus.index ? railTorus.toNonIndexed() : railTorus);
+
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    const px = Math.cos(a) * 3.72;
+    const pz = Math.sin(a) * 3.72;
+    const post = new THREE.CylinderGeometry(0.034, 0.038, 0.36, 8);
+    post.translate(px, 1.14, pz);
+    chromeGeos.push(post.index ? post.toNonIndexed() : post);
+
+    const flange = new THREE.CylinderGeometry(0.072, 0.08, 0.04, 8);
+    flange.translate(px, 0.99, pz);
+    chromeGeos.push(flange.index ? flange.toNonIndexed() : flange);
+  }
+
+  // 5) Central Concrete Pedestal (r = 0.52, y = 0.24..1.08) + 3 Radial Octagonal Pedestals (r = 1.44, y = 0.24..1.22)
+  const centerPed = new THREE.CylinderGeometry(0.48, 0.54, 0.84, 12);
+  centerPed.translate(0, 0.66, 0);
+  basinGeos.push(colorizeGeometry(centerPed, [0.76, 0.74, 0.70]));
+
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2 + 0.35;
-    const archGrp = new THREE.Group();
-    archGrp.rotation.y = a;
-    mon.add(archGrp);
+    const oct = new THREE.CylinderGeometry(0.45, 0.50, 0.98, 8);
+    oct.translate(Math.cos(a) * 1.44, 0.73, Math.sin(a) * 1.44);
+    basinGeos.push(colorizeGeometry(oct, [0.80, 0.77, 0.72]));
 
-    // Sweeping stylized wave rib curving up from pedestal
-    const waveCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0.75, 2.85, 0),
-      new THREE.Vector3(1.55, 4.10, 0.25),
-      new THREE.Vector3(1.10, 5.55, 0.10),
-      new THREE.Vector3(0.28, 6.45, 0),
-    ]);
-    const waveMesh = new THREE.Mesh(new THREE.TubeGeometry(waveCurve, 18, 0.11, 8, false), bank.silverSculpture);
-    archGrp.add(waveMesh);
-
-    // Stylized Leaping Fish / Shrimp Silhouette (body + tail fin + dorsal ridge)
-    const fishBody = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), i === 0 ? bank.goldMetal : bank.silverSculpture);
-    fishBody.scale.set(0.42, 1.85, 0.72);
-    fishBody.position.set(1.22, 4.75, 0.15);
-    fishBody.rotation.z = 0.36;
-    archGrp.add(fishBody);
-
-    const tailFin = new THREE.Mesh(new THREE.ConeGeometry(0.36, 0.65, 4), bank.goldMetal);
-    tailFin.position.set(1.48, 3.88, 0.18);
-    tailFin.rotation.z = -0.35;
-    archGrp.add(tailFin);
+    // Build each of the 3 Giant Curved Golda Prawns (গলদা চিংড়ি)!
+    const { prawnGeos, whiskerGeos, eyeGeos } = buildSingleGoldaPrawnGeometries(-a);
+    allPrawnGeos.push(...prawnGeos);
+    allWhiskerGeos.push(...whiskerGeos);
+    allEyeGeos.push(...eyeGeos);
   }
 
-  // Central Tall Spire & Royal Golden Crown Finial (reaching y = 7.8m)
-  cylinder(mon, 0.18, 0.36, 3.8, [0, 4.95, 0], bank.marbleWhite, 12);
-  const crownRing = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.08, 10, 24), bank.goldMetal);
-  crownRing.rotation.x = Math.PI / 2;
-  crownRing.position.y = 6.75;
-  mon.add(crownRing);
-  const topOrb = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 1), bank.goldMetal);
-  topOrb.position.y = 7.35;
-  mon.add(topOrb);
+  // 6) Tall Central Galvanized Steel Pole (r = 0.22 -> 0.21, y = 1.08..5.65) + Top Cap & Crown Finial
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.22, 4.58, 14), bank.galvanizedPole);
+  pole.position.y = 3.37;
+  pole.castShadow = true;
+  mon.add(pole);
 
-  // Night Uplight Fixtures around the Fountain Rim
+  const topBracket = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.26, 0.26, 12), bank.stainlessChrome);
+  topBracket.position.y = 5.72;
+  mon.add(topBracket);
+
+  const topRing = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.055, 8, 24), bank.goldMetal);
+  topRing.rotation.x = Math.PI / 2;
+  topRing.position.y = 5.88;
+  mon.add(topRing);
+
+  // Merge each Chingri Chattar material group cleanly into 1 draw call
+  const addMerged = (geos, mat, cast = true, receive = true) => {
+    if (!geos.length) return;
+    const merged = mergeGeometries(geos, false);
+    for (const g of geos) g.dispose();
+    if (!merged) return;
+    const mesh = new THREE.Mesh(merged, mat);
+    mesh.castShadow = cast;
+    mesh.receiveShadow = receive;
+    mon.add(mesh);
+  };
+
+  addMerged(brickGeos, bank.fountainBrickVC, true, true);
+  addMerged(basinGeos, bank.fountainBasinVC, true, true);
+  addMerged(nozzleGeos, bank.fountainNozzleTeal, false, true);
+  addMerged(chromeGeos, bank.stainlessChrome, true, true);
+  addMerged(allPrawnGeos, bank.prawnChitin, true, true);
+  addMerged(allWhiskerGeos, bank.prawnWhisker, false, false);
+  addMerged(allEyeGeos, bank.prawnEye, false, false);
+
+  // Shimmering Turquoise Water Surface inside the Basin (y = 0.56)
+  const waterDisc = new THREE.Mesh(new THREE.CylinderGeometry(3.42, 3.42, 0.08, 36), bank.fountainWater);
+  waterDisc.position.y = 0.56;
+  mon.add(waterDisc);
+
+  // 6 Night Uplight Fixtures illuminating the 3 Prawns & Basin
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
     const bulb = new THREE.Mesh(
       new THREE.CylinderGeometry(0.14, 0.18, 0.16, 10),
       i % 2 === 0 ? bank.uplightGold : bank.uplightCyan,
     );
-    bulb.position.set(CX + Math.cos(a) * 2.55, 0.72, CZ + Math.sin(a) * 2.55);
-    dynamicG.add(bulb);
+    bulb.position.set(Math.cos(a) * 2.55, 0.62, Math.sin(a) * 2.55);
+    mon.add(bulb);
   }
 
-  // Animated Fountain Water Jets (8 parabolic arcs + central spray column)
+  // 16 Animated Parabolic Fountain Water Jets spraying inward from the 48-nozzle ring!
   const fountainJets = [];
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
     const jetCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(CX + Math.cos(a) * 2.65, 0.68, CZ + Math.sin(a) * 2.65),
-      new THREE.Vector3(CX + Math.cos(a) * 1.95, 2.05, CZ + Math.sin(a) * 1.95),
-      new THREE.Vector3(CX + Math.cos(a) * 1.25, 0.75, CZ + Math.sin(a) * 1.25),
+      new THREE.Vector3(Math.cos(a) * 3.30, 0.66, Math.sin(a) * 3.30),
+      new THREE.Vector3(Math.cos(a) * 2.15, 2.25 + (i % 2) * 0.35, Math.sin(a) * 2.15),
+      new THREE.Vector3(Math.cos(a) * 1.15, 0.72, Math.sin(a) * 1.15),
     ]);
-    const jet = new THREE.Mesh(new THREE.TubeGeometry(jetCurve, 12, 0.045, 6, false), bank.sprayJet);
-    dynamicG.add(jet);
-    fountainJets.push({ mesh: jet, phase: i * 0.78 });
+    const jet = new THREE.Mesh(new THREE.TubeGeometry(jetCurve, 12, 0.036, 5, false), bank.sprayJet);
+    mon.add(jet);
+    fountainJets.push({ mesh: jet, phase: i * 0.55 });
   }
 
-  // Golden Plaque Sign at Monument Base facing SE toward incoming traffic
+  // Illuminated Plaque Sign on Outer Brick Wall facing SE incoming traffic
   addSignBox(
     dynamicG,
     bank,
     {
-      title: 'রয়্যাল চত্বর · খুলনা',
-      subtitle: 'ROYAL CHATTAR · KHULNA CITY CORPORATION',
+      title: 'চিংড়ি চত্বর · রয়্যালের মোড়',
+      subtitle: 'CHINGRI CHATTAR · ROYAL MORE · KHULNA',
       bg: '#0f172a',
       fg: '#fef08a',
       accent: '#f59e0b',
       border: '#f59e0b',
     },
-    [CX + 1.55, 1.55, CZ + 0.95],
+    [CX + 3.45, 0.78, CZ + 2.15],
     Math.PI * 0.34,
-    1.85,
-    0.62,
+    2.1,
+    0.66,
   );
 
   return fountainJets;
 }
 
-/**
+/* ============================================================================
  * 3. HOTEL ROYAL INTERNATIONAL (হোটেল রয়েল ইন্টারন্যাশনাল — ১০-তলা, স্থাপিত ১৯৮৬)
- * Khulna's iconic first 10-story luxury hotel in the NW wedge between KDA Ave & Khan Jahan Ali Rd.
- */
+ * ========================================================================== */
 function buildHotelRoyalInternational(staticG, dynamicG, bank) {
-  const hx = -776.0;
-  const hz = -316.0;
-  const rotY = 0.22; // Angled slightly to face KDA Avenue & Royal Circle cleanly
+  const hx = -774.0;
+  const hz = -314.0;
+  const rotY = 0.16;
   const g = new THREE.Group();
   g.position.set(hx, 0, hz);
   g.rotation.y = rotY;
@@ -732,19 +1375,16 @@ function buildHotelRoyalInternational(staticG, dynamicG, bank) {
   const gfH = 4.6;
   const flH = 3.15;
   const floors = 10;
-  const totalH = gfH + (floors - 1) * flH; // ~33m
+  const totalH = gfH + (floors - 1) * flH;
 
-  // Forecourt Granite Paving & Red Carpet Entrance Ramp (front faces +Z locally)
-  box(g, [W + 6.5, 0.14, D + 8.5], [0, 0.07, 2.2], bank.marbleWhite, { castShadow: false, uvScale: 2.8 });
-  box(g, [3.6, 0.18, 5.2], [0, 0.11, D * 0.5 + 2.4], bank.redCarpet, { castShadow: false });
+  box(g, [W + 6.5, 0.16, D + 8.5], [0, 0.08, 2.2], bank.marbleWhite, { castShadow: false, uvScale: 2.8 });
+  box(g, [3.6, 0.20, 5.2], [0, 0.12, D * 0.5 + 2.4], bank.redCarpet, { castShadow: false });
 
-  // Grand Ground Floor Lobby Core + Black Granite Base & Glass Entrance
   box(g, [W, gfH, D], [0, gfH * 0.5, 0], bank.blackGranite, { uvScale: 2.5 });
   box(g, [W - 3.6, 3.6, 0.35], [0, 2.0, D * 0.5 + 0.02], bank.glassLobby);
-  // Illuminated Hotel Lobby Interior Warm Glow behind Glass
   box(dg, [W - 4.4, 3.1, 0.15], [0, 1.9, D * 0.5 - 0.18], bank.warmWindowLit, { castShadow: false });
 
-  // Grand Projecting Porte-Cochere Entrance Canopy with Marble Columns & Gold Trim
+  // Grand Projecting Porte-Cochere Canopy
   box(g, [10.8, 0.52, 4.8], [0, 4.35, D * 0.5 + 2.3], bank.marbleWhite);
   box(g, [11.0, 0.16, 4.95], [0, 4.66, D * 0.5 + 2.3], bank.goldMetal);
   for (const cx of [-4.6, -1.9, 1.9, 4.6]) {
@@ -752,19 +1392,16 @@ function buildHotelRoyalInternational(staticG, dynamicG, bank) {
     cylinder(g, 0.40, 0.42, 0.25, [cx, 0.25, D * 0.5 + 4.25], bank.blackGranite, 12);
   }
 
-  // Main 10-Story Tower Core (Cream Plaster + Vertical Terracotta Architectural Ribs)
+  // Main 10-Story Tower
   box(g, [W, totalH - gfH, D], [0, gfH + (totalH - gfH) * 0.5, 0], bank.royalCream, { uvScale: 3.2 });
-  // Central Reflective Curtain-Wall Glass Atrium Spine
   box(g, [6.4, totalH - gfH + 1.2, 0.45], [0, gfH + (totalH - gfH) * 0.5 + 0.4, D * 0.5 + 0.18], bank.glassCurtain);
   for (const fx of [-3.35, 3.35, -9.2, 9.2, -12.35, 12.35]) {
     box(g, [0.62, totalH - gfH + 0.8, 0.72], [fx, gfH + (totalH - gfH) * 0.5 + 0.2, D * 0.5 + 0.12], bank.royalTerracotta);
   }
 
-  // Floors 2..10 Balconies, Windows & Night-Lit Hotel Rooms (front +Z and back -Z)
   const rnd = seeded(1986);
   for (let f = 1; f < floors; f++) {
     const fy = gfH + (f - 1) * flH;
-    // Horizontal floor slab band
     box(g, [W + 0.55, 0.24, D + 0.55], [0, fy, 0], bank.marbleWhite);
     for (const wx of [-10.7, -7.6, -5.0, 5.0, 7.6, 10.7]) {
       const lit = rnd() > 0.38;
@@ -772,10 +1409,8 @@ function buildHotelRoyalInternational(staticG, dynamicG, bank) {
       box(lit ? dg : g, [2.05, 1.75, 0.18], [wx, fy + 1.65, D * 0.5 + 0.04], wMat, { castShadow: false });
       box(g, [2.35, 0.16, 0.82], [wx, fy + 0.12, D * 0.5 + 0.40], bank.marbleWhite);
       box(g, [2.25, 0.72, 0.10], [wx, fy + 0.52, D * 0.5 + 0.76], bank.royalTerracotta);
-      // Rear windows so hotel looks detailed from every angle
       box(g, [2.05, 1.65, 0.16], [wx, fy + 1.65, -D * 0.5 - 0.04], bank.glassCurtain, { castShadow: false });
     }
-    // Side gable windows (East & West)
     for (const sx of [-1, 1]) {
       for (const wz of [-4.6, 0, 4.6]) {
         const litS = rnd() > 0.55;
@@ -784,13 +1419,11 @@ function buildHotelRoyalInternational(staticG, dynamicG, bank) {
     }
   }
 
-  // Iconic Rooftop Crown Parapet, Penthouse Pavilion & Helipad-Style Trim
   box(g, [W + 0.9, 1.45, D + 0.9], [0, totalH + 0.72, 0], bank.royalTerracotta);
   box(g, [W + 1.05, 0.24, D + 1.05], [0, totalH + 1.52, 0], bank.goldMetal);
   box(g, [10.5, 3.2, 8.5], [0, totalH + 2.8, 0], bank.modernWhite);
   box(g, [10.9, 0.35, 8.9], [0, totalH + 4.5, 0], bank.goldMetal);
 
-  // Illuminated Canopy Entrance Sign + Giant Rooftop Hotel Signboard!
   addSignBox(
     dg,
     bank,
@@ -826,16 +1459,273 @@ function buildHotelRoyalInternational(staticG, dynamicG, bank) {
     2.4,
   );
 
-  // Palms framing the Hotel Forecourt
   addOrnamentalPalm(staticG, bank, hx - 12.8, hz + 10.5, 8.2, 811);
   addOrnamentalPalm(staticG, bank, hx + 12.8, hz + 8.5, 7.8, 823);
 }
 
-/**
- * 4. MULTI-STORY ARTICULATED COMMERCIAL / HOTEL BUILDING HELPER
- * Builds realistic Khulna commercial plazas with ground-floor glowing shopfronts,
- * recessed balconies, AC units, rooftop water tanks & illuminated Bengali signboards.
- */
+/* ============================================================================
+ * 4. PROMINENT HOTEL CASTLE SALAM (হোটেল ক্যাসেল সালাম · G-8 KDA AVENUE)
+ * Flagship 7-story luxury hotel prominently facing KDA Avenue & Royal Circle!
+ * ========================================================================== */
+function buildHotelCastleSalam(staticG, dynamicG, bank) {
+  const hx = -744.0;
+  const hz = -252.0;
+  const rotY = Math.PI - 0.14; // Front (+Z locally) faces North directly onto KDA Avenue & Royal Circle
+  const g = new THREE.Group();
+  g.position.set(hx, 0, hz);
+  g.rotation.y = rotY;
+  staticG.add(g);
+
+  const dg = new THREE.Group();
+  dg.position.set(hx, 0, hz);
+  dg.rotation.y = rotY;
+  dynamicG.add(dg);
+
+  const W = 24.0;
+  const D = 15.0;
+  const gfH = 4.5;
+  const flH = 3.2;
+  const floors = 7;
+  const totalH = gfH + (floors - 1) * flH; // ~23.7m
+
+  // Grand Marble Forecourt & Red Carpet Entrance
+  box(g, [W + 6.0, 0.18, D + 7.5], [0, 0.09, 2.0], bank.marbleWhite, { castShadow: false, uvScale: 2.6 });
+  box(g, [3.8, 0.22, 5.4], [0, 0.13, D * 0.5 + 2.2], bank.redCarpet, { castShadow: false });
+
+  // Ground Floor Lobby + Burgundy & Gold Trim
+  box(g, [W, gfH, D], [0, gfH * 0.5, 0], bank.castleBurgundy, { uvScale: 2.5 });
+  box(g, [W - 4.0, 3.4, 0.35], [0, 1.9, D * 0.5 + 0.02], bank.glassLobby);
+  box(dg, [W - 4.8, 2.9, 0.16], [0, 1.85, D * 0.5 - 0.18], bank.warmWindowLit, { castShadow: false });
+
+  // Grand Castle-Style Entrance Portico with 4 Fluted Marble Pillars & Gold Cornice
+  box(g, [10.4, 0.58, 4.4], [0, 4.28, D * 0.5 + 2.1], bank.castleIvory);
+  box(g, [10.8, 0.22, 4.65], [0, 4.65, D * 0.5 + 2.1], bank.goldMetal);
+  for (const cx of [-4.4, -1.8, 1.8, 4.4]) {
+    cylinder(g, 0.34, 0.38, 4.1, [cx, 2.1, D * 0.5 + 3.9], bank.marbleWhite, 12);
+    cylinder(g, 0.42, 0.46, 0.28, [cx, 0.26, D * 0.5 + 3.9], bank.castleBurgundy, 12);
+  }
+
+  // 7-Story Ivory Tower with Twin Corner Castle Turret Piers & Central Glass Bay
+  box(g, [W, totalH - gfH, D], [0, gfH + (totalH - gfH) * 0.5, 0], bank.castleIvory, { uvScale: 3.0 });
+  box(g, [5.8, totalH - gfH + 1.0, 0.42], [0, gfH + (totalH - gfH) * 0.5 + 0.2, D * 0.5 + 0.16], bank.glassCurtain);
+  for (const px of [-W * 0.5 + 0.8, W * 0.5 - 0.8]) {
+    box(g, [1.8, totalH + 1.4, 1.8], [px, (totalH + 1.4) * 0.5, D * 0.5 - 0.4], bank.castleBurgundy);
+    box(g, [2.1, 0.28, 2.1], [px, totalH + 1.5, D * 0.5 - 0.4], bank.goldMetal);
+  }
+
+  // Upper Floors Balconies & Lit Hotel Windows
+  const rnd = seeded(1996);
+  for (let f = 1; f < floors; f++) {
+    const fy = gfH + (f - 1) * flH;
+    box(g, [W + 0.5, 0.22, D + 0.5], [0, fy, 0], bank.marbleWhite);
+    for (const wx of [-8.8, -5.6, 5.6, 8.8]) {
+      const lit = rnd() > 0.35;
+      box(lit ? dg : g, [2.1, 1.75, 0.18], [wx, fy + 1.65, D * 0.5 + 0.04], lit ? bank.warmWindowLit : bank.glassCurtain, { castShadow: false });
+      box(g, [2.45, 0.16, 0.84], [wx, fy + 0.12, D * 0.5 + 0.42], bank.marbleWhite);
+      box(g, [2.35, 0.74, 0.10], [wx, fy + 0.54, D * 0.5 + 0.78], bank.castleBurgundy);
+      box(g, [2.1, 1.65, 0.16], [wx, fy + 1.65, -D * 0.5 - 0.04], bank.glassCurtain, { castShadow: false });
+    }
+    for (const sx of [-1, 1]) {
+      for (const wz of [-4.2, 0, 4.2]) {
+        const litS = rnd() > 0.5;
+        box(litS ? dg : g, [0.16, 1.65, 2.1], [sx * (W * 0.5 + 0.04), fy + 1.65, wz], litS ? bank.warmWindowLit : bank.glassCurtain, { castShadow: false });
+      }
+    }
+  }
+
+  // Iconic Crown Parapet & Golden Rooftop Pavilion
+  box(g, [W + 0.8, 1.3, D + 0.8], [0, totalH + 0.65, 0], bank.castleBurgundy);
+  box(g, [W + 1.0, 0.24, D + 1.0], [0, totalH + 1.38, 0], bank.goldMetal);
+  cylinder(g, 3.2, 3.5, 2.2, [0, totalH + 2.4, 0], bank.castleIvory, 12);
+  cylinder(g, 0.4, 3.3, 1.8, [0, totalH + 4.4, 0], bank.goldMetal, 12);
+
+  // Prominent Entrance Portico Sign + Huge Rooftop Hotel Castle Salam Signboard
+  addSignBox(
+    dg,
+    bank,
+    {
+      title: 'হোটেল ক্যাসেল সালাম ★★★★',
+      subtitle: 'HOTEL CASTLE SALAM · G-8, KDA AVENUE · EST. 1996',
+      bg: '#4c0519',
+      fg: '#fef08a',
+      accent: '#f59e0b',
+      border: '#f59e0b',
+      width: 640,
+    },
+    [0, 5.35, D * 0.5 + 4.35],
+    0,
+    9.8,
+    1.32,
+  );
+  addSignBox(
+    dg,
+    bank,
+    {
+      title: 'HOTEL CASTLE SALAM',
+      subtitle: 'হোটেল ক্যাসেল সালাম · রয়্যালের মোড়, খুলনা',
+      bg: '#7f1d1d',
+      fg: '#ffffff',
+      accent: '#fde047',
+      border: '#f59e0b',
+      width: 640,
+    },
+    [0, totalH + 2.4, D * 0.5 + 0.52],
+    0,
+    14.0,
+    2.35,
+  );
+
+  addOrnamentalPalm(staticG, bank, hx - 12.6, hz - 9.2, 7.6, 841);
+  addOrnamentalPalm(staticG, bank, hx + 12.6, hz - 9.8, 7.8, 849);
+}
+
+/* ============================================================================
+ * 5. COMPLETE ROYAL MORE BUS COUNTER STRIP (বাসের কাউন্টার সারি · কেডিএ অ্যাভিনিউ)
+ * 6 Iconic Khulna Inter-District Bus Counters + Waiting Canopy + 2 AC Coaches!
+ * ========================================================================== */
+function buildBusCounterStrip(staticG, dynamicG, bank) {
+  const bx = -801.0;
+  const bz = -255.0;
+  const rotY = Math.PI - 0.12; // Front (+Z locally) faces North onto KDA Avenue South lane
+  const g = new THREE.Group();
+  g.position.set(bx, 0, bz);
+  g.rotation.y = rotY;
+  staticG.add(g);
+
+  const dg = new THREE.Group();
+  dg.position.set(bx, 0, bz);
+  dg.rotation.y = rotY;
+  dynamicG.add(dg);
+
+  const counters = [
+    { name: 'গ্রীন লাইন পরিবহন', sub: 'GREEN LINE AC · খুলনা—ঢাকা', bg: '#065f46', accent: '#fde047' },
+    { name: 'সোহাগ পরিবহন', sub: 'SOHAGH PARIBAHAN · SCANIA AC', bg: '#991b1b', accent: '#fef08a' },
+    { name: 'হানিফ এন্টারপ্রাইজ', sub: 'HANIF ENTERPRISE · NON-STOP', bg: '#1e3a8a', accent: '#38bdf8' },
+    { name: 'এনা ট্রান্সপোর্ট', sub: 'ENA TRANSPORT · HYUNDAI AC', bg: '#7c2d12', accent: '#fde047' },
+    { name: 'ঈগল পরিবহন', sub: 'EAGLE PARIBAHAN · ROYAL MORE', bg: '#0f766e', accent: '#a7f3d0' },
+    { name: 'টুঙ্গিপাড়া এক্সপ্রেস', sub: 'TUNGIPARA EXPRESS · পদ্মা সেতু', bg: '#4c1d95', accent: '#fde047' },
+  ];
+
+  const bayW = 7.4;
+  const W = counters.length * bayW; // 44.4m continuous bus counter arcade!
+  const D = 11.5;
+  const gfH = 4.2;
+  const totalH = gfH + 6.4; // 3-story commercial building above the bus counter strip
+
+  // Wide Passenger Boarding Apron & Footpath Connection
+  box(g, [W + 3.0, 0.18, D + 6.5], [0, 0.09, 2.2], bank.footpath, { castShadow: false, uvScale: 2.2 });
+
+  // Ground Floor Counter Structure + Projecting Rain Canopy
+  box(g, [W, gfH, D - 0.8], [0, gfH * 0.5, -0.4], bank.modernWhite, { uvScale: 2.8 });
+  box(g, [W + 0.8, 0.24, 3.2], [0, 3.25, D * 0.5 + 1.2], bank.steelDark);
+
+  // Upper 2 Commercial Floors above Bus Counters (Offices / Hotel Rooms)
+  box(g, [W, totalH - gfH, D], [0, gfH + (totalH - gfH) * 0.5, 0], bank.royalCream, { uvScale: 3.0 });
+  box(g, [W + 0.5, 0.24, D + 0.5], [0, gfH, 0], bank.marbleWhite);
+  box(g, [W + 0.5, 0.24, D + 0.5], [0, gfH + 3.2, 0], bank.marbleWhite);
+  box(g, [W + 0.5, 0.85, D + 0.5], [0, totalH + 0.42, 0], bank.emeraldWall);
+
+  const rnd = seeded(955);
+  for (let i = 0; i < counters.length; i++) {
+    const cx = -W * 0.5 + (i + 0.5) * bayW;
+    const cInfo = counters[i];
+
+    // Separating Counter Pillar + Canopy Support Column
+    box(g, [0.42, gfH, 0.55], [cx - bayW * 0.5, gfH * 0.5, D * 0.5 - 0.25], bank.modernSlate);
+    cylinder(g, 0.11, 0.13, 3.2, [cx - bayW * 0.5 + 0.25, 1.6, D * 0.5 + 2.45], bank.aluminum, 8);
+
+    // Glowing Glass Ticket Counter Showcase
+    box(dg, [bayW - 0.85, 2.55, 0.14], [cx, 1.45, D * 0.5 - 0.65], bank.dispBus, { castShadow: false });
+    // Ticket desk ledge
+    box(g, [bayW - 1.2, 0.12, 0.55], [cx, 1.05, D * 0.5 - 0.35], bank.marbleWhite);
+
+    // Waiting Passenger Bench in front of each counter
+    box(g, [2.4, 0.08, 0.46], [cx, 0.58, D * 0.5 + 1.35], bank.royalTerracotta);
+    for (const lx of [-0.95, 0.95]) {
+      box(g, [0.10, 0.44, 0.42], [cx + lx, 0.36, D * 0.5 + 1.35], bank.steelDark);
+    }
+
+    // Individual Illuminated Bus Counter Signboard!
+    addSignBox(
+      dg,
+      bank,
+      { title: cInfo.name, subtitle: cInfo.sub, bg: cInfo.bg, accent: cInfo.accent, width: 512, height: 164 },
+      [cx, 3.85, D * 0.5 + 2.68],
+      0,
+      bayW - 0.32,
+      1.18,
+    );
+
+    // Upper floor office windows
+    for (let f = 0; f < 2; f++) {
+      const fy = gfH + f * 3.2 + 1.55;
+      const lit = rnd() > 0.42;
+      box(lit ? dg : g, [bayW * 0.66, 1.6, 0.16], [cx, fy, D * 0.5 + 0.04], lit ? bank.warmWindowLit : bank.glassCurtain, { castShadow: false });
+    }
+  }
+  // Right end pillar
+  box(g, [0.42, gfH, 0.55], [W * 0.5, gfH * 0.5, D * 0.5 - 0.25], bank.modernSlate);
+
+  // Rooftop Main Strip Banner
+  addSignBox(
+    dg,
+    bank,
+    {
+      title: 'রয়্যালের মোড় আন্তঃজেলা বাস কাউন্টার সমূহ',
+      subtitle: 'ROYAL MORE BUS COUNTERS · KHULNA — DHAKA — CHATTOGRAM — SYLHET',
+      bg: '#064e3b',
+      fg: '#ffffff',
+      accent: '#fde047',
+      border: '#fde047',
+      width: 640,
+    },
+    [0, totalH + 1.55, D * 0.5 + 0.32],
+    0,
+    18.0,
+    1.8,
+  );
+}
+
+function buildLuxuryCoachBus(staticG, dynamicG, bank, { x, z, rotY, bodyMat, title, subtitle, bg }) {
+  const bus = new THREE.Group();
+  bus.position.set(x, 0.04, z);
+  bus.rotation.y = rotY;
+  staticG.add(bus);
+
+  for (const [wx, wz] of [[-1.18, 3.3], [1.18, 3.3], [-1.18, -3.1], [1.18, -3.1]]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.30, 14), bank.tireBlack);
+    w.rotation.z = Math.PI / 2;
+    w.position.set(wx, 0.48, wz);
+    bus.add(w);
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.32, 10), bank.aluminum);
+    rim.rotation.z = Math.PI / 2;
+    rim.position.set(wx, 0.48, wz);
+    bus.add(rim);
+  }
+  box(bus, [2.52, 2.55, 11.4], [0, 1.78, 0], bodyMat);
+  box(bus, [2.56, 0.22, 11.45], [0, 1.22, 0], bank.busAccent);
+  box(bus, [2.36, 1.05, 0.14], [0, 2.25, 5.72], bank.glassCurtain);
+  for (const sx of [-1.27, 1.27]) {
+    box(bus, [0.06, 1.05, 9.8], [sx, 2.28, -0.2], bank.glassCurtain);
+  }
+  box(bus, [1.65, 0.34, 3.4], [0, 3.22, 0.4], bank.modernWhite);
+  for (const sx of [-0.85, 0.85]) {
+    box(bus, [0.36, 0.18, 0.08], [sx, 0.85, 5.72], bank.lampGlow);
+  }
+  addSignBox(
+    dynamicG,
+    bank,
+    { title, subtitle, bg, accent: '#fde047' },
+    [x + Math.cos(rotY) * 1.32, 1.55, z - Math.sin(rotY) * 1.32],
+    rotY + Math.PI * 0.5,
+    4.6,
+    0.58,
+  );
+}
+
+/* ============================================================================
+ * 6. ARTICULATED COMMERCIAL PLAZA HELPER & KMP TRAFFIC POLICE BOX
+ * ========================================================================== */
 function buildRoyalCornerBuilding(staticG, dynamicG, bank, cfg) {
   const {
     cx, cz, rotY = 0, w = 18, d = 13, floors = 5,
@@ -865,11 +1755,9 @@ function buildRoyalCornerBuilding(staticG, dynamicG, bank, cfg) {
   const flH = 3.1;
   const totalH = gfH + (floors - 1) * flH;
 
-  // Sidewalk Plinth & Damp Base
-  box(g, [w + 2.4, 0.14, d + 3.2], [0, 0.07, 0.8], bank.brick, { castShadow: false, uvScale: 2.4 });
+  box(g, [w + 2.4, 0.16, d + 3.2], [0, 0.08, 0.8], bank.footpath, { castShadow: false, uvScale: 2.2 });
   box(g, [w + 0.2, 0.42, d + 0.2], [0, 0.21, 0], bank.darkConcrete);
 
-  // Ground Floor Arcade + Glowing Shop Showcases (front faces +Z locally)
   box(g, [w, gfH, d - 0.6], [0, gfH * 0.5, -0.3], trimMat, { uvScale: 2.8 });
   const bays = Math.max(3, Math.floor(w / 4.2));
   const bayW = w / bays;
@@ -883,7 +1771,6 @@ function buildRoyalCornerBuilding(staticG, dynamicG, bank, cfg) {
     box(g, [bayW - 0.55, 0.14, 0.92], [bx, 2.88, d * 0.5 + 0.05], bank.steelDark);
   }
 
-  // Upper Floors Structural Core + Balconies + Windows + AC Units
   box(g, [w, totalH - gfH, d], [0, gfH + (totalH - gfH) * 0.5, 0], wallMat, { uvScale: 3.0 });
   box(g, [w + 0.6, 0.26, d + 0.6], [0, gfH, 0], trimMat);
 
@@ -904,12 +1791,10 @@ function buildRoyalCornerBuilding(staticG, dynamicG, bank, cfg) {
           box(g, [0.72, 0.50, 0.34], [bx + bayW * 0.22, fy + 0.48, d * 0.5 + 0.20], bank.acBox);
         }
       }
-      // Rear windows
       box(g, [bayW * 0.58, 1.55, 0.14], [bx, fy + 1.55, -d * 0.5 - 0.04], bank.glassCurtain, { castShadow: false });
     }
   }
 
-  // Rooftop Parapet, Stairhead Mumty & Black Gazi Water Tank
   box(g, [w + 0.35, 0.95, 0.24], [0, totalH + 0.48, d * 0.5], accentMat);
   box(g, [w + 0.35, 0.95, 0.24], [0, totalH + 0.48, -d * 0.5], accentMat);
   box(g, [0.24, 0.95, d], [-w * 0.5, totalH + 0.48, 0], accentMat);
@@ -917,7 +1802,6 @@ function buildRoyalCornerBuilding(staticG, dynamicG, bank, cfg) {
   box(g, [3.4, 2.35, 3.6], [-w * 0.18, totalH + 1.18, 0], trimMat);
   cylinder(g, 0.65, 0.68, 1.4, [w * 0.22, totalH + 1.15, -1.2], bank.waterTank, 10);
 
-  // Main Illuminated Fascia Signboard
   addSignBox(
     dg,
     bank,
@@ -940,51 +1824,6 @@ function buildRoyalCornerBuilding(staticG, dynamicG, bank, cfg) {
   }
 }
 
-/**
- * 5. GREENLINE LUXURY AC COACH BUS parked in the KDA Avenue layby outside Greenline Counter
- */
-function buildGreenlineBus(staticG, dynamicG, bank, x, z, rotY) {
-  const bus = new THREE.Group();
-  bus.position.set(x, 0.04, z);
-  bus.rotation.y = rotY;
-  staticG.add(bus);
-
-  // 4 Heavy Coach Wheels
-  for (const [wx, wz] of [[-1.18, 3.3], [1.18, 3.3], [-1.18, -3.1], [1.18, -3.1]]) {
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.30, 14), bank.tireBlack);
-    w.rotation.z = Math.PI / 2;
-    w.position.set(wx, 0.48, wz);
-    bus.add(w);
-    const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.32, 10), bank.aluminum);
-    rim.rotation.z = Math.PI / 2;
-    rim.position.set(wx, 0.48, wz);
-    bus.add(rim);
-  }
-  // Sleek Emerald Green Luxury Coach Body + Roof AC Pod + Tinted Windows
-  box(bus, [2.52, 2.55, 11.4], [0, 1.78, 0], bank.busGreen);
-  box(bus, [2.56, 0.22, 11.45], [0, 1.22, 0], bank.busAccent);
-  box(bus, [2.36, 1.05, 0.14], [0, 2.25, 5.72], bank.glassCurtain); // front panoramic windshield
-  for (const sx of [-1.27, 1.27]) {
-    box(bus, [0.06, 1.05, 9.8], [sx, 2.28, -0.2], bank.glassCurtain);
-  }
-  box(bus, [1.65, 0.34, 3.4], [0, 3.22, 0.4], bank.modernWhite); // Roof AC unit
-  for (const sx of [-0.85, 0.85]) {
-    box(bus, [0.36, 0.18, 0.08], [sx, 0.85, 5.72], bank.lampGlow);
-  }
-  addSignBox(
-    dynamicG,
-    bank,
-    { title: 'GREEN LINE · ঢাকা — খুলনা (AC)', subtitle: 'ROYAL MORE COUNTER · ROYAL COACH', bg: '#064e3b', accent: '#fde047' },
-    [x + Math.cos(rotY) * 1.32, 1.55, z - Math.sin(rotY) * 1.32],
-    rotY + Math.PI * 0.5,
-    4.6,
-    0.58,
-  );
-}
-
-/**
- * 6. KMP TRAFFIC POLICE BOX (কেএমপি ট্রাফিক পুলিশ বক্স · রয়্যালের মোড়)
- */
 function buildKmpTrafficBox(staticG, dynamicG, bank, x, z) {
   const g = new THREE.Group();
   g.position.set(x, 0, z);
@@ -1013,7 +1852,7 @@ function buildKmpTrafficBox(staticG, dynamicG, bank, x, z) {
 }
 
 /**
- * Builds the complete High-Detail Royal More (খুলনা রয়্যালের মোড়) showcase district.
+ * Builds the complete Ultra-Detailed Royal More / Chingri Chattar (খুলনা রয়্যালের মোড়) district.
  */
 export function buildRoyalMoreDistrict(parent, m) {
   const root = new THREE.Group();
@@ -1025,39 +1864,64 @@ export function buildRoyalMoreDistrict(parent, m) {
 
   const bank = createRoyalBank(m);
 
-  // 1) Exact Royal More Roundabout, Dual Carriageways, Medians, Crosswalks & Highway Gantry
-  buildRoyalMoreRoads(staticG, dynamicG, bank);
+  // 1) Urban Paved Ground + Exact OSM Roads + Continuous Raised Pedestrian Footpaths (ফুটপাত)
+  buildRoyalMoreRoadsAndFootpaths(staticG, dynamicG, bank);
 
-  // 2) Iconic Royal Chattar Monument & Animated Illuminated Fountain at (-716.8, -291.8)
-  const fountainJets = buildRoyalChattarMonument(staticG, dynamicG, bank);
+  // 2) Authentic Chingri Chattar (চিংড়ি চত্বর) 3-Golda-Prawn Fountain at (-716.8, -291.8)
+  const fountainJets = buildChingriChattarMonument(staticG, dynamicG, bank);
 
   // 3) Hotel Royal International (10-story iconic landmark, est. 1986)
   buildHotelRoyalInternational(staticG, dynamicG, bank);
 
-  // 4) Hotel Castle Salam (SE-South corner facing Royal Circle)
+  // 4) Prominent Hotel Castle Salam (7-story flagship luxury hotel on KDA Avenue South)
+  buildHotelCastleSalam(staticG, dynamicG, bank);
+
+  // 5) Complete Royal More Inter-District Bus Counter Strip (Green Line, Sohagh, Hanif, Ena, Eagle, Tungipara)
+  buildBusCounterStrip(staticG, dynamicG, bank);
+
+  // 2 Parked Luxury AC Coaches neatly in the KDA Avenue Bus Counter Layby
+  buildLuxuryCoachBus(staticG, dynamicG, bank, {
+    x: -786.0,
+    z: -267.8,
+    rotY: Math.PI * 0.52,
+    bodyMat: bank.busGreen,
+    title: 'GREEN LINE · ঢাকা — খুলনা (AC)',
+    subtitle: 'ROYAL MORE COUNTER · ROYAL COACH',
+    bg: '#064e3b',
+  });
+  buildLuxuryCoachBus(staticG, dynamicG, bank, {
+    x: -811.5,
+    z: -269.6,
+    rotY: Math.PI * 0.56,
+    bodyMat: bank.busRed,
+    title: 'SOHAGH PARIBAHAN · SCANIA AC',
+    subtitle: 'খুলনা রয়্যাল মোড় — ঢাকা এক্সপ্রেস',
+    bg: '#7f1d1d',
+  });
+
+  // 6) SE Corner Commercial Plaza (fills the SE Khan Jahan Ali Rd corner so zero empty field!)
   buildRoyalCornerBuilding(staticG, dynamicG, bank, {
-    cx: -706.0,
+    cx: -702.0,
     cz: -250.0,
-    rotY: Math.PI - 0.18, // Faces North toward Royal Circle
+    rotY: Math.PI - 0.35,
     w: 20.0,
-    d: 13.5,
-    floors: 6,
+    d: 13.0,
+    floors: 5,
     wallMat: bank.royalSand,
     trimMat: bank.marbleWhite,
     accentMat: bank.royalTerracotta,
     shopMat: bank.dispSweets,
-    signTitle: 'হোটেল ক্যাসেল সালাম',
-    signSub: 'HOTEL CASTLE SALAM · ROYAL MORE, KHULNA',
-    signBg: '#7c2d12',
-    secondSign: { title: 'HOTEL CASTLE SALAM', subtitle: 'LUXURY STAY & BANQUET', bg: '#0f172a', accent: '#f59e0b' },
-    seed: 412,
+    signTitle: 'রয়েল সিটি মার্কেট · ফার্মেসি · টেলিকম',
+    signSub: 'KHAN JAHAN ALI ROAD · ROYAL MORE SOUTH',
+    signBg: '#1e293b',
+    seed: 418,
   });
 
-  // 5) Royal More NE Corner Commercial Arcade (Royal Sweets, Pharmacy & Islami Bank ATM)
+  // 7) Royal More NE Corner Commercial Arcade (Royal Sweets, Pharmacy & Islami Bank ATM)
   buildRoyalCornerBuilding(staticG, dynamicG, bank, {
     cx: -688.0,
     cz: -318.0,
-    rotY: -0.68, // Angled cleanly facing SW directly onto Royal Circle
+    rotY: -0.68,
     w: 22.0,
     d: 13.0,
     floors: 5,
@@ -1071,11 +1935,11 @@ export function buildRoyalMoreDistrict(parent, m) {
     seed: 519,
   });
 
-  // 6) Fatima Hospital & Diagnostic Center (East side of NW Khan Jahan Ali Rd)
+  // 8) Fatima Hospital & Diagnostic Center (East side of NW Khan Jahan Ali Rd)
   buildRoyalCornerBuilding(staticG, dynamicG, bank, {
     cx: -720.0,
     cz: -350.0,
-    rotY: -Math.PI * 0.38, // Faces SW toward NW Khan Jahan Ali Rd
+    rotY: -Math.PI * 0.38,
     w: 20.0,
     d: 12.5,
     floors: 6,
@@ -1090,12 +1954,12 @@ export function buildRoyalMoreDistrict(parent, m) {
     seed: 607,
   });
 
-  // 7) Kacchi Ghor & Prime Bank 24/7 ATM Plaza (North side of KDA Avenue)
+  // 9) Kacchi Ghor & Prime Bank 24/7 ATM Plaza (North side of KDA Avenue)
   buildRoyalCornerBuilding(staticG, dynamicG, bank, {
     cx: -808.0,
-    cz: -305.0,
-    rotY: 0.06, // Faces South onto KDA Avenue
-    w: 21.0,
+    cz: -306.0,
+    rotY: 0.08,
+    w: 22.0,
     d: 12.5,
     floors: 5,
     wallMat: bank.sageWall,
@@ -1109,38 +1973,17 @@ export function buildRoyalMoreDistrict(parent, m) {
     seed: 711,
   });
 
-  // 8) Greenline Paribahan Counter & Travel Arcade (South side of KDA Avenue)
-  buildRoyalCornerBuilding(staticG, dynamicG, bank, {
-    cx: -800.0,
-    cz: -256.0,
-    rotY: Math.PI - 0.08, // Faces North onto KDA Avenue
-    w: 22.0,
-    d: 12.0,
-    floors: 4,
-    wallMat: bank.royalCream,
-    trimMat: bank.marbleWhite,
-    accentMat: bank.emeraldWall,
-    shopMat: bank.dispBus,
-    signTitle: 'গ্রীন লাইন পরিবহন · রয়েল মোড় কাউন্টার',
-    signSub: 'GREENLINE PARIBAHAN · KHULNA — DHAKA AC BUS',
-    signBg: '#065f46',
-    seed: 809,
-  });
-
-  // Parked Greenline Luxury AC Bus in layby in front of Greenline Counter
-  buildGreenlineBus(staticG, dynamicG, bank, -798.0, -267.8, Math.PI * 0.52);
-
-  // 9) KMP Traffic Police Control Box on NE Roundabout Apron
+  // 10) KMP Traffic Police Control Box on NE Roundabout Apron
   buildKmpTrafficBox(staticG, dynamicG, bank, -701.2, -301.0);
 
-  // 10) Roadside Utility Poles with Bengali Posters, Election Banners & Parked CNG / Easybike
+  // 11) Roadside Utility Poles with Bengali Posters & Parked CNG / Easybike
   const poleSpots = [
     [-703.5, -274.5, 0.5],
     [-684.0, -288.0, 2.5],
     [-732.0, -308.0, -0.8],
     [-752.0, -296.0, 1.5],
     [-754.0, -266.0, -1.5],
-    [-786.0, -266.5, -1.5],
+    [-796.0, -267.0, -1.5],
   ];
   for (let i = 0; i < poleSpots.length; i++) {
     const [px, pz, pyaw] = poleSpots[i];
@@ -1148,7 +1991,6 @@ export function buildRoyalMoreDistrict(parent, m) {
     decorateCorridorPole(dynamicG, px, pz, pyaw, 910 + i);
   }
 
-  // Parked CNG Auto & Easybike neatly at the corner passenger stand (clear of traffic lanes)
   const vBank = {
     tire: bank.tireBlack,
     rim: bank.aluminum,
@@ -1172,21 +2014,20 @@ export function buildRoyalMoreDistrict(parent, m) {
   staticG.add(standCng);
 
   const standEasy = buildEasybike(vBank, false);
-  standEasy.position.set(-756.0, 0.05, -267.5);
+  standEasy.position.set(-758.0, 0.05, -267.5);
   standEasy.rotation.y = 1.65;
   staticG.add(standEasy);
 
-  // Ornamental Palms along perimeter corners
   for (const [px, pz, h, sd] of [
     [-702.5, -306.0, 7.6, 901],
     [-718.0, -265.0, 7.4, 902],
     [-746.0, -322.0, 7.8, 903],
-    [-772.0, -266.0, 7.2, 904],
+    [-770.0, -266.0, 7.2, 904],
   ]) {
     addOrnamentalPalm(staticG, bank, px, pz, h, sd);
   }
 
-  // Safely normalize (non-indexed + position/normal/uv) and batch all static geometry for locked 60+ FPS!
+  // Safely normalize (non-indexed + position/normal/uv) & batch all static meshes for locked 60+ FPS!
   staticG.updateWorldMatrix(true, true);
   const invRoot = staticG.matrixWorld.clone().invert();
   const buckets = new Map();
@@ -1245,10 +2086,9 @@ export function buildRoyalMoreDistrict(parent, m) {
     update(time, playerPos = null) {
       if (playerPos) this.syncVisibility(playerPos);
       if (!root.visible) return;
-      // Gentle shimmering fountain jet pulse
       for (let i = 0; i < fountainJets.length; i++) {
         const j = fountainJets[i];
-        const s = 0.94 + Math.sin(time * 5.2 + j.phase) * 0.08;
+        const s = 0.94 + Math.sin(time * 5.4 + j.phase) * 0.09;
         j.mesh.scale.set(1, s, 1);
       }
     },
