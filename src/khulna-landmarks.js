@@ -1239,6 +1239,12 @@ export function buildKhulnaLandmarks(parent, m) {
     group,
     royalMore,
     syncVisibility,
+    getGroundHeight(pos) {
+      return royalMore.getGroundHeight?.(pos) ?? 0;
+    },
+    applyCollisions(pos, radius, footY = 0) {
+      royalMore.applyCollisions?.(pos, radius, footY);
+    },
     setNightFactor(nf) {
       royalMore.setNightFactor(nf);
     },

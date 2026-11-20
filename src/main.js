@@ -1969,7 +1969,12 @@ function updateVehicleTransition(delta) {
 }
 
 function toggleCarDriving(targetCar = null, seatMode = 'driver') {
-  if (!cars.length || inStudio || vehicleTransition.active) return;
+  if (inStudio || vehicleTransition.active) return;
+  if (!cars.length) {
+    gtaPhoneUI?.open('dial');
+    gtaPhoneUI?.showToast?.('📞 আগে [P] ফোনের চিট কোড দিয়ে গাড়ি স্পন করুন (সর্বোচ্চ ২টি)!');
+    return;
+  }
   const activeCar = getDrivingCar();
   if (activeCar) {
     const wasRick = Boolean(activeCar.state.isRickshaw);
@@ -2185,8 +2190,9 @@ async function initialize() {
     },
     getLandmarks: () => khulnaMapUI?.landmarks || [],
   });
-  cars = createDrivableCarFleet(scene, manager);
-  bmwCar = cars[0];
+  // Vehicles stay tucked away on startup and only spawn on-demand via [P] phone cheat codes (max 2 at a time)
+  cars = [];
+  bmwCar = null;
 
   await allLoaded;
 
@@ -3571,7 +3577,7 @@ function computeGroundHeight(pos) {
     ((lz >= -5.12 && lz <= -1.48) || (lz >= 1.52 && lz <= 5.12));
 
   if (!insideMainSlab && !inFrontBalconyZone) {
-    return 0.0;
+    return environment?.landmarks?.getGroundHeight?.(pos) ?? 0.0;
   }
 
   let bestHouseY = 0.0;
@@ -3619,6 +3625,8 @@ function applyWorldCollisions(pos) {
   environment?.city?.applyCityCollisions?.(pos, PLAYER_RADIUS);
 
   const footY = pos.y - EYE_HEIGHT;
+  // Solid showcase landmark colliders (Chingri Chattar, Royal More buildings, buses & medians)
+  environment?.landmarks?.applyCollisions?.(pos, PLAYER_RADIUS, footY);
   // Global live & parked Khulna vehicles (CNGs, Easybikes, Sedans, Trucks) — solid everywhere on map!
   environment?.traffic?.applyVehicleCollisions?.(pos, PLAYER_RADIUS, footY);
 
