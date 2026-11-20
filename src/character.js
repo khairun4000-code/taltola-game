@@ -189,6 +189,11 @@ export function createPlayerCharacter(scene, manager) {
   let rightArm = null;
   let rightForeArm = null;
   let rightHand = null;
+  let handheldPhoneMesh = null;
+  let phoneActive = false;
+  let phoneTapTimer = 0;
+  const phoneHoldTarget = new THREE.Vector3();
+  const phoneTapTarget = new THREE.Vector3();
   const jawRestQ = new THREE.Quaternion();
   const lLidRestQ = new THREE.Quaternion();
   const rLidRestQ = new THREE.Quaternion();
@@ -459,6 +464,59 @@ export function createPlayerCharacter(scene, manager) {
     rightArm = findBoneBySuffix(model, 'RightArm');
     rightForeArm = findBoneBySuffix(model, 'RightForeArm');
     rightHand = findBoneBySuffix(model, 'RightHand');
+    if (rightHand) {
+      const phoneGroup = new THREE.Group();
+      phoneGroup.name = 'HandheldSmartphoneProp';
+      // Realistic flagship titanium chassis + glass OLED screen + triple-lens rear camera island
+      const chassisMat = new THREE.MeshStandardMaterial({ color: 0x1e2530, roughness: 0.22, metalness: 0.88 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.076, 0.156, 0.0095), chassisMat);
+      const pCanvas = document.createElement('canvas');
+      pCanvas.width = 128; pCanvas.height = 256;
+      const pCtx = pCanvas.getContext('2d');
+      const grd = pCtx.createLinearGradient(0, 0, 128, 256);
+      grd.addColorStop(0, '#0f172a'); grd.addColorStop(0.45, '#0ea5e9'); grd.addColorStop(1, '#10b981');
+      pCtx.fillStyle = grd; pCtx.fillRect(0, 0, 128, 256);
+      pCtx.fillStyle = '#020617'; pCtx.fillRect(42, 8, 44, 10);
+      pCtx.fillStyle = '#ffffff'; pCtx.font = 'bold 24px sans-serif'; pCtx.textAlign = 'center'; pCtx.fillText('12:00', 64, 58);
+      const iconCols = ['#22c55e', '#38bdf8', '#f472b6', '#f59e0b', '#a855f7', '#ef4444'];
+      for (let i = 0; i < 6; i++) {
+        pCtx.fillStyle = iconCols[i];
+        pCtx.fillRect(16 + (i % 3) * 36, 92 + Math.floor(i / 3) * 40, 24, 24);
+      }
+      pCtx.fillStyle = 'rgba(255,255,255,0.45)'; pCtx.fillRect(36, 238, 56, 4);
+      const screenTex = new THREE.CanvasTexture(pCanvas);
+      screenTex.colorSpace = THREE.SRGBColorSpace;
+      const screen = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.068, 0.144),
+        new THREE.MeshBasicMaterial({ map: screenTex }),
+      );
+      screen.position.z = 0.0052;
+      const camIsland = new THREE.Mesh(
+        new THREE.BoxGeometry(0.032, 0.034, 0.003),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.25, metalness: 0.7 }),
+      );
+      camIsland.position.set(-0.017, 0.052, -0.0055);
+      const lensMat = new THREE.MeshStandardMaterial({ color: 0x05080f, roughness: 0.08, metalness: 0.95 });
+      for (const [lx, ly] of [[-0.007, 0.008], [-0.007, -0.008], [0.007, 0.0]]) {
+        const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 0.003, 12), lensMat);
+        lens.rotation.x = Math.PI / 2;
+        lens.position.set(lx, ly, -0.0018);
+        camIsland.add(lens);
+      }
+      const flash = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.0028, 0.0028, 0.0025, 10),
+        new THREE.MeshBasicMaterial({ color: 0xfef3c7 }),
+      );
+      flash.rotation.x = Math.PI / 2;
+      flash.position.set(0.007, 0.010, -0.0016);
+      camIsland.add(flash);
+      phoneGroup.add(body, screen, camIsland);
+      phoneGroup.position.set(0.018, 0.075, 0.032);
+      phoneGroup.rotation.set(-0.42, 0.22, 0.12);
+      phoneGroup.visible = false;
+      rightHand.add(phoneGroup);
+      handheldPhoneMesh = phoneGroup;
+    }
     if (jawBone) jawRestQ.copy(jawBone.quaternion);
     if (lLidTop) lLidRestQ.copy(lLidTop.quaternion);
     if (rLidTop) rLidRestQ.copy(rLidTop.quaternion);
@@ -974,6 +1032,64 @@ export function createPlayerCharacter(scene, manager) {
     lockHeadAndNeckStraight();
   }
 
+  function applyCarDrivingPose(cd) {
+    if (!cd || !cd.active || !cd.anchors) return;
+    const a = cd.anchors;
+    const h = cd.heading || 0;
+    ikFwd.set(Math.sin(h), 0, Math.cos(h));
+    ikRight.set(Math.cos(h), 0, -Math.sin(h));
+
+    // 1. Clean rest reset (zero drift/spin)
+    resetUpperAndLimbBonesToRest();
+
+    // 2. Comfortable slightly reclined driving posture
+    if (spineBone) {
+      eulerTemp.set(-0.08, 0, 0);
+      qTempA.setFromEuler(eulerTemp);
+      spineBone.quaternion.copy(restSpineQ).multiply(qTempA);
+    }
+    if (spine1Bone) {
+      eulerTemp.set(-0.05, 0, 0);
+      qTempA.setFromEuler(eulerTemp);
+      spine1Bone.quaternion.copy(restSpine1Q).multiply(qTempA);
+    }
+    lockHeadAndNeckStraight();
+    root.updateMatrixWorld(true);
+
+    // 3. Seat hips directly on the car driver seat
+    ikTarget.copy(a.seat);
+    alignHipsToWorldPoint(ikTarget);
+
+    // 4. 2-Bone IK for both legs seated toward the pedals
+    ikPole.copy(a.seat).addScaledVector(ikFwd, 0.72).addScaledVector(ikRight, 0.16);
+    ikPole.y += 0.18;
+    solveTwoBoneIK(leftUpLeg, leftLeg, leftFoot, a.footL, ikPole);
+
+    ikPole.copy(a.seat).addScaledVector(ikFwd, 0.72).addScaledVector(ikRight, -0.16);
+    ikPole.y += 0.18;
+    solveTwoBoneIK(rightUpLeg, rightLeg, rightFoot, a.footR, ikPole);
+
+    // 5. 2-Bone IK locking Left & Right hands onto the live rotating 3D steering wheel grips!
+    if (a.gripL && a.gripR) {
+      ikPole.copy(a.seat).addScaledVector(ikFwd, 0.12).addScaledVector(ikRight, 0.56);
+      ikPole.y -= 0.04;
+      solveTwoBoneIK(leftArm, leftForeArm, leftHand, a.gripL, ikPole);
+
+      ikPole.copy(a.seat).addScaledVector(ikFwd, 0.12).addScaledVector(ikRight, -0.56);
+      ikPole.y -= 0.04;
+      solveTwoBoneIK(rightArm, rightForeArm, rightHand, a.gripR, ikPole);
+    }
+
+    // 6. Stable forward gaze with subtle natural look into steering turns
+    lockHeadAndNeckStraight();
+    const turnGlance = THREE.MathUtils.clamp((cd.steerAngle || 0) * 0.28, -0.22, 0.22);
+    if (headBone && Math.abs(turnGlance) > 0.005) {
+      eulerTemp.set(0, turnGlance, 0);
+      qTempA.setFromEuler(eulerTemp);
+      headBone.quaternion.copy(restHeadQ).multiply(qTempA);
+    }
+  }
+
   function applyVehicleAnimPose(va) {
     if (!va || !va.type) return;
     const h = va.heading || 0;
@@ -1056,12 +1172,14 @@ export function createPlayerCharacter(scene, manager) {
     inStudio = false,
     hideMesh = false,
     rickshawRide = null,
+    carDrive = null,
     vehicleAnim = null,
   }) {
     const dt = Math.min(Math.max(delta || 0.016, 0.001), 0.05);
     const isRidingRickshaw = Boolean(rickshawRide && rickshawRide.active);
+    const isDrivingCar = Boolean(carDrive && carDrive.active);
     const isVehicleAnim = Boolean(vehicleAnim && vehicleAnim.type);
-    const shouldShow = !hideMesh && (inStudio || isRidingRickshaw || isVehicleAnim || state.cameraMode !== 'first');
+    const shouldShow = !hideMesh && (inStudio || isRidingRickshaw || isDrivingCar || isVehicleAnim || state.cameraMode !== 'first');
     root.visible = shouldShow;
 
     if (!inStudio && position) {
@@ -1098,6 +1216,8 @@ export function createPlayerCharacter(scene, manager) {
         state.facingYaw = vehicleAnim.facingYaw ?? vehicleAnim.heading ?? state.facingYaw;
       } else if (isRidingRickshaw) {
         state.facingYaw = rickshawRide.heading;
+      } else if (isDrivingCar) {
+        state.facingYaw = carDrive.heading;
       } else if (isClimbing || isDiving) {
         // Keep facing toward climb/dive direction
       } else if (horizSpeed > 0.15) {
@@ -1106,7 +1226,7 @@ export function createPlayerCharacter(scene, manager) {
         state.facingYaw += wrapAngleDelta(moveYaw - state.facingYaw) * Math.min(1, dt * 12.0);
       } else if (state.emote && state.emote !== 'sit' && state.cameraMode === 'back') {
         // Keep facing toward camera while emoting
-      } else if (state.emote !== 'sit') {
+      } else if (state.emote !== 'sit' && state.cameraMode === 'first') {
         const defaultFacing = yaw + Math.PI;
         state.facingYaw += wrapAngleDelta(defaultFacing - state.facingYaw) * Math.min(1, dt * 9.0);
       }
@@ -1205,6 +1325,7 @@ export function createPlayerCharacter(scene, manager) {
     }
 
     const needsCleanIdleReset = (isRidingRickshaw && rickshawRide.seat !== 'passenger')
+      || isDrivingCar
       || (isVehicleAnim && (vehicleAnim.type === 'rickshaw_mount_driver' || vehicleAnim.type === 'rickshaw_dismount_driver'));
 
     if (isVehicleAnim) {
@@ -1226,6 +1347,11 @@ export function createPlayerCharacter(scene, manager) {
         loopOnce = false;
         fadeTime = 0.0;
       }
+    } else if (isDrivingCar) {
+      targetClip = 'Idle';
+      targetScale = 1.0;
+      loopOnce = false;
+      fadeTime = 0.0;
     }
 
     if (needsCleanIdleReset) {
@@ -1250,17 +1376,72 @@ export function createPlayerCharacter(scene, manager) {
     } else if (isRidingRickshaw) {
       applyRickshawRidingPose(rickshawRide);
       lockHeadAndNeckStraight();
+    } else if (isDrivingCar) {
+      applyCarDrivingPose(carDrive);
     }
-    applyProceduralHeadAndFace(dt, Boolean(isRidingRickshaw || isVehicleAnim));
+
+    // Persistent right-hand smartphone hold + looking down at phone + left-hand finger-tap acting!
+    const holdingPhoneNow = phoneActive && !inStudio && !isRidingRickshaw && !isDrivingCar && !isVehicleAnim;
+    if (phoneTapTimer > 0) phoneTapTimer = Math.max(0, phoneTapTimer - dt);
+    if (holdingPhoneNow && spine2Bone && rightArm && rightForeArm && rightHand) {
+      root.updateMatrixWorld(true);
+      const h = state.facingYaw || 0;
+      ikFwd.set(Math.sin(h), 0, Math.cos(h));
+      ikRight.set(Math.cos(h), 0, -Math.sin(h));
+      spine2Bone.getWorldPosition(phoneHoldTarget);
+      phoneHoldTarget.addScaledVector(ikFwd, 0.34).addScaledVector(ikRight, -0.08);
+      phoneHoldTarget.y += 0.12;
+      ikPole.copy(phoneHoldTarget).addScaledVector(ikRight, -0.45).addScaledVector(ikFwd, -0.18);
+      ikPole.y -= 0.32;
+      solveTwoBoneIK(rightArm, rightForeArm, rightHand, phoneHoldTarget, ikPole);
+
+      // Look down continuously toward the smartphone held in the right hand
+      if (neckBone) {
+        eulerTemp.set(0.18, -0.08, 0);
+        qTempA.setFromEuler(eulerTemp);
+        neckBone.quaternion.copy(restNeckQ).multiply(qTempA);
+      }
+      if (headBone) {
+        eulerTemp.set(0.24, -0.10, 0);
+        qTempA.setFromEuler(eulerTemp);
+        headBone.quaternion.copy(restHeadQ).multiply(qTempA);
+      }
+
+      // Finger-tap acting: left hand reaches over and taps the phone screen whenever user presses a button!
+      if (phoneTapTimer > 0 && leftArm && leftForeArm && leftHand) {
+        const tapWave = Math.sin((phoneTapTimer / 0.28) * Math.PI);
+        phoneTapTarget.copy(phoneHoldTarget)
+          .addScaledVector(ikFwd, -0.02 - (1 - tapWave) * 0.08)
+          .addScaledVector(ikRight, 0.04 + (1 - tapWave) * 0.14);
+        phoneTapTarget.y += 0.04 - (1 - tapWave) * 0.10;
+        ikPole.copy(phoneHoldTarget).addScaledVector(ikRight, 0.45).addScaledVector(ikFwd, -0.14);
+        ikPole.y -= 0.30;
+        solveTwoBoneIK(leftArm, leftForeArm, leftHand, phoneTapTarget, ikPole);
+      }
+    }
+
+    applyProceduralHeadAndFace(dt, Boolean(isRidingRickshaw || isDrivingCar || isVehicleAnim || holdingPhoneNow));
     if (isRidingRickshaw || isVehicleAnim) {
       lockHeadAndNeckStraight();
     }
+  }
+
+  function setPhoneInHand(visible) {
+    phoneActive = Boolean(visible);
+    if (handheldPhoneMesh) handheldPhoneMesh.visible = phoneActive;
+    if (!phoneActive) phoneTapTimer = 0;
+  }
+
+  function triggerPhoneTap() {
+    if (phoneActive) phoneTapTimer = 0.28;
   }
 
   return {
     root,
     state,
     morphMeshes,
+    setPhoneInHand,
+    triggerPhoneTap,
     triggerAttack,
     triggerEmote,
     setExpression,

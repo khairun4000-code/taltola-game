@@ -13,6 +13,9 @@
   <body>
     <canvas id="scene" aria-label="Interactive 3D Character Studio and Khulna Street Game"></canvas>
     <div id="vignette" class="vignette hidden" aria-hidden="true"></div>
+    <div id="vehicle-fade" class="vehicle-fade" aria-hidden="true"></div>
+    <div id="selfie-flash" class="selfie-flash" aria-hidden="true"></div>
+    <div id="gta-cheat-toast" class="gta-cheat-toast hidden" role="status"></div>
 
     <section id="loading" class="loading-screen">
       <div class="loading-mark">3D<span>/</span>HUMAN</div>
@@ -198,7 +201,7 @@
       <div id="interact-prompt" class="interact-prompt hidden">[E] মেইন গেট খুলুন</div>
       <div id="emote-bar" class="emote-bar">
         <button type="button" id="run-pill-button" class="emote-pill"><kbd>SHIFT / R</kbd> দৌড়ানো</button>
-        <button type="button" class="emote-pill" data-game-emote="pocket"><kbd>P</kbd> স্টাইল</button>
+        <button type="button" class="emote-pill" data-game-emote="pocket">স্টাইল</button>
         <button type="button" class="emote-pill" data-game-emote="dance1"><kbd>1</kbd> নাচ ১</button>
         <button type="button" class="emote-pill" data-game-emote="dance2"><kbd>2</kbd> নাচ ২</button>
         <button type="button" class="emote-pill" data-game-emote="wave"><kbd>3</kbd> সালাম/হাই</button>
@@ -208,19 +211,6 @@
         <button type="button" class="emote-pill" data-game-emote="phone"><kbd>7</kbd> ফোন</button>
         <button type="button" class="emote-pill" data-game-emote="mobile"><kbd>8</kbd> গেম</button>
         <button type="button" class="emote-pill" data-game-emote="laugh"><kbd>9</kbd> হাসি</button>
-      </div>
-      <div id="car-door-panel" class="car-door-panel hidden">
-        <div class="car-door-header">
-          <span id="car-door-title">গাড়ির দরজা কন্ট্রোল (CAR DOORS)</span>
-          <small>[O] মাউস ফ্রি</small>
-        </div>
-        <div class="car-door-grid">
-          <button type="button" class="car-door-btn" data-car-door="FL">FL ড্রাইভার</button>
-          <button type="button" class="car-door-btn" data-car-door="FR">FR সামনের ডান</button>
-          <button type="button" class="car-door-btn" data-car-door="RL">RL পেছনের বাম</button>
-          <button type="button" class="car-door-btn" data-car-door="RR">RR পেছনের ডান</button>
-          <button type="button" id="car-door-all-btn" class="car-door-btn car-door-all">সব দরজা খুলুন / বন্ধ (ALL)</button>
-        </div>
       </div>
       <div id="car-hud" class="car-hud hidden">
         <div class="car-hud-top">
@@ -234,21 +224,14 @@
         <div class="car-rpm-track"><div id="car-rpm-fill" class="car-rpm-fill"></div></div>
         <div class="car-hud-actions">
           <button type="button" id="car-seat-btn" class="car-chip hidden"><kbd>G</kbd> <span id="car-seat-label">প্যাসেঞ্জার সিট</span></button>
-          <button type="button" id="car-pov-btn" class="car-chip car-chip-pov"><kbd>V</kbd> <span id="car-cam-label">POV ককপিট</span></button>
+          <button type="button" id="car-pov-btn" class="car-chip"><kbd>V</kbd> <span id="car-cam-label">ক্যামেরা</span></button>
           <button type="button" id="car-paint-btn" class="car-chip"><kbd>C</kbd> <span id="car-paint-name">Green</span></button>
           <button type="button" id="car-horn-btn" class="car-chip"><kbd>H</kbd> হর্ন</button>
           <button type="button" id="car-exit-btn" class="car-chip car-chip-exit"><kbd>E / T</kbd> নামুন</button>
         </div>
-        <div id="car-hud-doors" class="car-hud-doors">
-          <button type="button" class="car-door-mini" data-car-door="FL">FL</button>
-          <button type="button" class="car-door-mini" data-car-door="FR">FR</button>
-          <button type="button" class="car-door-mini" data-car-door="RL">RL</button>
-          <button type="button" class="car-door-mini" data-car-door="RR">RR</button>
-          <button type="button" class="car-door-mini car-door-mini-all" data-car-door="ALL">সব দরজা</button>
-        </div>
-        <div class="car-drive-hint"><kbd>W/S</kbd> চলুন/ব্রেক · <kbd>A/D</kbd> স্টিয়ারিং · <kbd>V</kbd> POV ভিউ · <kbd>1-4</kbd> দরজা · <kbd>ESC</kbd> ম্যাপ</div>
+        <div class="car-drive-hint"><kbd>W/S</kbd> চলুন/ব্রেক · <kbd>A/D</kbd> স্টিয়ারিং · <kbd>V</kbd> ক্যামেরা · <kbd>ESC</kbd> ম্যাপ</div>
       </div>
-      <div class="walk-controls"><span id="look-control"><kbd>MOUSE</kbd> 360°</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>F</kbd> রিকশা চালান</span><span><kbd>G</kbd> রিকশা প্যাসেঞ্জার</span><span><kbd>T</kbd> গাড়ি</span><span><kbd>ESC</kbd> ম্যাপ</span><span><kbd>TAB</kbd> বাটন লুকান</span><span><kbd>V</kbd> VIEW</span></div>
+      <div class="walk-controls"><span id="look-control"><kbd>2x CLICK</kbd> ফ্রি-লুক / মাউস</span><span><kbd>P</kbd> ফোন</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>F</kbd> রিকশা</span><span><kbd>G</kbd> প্যাসেঞ্জার</span><span><kbd>T</kbd> গাড়ি</span><span><kbd>ESC</kbd> ম্যাপ</span><span><kbd>TAB</kbd> ক্লিন HUD</span></div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
       <button id="minimap-dock" class="minimap-dock" type="button" title="Open Full Khulna City Map [ESC]">
         <canvas id="khulna-minimap" width="148" height="148"></canvas>
@@ -332,6 +315,86 @@
           <button type="button" id="lift-door-open-btn" class="lift-door-btn">◄► দরজা খুলুন (Open)</button>
           <button type="button" id="lift-door-close-btn" class="lift-door-btn">►◄ দরজা বন্ধ (Close)</button>
           <button type="button" id="lift-exit-btn" class="lift-door-btn lift-exit-highlight">লিফট থেকে বের হোন →</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- GTA V-STYLE SMARTPHONE OVERLAY (OPENS WITH ARROW UP [↑]) -->
+    <aside id="gta-phone" class="gta-phone hidden" aria-label="GTA V Smartphone">
+      <div class="phone-bezel">
+        <div class="phone-notch"></div>
+        <div class="phone-statusbar">
+          <span id="phone-clock">12:00</span>
+          <span class="phone-carrier">KHULNA 5G · ▮▮▮▮ 🔋</span>
+        </div>
+        <div class="phone-topbar">
+          <button id="phone-back-btn" class="phone-nav-btn hidden" type="button">← হোম</button>
+          <span class="phone-title">iFruit · খুলনা</span>
+          <button id="phone-close-btn" class="phone-nav-btn" type="button" title="Close Phone (P)">✕</button>
+        </div>
+
+        <div id="phone-home" class="phone-screen">
+          <div class="phone-wallpaper-banner">
+            <strong>KHULNA OS</strong>
+            <small>তালতলা · ওপেন ওয়ার্ল্ড</small>
+          </div>
+          <div class="phone-app-grid">
+            <button type="button" class="phone-app-tile tile-dial" data-phone-app="dial">
+              <span class="tile-icon">📞</span>
+              <b>ডায়াল প্যাড</b>
+              <small>চিট কোড স্পন</small>
+            </button>
+            <button type="button" class="phone-app-tile tile-tp" data-phone-app="teleport">
+              <span class="tile-icon">📍</span>
+              <b>টেলিপোর্ট</b>
+              <small>খুলনা ম্যাপ</small>
+            </button>
+            <button type="button" class="phone-app-tile tile-selfie" data-phone-app="selfie">
+              <span class="tile-icon">📸</span>
+              <b>সেলফি</b>
+              <small>ক্যামেরা</small>
+            </button>
+          </div>
+          <p class="phone-footer-tip"><kbd>P</kbd> চাপলে ফোন বন্ধ/চালু হবে</p>
+        </div>
+
+        <div id="phone-dial" class="phone-screen hidden">
+          <div id="phone-dial-display" class="phone-dial-display">—</div>
+          <div id="phone-dial-status" class="phone-dial-status">চিট কোড ডায়াল করে কল চাপুন</div>
+          <div class="phone-keypad">
+            <button type="button" class="dial-key" data-dial-key="1">1</button>
+            <button type="button" class="dial-key" data-dial-key="2">2</button>
+            <button type="button" class="dial-key" data-dial-key="3">3</button>
+            <button type="button" class="dial-key" data-dial-key="4">4</button>
+            <button type="button" class="dial-key" data-dial-key="5">5</button>
+            <button type="button" class="dial-key" data-dial-key="6">6</button>
+            <button type="button" class="dial-key" data-dial-key="7">7</button>
+            <button type="button" class="dial-key" data-dial-key="8">8</button>
+            <button type="button" class="dial-key" data-dial-key="9">9</button>
+            <button type="button" class="dial-key" data-dial-key="*">*</button>
+            <button type="button" class="dial-key" data-dial-key="0">0</button>
+            <button type="button" class="dial-key" data-dial-key="BACK">⌫</button>
+            <button type="button" class="dial-key dial-call" data-dial-key="CALL">📞 কল করুন (Spawn)</button>
+          </div>
+          <div class="phone-cheat-header">গাড়ির চিট কোড (ট্যাপ করে ডায়াল করুন)</div>
+          <div id="phone-cheat-list" class="phone-cheat-list"></div>
+        </div>
+
+        <div id="phone-teleport" class="phone-screen hidden">
+          <div class="phone-section-title">খুলনার যেকোনো জায়গায় যান</div>
+          <div id="phone-teleport-list" class="phone-teleport-list"></div>
+        </div>
+
+        <div id="phone-selfie" class="phone-screen hidden">
+          <div class="phone-section-title">সেলফি ক্যামেরা (FRONT CAM)</div>
+          <div class="selfie-expr-row">
+            <button type="button" class="selfie-expr-btn active" data-selfie-expr="happy">😊 হাসি</button>
+            <button type="button" class="selfie-expr-btn" data-selfie-expr="normal">😐 সাধারণ</button>
+            <button type="button" class="selfie-expr-btn" data-selfie-expr="surprised">😮 অবাক</button>
+          </div>
+          <button id="phone-selfie-shutter" type="button" class="selfie-shutter-btn">📸 সেলফি তুলুন</button>
+          <img id="phone-selfie-preview" class="selfie-preview hidden" alt="Captured Selfie" />
+          <a id="phone-selfie-download" class="selfie-download-btn hidden" href="#" download="khulna-selfie.png">⬇ সেলফি ডাউনলোড করুন (PNG)</a>
         </div>
       </div>
     </aside>

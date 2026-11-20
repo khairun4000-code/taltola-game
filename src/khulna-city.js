@@ -843,8 +843,8 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
     if (cx >= 401 && cx <= 439 && cz >= 942 && cz <= 1012) return true;
     // 2) AAA Slice 1: Haji Mohsin Road Extended AAA Corridor (z = -150..+150, East & West flanks)
     if (cx >= -66 && cx <= 70 && cz >= -152 && cz <= 152) return true;
-    // 3) Khulna Alia Kamil Madrasah Model Mosque & Pond Ghat steps
-    if (cx >= 145 && cx <= 195 && cz >= 100 && cz <= 156) return true;
+    // 3) Khulna Alia Kamil Madrasah full 3D campus footprint
+    if (cx >= 134 && cx <= 232 && cz >= 62 && cz <= 156) return true;
     // 4) Khulna District Stadium ring stands & floodlight towers
     if (cx >= -152 && cx <= 24 && cz >= -828 && cz <= -646) return true;
     // 5) Khulna Circuit House heritage pavilions & Boro Maath foreground

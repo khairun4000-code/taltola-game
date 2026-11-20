@@ -223,167 +223,265 @@ function addUtilityPole(staticG, dynamicG, lm, x, z, facingX = 1) {
   return [x, 8.8, z];
 }
 
+function addCoconutPalm(staticG, lm, x, z, height = 9.5, leanX = 0.4, leanZ = 0.2) {
+  const trunkMat = lm.teakWood;
+  const leafMat = lm.emeraldMat;
+  const segs = 5;
+  let px = x;
+  let py = 0;
+  let pz = z;
+  for (let i = 1; i <= segs; i++) {
+    const t = i / segs;
+    const nx = x + leanX * t * t;
+    const ny = height * t;
+    const nz = z + leanZ * t * t;
+    rodBetween(staticG, [px, py, pz], [nx, ny, nz], THREE.MathUtils.lerp(0.22, 0.11, t), trunkMat, 7);
+    px = nx; py = ny; pz = nz;
+  }
+  for (let f = 0; f < 7; f++) {
+    const ang = (f / 7) * Math.PI * 2;
+    const frondLen = 2.6 + (f % 2) * 0.5;
+    const midX = px + Math.cos(ang) * frondLen * 0.55;
+    const midY = py + 0.55;
+    const midZ = pz + Math.sin(ang) * frondLen * 0.55;
+    const tipX = px + Math.cos(ang) * frondLen;
+    const tipY = py - 0.55;
+    const tipZ = pz + Math.sin(ang) * frondLen;
+    rodBetween(staticG, [px, py, pz], [midX, midY, midZ], 0.08, leafMat, 5);
+    rodBetween(staticG, [midX, midY, midZ], [tipX, tipY, tipZ], 0.06, leafMat, 5);
+    rotBox(staticG, [0.55, 0.08, frondLen * 0.72], [midX, midY - 0.12, midZ], leafMat, Math.atan2(tipX - px, tipZ - pz));
+  }
+}
+
+function addRedGreenFenceSpan(staticG, lm, x0, z0, x1, z1, posts = 8) {
+  const dx = x1 - x0;
+  const dz = z1 - z0;
+  const len = Math.hypot(dx, dz);
+  const yaw = Math.atan2(dx, dz);
+  const midX = (x0 + x1) * 0.5;
+  const midZ = (z0 + z1) * 0.5;
+  rotBox(staticG, [0.06, 0.06, len], [midX, 0.96, midZ], lm.flowerRed, yaw);
+  rotBox(staticG, [0.05, 0.05, len], [midX, 0.50, midZ], lm.emeraldMat, yaw);
+  rotBox(staticG, [0.06, 0.06, len], [midX, 0.14, midZ], lm.flowerRed, yaw);
+  for (let i = 0; i <= posts; i++) {
+    const t = i / posts;
+    const mat = i % 2 === 0 ? lm.flowerRed : lm.emeraldMat;
+    box(staticG, [0.06, 0.98, 0.06], [x0 + dx * t, 0.52, z0 + dz * t], mat);
+  }
+}
+
 function buildAliaMadrasahCampus(staticG, dynamicG, lm, m) {
-  // Khulna Alia Kamil Madrasah & District Model Mosque (mx = 176, mz = 112)
-  // Open campus lawn green[9] (x = 193..236, z = 82..135) & Central Pond (x = 194..235, z = 145..177)
-  const mx = 176.0;
-  const mz = 112.0;
+  // Real-photo Khulna Alia Kamil Madrasah Campus (খুলনা আলিয়া কামিল মাদ্রাসা)
+  // Spawn is at (216, 108) looking West toward (176, 112).
 
-  // 1) District Model Mosque Plinth, Entrance Portico, Arched Colonnade, Dome & Twin Minarets
-  box(staticG, [17.8, 0.55, 15.8], [mx, 0.275, mz], lm.darkConcrete);
-  box(staticG, [16.0, 8.8, 14.0], [mx, 4.9, mz], lm.whitePlaster);
-  box(staticG, [16.8, 0.42, 14.8], [mx, 4.85, mz], lm.whitePlaster);
-  box(staticG, [16.8, 0.72, 14.8], [mx, 9.5, mz], lm.emeraldMat);
+  // 1) Concrete Entrance Driveway leading straight to the Iconic Curved-Portico Main Building (x = 191..224, z = 108)
+  box(staticG, [34.0, 0.07, 5.4], [207.5, 0.025, 108.0], lm.stonePlinth, { castShadow: false, uvScale: 2.8 });
+  box(staticG, [34.0, 0.22, 0.36], [207.5, 0.11, 105.1], lm.darkConcrete);
+  box(staticG, [34.0, 0.22, 0.36], [207.5, 0.11, 110.9], lm.darkConcrete);
+  // Signature Red & Green Painted Iron Courtyard Railings lining both sides of the entrance road
+  addRedGreenFenceSpan(staticG, lm, 195.0, 105.1, 222.0, 105.1, 14);
+  addRedGreenFenceSpan(staticG, lm, 195.0, 110.9, 222.0, 110.9, 14);
 
-  // Projecting Eastern Mosque Marble Portico & Wide Entry Steps facing Campus Forecourt (x = 184..188)
-  box(staticG, [3.8, 0.48, 7.2], [mx + 9.4, 0.24, mz], lm.stonePlinth);
-  box(staticG, [4.6, 0.24, 8.0], [mx + 9.8, 0.12, mz], lm.brick);
-  box(staticG, [3.4, 0.42, 6.8], [mx + 9.4, 4.9, mz], lm.emeraldMat);
-  for (const pz of [-2.8, 2.8]) {
-    cylinder(staticG, 0.22, 0.26, 4.4, [mx + 10.6, 2.55, mz + pz], lm.whitePlaster, 10);
+  // Tall Coconut Palms flanking the main building entrance just like the real photo
+  addCoconutPalm(staticG, lm, 196.5, 101.2, 11.2, 0.8, -0.5);
+  addCoconutPalm(staticG, lm, 204.0, 100.8, 10.4, 0.5, 0.4);
+  addCoconutPalm(staticG, lm, 196.0, 115.0, 11.8, 0.7, 0.6);
+  addCoconutPalm(staticG, lm, 205.5, 116.2, 9.8, -0.4, 0.5);
+
+  // 2) ICONIC 3-STORY MAIN ADMINISTRATIVE & HERITAGE BUILDING with Curved Cylindrical Portico (Photo 1!)
+  // Positioned at x = 185, z = 108, facing East (+X) directly toward the teleport spawn point!
+  const mainX = 185.0;
+  const mainZ = 108.0;
+  // Plinth & 3-story cream-beige wings (north wing z = 88..103, south wing z = 113..128)
+  box(staticG, [8.6, 0.45, 40.0], [mainX, 0.225, mainZ], lm.stonePlinth);
+  box(staticG, [7.6, 10.2, 38.8], [mainX - 0.3, 5.3, mainZ], lm.colonialCream);
+  // Terracotta-red roof cornice & floor veranda slab bands
+  box(staticG, [8.8, 0.55, 39.8], [mainX, 10.55, mainZ], lm.terracottaTile);
+  box(staticG, [8.6, 0.32, 39.4], [mainX, 3.65, mainZ], lm.colonialCream);
+  box(staticG, [8.6, 0.32, 39.4], [mainX, 7.05, mainZ], lm.colonialCream);
+
+  // Arched ground-floor colonnade & upper balustrade verandas on both wings
+  for (let wz = -17.0; wz <= 17.0; wz += 3.4) {
+    if (Math.abs(wz) < 5.2) continue;
+    // Shaded veranda cavities across 3 floors
+    box(staticG, [0.45, 2.7, 2.4], [mainX + 3.65, 1.85, mainZ + wz], lm.cavityMat);
+    box(staticG, [0.45, 2.4, 2.4], [mainX + 3.65, 5.25, mainZ + wz], lm.emeraldDark);
+    box(staticG, [0.45, 2.3, 2.4], [mainX + 3.65, 8.65, mainZ + wz], lm.emeraldDark);
+    // Decorative white balustrade parapet walls on 2nd & 3rd floor verandas
+    box(staticG, [0.22, 0.85, 3.1], [mainX + 3.92, 4.18, mainZ + wz], lm.whitePlaster);
+    box(staticG, [0.22, 0.85, 3.1], [mainX + 3.92, 7.58, mainZ + wz], lm.whitePlaster);
+    // Vertical colonnade piers
+    box(staticG, [0.42, 10.1, 0.44], [mainX + 3.85, 5.25, mainZ + wz - 1.7], lm.colonialCream);
   }
-  box(staticG, [0.18, 3.25, 3.6], [mx + 8.05, 2.1, mz], lm.cavityMat);
-  box(staticG, [0.22, 2.35, 3.0], [mx + 8.10, 1.65, mz], lm.teakWood);
-  box(staticG, [0.24, 0.72, 3.0], [mx + 8.10, 3.30, mz], lm.glass);
-  for (const dz of [-1.58, 0, 1.58]) {
-    box(staticG, [0.26, 3.25, 0.14], [mx + 8.12, 2.1, mz + dz], lm.goldMat);
+
+  // Iconic 3-Story Semicircular Cylindrical Central Portico Tower (projecting East at x = 189.2, z = 108)
+  const portX = 189.4;
+  cylinder(staticG, 4.65, 4.75, 0.42, [portX, 0.21, mainZ], lm.stonePlinth, 24);
+  // Ground-floor wide entrance portico columns & recessed dark entry arch
+  for (const ang of [-1.05, -0.52, 0.52, 1.05]) {
+    cylinder(
+      staticG,
+      0.24,
+      0.28,
+      3.55,
+      [portX + Math.cos(ang) * 4.25, 1.98, mainZ + Math.sin(ang) * 4.25],
+      lm.colonialCream,
+      10
+    );
+  }
+  box(staticG, [1.8, 3.35, 3.8], [mainX + 3.7, 1.9, mainZ], lm.cavityMat);
+  // Curved 1st-floor entablature fascia (holds main name sign), 2nd-floor curved veranda + fascia, 3rd-floor curved crown
+  cylinder(staticG, 4.72, 4.72, 1.15, [portX, 3.95, mainZ], lm.warmOchre, 24);
+  cylinder(staticG, 4.42, 4.42, 2.35, [portX, 5.55, mainZ], lm.emeraldDark, 24);
+  cylinder(staticG, 4.76, 4.76, 1.25, [portX, 7.25, mainZ], lm.colonialCream, 24);
+  cylinder(staticG, 4.42, 4.42, 2.20, [portX, 8.85, mainZ], lm.emeraldDark, 24);
+  cylinder(staticG, 4.82, 4.82, 1.65, [portX, 10.75, mainZ], lm.colonialCream, 24);
+  cylinder(staticG, 4.92, 4.92, 0.28, [portX, 11.65, mainZ], lm.terracottaTile, 24);
+  for (const ang of [-0.95, -0.35, 0.35, 0.95]) {
+    cylinder(staticG, 0.14, 0.15, 2.35, [portX + Math.cos(ang) * 4.58, 5.55, mainZ + Math.sin(ang) * 4.58], lm.whitePlaster, 8);
+    cylinder(staticG, 0.14, 0.15, 2.25, [portX + Math.cos(ang) * 4.58, 8.85, mainZ + Math.sin(ang) * 4.58], lm.whitePlaster, 8);
   }
 
-  for (const bx of [-5.2, -2.6, 0, 2.6, 5.2]) {
-    for (const fz of [-7.04, 7.04]) {
-      const sideSign = Math.sign(fz);
-      box(staticG, [1.60, 2.66, 0.08], [mx + bx, 2.1, mz + fz - sideSign * 0.04], lm.cavityMat);
-      box(staticG, [1.52, 2.54, 0.12], [mx + bx, 2.1, mz + fz + sideSign * 0.03], lm.glass);
-      box(staticG, [1.60, 2.36, 0.08], [mx + bx, 6.7, mz + fz - sideSign * 0.04], lm.cavityMat);
-      box(staticG, [1.52, 2.24, 0.12], [mx + bx, 6.7, mz + fz + sideSign * 0.03], lm.glass);
-      box(staticG, [0.42, 8.6, 0.44], [mx + bx - 1.1, 4.8, mz + fz], lm.whitePlaster);
+  // Exact Mounted Bilingual Signage on the Cylindrical Portico Front (facing East toward spawn!)
+  addSignBoard(
+    dynamicG,
+    {
+      title: 'খুলনা আলিয়া কামিল মাদ্রাসা',
+      subtitle: 'KHULNA ALIA KAMIL MADRASAH · স্থাপিত: ১৯৫২',
+      bg: '#c8a57a',
+      fg: '#2b1b12',
+      accent: '#7c2d12',
+      border: '#7c2d12',
+    },
+    [portX + 4.78, 3.98, mainZ],
+    Math.PI * 0.5,
+    5.4,
+    1.12
+  );
+  addSignBoard(
+    dynamicG,
+    {
+      title: 'المدرسة العالية خولنا · খুলনা আলিয়া মাদ্রাসা',
+      subtitle: 'KHULNA ALIA MADRASAH · MAIN ACADEMIC BHABAN',
+      bg: '#efe3cd',
+      fg: '#1e293b',
+      accent: '#0f5132',
+      border: '#b94a38',
+    },
+    [portX + 4.82, 7.25, mainZ],
+    Math.PI * 0.5,
+    5.6,
+    1.15
+  );
+
+  // 3) CENTRAL GREEN GRASSY CAMPUS FIELD (মাদ্রাসা মাঠ) behind/west of Main Building (x = 148..180, z = 78..134)
+  box(staticG, [34.0, 0.05, 56.0], [164.0, 0.012, 106.0], lm.moss, { castShadow: false });
+  // Paved campus internal road running along the North/East edge of the grassy field (Photo 2!)
+  box(staticG, [36.0, 0.06, 4.2], [165.0, 0.022, 81.5], lm.stonePlinth, { castShadow: false, uvScale: 2.6 });
+
+  // 4) 6-STORY WHITE & TERRACOTTA-RED MODERN ACADEMIC BUILDING (Photo 2 — Center-West facing the field!)
+  const b6x = 144.0;
+  const b6z = 106.0;
+  const b6H = 19.2;
+  box(staticG, [10.4, 0.5, 34.0], [b6x, 0.25, b6z], lm.terracottaTile);
+  box(staticG, [9.6, b6H, 33.2], [b6x, b6H * 0.5 + 0.4, b6z], lm.whitePlaster);
+  // Bold terracotta-red roof crown, side frame towers & 6 horizontal floor slabs
+  box(staticG, [10.4, 0.72, 34.2], [b6x, b6H + 0.6, b6z], lm.terracottaTile);
+  for (let fl = 0; fl < 6; fl++) {
+    const fy = 0.55 + fl * 3.1;
+    box(staticG, [10.1, 0.26, 33.8], [b6x, fy + 2.95, b6z], lm.terracottaTile);
+    box(staticG, [0.22, 0.92, 33.4], [b6x + 4.92, fy + 0.55, b6z], lm.whitePlaster);
+    for (let bz = -13.5; bz <= 13.5; bz += 3.0) {
+      box(staticG, [0.35, 1.95, 2.25], [b6x + 4.72, fy + 1.85, b6z + bz], lm.cavityMat);
     }
   }
-  for (const bz of [-4.2, 4.2]) {
-    box(staticG, [0.08, 2.54, 1.66], [mx + 7.98, 2.1, mz + bz], lm.cavityMat);
-    box(staticG, [0.12, 2.42, 1.56], [mx + 8.06, 2.1, mz + bz], lm.glass);
-    box(staticG, [0.08, 2.24, 1.66], [mx + 7.98, 6.7, mz + bz], lm.cavityMat);
-    box(staticG, [0.12, 2.12, 1.56], [mx + 8.06, 6.7, mz + bz], lm.glass);
+  // Vertical terracotta-red structural columns across the 6-story facade
+  for (let cz = -15.0; cz <= 15.0; cz += 3.0) {
+    box(staticG, [0.42, b6H + 0.4, 0.34], [b6x + 4.92, b6H * 0.5 + 0.4, b6z + cz], lm.terracottaTile);
   }
+  // Vertical green & white Madrasah banner hanging on the 6-story facade (just like Photo 2!)
+  addSignBoard(
+    dynamicG,
+    {
+      title: 'খুলনা আলিয়া কামিল মাদ্রাসা',
+      subtitle: 'নতুন ৬-তলা একাডেমিক ভবন · KHULNA ALIA',
+      bg: '#065f46',
+      fg: '#ffffff',
+      accent: '#fde047',
+    },
+    [b6x + 5.15, 8.2, b6z],
+    Math.PI * 0.5,
+    4.6,
+    1.35
+  );
 
-  // Octagonal Dome Drum + Dome + Twin 24m Minarets
-  cylinder(staticG, 4.9, 5.1, 1.6, [mx, 10.6, mz], lm.whitePlaster, 8);
-  cylinder(staticG, 4.6, 4.8, 0.45, [mx, 11.4, mz], lm.emeraldMat, 8);
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(4.4, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.56), lm.whitePlaster);
-  dome.position.set(mx, 11.4, mz);
-  staticG.add(dome);
-  cylinder(staticG, 0.10, 0.15, 2.2, [mx, 16.5, mz], lm.goldMat, 8);
-
-  for (const sx of [-7.8, 7.8]) {
-    cylinder(staticG, 1.15, 1.35, 0.8, [mx + sx, 0.4, mz - 6.8], lm.darkConcrete, 8);
-    cylinder(staticG, 0.82, 1.02, 19.8, [mx + sx, 10.2, mz - 6.8], lm.whitePlaster, 12);
-    for (const by of [9.6, 15.8, 19.6]) {
-      cylinder(staticG, 1.18, 1.05, 0.55, [mx + sx, by, mz - 6.8], lm.emeraldMat, 12);
-    }
-    const spire = new THREE.Mesh(new THREE.ConeGeometry(0.95, 3.2, 12), lm.emeraldMat);
-    spire.position.set(mx + sx, 21.4, mz - 6.8);
-    staticG.add(spire);
-    cylinder(staticG, 0.05, 0.08, 1.4, [mx + sx, 23.4, mz - 6.8], lm.goldMat, 8);
-  }
-
-  // 2) Travertine & Herringbone Brick Campus Forecourt Promenade (x = 186..234, z = 104..118, right under spawn)
-  box(staticG, [46.0, 0.06, 9.6], [210.0, 0.015, 110.5], m.brick, { castShadow: false, uvScale: 2.6 });
-  box(staticG, [44.0, 0.08, 5.2], [210.0, 0.025, 110.5], lm.stonePlinth, { castShadow: false, uvScale: 3.0 });
-  // Cross Garden Walkway linking Mosque Forecourt South to the Central Pond Ghat (x = 208..216, z = 114..144)
-  box(staticG, [7.6, 0.06, 30.0], [212.0, 0.018, 129.0], m.brick, { castShadow: false, uvScale: 2.6 });
-  // Raised Floral Lawn Curbs flanking walkways
-  for (const lz of [104.2, 116.8]) {
-    box(staticG, [18.0, 0.22, 1.8], [198.0, 0.08, lz], lm.whitePlaster);
-    box(staticG, [17.4, 0.28, 1.2], [198.0, 0.14, lz], lm.moss);
-  }
-  // North Madrasah Academic Verandah Wing on open north lawn (x = 198..226, z = 84)
-  box(staticG, [24.0, 0.42, 7.6], [212.0, 0.21, 84.5], lm.stonePlinth);
-  box(staticG, [22.4, 7.2, 6.2], [212.0, 3.85, 84.5], lm.colonialCream);
-  box(staticG, [23.2, 0.55, 7.0], [212.0, 7.65, 84.5], lm.emeraldMat);
-  for (let px = -9.0; px <= 9.0; px += 3.0) {
-    cylinder(staticG, 0.18, 0.22, 6.8, [212.0 + px, 3.8, 88.2], lm.whitePlaster, 8);
-    if (Math.abs(px) <= 6.5) {
-      box(staticG, [1.5, 1.65, 0.12], [212.0 + px, 2.0, 87.62], lm.cavityMat);
-      box(staticG, [1.4, 1.55, 0.14], [212.0 + px, 5.4, 87.62], lm.glass);
+  // 5) 4-STORY CREAM & TEAL-GREEN ARCHED ACADEMIC BUILDING (Photos 2 & 3 — North side of the field!)
+  const b4x = 166.0;
+  const b4z = 72.5;
+  const b4H = 13.0;
+  box(staticG, [32.0, 0.45, 9.2], [b4x, 0.225, b4z], lm.stonePlinth);
+  box(staticG, [31.2, b4H, 8.4], [b4x, b4H * 0.5 + 0.35, b4z], lm.colonialCream);
+  // Roof parapet + right stairwell mumty tower (Photo 3!)
+  box(staticG, [32.0, 0.48, 9.0], [b4x, b4H + 0.55, b4z], lm.terracottaTile);
+  box(staticG, [4.6, 3.2, 5.2], [b4x + 13.0, b4H + 2.1, b4z], lm.colonialCream);
+  // 4 floors of arched dark-teal/green veranda bays + red entrance awning on ground floor
+  for (let fl = 0; fl < 4; fl++) {
+    const fy = 0.45 + fl * 3.12;
+    box(staticG, [31.6, 0.24, 8.8], [b4x, fy + 2.95, b4z], lm.terracottaTile);
+    for (let bx = -13.0; bx <= 13.0; bx += 3.25) {
+      box(staticG, [2.35, 2.05, 0.38], [b4x + bx, fy + 1.65, b4z + 4.12], lm.emeraldDark);
+      box(staticG, [2.55, 0.72, 0.20], [b4x + bx, fy + 0.48, b4z + 4.25], lm.colonialCream);
     }
   }
+  box(staticG, [7.2, 0.24, 1.8], [b4x + 11.2, 3.25, b4z + 4.9], lm.terracottaTile);
 
-  // 3) Open-Air Wudu / Ablution Pavilion near SW pond corner (x = 197, z = 132)
-  box(staticG, [7.2, 0.34, 4.4], [197.5, 0.17, 132.0], lm.stonePlinth);
-  box(staticG, [7.6, 0.24, 4.8], [197.5, 3.25, 132.0], lm.emeraldMat);
-  for (const wx of [-3.1, 0, 3.1]) {
-    for (const wz of [-1.7, 1.7]) {
-      cylinder(staticG, 0.11, 0.13, 3.0, [197.5 + wx, 1.7, 132.0 + wz], lm.whitePlaster, 8);
-    }
-  }
-  box(staticG, [5.4, 0.65, 0.9], [197.5, 0.65, 132.0], lm.whitePlaster);
-
-  // 4) Campus East Entry Gatehouse & Perimeter Fence Wall (x = 234, z = 88..134)
-  for (const [z0, z1] of [[88, 105], [116, 134]]) {
-    const len = z1 - z0;
-    const mid = (z0 + z1) * 0.5;
-    box(staticG, [0.35, 1.25, len], [234.0, 0.62, mid], m.brick);
-    box(staticG, [0.46, 0.14, len], [234.0, 1.30, mid], lm.whitePlaster);
-  }
-  for (const gz of [105.5, 115.5]) {
-    box(staticG, [0.85, 3.6, 0.85], [234.0, 1.8, gz], lm.whitePlaster);
-    box(staticG, [0.98, 0.28, 0.98], [234.0, 3.65, gz], lm.emeraldMat);
-  }
-  box(staticG, [0.95, 0.85, 10.6], [234.0, 3.95, 110.5], lm.emeraldMat);
-
-  // 5) Central Pond Promenade Quay Wall, Iron Railings, Ghat Steps, Benches & Courtyard Lamps
-  box(staticG, [39.0, 0.48, 2.2], [213.5, 0.08, 143.6], lm.stonePlinth);
-  addRailingSpan(staticG, lm, 195.0, 144.4, 208.0, 144.4, 4, 0.86, 0.25);
-  addRailingSpan(staticG, lm, 216.0, 144.4, 232.0, 144.4, 4, 0.86, 0.25);
-  for (let s = 0; s < 5; s++) {
-    box(staticG, [6.4, 0.18, 1.1], [212.0, 0.12 - s * 0.16, 144.2 + s * 0.8], lm.concrete);
+  // 6) 3-STORY WHITE & RED-TRIM SOUTH ACADEMIC WING (Photo 2 — South side of the field!)
+  const b3x = 166.0;
+  const b3z = 136.0;
+  box(staticG, [26.0, 9.4, 8.2], [b3x, 4.7, b3z], lm.whitePlaster);
+  box(staticG, [26.6, 0.52, 8.8], [b3x, 9.65, b3z], lm.terracottaTile);
+  box(staticG, [26.4, 0.28, 8.5], [b3x, 3.25, b3z], lm.terracottaTile);
+  box(staticG, [26.4, 0.28, 8.5], [b3x, 6.45, b3z], lm.terracottaTile);
+  for (let bx = -10.5; bx <= 10.5; bx += 3.0) {
+    box(staticG, [2.1, 2.2, 0.35], [b3x + bx, 1.5, b3z - 4.0], lm.emeraldDark);
+    box(staticG, [2.1, 2.0, 0.35], [b3x + bx, 4.8, b3z - 4.0], lm.cavityMat);
+    box(staticG, [2.1, 2.0, 0.35], [b3x + bx, 8.0, b3z - 4.0], lm.cavityMat);
   }
 
+  // 7) Stone Foundation Plaque & Red Ixora (রঙ্গন) Flower Bushes in Courtyard (Photo 3!)
+  box(staticG, [2.4, 1.05, 1.2], [181.5, 0.52, 88.5], lm.stonePlinth);
+  addSignBoard(
+    dynamicG,
+    { title: 'খুলনা আলিয়া মাদ্রাসা', subtitle: 'স্থাপিত: ১৯৫২ · খুলনা', bg: '#e5e7eb', fg: '#111827', accent: '#b94a38', border: '#475569' },
+    [181.5, 1.08, 89.15],
+    0,
+    2.1,
+    0.72
+  );
+  for (const [fx, fz] of [[180.0, 88.8], [183.0, 88.8], [198.0, 104.2], [206.0, 104.2], [198.0, 111.8], [206.0, 111.8]]) {
+    box(staticG, [0.9, 0.55, 0.9], [fx, 0.28, fz], lm.moss);
+    box(staticG, [0.55, 0.35, 0.55], [fx, 0.62, fz], lm.flowerRed);
+  }
+
+  // 8) Courtyard Benches, Lamps & Pond Quay Wall South-East of Campus
   for (const [bx, bz, ry] of [
-    [203.0, 105.2, 0],
-    [221.0, 105.2, 0],
-    [203.0, 142.2, Math.PI],
-    [223.0, 142.2, Math.PI],
+    [203.0, 103.5, 0],
+    [214.0, 103.5, 0],
+    [203.0, 112.5, Math.PI],
+    [214.0, 112.5, Math.PI],
   ]) {
     addParkBench(staticG, lm, bx, bz, ry);
   }
   for (const [lx, lz] of [
-    [194.0, 105.8],
-    [226.0, 105.8],
-    [194.0, 115.4],
-    [226.0, 115.4],
-    [207.5, 142.5],
-    [216.5, 142.5],
+    [196.0, 104.6],
+    [212.0, 104.6],
+    [196.0, 111.4],
+    [212.0, 111.4],
+    [172.0, 83.2],
+    [158.0, 83.2],
   ]) {
-    addParkLamp(staticG, dynamicG, lm, lx, lz, 3.9, 0.02);
+    addParkLamp(staticG, dynamicG, lm, lx, lz, 4.0, 0.02);
   }
-
-  // 6) Madrasah Signboard raised cleanly in flowerbed planter curb at NE path edge
-  box(staticG, [4.6, 0.45, 1.4], [190.5, 0.22, 123.5], m.brick);
-  for (const dPos of [-2.0, 2.0]) {
-    const legAngle = Math.PI * 0.62;
-    cylinder(
-      staticG,
-      0.08,
-      0.10,
-      3.8,
-      [
-        190.5 + Math.cos(legAngle) * dPos - Math.sin(legAngle) * 0.14,
-        1.9,
-        123.5 - Math.sin(legAngle) * dPos - Math.cos(legAngle) * 0.14,
-      ],
-      lm.steelMat,
-      8
-    );
-  }
-  addSignBoard(
-    dynamicG,
-    { title: 'খুলনা আলিয়া কামিল মাদ্রাসা ও মডেল মসজিদ', subtitle: 'KHULNA ALIA KAMIL MADRASAH · CENTRAL POND & GROUND', bg: '#064e3b', accent: '#fcd34d' },
-    [190.5, 4.4, 123.5],
-    Math.PI * 0.62,
-    5.8,
-    1.6
-  );
 }
 
 function buildCircuitHouseAndStadium(staticG, dynamicG, lm, m) {

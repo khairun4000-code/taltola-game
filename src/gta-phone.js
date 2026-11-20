@@ -1,0 +1,347 @@
+/**
+ * GTA V-Style Smartphone System (opens with [P] key):
+ *  - Home Screen with 3 Apps:
+ *      1) Dial Pad (Cheat Codes to spawn BMW M3, Alphard, Corolla, Fortuner, HiAce, Rickshaw)
+ *      2) Teleport App (instant teleport to any Khulna Landmark)
+ *      3) Selfie Camera App (front face cam, expressions, shutter flash & PNG download)
+ */
+
+export const PHONE_CHEAT_CODES = [
+  { code: '1111', carId: 'bmw_m3', label: 'BMW M3 Competition' },
+  { code: '2222', carId: 'toyota_alphard', label: 'Toyota Alphard 2025' },
+  { code: '3333', carId: 'toyota_corolla', label: 'Toyota Corolla 2017' },
+  { code: '4444', carId: 'toyota_fortuner', label: 'Toyota Fortuner 2021' },
+  { code: '5555', carId: 'toyota_hiace', label: 'Toyota HiAce 2005' },
+  { code: '6666', carId: 'bangladeshi_rickshaw_taltola', label: 'Bangladeshi Rickshaw' },
+];
+
+export function createGTAPhoneUI({
+  onOpenChange,
+  onPhoneInteract,
+  onSpawnCheatVehicle,
+  onTeleportLandmark,
+  onEnterSelfieMode,
+  onExitSelfieMode,
+  onSetExpression,
+  onCaptureSelfieDataUrl,
+  getLandmarks,
+}) {
+  const phoneEl = document.querySelector('#gta-phone');
+  const toastEl = document.querySelector('#gta-cheat-toast');
+  const flashEl = document.querySelector('#selfie-flash');
+  const clockEl = document.querySelector('#phone-clock');
+  const closeBtn = document.querySelector('#phone-close-btn');
+  const backBtn = document.querySelector('#phone-back-btn');
+  const homeScreen = document.querySelector('#phone-home');
+  const dialScreen = document.querySelector('#phone-dial');
+  const teleportScreen = document.querySelector('#phone-teleport');
+  const selfieScreen = document.querySelector('#phone-selfie');
+  const dialDisplay = document.querySelector('#phone-dial-display');
+  const dialStatus = document.querySelector('#phone-dial-status');
+  const cheatListEl = document.querySelector('#phone-cheat-list');
+  const teleportListEl = document.querySelector('#phone-teleport-list');
+  const selfiePreviewImg = document.querySelector('#phone-selfie-preview');
+  const selfieDownloadLink = document.querySelector('#phone-selfie-download');
+  const selfieShutterBtn = document.querySelector('#phone-selfie-shutter');
+
+  let isOpen = false;
+  let activeApp = 'home'; // 'home' | 'dial' | 'teleport' | 'selfie'
+  let dialValue = '';
+  let toastTimer = null;
+  let audioCtx = null;
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) audioCtx = new Ctx();
+    }
+    if (audioCtx?.state === 'suspended') audioCtx.resume().catch(() => {});
+    return audioCtx;
+  }
+
+  function playTone(freq1, freq2 = null, dur = 0.08, vol = 0.08) {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.001, now);
+      g.gain.exponentialRampToValueAtTime(vol, now + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      g.connect(ctx.destination);
+      for (const f of (freq2 ? [freq1, freq2] : [freq1])) {
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.value = f;
+        o.connect(g);
+        o.start(now);
+        o.stop(now + dur + 0.01);
+      }
+    } catch {}
+  }
+
+  function playShutterSound() {
+    playTone(1420, 2100, 0.045, 0.12);
+    setTimeout(() => playTone(880, 1240, 0.055, 0.09), 55);
+  }
+
+  function showToast(text) {
+    if (!toastEl) return;
+    toastEl.textContent = text;
+    toastEl.classList.remove('hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastEl.classList.add('hidden');
+    }, 3400);
+  }
+
+  function updateClock() {
+    if (!clockEl) return;
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    clockEl.textContent = `${hh}:${mm}`;
+  }
+  updateClock();
+  setInterval(updateClock, 15000);
+
+  function populateCheatList() {
+    if (!cheatListEl) return;
+    cheatListEl.innerHTML = '';
+    for (const item of PHONE_CHEAT_CODES) {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'phone-cheat-row';
+      row.innerHTML = `<span class="cheat-code">${item.code}</span><span class="cheat-name">${item.label}</span>`;
+      row.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPhoneInteract?.();
+        dialValue = item.code;
+        if (dialDisplay) dialDisplay.textContent = dialValue;
+        triggerDialCall();
+      });
+      cheatListEl.appendChild(row);
+    }
+  }
+  populateCheatList();
+
+  function populateTeleportList() {
+    if (!teleportListEl) return;
+    const landmarks = getLandmarks?.() || [];
+    teleportListEl.innerHTML = '';
+    for (const lm of landmarks) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'phone-tp-row';
+      btn.innerHTML = `<strong>${lm.nameBn || lm.name}</strong><small>${lm.sub || lm.name}</small>`;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPhoneInteract?.();
+        playTone(660, 990, 0.12, 0.09);
+        close();
+        onTeleportLandmark?.(lm);
+        showToast(`📍 টেলিপোর্ট সফল: ${lm.nameBn || lm.name}`);
+      });
+      teleportListEl.appendChild(btn);
+    }
+  }
+
+  function showApp(appName) {
+    if (activeApp === 'selfie' && appName !== 'selfie') {
+      onExitSelfieMode?.();
+    }
+    activeApp = appName;
+    homeScreen?.classList.toggle('hidden', appName !== 'home');
+    dialScreen?.classList.toggle('hidden', appName !== 'dial');
+    teleportScreen?.classList.toggle('hidden', appName !== 'teleport');
+    selfieScreen?.classList.toggle('hidden', appName !== 'selfie');
+    backBtn?.classList.toggle('hidden', appName === 'home');
+
+    if (appName === 'teleport') {
+      populateTeleportList();
+    } else if (appName === 'selfie') {
+      onEnterSelfieMode?.();
+    } else if (appName === 'dial') {
+      if (dialStatus) dialStatus.textContent = 'চিট কোড ডায়াল করে কল চাপুন';
+    }
+  }
+
+  function triggerDialCall() {
+    const code = dialValue.trim();
+    if (!code) return;
+    const match = PHONE_CHEAT_CODES.find((c) => c.code === code);
+    if (match) {
+      playTone(880, 1320, 0.16, 0.10);
+      const ok = onSpawnCheatVehicle?.(match.carId, match.label);
+      if (ok) {
+        if (dialStatus) dialStatus.textContent = `✓ ${match.label} স্পন হয়েছে!`;
+        showToast(`🚗 CHEAT ACTIVATED: ${match.label} স্পন হয়েছে!`);
+        dialValue = '';
+        if (dialDisplay) dialDisplay.textContent = '—';
+        setTimeout(() => close(), 420);
+      } else if (dialStatus) {
+        dialStatus.textContent = 'গাড়িটি পাওয়া যায়নি';
+      }
+    } else {
+      playTone(320, 240, 0.18, 0.09);
+      if (dialStatus) dialStatus.textContent = `অকার্যকর কোড (${code}) · নিচের কোড দেখুন`;
+    }
+  }
+
+  function open(appName = 'home') {
+    if (isOpen) return;
+    isOpen = true;
+    updateClock();
+    phoneEl?.classList.remove('hidden');
+    requestAnimationFrame(() => phoneEl?.classList.add('open'));
+    playTone(587, 880, 0.09, 0.07);
+    showApp(appName);
+    onOpenChange?.(true);
+  }
+
+  function close() {
+    if (!isOpen) return;
+    if (activeApp === 'selfie') {
+      onExitSelfieMode?.();
+    }
+    isOpen = false;
+    activeApp = 'home';
+    phoneEl?.classList.remove('open');
+    setTimeout(() => {
+      if (!isOpen) phoneEl?.classList.add('hidden');
+    }, 220);
+    playTone(440, 330, 0.07, 0.06);
+    onOpenChange?.(false);
+  }
+
+  function toggle() {
+    if (isOpen) close();
+    else open('home');
+  }
+
+  // App icon triggers
+  document.querySelectorAll('[data-phone-app]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onPhoneInteract?.();
+      playTone(698, null, 0.06, 0.06);
+      showApp(btn.dataset.phoneApp);
+    });
+  });
+
+  backBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onPhoneInteract?.();
+    playTone(520, null, 0.05, 0.06);
+    showApp('home');
+  });
+
+  closeBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    close();
+  });
+
+  // Dial pad buttons
+  document.querySelectorAll('[data-dial-key]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onPhoneInteract?.();
+      const k = btn.dataset.dialKey;
+      if (k === 'BACK') {
+        dialValue = dialValue.slice(0, -1);
+        playTone(400, null, 0.05, 0.06);
+      } else if (k === 'CALL') {
+        triggerDialCall();
+        return;
+      } else if (dialValue.length < 8) {
+        dialValue += k;
+        const digit = Number(k);
+        playTone(697 + (Number.isFinite(digit) ? (digit % 4) * 75 : 220), 1209, 0.065, 0.06);
+      }
+      if (dialDisplay) dialDisplay.textContent = dialValue || '—';
+    });
+  });
+
+  // Selfie expressions
+  document.querySelectorAll('[data-selfie-expr]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onPhoneInteract?.();
+      document.querySelectorAll('[data-selfie-expr]').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      onSetExpression?.(btn.dataset.selfieExpr);
+      playTone(740, null, 0.05, 0.05);
+    });
+  });
+
+  // Selfie shutter button
+  selfieShutterBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onPhoneInteract?.();
+    playShutterSound();
+    if (flashEl) {
+      flashEl.classList.add('flash');
+      setTimeout(() => flashEl.classList.remove('flash'), 220);
+    }
+    const dataUrl = onCaptureSelfieDataUrl?.();
+    if (dataUrl) {
+      if (selfiePreviewImg) {
+        selfiePreviewImg.src = dataUrl;
+        selfiePreviewImg.classList.remove('hidden');
+      }
+      if (selfieDownloadLink) {
+        selfieDownloadLink.href = dataUrl;
+        selfieDownloadLink.download = `khulna-selfie-${Date.now()}.png`;
+        selfieDownloadLink.classList.remove('hidden');
+      }
+      showToast('📸 সেলফি তোলা হয়েছে! ফোনে সেভ ও ডাউনলোড করতে পারো।');
+    }
+  });
+
+  function handleKeyDown(event) {
+    if (!isOpen) return false;
+    if (activeApp === 'dial') {
+      if (/^Digit[0-9]$/.test(event.code) || /^Numpad[0-9]$/.test(event.code)) {
+        event.preventDefault();
+        onPhoneInteract?.();
+        const ch = event.code.slice(-1);
+        if (dialValue.length < 8) {
+          dialValue += ch;
+          if (dialDisplay) dialDisplay.textContent = dialValue;
+          playTone(697 + (Number(ch) % 4) * 75, 1209, 0.065, 0.06);
+        }
+        return true;
+      }
+      if (event.code === 'Backspace') {
+        event.preventDefault();
+        onPhoneInteract?.();
+        dialValue = dialValue.slice(0, -1);
+        if (dialDisplay) dialDisplay.textContent = dialValue || '—';
+        return true;
+      }
+      if (event.code === 'Enter' || event.code === 'NumpadEnter') {
+        event.preventDefault();
+        onPhoneInteract?.();
+        triggerDialCall();
+        return true;
+      }
+    }
+    if (event.code === 'Backspace' || event.code === 'Escape') {
+      event.preventDefault();
+      if (activeApp !== 'home') showApp('home');
+      else close();
+      return true;
+    }
+    return false;
+  }
+
+  return {
+    get isOpen() { return isOpen; },
+    get activeApp() { return activeApp; },
+    open,
+    close,
+    toggle,
+    showToast,
+    handleKeyDown,
+  };
+}

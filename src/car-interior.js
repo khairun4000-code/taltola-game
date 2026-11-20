@@ -5,6 +5,7 @@ import * as THREE from 'three';
  * based on triangle centroid in normalized car space (+Z forward, +Y up, +X left).
  */
 function splitMeshIntoDoorRegions(mesh, orientedWrapper, regions) {
+  if (!mesh || mesh.isSkinnedMesh) return null;
   const geom = mesh.geometry;
   if (!geom || !geom.attributes?.position) return null;
 
@@ -243,7 +244,7 @@ export function rigAllCarDoors(orientedWrapper, config, wheelMeshesSet = new Set
     try {
       const candidateMeshes = [];
       orientedWrapper.traverse((ch) => {
-        if (!ch.isMesh || !ch.visible) return;
+        if (!ch.isMesh || !ch.visible || ch.isSkinnedMesh) return;
         if (wheelMeshesSet.has(ch)) return;
         let cur = ch;
         while (cur && cur !== orientedWrapper) {

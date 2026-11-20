@@ -113,6 +113,7 @@ export const CAR_FLEET_CONFIGS = [
     glassMats: ['C_ClearGlass', 'C_PV_Glass', 'C_IR_GreenGlass__1', 'C_SmokeGlass_GR003', 'C_SuriGlass'],
     tailMats: ['C_red_glass'],
     headlightMats: ['C_13TR01__headlight_3'],
+    wheelMatRegex: /^C_tire$/i,
     maxSpeed: 23.5,
     boostMaxSpeed: 32.0,
     engineForce: 13.5,
@@ -420,26 +421,34 @@ function createWheelMaterial(source, colorHex = '#d8ebff') {
  * Automatically groups named wheel meshes (e.g. Toyota Corolla e180_wheel* & e180_brakedisc_*)
  * into 4 steering/spinning pivots (FL, FR, RL, RR) in normalized car space (+Z forward, +Y up).
  */
-function rigGenericCarWheels(orientedWrapper, wheelRegex) {
-  if (!wheelRegex) return [];
+function rigGenericCarWheels(orientedWrapper, wheelRegex, wheelMatRegex = null) {
+  if (!wheelRegex && !wheelMatRegex) return { wheels: [], wheelRadius: 0.34 };
   orientedWrapper.updateMatrixWorld(true);
 
   const wheelMeshes = [];
+  const allNonSkinned = [];
   orientedWrapper.traverse((child) => {
-    if (!child.isMesh) return;
-    let cur = child;
+    if (!child.isMesh || child.isSkinnedMesh) return;
+    allNonSkinned.push(child);
     let matched = false;
-    while (cur && cur !== orientedWrapper) {
-      if (wheelRegex.test(cur.name || '')) {
-        matched = true;
-        break;
+    if (wheelRegex) {
+      let cur = child;
+      while (cur && cur !== orientedWrapper) {
+        if (wheelRegex.test(cur.name || '')) {
+          matched = true;
+          break;
+        }
+        cur = cur.parent;
       }
-      cur = cur.parent;
+    }
+    if (!matched && wheelMatRegex && child.material) {
+      const mats = Array.isArray(child.material) ? child.material : [child.material];
+      matched = mats.some((m) => wheelMatRegex.test(m?.name || ''));
     }
     if (matched) wheelMeshes.push(child);
   });
 
-  if (wheelMeshes.length === 0) return [];
+  if (wheelMeshes.length === 0) return { wheels: [], wheelRadius: 0.34 };
 
   const buckets = {
     FL: { isFront: true, meshes: [], box: new THREE.Box3() },
@@ -450,14 +459,15 @@ function rigGenericCarWheels(orientedWrapper, wheelRegex) {
 
   const tmpBox = new THREE.Box3();
   const tmpCenter = new THREE.Vector3();
+  const tmpSize = new THREE.Vector3();
   const invWrapper = new THREE.Matrix4().copy(orientedWrapper.matrixWorld).invert();
+  const matchedSet = new Set();
 
   for (const mesh of wheelMeshes) {
     tmpBox.setFromObject(mesh);
     if (tmpBox.isEmpty()) continue;
     tmpBox.applyMatrix4(invWrapper);
     tmpBox.getCenter(tmpCenter);
-    // Ignore spare wheel or center hub meshes that sit on x ≈ 0
     if (Math.abs(tmpCenter.x) < 0.35 || tmpCenter.y > 0.85) continue;
 
     const isFront = tmpCenter.z >= 0;
@@ -465,12 +475,43 @@ function rigGenericCarWheels(orientedWrapper, wheelRegex) {
     const key = (isFront ? 'F' : 'R') + (isLeft ? 'L' : 'R');
     buckets[key].meshes.push(mesh);
     buckets[key].box.union(tmpBox);
+    matchedSet.add(mesh);
+  }
+
+  // When matching by tire material (e.g. Alphard), also capture inner rim/hub/brake-disc meshes inside each wheel well
+  if (wheelMatRegex) {
+    const centers = {};
+    for (const [k, b] of Object.entries(buckets)) {
+      if (b.meshes.length > 0) centers[k] = b.box.getCenter(new THREE.Vector3());
+    }
+    for (const mesh of allNonSkinned) {
+      if (matchedSet.has(mesh)) continue;
+      tmpBox.setFromObject(mesh);
+      if (tmpBox.isEmpty()) continue;
+      tmpBox.applyMatrix4(invWrapper);
+      tmpBox.getCenter(tmpCenter);
+      tmpBox.getSize(tmpSize);
+      if (Math.max(tmpSize.x, tmpSize.y, tmpSize.z) > 0.85) continue;
+      for (const [k, wc] of Object.entries(centers)) {
+        if (Math.abs(tmpCenter.x - wc.x) < 0.24 && Math.abs(tmpCenter.y - wc.y) < 0.34 && Math.abs(tmpCenter.z - wc.z) < 0.34) {
+          buckets[k].meshes.push(mesh);
+          matchedSet.add(mesh);
+          break;
+        }
+      }
+    }
   }
 
   const builtWheels = [];
+  let radiusSum = 0;
+  let radiusCount = 0;
   for (const b of Object.values(buckets)) {
     if (b.meshes.length === 0) continue;
     const center = b.box.getCenter(new THREE.Vector3());
+    b.box.getSize(tmpSize);
+    const wheelR = THREE.MathUtils.clamp(tmpSize.y * 0.5, 0.26, 0.48);
+    radiusSum += wheelR;
+    radiusCount++;
 
     const steerPivot = new THREE.Group();
     steerPivot.position.copy(center);
@@ -493,7 +534,10 @@ function rigGenericCarWheels(orientedWrapper, wheelRegex) {
     });
   }
 
-  return builtWheels;
+  return {
+    wheels: builtWheels,
+    wheelRadius: radiusCount > 0 ? radiusSum / radiusCount : 0.34,
+  };
 }
 
 /**
@@ -543,12 +587,112 @@ export function createDrivableCar(scene, manager, config) {
   };
 
   let riggedWheels = [];
+  let measuredWheelRadius = config.isRickshaw ? 0.365 : 0.34;
   let rickshawParts = null;
   let carDoors = {};
   let driverDoorOverride = null;
   let exteriorWrapper = null;
   const cockpitRig = config.isRickshaw ? null : createInteriorCockpitRig(config, paintPresets[0].hex);
   if (cockpitRig) bodyTiltGroup.add(cockpitRig.group);
+
+  // Interactive 3D Driver Seat + Rotating Steering Wheel with Left/Right Hand IK Grips for non-rickshaw cars
+  let carDriverRig = null;
+  if (!config.isRickshaw) {
+    const isTallVan = config.id === 'toyota_alphard' || config.id === 'toyota_hiace';
+    const isSuv = config.id === 'toyota_fortuner';
+    const seatX = config.id === 'bmw_m3' ? 0.38 : -0.38;
+    const seatY = isTallVan ? 0.84 : (isSuv ? 0.82 : 0.62);
+    const seatZ = config.id === 'toyota_hiace' ? 0.92 : (isTallVan ? 0.42 : (isSuv ? 0.16 : 0.08));
+
+    const rigGroup = new THREE.Group();
+    rigGroup.name = `DriverSteeringRig_${config.id}`;
+    bodyTiltGroup.add(rigGroup);
+
+    const seatAnchor = new THREE.Object3D();
+    seatAnchor.position.set(seatX, seatY, seatZ);
+    rigGroup.add(seatAnchor);
+
+    const footL = new THREE.Object3D();
+    footL.position.set(seatX + 0.14, seatY - 0.34, seatZ + 0.56);
+    rigGroup.add(footL);
+    const footR = new THREE.Object3D();
+    footR.position.set(seatX - 0.14, seatY - 0.34, seatZ + 0.56);
+    rigGroup.add(footR);
+
+    // Visible 3D steering wheel right in front of the driver
+    const wheelPivot = new THREE.Group();
+    wheelPivot.position.set(seatX, seatY + 0.30, seatZ + 0.44);
+    wheelPivot.rotation.x = 0.38;
+    rigGroup.add(wheelPivot);
+
+    const wheelSpin = new THREE.Group();
+    wheelPivot.add(wheelSpin);
+
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1e24, roughness: 0.45, metalness: 0.35 });
+    const rimMesh = new THREE.Mesh(new THREE.TorusGeometry(0.175, 0.019, 10, 24), wheelMat);
+    const hubMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.032, 16), wheelMat);
+    hubMesh.rotation.x = Math.PI / 2;
+    const spokeH = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.024, 0.018), wheelMat);
+    const spokeV = new THREE.Mesh(new THREE.BoxGeometry(0.024, 0.15, 0.018), wheelMat);
+    spokeV.position.y = -0.085;
+    const topMarker = new THREE.Mesh(
+      new THREE.BoxGeometry(0.024, 0.026, 0.026),
+      new THREE.MeshStandardMaterial({ color: 0xd93829, roughness: 0.35 }),
+    );
+    topMarker.position.y = 0.175;
+    wheelSpin.add(rimMesh, hubMesh, spokeH, spokeV, topMarker);
+
+    const gripL = new THREE.Object3D();
+    gripL.position.set(0.165, 0.025, -0.02);
+    wheelSpin.add(gripL);
+    const gripR = new THREE.Object3D();
+    gripR.position.set(-0.165, 0.025, -0.02);
+    wheelSpin.add(gripR);
+
+    carDriverRig = { rigGroup, seatAnchor, footL, footR, wheelSpin, gripL, gripR };
+  }
+
+  // Pooled tire-to-road friction smoke puffs
+  const tireSmokePuffs = [];
+  const smokeGeo = new THREE.SphereGeometry(0.16, 7, 6);
+  const smokeMatBase = new THREE.MeshBasicMaterial({ color: 0xd8dce2, transparent: true, opacity: 0.36, depthWrite: false });
+  let smokeCooldown = 0;
+
+  function spawnTireFrictionPuff(worldX, worldY, worldZ) {
+    if (tireSmokePuffs.length > 26) return;
+    const m = new THREE.Mesh(smokeGeo, smokeMatBase.clone());
+    m.position.set(worldX, worldY + 0.12, worldZ);
+    const s = 0.75 + Math.random() * 0.45;
+    m.scale.setScalar(s);
+    scene.add(m);
+    tireSmokePuffs.push({
+      mesh: m,
+      age: 0,
+      maxAge: 0.48 + Math.random() * 0.25,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: 0.55 + Math.random() * 0.45,
+      vz: (Math.random() - 0.5) * 0.6,
+    });
+  }
+
+  function updateTireSmoke(dt) {
+    for (let i = tireSmokePuffs.length - 1; i >= 0; i--) {
+      const p = tireSmokePuffs[i];
+      p.age += dt;
+      if (p.age >= p.maxAge) {
+        scene.remove(p.mesh);
+        p.mesh.material.dispose();
+        tireSmokePuffs.splice(i, 1);
+        continue;
+      }
+      const t = p.age / p.maxAge;
+      p.mesh.position.x += p.vx * dt;
+      p.mesh.position.y += p.vy * dt;
+      p.mesh.position.z += p.vz * dt;
+      p.mesh.scale.setScalar(0.85 + t * 2.1);
+      p.mesh.material.opacity = (1 - t) * 0.34;
+    }
+  }
   let paintMaterials = [];
   let glossyMaterials = [];
   let carShadowMeshes = [];
@@ -835,7 +979,7 @@ export function createDrivableCar(scene, manager, config) {
                 color: new THREE.Color('#0a1524'),
                 side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.48,
+                opacity: 0.32,
                 depthWrite: false,
                 metalness: 0.45,
                 roughness: 0.06,
@@ -985,7 +1129,7 @@ export function createDrivableCar(scene, manager, config) {
                 color: new THREE.Color('#0c1724'),
                 side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.45,
+                opacity: 0.30,
                 depthWrite: false,
                 metalness: 0.35,
                 roughness: 0.06,
@@ -1095,19 +1239,16 @@ export function createDrivableCar(scene, manager, config) {
             pedalFootR,
           };
         } else {
-          if (config.wheelNameRegex) {
-            riggedWheels = rigGenericCarWheels(orientedWrapper, config.wheelNameRegex);
+          if (config.wheelNameRegex || config.wheelMatRegex) {
+            const res = rigGenericCarWheels(orientedWrapper, config.wheelNameRegex, config.wheelMatRegex);
+            riggedWheels = res.wheels;
+            measuredWheelRadius = res.wheelRadius;
           }
         }
       }
 
-      if (!config.isRickshaw) {
-        const wheelMeshSet = new Set();
-        for (const w of riggedWheels) {
-          w.wheelRoot.traverse((ch) => { if (ch.isMesh) wheelMeshSet.add(ch); });
-        }
-        carDoors = rigAllCarDoors(orientedWrapper, config, wheelMeshSet);
-      }
+      // Keep original full-detail exterior car geometry intact (black fade transition used instead of door animation)
+      carDoors = {};
 
       exteriorWrapper = orientedWrapper;
       bodyTiltGroup.add(orientedWrapper);
@@ -1219,6 +1360,25 @@ export function createDrivableCar(scene, manager, config) {
     gripR: new THREE.Vector3(),
   };
 
+  const carDriverAnchorCache = {
+    seat: new THREE.Vector3(),
+    footL: new THREE.Vector3(),
+    footR: new THREE.Vector3(),
+    gripL: new THREE.Vector3(),
+    gripR: new THREE.Vector3(),
+  };
+
+  function getCarDriverAnchors() {
+    if (!carDriverRig) return null;
+    root.updateMatrixWorld(true);
+    carDriverRig.seatAnchor.getWorldPosition(carDriverAnchorCache.seat);
+    carDriverRig.footL.getWorldPosition(carDriverAnchorCache.footL);
+    carDriverRig.footR.getWorldPosition(carDriverAnchorCache.footR);
+    carDriverRig.gripL.getWorldPosition(carDriverAnchorCache.gripL);
+    carDriverRig.gripR.getWorldPosition(carDriverAnchorCache.gripR);
+    return carDriverAnchorCache;
+  }
+
   function getRickshawAnchors() {
     if (!rickshawParts) return null;
     root.updateMatrixWorld(true);
@@ -1236,6 +1396,10 @@ export function createDrivableCar(scene, manager, config) {
     root.rotation.y = state.heading;
     bodyTiltGroup.rotation.x = state.pitch;
     bodyTiltGroup.rotation.z = state.roll;
+    if (carDriverRig) {
+      carDriverRig.rigGroup.visible = state.driving && state.cameraMode !== 'interior';
+      carDriverRig.wheelSpin.rotation.z = -state.steerAngle * 2.65;
+    }
     for (const d of Object.values(carDoors)) {
       applyDoorPose(d);
     }
@@ -1376,7 +1540,7 @@ export function createDrivableCar(scene, manager, config) {
   }
 
   function cycleCameraMode() {
-    const order = config.isRickshaw ? ['chase', 'hood', 'front'] : ['chase', 'interior', 'hood', 'front'];
+    const order = ['chase', 'hood', 'front'];
     const idx = order.indexOf(state.cameraMode);
     state.cameraMode = order[(idx + 1) % order.length];
     syncInteriorVisibility();
@@ -1384,7 +1548,7 @@ export function createDrivableCar(scene, manager, config) {
   }
 
   function setCameraMode(mode) {
-    const allowed = config.isRickshaw ? ['chase', 'hood', 'front'] : ['chase', 'interior', 'hood', 'front'];
+    const allowed = ['chase', 'hood', 'front'];
     if (allowed.includes(mode)) {
       state.cameraMode = mode;
       syncInteriorVisibility();
@@ -1394,6 +1558,7 @@ export function createDrivableCar(scene, manager, config) {
 
   function enterCar(seatMode = 'driver') {
     state.driving = true;
+    state.cameraMode = 'chase';
     state.rideSeat = (config.isRickshaw && seatMode === 'passenger') ? 'passenger' : 'driver';
     ensureAudio();
     for (const m of drlMats) m.emissiveIntensity = 4.5;
@@ -1455,6 +1620,7 @@ export function createDrivableCar(scene, manager, config) {
 
   function update(delta, keys, houseRef, envRef, allCars = []) {
     const dt = Math.min(delta, 0.05);
+    updateTireSmoke(dt);
 
     // Smoothly animate all 4 doors whether parked or driving
     for (const d of Object.values(carDoors)) {
@@ -1469,7 +1635,7 @@ export function createDrivableCar(scene, manager, config) {
         state.speed *= Math.max(0, 1 - dt * 4.2);
         fwd.set(Math.sin(state.heading), 0, Math.cos(state.heading));
         state.pos.addScaledVector(fwd, state.speed * dt);
-        state.wheelSpin += (state.speed / 0.34) * dt;
+        state.wheelSpin += (state.speed / measuredWheelRadius) * dt;
         applyCarCollisions(houseRef, envRef, allCars);
       } else {
         state.speed = 0;
@@ -1533,8 +1699,27 @@ export function createDrivableCar(scene, manager, config) {
 
     applyCarCollisions(houseRef, envRef, allCars);
 
-    const wheelRadius = config.isRickshaw ? 0.365 : 0.34;
+    const wheelRadius = measuredWheelRadius;
     state.wheelSpin += (state.speed / wheelRadius) * dt;
+
+    // Tire-to-road friction smoke on hard launch, hard braking, or handbrake drifting
+    if (!config.isRickshaw) {
+      smokeCooldown = Math.max(0, smokeCooldown - dt);
+      const hardLaunch = throttle > 0 && boost > 1.0 && Math.abs(state.speed) < 6.5;
+      const hardBrake = (brake > 0 || handbrake) && Math.abs(state.speed) > 6.5;
+      if ((isDrifting || hardLaunch || hardBrake) && smokeCooldown <= 0) {
+        smokeCooldown = isDrifting ? 0.045 : 0.085;
+        const rearDist = state.halfLength * 0.62;
+        const trackHalf = state.halfWidth * 0.78;
+        for (const side of [-1, 1]) {
+          spawnTireFrictionPuff(
+            state.pos.x - fwd.x * rearDist + rgt.x * trackHalf * side,
+            state.pos.y,
+            state.pos.z - fwd.z * rearDist + rgt.z * trackHalf * side,
+          );
+        }
+      }
+    }
     if (config.isRickshaw) {
       const pedalRate = (throttle > 0 || state.speed > 0.15)
         ? Math.max(throttle * 3.8, (state.speed / wheelRadius) * 0.72)
@@ -1610,6 +1795,17 @@ export function createDrivableCar(scene, manager, config) {
     playSeatbeltSound,
     setDriverDoorOpen,
     getRickshawAnchors,
+    getCarDriverAnchors,
+    spawnAt(x, z, heading = 0) {
+      state.pos.set(x, 0.01, z);
+      state.heading = heading;
+      state.speed = 0;
+      state.lateralVel = 0;
+      state.steerAngle = 0;
+      state.pitch = 0;
+      state.roll = 0;
+      syncTransform();
+    },
     setQualityMode,
     update,
   };

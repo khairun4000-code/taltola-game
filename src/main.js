@@ -10,11 +10,13 @@ import { buildEnvironment } from './environment.js';
 import { createPlayerCharacter } from './character.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { createKhulnaMapUI } from './khulna-map-ui.js';
+import { createGTAPhoneUI } from './gta-phone.js';
 import { createAtmosphericSkyAndPMREM, TIME_OF_DAY_PRESETS } from './aaa-shaders.js';
 import { createDrivableCarFleet } from './car.js';
 import './style.css';
 
 const canvas = document.querySelector('#scene');
+const vehicleFadeEl = document.querySelector('#vehicle-fade');
 const loading = document.querySelector('#loading');
 const loadingBar = document.querySelector('#loading-bar');
 const loadingStatus = document.querySelector('#loading-status');
@@ -51,6 +53,8 @@ const carDoorButtons = Array.from(document.querySelectorAll('[data-car-door]'));
 const carHornBtn = document.querySelector('#car-horn-btn');
 const carExitBtn = document.querySelector('#car-exit-btn');
 let carDoorCursorMode = false;
+let freeCursorMode = false;
+let lastCanvasClickTime = 0;
 const hudToggleButton = document.querySelector('#hud-toggle-button');
 const emoteBar = document.querySelector('#emote-bar');
 const liftHudButton = document.querySelector('#lift-hud-button');
@@ -278,6 +282,9 @@ function findNearestEnterableCar(pos) {
 }
 const carCamDesired = new THREE.Vector3();
 const carCamLookTarget = new THREE.Vector3();
+let carOrbitYaw = 0;
+let carOrbitPitch = 0.24;
+let carOrbitLastMove = 0;
 let sun;
 let ambientLight;
 let hemisphereLight;
@@ -306,6 +313,8 @@ let lastResolvedCamMode = null;
 let ultraFastMode = false;
 let lowFpsStreak = 0;
 let khulnaMapUI = null;
+let gtaPhoneUI = null;
+let selfiePrevCamMode = null;
 let lastMinimapUpdate = 0;
 let lastSunAnchorX = 0;
 let lastSunAnchorZ = 0;
@@ -1518,10 +1527,10 @@ function syncCarHUD() {
       carSeatLabelEl.textContent = isPass ? 'ড্রাইভার সিট' : 'প্যাসেঞ্জার সিট';
     }
     if (carCamLabelEl) {
-      const camNames = { chase: 'POV ককপিট', interior: 'POV চালু ✓', hood: 'বোনট ভিউ', front: 'ফ্রন্ট ভিউ' };
-      carCamLabelEl.textContent = isRick ? 'ক্যামেরা' : (camNames[activeCar.state.cameraMode] || 'POV ককপিট');
+      const camNames = { chase: '৩য় পার্সন', hood: 'বোনট ভিউ', front: 'ফ্রন্ট ভিউ' };
+      carCamLabelEl.textContent = isRick ? 'ক্যামেরা' : (camNames[activeCar.state.cameraMode] || '৩য় পার্সন');
     }
-    carPovBtn?.classList.toggle('active', !isRick && activeCar.state.cameraMode === 'interior');
+    carPovBtn?.classList.remove('active');
     if (carSpeedEl) carSpeedEl.textContent = String(Math.round(Math.abs(activeCar.state.speed) * 3.6));
     if (carGearEl) carGearEl.textContent = isRick ? (isPass ? 'P' : 'D') : String(activeCar.state.gear);
     if (carRpmFill) {
@@ -1542,6 +1551,7 @@ const vehicleTransition = {
   seatMode: 'driver',
   elapsed: 0,
   duration: 0.75,
+  fadeSwapped: false,
   doorOpenedCue: false,
   doorClosedCue: false,
   beltCue: false,
@@ -1562,9 +1572,11 @@ function startVehicleTransition(type, car, seatMode = 'driver') {
   vehicleTransition.car = car;
   vehicleTransition.seatMode = seatMode;
   vehicleTransition.elapsed = 0;
+  vehicleTransition.fadeSwapped = false;
   vehicleTransition.doorOpenedCue = false;
   vehicleTransition.doorClosedCue = false;
   vehicleTransition.beltCue = false;
+  if (vehicleFadeEl) vehicleFadeEl.style.opacity = '0';
 
   if (type === 'rickshaw_mount_driver') {
     vehicleTransition.duration = 0.78;
@@ -1582,14 +1594,8 @@ function startVehicleTransition(type, car, seatMode = 'driver') {
     vehicleTransition.duration = 0.50;
     vehicleTransition.startPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.24 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
     vehicleTransition.endPos.set(st.pos.x + rx * 1.00 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.00 - cosH * 0.62);
-  } else if (type === 'car_enter') {
-    vehicleTransition.duration = 1.85;
-    vehicleTransition.startPos.set(st.pos.x + rx * 1.38 + sinH * 0.10, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.38 + cosH * 0.10);
-    vehicleTransition.endPos.set(st.pos.x + rx * 0.36 + sinH * 0.10, st.pos.y - 0.18 + EYE_HEIGHT, st.pos.z + rz * 0.36 + cosH * 0.10);
-  } else if (type === 'car_exit') {
-    vehicleTransition.duration = 1.15;
-    vehicleTransition.startPos.set(st.pos.x + rx * 0.36 + sinH * 0.10, st.pos.y - 0.18 + EYE_HEIGHT, st.pos.z + rz * 0.36 + cosH * 0.10);
-    vehicleTransition.endPos.set(st.pos.x + rx * 1.48 + sinH * 0.10, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.48 + cosH * 0.10);
+  } else if (type === 'car_enter' || type === 'car_exit') {
+    vehicleTransition.duration = 0.78;
   }
 }
 
@@ -1605,6 +1611,88 @@ function updateVehicleTransition(delta) {
   const cosH = Math.cos(st.heading);
   const rx = cosH;
   const rz = -sinH;
+
+  // Smooth black-screen fade-in -> instant swap -> fade-out into 3rd-person car view (or walking on exit)
+  if (vt.type === 'car_enter' || vt.type === 'car_exit') {
+    let alpha = 0;
+    if (p < 0.44) alpha = p / 0.44;
+    else if (p < 0.56) alpha = 1.0;
+    else alpha = Math.max(0, 1.0 - (p - 0.56) / 0.44);
+    if (vehicleFadeEl) vehicleFadeEl.style.opacity = alpha.toFixed(3);
+
+    if (p >= 0.45 && !vt.fadeSwapped) {
+      vt.fadeSwapped = true;
+      car.playDoorSound?.(true);
+      if (vt.type === 'car_enter') {
+        carOrbitYaw = 0;
+        carOrbitPitch = 0.24;
+        carOrbitLastMove = 0;
+        car.enterCar('driver');
+        playerPos.set(st.pos.x, st.pos.y + EYE_HEIGHT, st.pos.z);
+        camera.position.set(st.pos.x - sinH * st.camBack, st.pos.y + st.camHeight, st.pos.z - cosH * st.camBack);
+        camera.lookAt(st.pos.x + sinH * 4.5, st.pos.y + 1.05, st.pos.z + cosH * 4.5);
+        if (playerCharacter) {
+          playerCharacter.update(delta, {
+            position: playerPos,
+            yaw: st.heading + Math.PI,
+            speed: 0,
+            maxSpeed: 3.45,
+            grounded: true,
+            isSprinting: false,
+            inStudio: false,
+            hideMesh: false,
+            carDrive: {
+              active: true,
+              heading: st.heading,
+              steerAngle: st.steerAngle,
+              speed: st.speed,
+              anchors: car.getCarDriverAnchors?.(),
+            },
+          });
+        }
+        syncCarHUD();
+        updateHUDPrompt();
+      } else {
+        car.exitCar(playerPos);
+        controls.euler.set(-0.04, st.heading + Math.PI, 0, 'YXZ');
+        camera.quaternion.setFromEuler(controls.euler);
+        if (baseCamNear > 0) syncCameraNear(baseCamNear);
+        if (playerCharacter) {
+          playerCharacter.state.facingYaw = st.heading;
+          controls.getHorizontalVectors(forwardVec, rightVec);
+          camDesiredPos.copy(playerPos).addScaledVector(forwardVec, -1.95);
+          camDesiredPos.y = playerPos.y + 0.22;
+          const camRes = resolveThirdPersonCamera(playerPos, camDesiredPos, st.pos.y, 0.016, true, true);
+          camera.position.copy(camRes.camPos);
+          playerCharacter.update(delta, {
+            position: playerPos,
+            yaw: controls.euler.y,
+            speed: 0,
+            maxSpeed: 3.45,
+            grounded: true,
+            isSprinting: false,
+            inStudio: false,
+            hideMesh: camRes.hidePlayerMesh,
+          });
+        }
+        syncCarHUD();
+        updateHUDPrompt();
+      }
+    }
+
+    if (vt.fadeSwapped && vt.type === 'car_enter') {
+      camera.position.set(st.pos.x - sinH * st.camBack, st.pos.y + st.camHeight, st.pos.z - cosH * st.camBack);
+      camera.lookAt(st.pos.x + sinH * 4.5, st.pos.y + 1.05, st.pos.z + cosH * 4.5);
+    }
+
+    if (p >= 1.0) {
+      vt.active = false;
+      vt.type = null;
+      vt.fadeSwapped = false;
+      if (vehicleFadeEl) vehicleFadeEl.style.opacity = '0';
+    }
+    return true;
+  }
 
   let clip = 'Idle';
   let timeScale = 0.4;
@@ -1775,13 +1863,17 @@ function toggleCarDriving(targetCar = null, seatMode = 'driver') {
   if (activeCar) {
     const wasRick = Boolean(activeCar.state.isRickshaw);
     const wasPass = wasRick && activeCar.state.rideSeat === 'passenger';
-    activeCar.exitCar(playerPos);
-    syncCarHUD();
-    startVehicleTransition(
-      wasRick ? (wasPass ? 'rickshaw_dismount_passenger' : 'rickshaw_dismount_driver') : 'car_exit',
-      activeCar,
-      'driver',
-    );
+    if (wasRick) {
+      activeCar.exitCar(playerPos);
+      syncCarHUD();
+      startVehicleTransition(
+        wasPass ? 'rickshaw_dismount_passenger' : 'rickshaw_dismount_driver',
+        activeCar,
+        'driver',
+      );
+    } else {
+      startVehicleTransition('car_exit', activeCar, 'driver');
+    }
     return;
   }
   const carToEnter = targetCar || findNearestCar(playerPos) || bmwCar;
@@ -1892,6 +1984,54 @@ async function initialize() {
         }
       }
     },
+  });
+  gtaPhoneUI = createGTAPhoneUI({
+    onOpenChange: (open) => {
+      playerCharacter?.setPhoneInHand?.(open);
+      if (open) {
+        freeCursorMode = true;
+        if (controls.isLocked) controls.unlock();
+        pause?.classList.add('hidden');
+      }
+    },
+    onPhoneInteract: () => playerCharacter?.triggerPhoneTap?.(),
+    onSpawnCheatVehicle: (carId) => {
+      const targetCar = cars.find((c) => c.state.id === carId);
+      if (!targetCar) return false;
+      controls.getHorizontalVectors(forwardVec, rightVec);
+      const dist = targetCar.state.isRickshaw ? 3.8 : 5.6;
+      const sx = playerPos.x + forwardVec.x * dist;
+      const sz = playerPos.z + forwardVec.z * dist;
+      const heading = Math.atan2(forwardVec.x, forwardVec.z) + Math.PI * 0.5;
+      targetCar.spawnAt?.(sx, sz, heading);
+      return true;
+    },
+    onTeleportLandmark: (lm) => warpToLandmark(lm, false),
+    onEnterSelfieMode: () => {
+      if (!playerCharacter) return;
+      selfiePrevCamMode = playerCharacter.state.cameraMode;
+      playerCharacter.state.cameraMode = 'front';
+      playerCharacter.setExpression?.('happy');
+      camHideMeshState = false;
+      isThirdPersonEyeFallback = false;
+      smoothedCamDist = 1.15;
+      syncHUDButtons(false, true);
+    },
+    onExitSelfieMode: () => {
+      if (!playerCharacter) return;
+      if (selfiePrevCamMode) {
+        playerCharacter.state.cameraMode = selfiePrevCamMode;
+        selfiePrevCamMode = null;
+      }
+      playerCharacter.setExpression?.('normal');
+      syncHUDButtons(false, true);
+    },
+    onSetExpression: (expr) => playerCharacter?.setExpression?.(expr),
+    onCaptureSelfieDataUrl: () => {
+      renderActiveScene();
+      return canvas.toDataURL('image/png');
+    },
+    getLandmarks: () => khulnaMapUI?.landmarks || [],
   });
   cars = createDrivableCarFleet(scene, manager);
   bmwCar = cars[0];
@@ -2091,13 +2231,28 @@ canvas.addEventListener('pointerdown', (event) => {
     closeLiftKeypad(true);
     return;
   }
-  if (!controls.isLocked) {
-    const activeDrive = getDrivingCar();
-    if (activeDrive && !activeDrive.state.isRickshaw) {
+  if (event.button === 0) {
+    const now = performance.now();
+    const isDoubleClick = (now - lastCanvasClickTime) < 340;
+    lastCanvasClickTime = isDoubleClick ? 0 : now;
+
+    if (isDoubleClick) {
+      if (controls.pointerLocked) {
+        // Double-click while locked: free the mouse cursor without opening map/pause
+        freeCursorMode = true;
+        controls.unlock();
+      } else {
+        // Double-click while free: hide mouse cursor & unlock 360-deg free-look!
+        freeCursorMode = false;
+        carDoorCursorMode = false;
+        if (!started) beginWalking();
+        else controls.lock();
+      }
       return;
     }
-    carDoorCursorMode = false;
-    beginWalking();
+  }
+  if (freeCursorMode || !controls.pointerLocked) {
+    // Keep cursor free on single clicks until user double-clicks to lock into free-look
     return;
   }
   if (event.button === 0 && controls.pointerLocked) {
@@ -2110,6 +2265,15 @@ canvas.addEventListener('pointerdown', (event) => {
       playerCharacter?.triggerAttack();
     }
   }
+});
+
+window.addEventListener('mousemove', (event) => {
+  if (inStudio || !started) return;
+  if (!controls.pointerLocked || !getDrivingCar()) return;
+  if (Math.abs(event.movementX) > 260 || Math.abs(event.movementY) > 260) return;
+  carOrbitYaw -= event.movementX * 0.0034;
+  carOrbitPitch = THREE.MathUtils.clamp(carOrbitPitch + event.movementY * 0.0026, 0.04, 0.78);
+  carOrbitLastMove = performance.now();
 });
 
 window.addEventListener('pointermove', (event) => {
@@ -2439,8 +2603,9 @@ interactPrompt?.addEventListener('click', () => {
 controls.addEventListener('lock', () => {
   if (inStudio) return;
   carDoorCursorMode = false;
+  if (controls.pointerLocked) freeCursorMode = false;
   started = true;
-  document.querySelector('#look-control kbd').textContent = controls.fallback ? 'DRAG' : 'MOUSE';
+  document.querySelector('#look-control kbd').textContent = controls.pointerLocked ? '2x CLICK' : '2x CLICK';
   intro.classList.add('hidden');
   pause.classList.add('hidden');
   walkHud.classList.remove('hidden');
@@ -2448,7 +2613,7 @@ controls.addEventListener('lock', () => {
 
 controls.addEventListener('unlock', () => {
   keys.clear();
-  if (liftKeypadOpen || khulnaMapUI?.isOpen || getDrivingCar() || vehicleTransition.active || carDoorCursorMode) {
+  if (liftKeypadOpen || khulnaMapUI?.isOpen || gtaPhoneUI?.isOpen || getDrivingCar() || vehicleTransition.active || carDoorCursorMode || freeCursorMode) {
     pause.classList.add('hidden');
     walkHud.classList.remove('hidden');
     return;
@@ -2497,7 +2662,6 @@ const EMOTE_KEY_MAP = {
   Numpad9: 'laugh',
   Digit0: 'warmup',
   Numpad0: 'warmup',
-  KeyP: 'pocket',
 };
 
 const LIFT_FLOOR_KEY_MAP = {
@@ -2572,6 +2736,16 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'Tab') {
     event.preventDefault();
     if (!event.repeat) toggleHudVisibility();
+    return;
+  }
+
+  // [P] GTA V-Style Smartphone Pop-up Toggle
+  if (event.code === 'KeyP' && !event.repeat && !khulnaMapUI?.isOpen) {
+    event.preventDefault();
+    gtaPhoneUI?.toggle();
+    return;
+  }
+  if (gtaPhoneUI?.isOpen && gtaPhoneUI.handleKeyDown(event)) {
     return;
   }
 
@@ -3807,11 +3981,24 @@ function updateMovement(delta) {
           camera.position.lerp(carCamDesired, Math.min(1, delta * 9.0));
           camera.lookAt(carCamLookTarget);
         } else {
-          // Dynamic smooth Chase Cam behind the active car or rickshaw
+          // GTA V-style 360-deg Free-Look Orbit Chase Cam around the active car or rickshaw
+          const nowOrbit = performance.now();
+          const recentlyMovedMouse = (nowOrbit - carOrbitLastMove) < 2200;
+          if (Math.abs(st.speed) > 1.4 && !recentlyMovedMouse) {
+            const yawDiff = Math.atan2(Math.sin(-carOrbitYaw), Math.cos(-carOrbitYaw));
+            carOrbitYaw += yawDiff * Math.min(1, delta * 3.2);
+            carOrbitPitch += (0.24 - carOrbitPitch) * Math.min(1, delta * 3.2);
+          }
+          const orbitAngle = st.heading + carOrbitYaw;
+          const sinO = Math.sin(orbitAngle);
+          const cosO = Math.cos(orbitAngle);
           const backDist = st.camBack + Math.min(1.4, speedKmh * 0.014);
-          carCamDesired.set(st.pos.x - sinH * backDist, st.pos.y + st.camHeight, st.pos.z - cosH * backDist);
-          carCamLookTarget.set(st.pos.x + sinH * 4.5, st.pos.y + 1.05, st.pos.z + cosH * 4.5);
-          camera.position.lerp(carCamDesired, Math.min(1, delta * 8.5));
+          const horizDist = backDist * Math.cos(carOrbitPitch);
+          const camY = Math.max(st.pos.y + 0.65, st.pos.y + 0.92 + backDist * Math.sin(carOrbitPitch) + (st.camHeight - 2.15) * 0.45);
+          carCamDesired.set(st.pos.x - sinO * horizDist, camY, st.pos.z - cosO * horizDist);
+          const lookFwd = recentlyMovedMouse ? 1.2 : 4.0;
+          carCamLookTarget.set(st.pos.x + sinO * lookFwd, st.pos.y + 1.05, st.pos.z + cosO * lookFwd);
+          camera.position.lerp(carCamDesired, Math.min(1, delta * (recentlyMovedMouse ? 16.0 : 9.0)));
           camera.lookAt(carCamLookTarget);
         }
       }
@@ -3849,12 +4036,19 @@ function updateMovement(delta) {
           playerCharacter.update(delta, {
             position: playerPos,
             yaw: st.heading + Math.PI,
-            speed: 0,
-            maxSpeed: 3.45,
+            speed: Math.abs(st.speed),
+            maxSpeed: 28.0,
             grounded: true,
             isSprinting: false,
             inStudio: false,
-            hideMesh: true,
+            hideMesh: st.cameraMode === 'hood' || st.cameraMode === 'interior',
+            carDrive: {
+              active: true,
+              heading: st.heading,
+              steerAngle: st.steerAngle,
+              speed: st.speed,
+              anchors: drivingCar.getCarDriverAnchors?.(),
+            },
           });
         }
       }
@@ -4299,5 +4493,5 @@ function animate() {
 renderer.setAnimationLoop(animate);
 initialize().catch((error) => {
   console.error(error);
-  loadingStatus.textContent = 'The scene could not be initialized. Check the console for details.';
+  loadingStatus.textContent = `The scene could not be initialized: ${error?.message || error}`;
 });
