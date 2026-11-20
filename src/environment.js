@@ -434,6 +434,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     syncVisibility,
     setNightFactor(nf) {
       city.setNightFactor?.(nf);
+      landmarks.setNightFactor?.(nf);
       corridors.setNightFactor(nf);
       traffic.setNightFactor(nf);
       m.setNightFactor?.(nf);

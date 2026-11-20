@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { buildCNGAuto } from './khulna-vehicles.js';
+import { buildRoyalMoreDistrict } from './royal-more.js';
 
 function makeSignTexture({
   title,
@@ -1211,12 +1212,13 @@ export function buildKhulnaLandmarks(parent, m) {
     return slice;
   }
 
-  // Keep only the top high-detail Khulna showcase landmarks (Model Mosque & Madrasah, Circuit House, Stadium, Boro Maath, Shaheed Hadis Park)
+  // Keep only the top high-detail Khulna showcase landmarks (Model Mosque & Madrasah, Circuit House, Stadium, Boro Maath, Shaheed Hadis Park, Royal More)
   const aliaSlice = makeSlice('KhulnaLandmark_Alia', 205, 130, 260);
   const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -145, -720, 480);
 
   buildAliaMadrasahCampus(aliaSlice.staticG, aliaSlice.dynamicG, lm, m);
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
+  const royalMore = buildRoyalMoreDistrict(group, m);
 
   for (const s of slices) {
     mergeStaticMeshes(s.staticG);
@@ -1230,13 +1232,19 @@ export function buildKhulnaLandmarks(parent, m) {
       const want = dx * dx + dz * dz <= s.maxDistSq;
       if (s.root.visible !== want) s.root.visible = want;
     }
+    royalMore.syncVisibility(playerPos);
   }
 
   return {
     group,
+    royalMore,
     syncVisibility,
-    update(_time, playerPos = null) {
+    setNightFactor(nf) {
+      royalMore.setNightFactor(nf);
+    },
+    update(time, playerPos = null) {
       if (playerPos) syncVisibility(playerPos);
+      royalMore.update(time, playerPos);
     },
     setVisible(visible) {
       group.visible = visible;
