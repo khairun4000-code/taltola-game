@@ -2582,22 +2582,22 @@ export function createDrivableCar(scene, manager, config) {
     if (state.driving) {
       if (config.isRickshaw) {
         return state.rideSeat === 'passenger'
-          ? '[G] রিকশা থেকে নামুন · [F] সামনের ড্রাইভার সিটে যান'
-          : '[F] রিকশা থেকে নামুন · [G] পেছনের প্যাসেঞ্জার সিটে বসুন';
+          ? '[G] Exit Rickshaw · [F] Switch to Driver Seat'
+          : '[F] Exit Rickshaw · [G] Sit in Passenger Seat';
       }
       if (config.isBike) {
-        return `[F] ${state.name} বাইক থেকে নামুন · [V] POV স্পিডোমিটার`;
+        return `[F] Dismount ${state.name} · [V] POV Speedometer`;
       }
-      return `[F] ${state.name} গাড়ি থেকে নামুন · [E] গেট খুলুন`;
+      return `[F] Exit ${state.name} · [E] Open Gate`;
     }
     if (isPlayerNear(playerPos)) {
       if (config.isRickshaw) {
-        return '[F] সামনের সিটে উঠে চালান (Drive) · [G] পেছনের প্যাসেঞ্জার সিটে বসুন (Sit)';
+        return '[F] Drive Rickshaw · [G] Sit in Passenger Seat';
       }
       if (config.isBike) {
-        return `[F] ${state.name} বাইকে উঠুন ও চালান (Ride Bike)`;
+        return `[F] Ride ${state.name}`;
       }
-      return `[F] ${state.name} গাড়িতে উঠুন ও চালান (Drive ${state.name})`;
+      return `[F] Enter & Drive ${state.name}`;
     }
     return null;
   }

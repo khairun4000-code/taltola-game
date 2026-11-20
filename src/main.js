@@ -4509,7 +4509,7 @@ function updateHUDPrompt() {
       }
     } else if (Math.abs(lx) < 16 && Math.abs(lz) < 16) {
       zone = 'TALTOLA HOUSE · TOOTPARA TALTOLA HOSPITAL CROSS RD';
-    } else if (x >= 144 && x <= 212 && z >= -524 && z <= -292) {
+    } else if (x >= 144 && x <= 222 && z >= -524 && z <= -292) {
       zone = environment?.altapoleTower?.getZoneName?.(x, z, footY) || environment?.altapole?.getZoneName?.(x, z) || 'ALTAPOLE LANE · KHULNA';
     } else if (Math.abs(x) < 35 && Math.abs(z) < 42) {
       zone = 'HAJI MOHSIN ROAD · KHULNA';

@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#141918" />
-    <meta name="description" content="3D Full Human Character Studio & Taltola Real-Place Game" />
-    <title>3D Character Studio & Taltola Game</title>
+    <meta name="description" content="Khulna Open World — 3D Street & City Game" />
+    <title>KHULNA VI · Open World 3D</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <canvas id="scene" aria-label="Interactive 3D Character Studio and Khulna Street Game"></canvas>
+    <canvas id="scene" aria-label="Interactive 3D Character Studio and Khulna Open-World Game"></canvas>
     <div id="vignette" class="vignette hidden" aria-hidden="true"></div>
     <div id="vehicle-fade" class="vehicle-fade" aria-hidden="true"></div>
     <div id="freecam-bokeh" class="freecam-bokeh" aria-hidden="true"></div>
@@ -19,16 +19,16 @@
     <div id="gta-cheat-toast" class="gta-cheat-toast hidden" role="status"></div>
 
     <section id="loading" class="loading-screen">
-      <div class="loading-mark">3D<span>/</span>HUMAN</div>
-      <p class="eyebrow">PREPARING 3D CHARACTER & STUDIO</p>
+      <div class="loading-mark">KHULNA<span>/</span>VI</div>
+      <p class="eyebrow">LOADING OPEN-WORLD ENGINE</p>
       <div class="loading-track"><div id="loading-bar"></div></div>
-      <p id="loading-status">Loading 3D human mesh…</p>
+      <p id="loading-status">Streaming city assets…</p>
     </section>
 
     <header id="hud-header" class="hud-header hidden">
       <div class="brand">
-        <span class="brand-index">3D</span>
-        <div><strong id="brand-title">CHARACTER STUDIO</strong><small id="brand-subtitle">FULL HUMAN 3D MODEL · STANDALONE VIEW</small></div>
+        <span class="brand-index">VI</span>
+        <div><strong id="brand-title">CHARACTER STUDIO</strong><small id="brand-subtitle">FULL 3D CHARACTER · STANDALONE VIEW</small></div>
       </div>
       <div class="hud-actions">
         <span id="fps" class="fps">— FPS</span>
@@ -42,11 +42,11 @@
         <button id="map-hud-button" class="text-button hidden" type="button">MENU <span>[ESC]</span></button>
         <button id="studio-toggle-button" class="text-button" type="button">CHARACTER STUDIO <span>★</span></button>
         <button id="car-toggle-button" class="text-button hidden" type="button">DRIVE CAR <span>[T]</span></button>
-        <button id="lift-hud-button" class="text-button hidden" type="button">LIFT PANEL <span>[L]</span></button>
-        <button id="run-toggle-button" class="text-button hidden" type="button">RUN: OFF <span>[SHIFT/R]</span></button>
-        <button id="camera-toggle-button" class="text-button hidden" type="button">VIEW: BACK <span>[V]</span></button>
+        <button id="lift-hud-button" class="text-button hidden" type="button">ELEVATOR <span>[L]</span></button>
+        <button id="run-toggle-button" class="text-button hidden" type="button">SPRINT: OFF <span>[SHIFT/R]</span></button>
+        <button id="camera-toggle-button" class="text-button hidden" type="button">VIEW: CHASE <span>[V]</span></button>
         <button id="gate-toggle-button" class="text-button hidden" type="button">OPEN DOORS <span>[G]</span></button>
-        <button id="hud-toggle-button" class="text-button hidden" type="button">HIDE UI <span>[TAB]</span></button>
+        <button id="hud-toggle-button" class="text-button hidden" type="button">HIDE HUD <span>[TAB]</span></button>
         <button id="reference-button" class="text-button" type="button">REFERENCE <span>↗</span></button>
       </div>
     </header>
@@ -54,59 +54,59 @@
     <!-- STANDALONE 3D CHARACTER STUDIO UI -->
     <section id="studio-panel" class="studio-panel hidden">
       <div class="studio-card">
-        <p class="eyebrow"><span></span> 3D FULL HUMAN SHOWCASE</p>
-        <h2>আপনার 3D ক্যারেক্টার</h2>
-        <p class="studio-hint">মাউস ড্র্যাগ করে ৩৬০° ঘুরিয়ে দেখুন · স্ক্রল করে জুম করুন</p>
+        <p class="eyebrow"><span></span> 3D CHARACTER SHOWCASE</p>
+        <h2>Character Studio</h2>
+        <p class="studio-hint">Drag to orbit 360° · Scroll to zoom</p>
 
         <div class="studio-group">
-          <label>ক্যামেরা অ্যাঙ্গেল (CAMERA VIEW)</label>
+          <label>CAMERA ANGLE</label>
           <div class="studio-btn-grid">
-            <button type="button" class="studio-chip active" data-cam="full">সম্পূর্ণ মানুষ (Full Body)</button>
-            <button type="button" class="studio-chip" data-cam="face">চেহারা ক্লোজ-আপ (Face)</button>
-            <button type="button" class="studio-chip" data-cam="side">সাইড ভিউ (Profile)</button>
-            <button type="button" class="studio-chip" data-cam="spin">৩৬০° ঘোরান (Spin)</button>
+            <button type="button" class="studio-chip active" data-cam="full">Full Body</button>
+            <button type="button" class="studio-chip" data-cam="face">Face Close-Up</button>
+            <button type="button" class="studio-chip" data-cam="side">Side Profile</button>
+            <button type="button" class="studio-chip" data-cam="spin">360° Turntable</button>
           </div>
         </div>
 
         <div class="studio-group">
-          <label>মুভমেন্ট ও পারকোর (MOVEMENT & PARKOUR)</label>
+          <label>MOVEMENT &amp; PARKOUR</label>
           <div class="studio-btn-grid">
-            <button type="button" class="studio-chip active" data-anim="idle">দাঁড়ানো (Idle)</button>
-            <button type="button" class="studio-chip" data-anim="walk">হাঁটা (Walk)</button>
-            <button type="button" class="studio-chip" data-anim="run">দৌড়ানো (Run)</button>
-            <button type="button" class="studio-chip" data-anim="jump">লাফ (Jump)</button>
-            <button type="button" class="studio-chip" data-anim="climb">দেয়াল বাওয়া (Climb)</button>
-            <button type="button" class="studio-chip" data-anim="fall">উপর থেকে পড়া (Fall)</button>
-            <button type="button" class="studio-chip" data-anim="jumpdown">ল্যান্ডিং (Drop Land)</button>
-            <button type="button" class="studio-chip" data-anim="flip">ফ্লিপ (Flip)</button>
-            <button type="button" class="studio-chip" data-anim="dive">ডাইভ (Dive)</button>
-            <button type="button" class="studio-chip" data-anim="swim">সাঁতার (Swim)</button>
+            <button type="button" class="studio-chip active" data-anim="idle">Idle</button>
+            <button type="button" class="studio-chip" data-anim="walk">Walk</button>
+            <button type="button" class="studio-chip" data-anim="run">Sprint</button>
+            <button type="button" class="studio-chip" data-anim="jump">Jump</button>
+            <button type="button" class="studio-chip" data-anim="climb">Wall Climb</button>
+            <button type="button" class="studio-chip" data-anim="fall">Freefall</button>
+            <button type="button" class="studio-chip" data-anim="jumpdown">Drop Land</button>
+            <button type="button" class="studio-chip" data-anim="flip">Front Flip</button>
+            <button type="button" class="studio-chip" data-anim="dive">Parkour Dive</button>
+            <button type="button" class="studio-chip" data-anim="swim">Swim</button>
           </div>
         </div>
 
         <div class="studio-group">
-          <label>স্টাইল, ফাইট ও ইমোট (KEYBOARD P / 1–0)</label>
+          <label>ACTIONS &amp; EMOTES (KEYS 1–0)</label>
           <div class="studio-btn-grid">
-            <button type="button" class="studio-chip" data-anim="pocket">[P] স্টাইল দাঁড়ানো</button>
-            <button type="button" class="studio-chip" data-anim="dance1">[1] হিপ-হপ নাচ</button>
-            <button type="button" class="studio-chip" data-anim="dance2">[2] বিজয় নাচ</button>
-            <button type="button" class="studio-chip" data-anim="wave">[3] হাই / সালাম</button>
-            <button type="button" class="studio-chip" data-anim="kick">[4] ফ্লাইং কিক</button>
-            <button type="button" class="studio-chip" data-anim="combo">[5] বক্সিং কম্বো</button>
-            <button type="button" class="studio-chip" data-anim="flex">[6] বডি ফ্লেক্স</button>
-            <button type="button" class="studio-chip" data-anim="phone">[7] ফোনে কথা</button>
-            <button type="button" class="studio-chip" data-anim="mobile">[8] মোবাইল গেম</button>
-            <button type="button" class="studio-chip" data-anim="laugh">[9] হাসি (Laugh)</button>
-            <button type="button" class="studio-chip" data-anim="warmup">[0] ওয়ার্ম-আপ</button>
-            <button type="button" class="studio-chip" data-anim="sit">বসা (Sit)</button>
+            <button type="button" class="studio-chip" data-anim="pocket">Street Idle</button>
+            <button type="button" class="studio-chip" data-anim="dance1">[1] Hip-Hop</button>
+            <button type="button" class="studio-chip" data-anim="dance2">[2] Victory Dance</button>
+            <button type="button" class="studio-chip" data-anim="wave">[3] Wave</button>
+            <button type="button" class="studio-chip" data-anim="kick">[4] Flying Kick</button>
+            <button type="button" class="studio-chip" data-anim="combo">[5] Boxing Combo</button>
+            <button type="button" class="studio-chip" data-anim="flex">[6] Flex</button>
+            <button type="button" class="studio-chip" data-anim="phone">[7] Phone Call</button>
+            <button type="button" class="studio-chip" data-anim="mobile">[8] Texting</button>
+            <button type="button" class="studio-chip" data-anim="laugh">[9] Laugh</button>
+            <button type="button" class="studio-chip" data-anim="warmup">[0] Warm-Up</button>
+            <button type="button" class="studio-chip" data-anim="sit">Sit</button>
           </div>
         </div>
 
         <div class="studio-group">
-          <label>মাথার অবস্থান ও গ্রাফিক্স (GAZE &amp; GRAPHICS)</label>
+          <label>HEAD POSE &amp; GRAPHICS</label>
           <div class="studio-btn-grid">
-            <button type="button" class="studio-chip active" data-gaze="straight">সোজা তাকানো (Straight)</button>
-            <button type="button" class="studio-chip" data-gaze="original">ছবির ভঙ্গি (Photo Pose)</button>
+            <button type="button" class="studio-chip active" data-gaze="straight">Look Straight</button>
+            <button type="button" class="studio-chip" data-gaze="original">Photo Pose</button>
             <select id="studio-quality" class="studio-chip" aria-label="Studio graphics quality">
               <option value="low">Graphics: Low (Crisp)</option>
               <option value="medium">Graphics: Medium</option>
@@ -118,7 +118,7 @@
 
         <div class="studio-footer-row">
           <button id="enter-street-button" class="primary-button" type="button">
-            <span>বাসা ও রাস্তার গেমে যান (PLAY GAME)</span><b>→</b>
+            <span>ENTER OPEN WORLD</span><b>→</b>
           </button>
         </div>
       </div>
@@ -126,23 +126,23 @@
 
     <main id="intro" class="intro hidden">
       <div class="intro-copy">
-        <p class="eyebrow"><span></span> REAL-MAP KHULNA CITY · BANGLADESH</p>
-        <h1>Khulna,<br />walkable.</h1>
-        <p class="intro-description">Explore real Khulna from Tootpara Taltola Hospital Cross Rd (তালতলার বাসা) to Haji Mohsin Rd, PTI More, Alia Madrasah, Circuit House & Rupsha Ghat.</p>
+        <p class="eyebrow"><span></span> OPEN-WORLD KHULNA · BANGLADESH</p>
+        <h1>Khulna,<br />Unbound.</h1>
+        <p class="intro-description">Explore real-scale Khulna City from Taltola House and Haji Mohsin Road to Altapole Lane, PTI More, Royal More, Alia Madrasah, Circuit House, and Rupsha Ghat.</p>
         <div class="entry-row">
-          <button id="enter-button" class="primary-button" type="button"><span>ENTER KHULNA</span><b>→</b></button>
+          <button id="enter-button" class="primary-button" type="button"><span>ENTER CITY</span><b>→</b></button>
           <div class="quality-control">
-            <label for="spawn-select">START LOCATION</label>
+            <label for="spawn-select">SPAWN LOCATION</label>
             <select id="spawn-select" aria-label="Starting landmark in Khulna">
-              <option value="taltola_house" selected>তালতলার বাসা · Taltola Cross Rd</option>
-              <option value="haji_mohsin">হাজী মহসিন রোড · 35 SK Arshan</option>
-              <option value="altapole_lane">আলতাপোল লেন · Altapole Lane</option>
-              <option value="pti_more">পিটিআই মোড় ও আহসান আহমেদ রোড · PTI More</option>
-              <option value="royal_more">রয়্যালের মোড় · Royal More</option>
-              <option value="alia_madrasah">আলিয়া মাদ্রাসা · Alia Model Mosque</option>
-              <option value="circuit_house">বড় মাঠ · Circuit House & Stadium</option>
-              <option value="hadis_park">শহীদ হাদিস পার্ক · Hadis Park</option>
-              <option value="rupsha_ferry">রূপসা ঘাট · Rupsha Launch & Ferry</option>
+              <option value="taltola_house" selected>Taltola House · Taltola Cross Rd</option>
+              <option value="haji_mohsin">Haji Mohsin Rd · SK Arshan Tower</option>
+              <option value="altapole_lane">Altapole Lane · Ward 23</option>
+              <option value="pti_more">PTI More · Ahsan Ahmed Rd</option>
+              <option value="royal_more">Royal More · Chingri Chattar</option>
+              <option value="alia_madrasah">Alia Madrasah · Model Mosque</option>
+              <option value="circuit_house">Circuit House &amp; Stadium</option>
+              <option value="hadis_park">Shaheed Hadis Park</option>
+              <option value="rupsha_ferry">Rupsha Launch &amp; Ferry Ghat</option>
             </select>
           </div>
           <div class="quality-control">
@@ -159,37 +159,37 @@
       <div class="scene-caption"><span>22.7988° N</span><i></i><span>89.5734° E</span></div>
     </main>
 
-    <!-- GTA V-STYLE PAUSE MENU: KHULNA CITY MAP, GRAPHICS, SETTINGS & CONTROLS ([ESC] KEY) -->
-    <section id="city-map-modal" class="city-map-modal hidden" role="dialog" aria-label="Khulna Pause Menu, Map and Settings">
+    <!-- GTA V / VI PAUSE MENU: CITY MAP, GRAPHICS, SETTINGS, GAME & CONTROLS ([ESC]) -->
+    <section id="city-map-modal" class="city-map-modal hidden" role="dialog" aria-label="Pause Menu, City Map and Settings">
       <div class="city-map-card">
         <div class="city-map-header">
           <div>
-            <p class="eyebrow">KHULNA OPEN-WORLD · GTA V PAUSE MENU</p>
-            <h3 id="pause-menu-title">খুলনা শহর মানচিত্র ও ফাস্ট ট্র্যাভেল</h3>
+            <p class="eyebrow">KHULNA OPEN WORLD · PAUSE MENU</p>
+            <h3 id="pause-menu-title">CITY MAP &amp; GPS NAVIGATION</h3>
           </div>
           <div class="gta-header-actions">
-            <button id="map-my-location-btn" class="text-button" type="button" style="padding:6px 12px;font-size:11.5px;border-color:#38bdf8;color:#e0f2fe;">📍 আমার লোকেশন</button>
-            <button id="pause-resume-game-btn" class="gta-resume-btn" type="button">▶ খেলা চালিয়ে যান</button>
+            <button id="map-my-location-btn" class="text-button" type="button" style="padding:6px 12px;font-size:11.5px;border-color:#38bdf8;color:#e0f2fe;">📍 MY LOCATION</button>
+            <button id="pause-resume-game-btn" class="gta-resume-btn" type="button">▶ RESUME GAME</button>
             <button id="close-city-map" class="lift-close-x" type="button" title="Close Menu (Esc)">×</button>
           </div>
         </div>
 
         <nav class="gta-pause-tabs" role="tablist" aria-label="Pause menu sections">
-          <button type="button" class="gta-tab-btn active" role="tab" aria-selected="true" data-pause-tab="map">MAP <span>ম্যাপ</span></button>
-          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="graphics">GRAPHICS <span>গ্রাফিক্স</span></button>
-          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="settings">SETTINGS <span>সেটিংস</span></button>
-          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="game">GAME <span>অ্যাকশন</span></button>
-          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="controls">CONTROLS <span>কন্ট্রোলস</span></button>
+          <button type="button" class="gta-tab-btn active" role="tab" aria-selected="true" data-pause-tab="map">MAP</button>
+          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="graphics">GRAPHICS</button>
+          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="settings">SETTINGS</button>
+          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="game">GAME</button>
+          <button type="button" class="gta-tab-btn" role="tab" aria-selected="false" data-pause-tab="controls">CONTROLS</button>
         </nav>
 
         <!-- TAB 1: MAP -->
         <div id="pause-tab-map" class="gta-tab-panel city-map-body" data-pause-panel="map">
           <div class="city-map-canvas-wrap">
             <canvas id="city-map-canvas" width="760" height="720"></canvas>
-            <p class="city-map-hint">ম্যাপে ক্লিক বা ডবল ক্লিক = GTA V ইয়েলো জিপিএস রুট (শুধু ডিরেকশন) · টেলিপোর্ট = ডান পাশের লোকেশন লিস্ট</p>
+            <p class="city-map-hint">CLICK OR DOUBLE-CLICK MAP = SET YELLOW GPS WAYPOINT · FAST TRAVEL = SELECT LANDMARK ON RIGHT</p>
           </div>
           <aside class="city-map-sidebar">
-            <div class="city-sidebar-title">KEY KHULNA LANDMARKS</div>
+            <div class="city-sidebar-title">FAST TRAVEL LANDMARKS</div>
             <div id="city-landmark-list" class="city-landmark-list"></div>
           </aside>
         </div>
@@ -199,8 +199,8 @@
           <div class="gta-settings-grid">
             <div class="gta-setting-card">
               <div class="gta-setting-head">
-                <strong>গ্রাফিক্স কোয়ালিটি (Graphics Preset)</strong>
-                <small>রেজোলিউশন না কমিয়ে স্মুথ ও শার্প ভিজ্যুয়াল</small>
+                <strong>Graphics Preset</strong>
+                <small>High-clarity visuals without lowering render resolution</small>
               </div>
               <div class="gta-pill-group" id="gta-quality-group">
                 <button type="button" class="gta-pill" data-gta-quality="low">LOW · Smooth HD</button>
@@ -212,21 +212,21 @@
 
             <div class="gta-setting-card">
               <div class="gta-setting-head">
-                <strong>আকাশ ও সময় (Time of Day · [N])</strong>
-                <small>সকাল, বিকাল, রাত বা দুপুরের আলো পরিবর্তন করুন</small>
+                <strong>Time of Day [N]</strong>
+                <small>Switch live atmospheric sky and city lighting</small>
               </div>
               <div class="gta-pill-group" id="gta-time-group">
-                <button type="button" class="gta-pill" data-gta-time="golden">☀️ সকাল / গোল্ডেন</button>
-                <button type="button" class="gta-pill" data-gta-time="daylight">🌤️ দুপুর</button>
-                <button type="button" class="gta-pill" data-gta-time="sunset">🌇 বিকাল / সানসেট</button>
-                <button type="button" class="gta-pill" data-gta-time="night">🌙 রাত</button>
+                <button type="button" class="gta-pill" data-gta-time="golden">☀️ Golden Hour</button>
+                <button type="button" class="gta-pill" data-gta-time="daylight">🌤️ Midday</button>
+                <button type="button" class="gta-pill" data-gta-time="sunset">🌇 Sunset</button>
+                <button type="button" class="gta-pill" data-gta-time="night">🌙 Night</button>
               </div>
             </div>
 
             <div class="gta-setting-card">
               <div class="gta-setting-head">
-                <strong>ক্যামেরা ফিল্ড অব ভিউ (Camera FOV)</strong>
-                <small>হাঁটার সময় স্ক্রিন কতটা ওয়াইড দেখাবে</small>
+                <strong>Field of View (FOV)</strong>
+                <small>Adjust on-foot camera viewing angle</small>
               </div>
               <div class="gta-slider-row">
                 <input id="gta-fov-slider" class="gta-slider" type="range" min="48" max="75" step="1" value="60" />
@@ -236,23 +236,23 @@
 
             <div class="gta-setting-card">
               <div class="gta-setting-head">
-                <strong>রিয়েল-টাইম শ্যাডো / ছায়া (Shadows)</strong>
-                <small>বিল্ডিং, গাছ ও ক্যারেক্টারের ছায়া চালু বা বন্ধ করুন</small>
+                <strong>Real-Time Shadows</strong>
+                <small>Toggle dynamic sun shadows on buildings, trees &amp; vehicles</small>
               </div>
               <div class="gta-pill-group" id="gta-shadow-group">
-                <button type="button" class="gta-pill" data-gta-shadow="on">চালু (ON)</button>
-                <button type="button" class="gta-pill" data-gta-shadow="off">বন্ধ (OFF)</button>
+                <button type="button" class="gta-pill" data-gta-shadow="on">ON</button>
+                <button type="button" class="gta-pill" data-gta-shadow="off">OFF</button>
               </div>
             </div>
 
             <div class="gta-setting-card gta-setting-wide">
               <div class="gta-setting-head">
-                <strong>ক্লিন HUD মোড (Hide UI · [TAB])</strong>
-                <small>সিনেম্যাটিক খেলার জন্য উপরের বাটনগুলো লুকিয়ে শুধু মিনিম্যাপ রাখুন</small>
+                <strong>HUD Display Mode [TAB]</strong>
+                <small>Switch between Full HUD and Minimalist Radar-Only view</small>
               </div>
               <div class="gta-pill-group" id="gta-hud-group">
-                <button type="button" class="gta-pill" data-gta-hud="show">সব বাটন দেখান (Full HUD)</button>
-                <button type="button" class="gta-pill" data-gta-hud="hide">ক্লিন মোড (শুধু মিনিম্যাপ)</button>
+                <button type="button" class="gta-pill" data-gta-hud="show">Full HUD</button>
+                <button type="button" class="gta-pill" data-gta-hud="hide">Minimal (Radar Only)</button>
               </div>
             </div>
           </div>
@@ -263,8 +263,8 @@
           <div class="gta-settings-grid">
             <div class="gta-setting-card">
               <div class="gta-setting-head">
-                <strong>মাউস সেনসিটিভিটি (Mouse Look Speed)</strong>
-                <small>মাউস ঘোরানোর গতি বাড়ান বা কমান</small>
+                <strong>Mouse Look Sensitivity</strong>
+                <small>Adjust camera rotation speed</small>
               </div>
               <div class="gta-slider-row">
                 <input id="gta-sens-slider" class="gta-slider" type="range" min="0.4" max="2.4" step="0.1" value="1.0" />
@@ -274,115 +274,115 @@
 
             <div class="gta-setting-card">
               <div class="gta-setting-head">
-                <strong>ক্যামেরা ভিউ মোড (Camera View · [V])</strong>
-                <small>থার্ড-পার্সন, ফ্রন্ট ফেস বা ফার্স্ট-পার্সন ভিউ বেছে নিন</small>
+                <strong>Camera View [V]</strong>
+                <small>Choose Third-Person Chase, Front Face, or First-Person view</small>
               </div>
               <div class="gta-pill-group" id="gta-cam-group">
-                <button type="button" class="gta-pill" data-gta-cam="back">পেছন থেকে (Back)</button>
-                <button type="button" class="gta-pill" data-gta-cam="front">সামনে / ফেস (Front)</button>
-                <button type="button" class="gta-pill" data-gta-cam="first">ফার্স্ট পার্সন (1st)</button>
+                <button type="button" class="gta-pill" data-gta-cam="back">Third-Person</button>
+                <button type="button" class="gta-pill" data-gta-cam="front">Front Cam</button>
+                <button type="button" class="gta-pill" data-gta-cam="first">First-Person</button>
               </div>
             </div>
 
             <div class="gta-setting-card">
               <div class="gta-setting-head">
-                <strong>অটো-রান মোড (Auto Run · [R])</strong>
-                <small>শিফট না চেপেই সবসময় দৌড়াতে চান কিনা</small>
+                <strong>Auto-Sprint [R]</strong>
+                <small>Always sprint without holding Shift</small>
               </div>
               <div class="gta-pill-group" id="gta-run-group">
-                <button type="button" class="gta-pill" data-gta-run="on">চালু (ON)</button>
-                <button type="button" class="gta-pill" data-gta-run="off">বন্ধ (OFF)</button>
+                <button type="button" class="gta-pill" data-gta-run="on">ON</button>
+                <button type="button" class="gta-pill" data-gta-run="off">OFF</button>
               </div>
             </div>
 
             <div class="gta-setting-card">
               <div class="gta-setting-head">
-                <strong>সেটিংস রিসেট (Reset Defaults)</strong>
-                <small>সব গ্রাফিক্স, FOV ও মাউস সেটিংস আগের অবস্থায় ফিরিয়ে আনুন</small>
+                <strong>Restore Defaults</strong>
+                <small>Reset graphics, FOV, and sensitivity to default values</small>
               </div>
               <div class="gta-pill-group">
-                <button type="button" class="gta-pill gta-action-pill" id="gta-reset-settings-btn">↺ রিসেট ডিফল্ট সেটিংস</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-reset-settings-btn">↺ Reset All Settings</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- TAB 4: GAME & ACTIONS (All moved from main screen HUD!) -->
+        <!-- TAB 4: GAME & ACTIONS -->
         <div id="pause-tab-game" class="gta-tab-panel gta-settings-panel hidden" data-pause-panel="game">
           <div class="gta-settings-grid">
             <div class="gta-setting-card gta-setting-wide">
               <div class="gta-setting-head">
-                <strong>গেম ফিচার ও টুলস (Game Features &amp; Tools)</strong>
-                <small>মেইন স্ক্রিনের সব কন্ট্রোল ও মোড এখান থেকে সরাসরি চালু করুন</small>
+                <strong>Quick Actions &amp; Modes</strong>
+                <small>Launch tools, vehicles, smartphone, or cinematic camera</small>
               </div>
               <div class="gta-pill-group">
-                <button type="button" class="gta-pill gta-action-pill" id="gta-open-studio-btn">★ ক্যারেক্টার স্টুডিও (Character Studio)</button>
-                <button type="button" class="gta-pill gta-action-pill" id="gta-drive-car-btn">🚗 গাড়ি / রিকশা ড্রাইভ [T]</button>
-                <button type="button" class="gta-pill gta-action-pill" id="gta-open-phone-btn">📱 স্মার্টফোন ও চিট কোড [P]</button>
-                <button type="button" class="gta-pill gta-action-pill" id="gta-lift-panel-btn">🛗 লিফট কন্ট্রোল প্যানেল [L]</button>
-                <button type="button" class="gta-pill gta-action-pill" id="gta-toggle-doors-btn">🚪 সব দরজা ও গেট [G]</button>
-                <button type="button" class="gta-pill gta-action-pill" id="gta-freecam-btn">🎥 ফ্রি ক্যাম সিনেমা মোড [C]</button>
-                <button type="button" class="gta-pill gta-action-pill" id="gta-reference-btn">🖼 অরিজিনাল রেফারেন্স ভিউ</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-open-studio-btn">★ Character Studio</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-drive-car-btn">🚗 Enter / Exit Vehicle [T]</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-open-phone-btn">📱 iFruit Phone &amp; Cheats [P]</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-lift-panel-btn">🛗 Elevator Panel [L]</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-toggle-doors-btn">🚪 Toggle All Doors [G]</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-freecam-btn">🎥 Free Cam Mode [C]</button>
+                <button type="button" class="gta-pill gta-action-pill" id="gta-reference-btn">🖼 Street View Reference</button>
               </div>
             </div>
 
             <div class="gta-setting-card gta-setting-wide">
               <div class="gta-setting-head">
-                <strong>ক্যারেক্টার ইমোট ও নাচ (Emotes &amp; Style · [1–9])</strong>
-                <small>যেকোনো স্টাইল বা নাচে ক্লিক করলে গেমে ফিরে গিয়ে ক্যারেক্টার অ্যাকশন করবে</small>
+                <strong>Character Emotes &amp; Animations [1–9]</strong>
+                <small>Select an animation to perform in-world</small>
               </div>
               <div class="gta-pill-group">
-                <button type="button" class="gta-pill" data-gta-emote="pocket">😎 স্টাইল দাঁড়ানো</button>
-                <button type="button" class="gta-pill" data-gta-emote="dance1">🕺 [1] নাচ ১</button>
-                <button type="button" class="gta-pill" data-gta-emote="dance2">💃 [2] নাচ ২</button>
-                <button type="button" class="gta-pill" data-gta-emote="wave">👋 [3] সালাম / হাই</button>
-                <button type="button" class="gta-pill" data-gta-emote="kick">🥋 [4] ফ্লাইং কিক</button>
-                <button type="button" class="gta-pill" data-gta-emote="combo">🥊 [5] বক্সিং কম্বো</button>
-                <button type="button" class="gta-pill" data-gta-emote="flex">💪 [6] বডি ফ্লেক্স</button>
-                <button type="button" class="gta-pill" data-gta-emote="phone">📞 [7] ফোনে কথা</button>
-                <button type="button" class="gta-pill" data-gta-emote="mobile">🎮 [8] মোবাইল গেম</button>
-                <button type="button" class="gta-pill" data-gta-emote="laugh">😂 [9] হাসি</button>
+                <button type="button" class="gta-pill" data-gta-emote="pocket">😎 Street Idle</button>
+                <button type="button" class="gta-pill" data-gta-emote="dance1">🕺 [1] Hip-Hop</button>
+                <button type="button" class="gta-pill" data-gta-emote="dance2">💃 [2] Victory Dance</button>
+                <button type="button" class="gta-pill" data-gta-emote="wave">👋 [3] Wave</button>
+                <button type="button" class="gta-pill" data-gta-emote="kick">🥋 [4] Flying Kick</button>
+                <button type="button" class="gta-pill" data-gta-emote="combo">🥊 [5] Boxing Combo</button>
+                <button type="button" class="gta-pill" data-gta-emote="flex">💪 [6] Flex</button>
+                <button type="button" class="gta-pill" data-gta-emote="phone">📞 [7] Phone Call</button>
+                <button type="button" class="gta-pill" data-gta-emote="mobile">🎮 [8] Texting</button>
+                <button type="button" class="gta-pill" data-gta-emote="laugh">😂 [9] Laugh</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- TAB 4: CONTROLS -->
+        <!-- TAB 5: CONTROLS -->
         <div id="pause-tab-controls" class="gta-tab-panel gta-settings-panel hidden" data-pause-panel="controls">
           <div class="gta-controls-grid">
             <div class="gta-ctrl-card">
-              <h4>চলাচল ও পারকোর (MOVEMENT)</h4>
-              <div class="gta-ctrl-row"><span>হাঁটা (Move)</span><kbd>W A S D</kbd></div>
-              <div class="gta-ctrl-row"><span>দৌড়ানো (Sprint / Toggle Run)</span><kbd>SHIFT / R</kbd></div>
-              <div class="gta-ctrl-row"><span>লাফ / দেয়াল ধরা (Jump / Grab)</span><kbd>SPACE</kbd></div>
-              <div class="gta-ctrl-row"><span>ডাইভ / পারকোর (Dive)</span><kbd>Q</kbd></div>
-              <div class="gta-ctrl-row"><span>মাউস লক / আনলক (Free Look)</span><kbd>2x CLICK</kbd></div>
+              <h4>ON FOOT &amp; PARKOUR</h4>
+              <div class="gta-ctrl-row"><span>Move</span><kbd>W A S D</kbd></div>
+              <div class="gta-ctrl-row"><span>Sprint / Auto-Run</span><kbd>SHIFT / R</kbd></div>
+              <div class="gta-ctrl-row"><span>Jump / Grab Ledge</span><kbd>SPACE</kbd></div>
+              <div class="gta-ctrl-row"><span>Parkour Dive</span><kbd>Q</kbd></div>
+              <div class="gta-ctrl-row"><span>Lock / Unlock Mouse</span><kbd>2x CLICK</kbd></div>
             </div>
 
             <div class="gta-ctrl-card">
-              <h4>গাড়ি, বাইক ও রিকশা (VEHICLES)</h4>
-              <div class="gta-ctrl-row"><span>গাড়ি / রিকশায় ওঠা ও নামা</span><kbd>F / T</kbd></div>
-              <div class="gta-ctrl-row"><span>রিকশার প্যাসেঞ্জার সিটে বসা</span><kbd>G</kbd></div>
-              <div class="gta-ctrl-row"><span>ড্রাইভিং ক্যামেরা বদলানো</span><kbd>V / B</kbd></div>
-              <div class="gta-ctrl-row"><span>হর্ন / হেডলাইট / বুস্ট</span><kbd>H · L · SHIFT</kbd></div>
-              <div class="gta-ctrl-row"><span>ফোন থেকে গাড়ি স্পন (Cheat)</span><kbd>P</kbd></div>
+              <h4>VEHICLES &amp; DRIVING</h4>
+              <div class="gta-ctrl-row"><span>Enter / Exit Vehicle</span><kbd>F / T</kbd></div>
+              <div class="gta-ctrl-row"><span>Passenger Seat (Rickshaw)</span><kbd>G</kbd></div>
+              <div class="gta-ctrl-row"><span>Cycle Driving Camera</span><kbd>V / B</kbd></div>
+              <div class="gta-ctrl-row"><span>Horn / Headlights / Nitro</span><kbd>H · L · SHIFT</kbd></div>
+              <div class="gta-ctrl-row"><span>Spawn Vehicles (iFruit)</span><kbd>P</kbd></div>
             </div>
 
             <div class="gta-ctrl-card">
-              <h4>দরজা, গেট, লিফট ও জানালা (WORLD)</h4>
-              <div class="gta-ctrl-row"><span>গেট, দরজা, থাই জানালা ও বসা</span><kbd>E</kbd></div>
-              <div class="gta-ctrl-row"><span>লিফট কন্ট্রোল প্যানেল খোলা</span><kbd>L</kbd></div>
-              <div class="gta-ctrl-row"><span>লিফটের ফ্লোর সিলেক্ট</span><kbd>G · 1–9 · R</kbd></div>
-              <div class="gta-ctrl-row"><span>বাসার সব দরজা একসাথে খোলা</span><kbd>G</kbd></div>
+              <h4>INTERACTIONS &amp; INTERIORS</h4>
+              <div class="gta-ctrl-row"><span>Doors, Gates, Windows &amp; Sit</span><kbd>E</kbd></div>
+              <div class="gta-ctrl-row"><span>Elevator Control Panel</span><kbd>L</kbd></div>
+              <div class="gta-ctrl-row"><span>Select Elevator Floor</span><kbd>G · 1–9 · R</kbd></div>
+              <div class="gta-ctrl-row"><span>Toggle All House Doors</span><kbd>G</kbd></div>
             </div>
 
             <div class="gta-ctrl-card">
-              <h4>ম্যাপ, ক্যামেরা ও ইমোট (HUD &amp; STYLE)</h4>
-              <div class="gta-ctrl-row"><span>GTA V ম্যাপ ও সেটিংস মেনু</span><kbd>ESC</kbd></div>
-              <div class="gta-ctrl-row"><span>সকাল / বিকাল / রাত বদলানো</span><kbd>N</kbd></div>
-              <div class="gta-ctrl-row"><span>ফ্রি ক্যাম সিনেমা মোড</span><kbd>C</kbd></div>
-              <div class="gta-ctrl-row"><span>ক্লিন HUD (বাটন লুকানো)</span><kbd>TAB</kbd></div>
-              <div class="gta-ctrl-row"><span>নাচ, সালাম, কিক ও ইমোট</span><kbd>1 – 9</kbd></div>
+              <h4>MAP, CAMERA &amp; HUD</h4>
+              <div class="gta-ctrl-row"><span>Pause Menu &amp; GPS Map</span><kbd>ESC</kbd></div>
+              <div class="gta-ctrl-row"><span>Cycle Time of Day</span><kbd>N</kbd></div>
+              <div class="gta-ctrl-row"><span>Cinematic Free Cam</span><kbd>C</kbd></div>
+              <div class="gta-ctrl-row"><span>Toggle Clean HUD</span><kbd>TAB</kbd></div>
+              <div class="gta-ctrl-row"><span>Quick Emotes</span><kbd>1 – 9</kbd></div>
             </div>
           </div>
         </div>
@@ -391,15 +391,15 @@
 
     <section id="pause" class="pause-screen hidden">
       <div class="pause-card">
-        <p class="eyebrow">EXPLORATION PAUSED</p>
-        <h2>Take another look.</h2>
-        <p>The street is waiting for you.</p>
-        <button id="resume-button" class="primary-button" type="button"><span>CONTINUE WALKING</span><b>→</b></button>
+        <p class="eyebrow">GAME PAUSED</p>
+        <h2>Ready to roll.</h2>
+        <p>Khulna City is waiting for you.</p>
+        <button id="resume-button" class="primary-button" type="button"><span>RESUME GAME</span><b>→</b></button>
         <div class="pause-settings">
           <label for="pause-quality">GRAPHICS</label>
           <select id="pause-quality" aria-label="Graphics quality while paused">
-            <option value="low">Low (Crisp · Smooth)</option>
-            <option value="medium">Medium</option>
+            <option value="low">Low · Smooth HD</option>
+            <option value="medium">Medium · Balanced</option>
             <option value="high" selected>High HD</option>
             <option value="ultra">Ultra 4K</option>
           </select>
@@ -409,19 +409,19 @@
 
     <div id="walk-hud" class="walk-hud hidden">
       <div class="crosshair" aria-hidden="true"></div>
-      <div id="interact-prompt" class="interact-prompt hidden">[E] মেইন গেট খুলুন</div>
+      <div id="interact-prompt" class="interact-prompt hidden">Press [E] to Open Gate</div>
       <div id="emote-bar" class="emote-bar">
-        <button type="button" id="run-pill-button" class="emote-pill"><kbd>SHIFT / R</kbd> দৌড়ানো</button>
-        <button type="button" class="emote-pill" data-game-emote="pocket">স্টাইল</button>
-        <button type="button" class="emote-pill" data-game-emote="dance1"><kbd>1</kbd> নাচ ১</button>
-        <button type="button" class="emote-pill" data-game-emote="dance2"><kbd>2</kbd> নাচ ২</button>
-        <button type="button" class="emote-pill" data-game-emote="wave"><kbd>3</kbd> সালাম/হাই</button>
-        <button type="button" class="emote-pill" data-game-emote="kick"><kbd>4</kbd> কিক</button>
-        <button type="button" class="emote-pill" data-game-emote="combo"><kbd>5</kbd> কম্বো</button>
-        <button type="button" class="emote-pill" data-game-emote="flex"><kbd>6</kbd> ফ্লেক্স</button>
-        <button type="button" class="emote-pill" data-game-emote="phone"><kbd>7</kbd> ফোন</button>
-        <button type="button" class="emote-pill" data-game-emote="mobile"><kbd>8</kbd> গেম</button>
-        <button type="button" class="emote-pill" data-game-emote="laugh"><kbd>9</kbd> হাসি</button>
+        <button type="button" id="run-pill-button" class="emote-pill"><kbd>SHIFT / R</kbd> SPRINT</button>
+        <button type="button" class="emote-pill" data-game-emote="pocket">IDLE</button>
+        <button type="button" class="emote-pill" data-game-emote="dance1"><kbd>1</kbd> DANCE 1</button>
+        <button type="button" class="emote-pill" data-game-emote="dance2"><kbd>2</kbd> DANCE 2</button>
+        <button type="button" class="emote-pill" data-game-emote="wave"><kbd>3</kbd> WAVE</button>
+        <button type="button" class="emote-pill" data-game-emote="kick"><kbd>4</kbd> KICK</button>
+        <button type="button" class="emote-pill" data-game-emote="combo"><kbd>5</kbd> COMBO</button>
+        <button type="button" class="emote-pill" data-game-emote="flex"><kbd>6</kbd> FLEX</button>
+        <button type="button" class="emote-pill" data-game-emote="phone"><kbd>7</kbd> CALL</button>
+        <button type="button" class="emote-pill" data-game-emote="mobile"><kbd>8</kbd> TEXT</button>
+        <button type="button" class="emote-pill" data-game-emote="laugh"><kbd>9</kbd> LAUGH</button>
       </div>
       <div id="car-hud" class="car-hud hidden">
         <div class="car-hud-top">
@@ -434,17 +434,17 @@
         </div>
         <div class="car-rpm-track"><div id="car-rpm-fill" class="car-rpm-fill"></div></div>
         <div class="car-hud-actions">
-          <button type="button" id="car-seat-btn" class="car-chip hidden"><kbd>G</kbd> <span id="car-seat-label">প্যাসেঞ্জার সিট</span></button>
-          <button type="button" id="car-pov-btn" class="car-chip"><kbd>V</kbd> <span id="car-cam-label">ক্যামেরা</span></button>
+          <button type="button" id="car-seat-btn" class="car-chip hidden"><kbd>G</kbd> <span id="car-seat-label">PASSENGER</span></button>
+          <button type="button" id="car-pov-btn" class="car-chip"><kbd>V</kbd> <span id="car-cam-label">CAMERA</span></button>
           <button type="button" id="car-paint-btn" class="car-chip">🎨 <span id="car-paint-name">Green</span></button>
-          <button type="button" id="car-horn-btn" class="car-chip"><kbd>H</kbd> হর্ন</button>
-          <button type="button" id="car-exit-btn" class="car-chip car-chip-exit"><kbd>F / T</kbd> নামুন</button>
+          <button type="button" id="car-horn-btn" class="car-chip"><kbd>H</kbd> HORN</button>
+          <button type="button" id="car-exit-btn" class="car-chip car-chip-exit"><kbd>F / T</kbd> EXIT</button>
         </div>
-        <div class="car-drive-hint"><kbd>W/S</kbd> চলুন · <kbd>A/D</kbd> স্টিয়ারিং · <kbd>L</kbd> হেডলাইট · <kbd>SHIFT</kbd> বুস্ট</div>
+        <div class="car-drive-hint"><kbd>W/S</kbd> DRIVE · <kbd>A/D</kbd> STEER · <kbd>L</kbd> LIGHTS · <kbd>SHIFT</kbd> NITRO</div>
       </div>
-      <div class="walk-controls"><span id="look-control"><kbd>2x CLICK</kbd> মাউস</span><span><kbd>C</kbd> ফ্রি ক্যাম</span><span><kbd>P</kbd> ফোন</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>F</kbd> রিকশা</span><span><kbd>G</kbd> প্যাসেঞ্জার</span><span><kbd>T</kbd> গাড়ি</span><span><kbd>ESC</kbd> ম্যাপ</span><span><kbd>TAB</kbd> ক্লিন HUD</span></div>
+      <div class="walk-controls"><span id="look-control"><kbd>2x CLICK</kbd> MOUSE</span><span><kbd>C</kbd> FREECAM</span><span><kbd>P</kbd> PHONE</span><span><kbd>WASD</kbd> MOVE</span><span><kbd>F</kbd> ENTER</span><span><kbd>E</kbd> INTERACT</span><span><kbd>ESC</kbd> MENU</span><span><kbd>TAB</kbd> HUD</span></div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
-      <button id="minimap-dock" class="minimap-dock" type="button" title="Open Full Khulna City Map [ESC]">
+      <button id="minimap-dock" class="minimap-dock" type="button" title="Open City Map &amp; Menu [ESC]">
         <canvas id="khulna-minimap" width="148" height="148"></canvas>
         <div class="minimap-footer">
           <span id="gps-readout">22.7988°N · 89.5734°E</span>
@@ -454,12 +454,12 @@
     </div>
 
     <!-- INTERACTIVE HIGH-SPEED ELEVATOR (LIFT) CONTROL KEYPAD -->
-    <aside id="lift-keypad" class="lift-keypad hidden" aria-label="High-Speed Elevator Floor Control Panel">
+    <aside id="lift-keypad" class="lift-keypad hidden" aria-label="High-Speed Elevator Control Panel">
       <div class="lift-keypad-card">
         <div class="lift-keypad-header">
           <div>
             <p class="lift-eyebrow">SK ARSHAN ALIF TOWER</p>
-            <h3>হাই-স্পিড লিফট প্যানেল</h3>
+            <h3>ELEVATOR CONTROL</h3>
           </div>
           <button id="lift-close-ui" type="button" class="lift-close-x" title="Close Panel">×</button>
         </div>
@@ -469,69 +469,69 @@
             <span id="lift-led-arrow" class="lift-led-arrow">●</span>
             <span id="lift-led-code" class="lift-led-code">GF</span>
           </div>
-          <div id="lift-led-name" class="lift-led-name">নিচতলা · গ্র্যান্ড লবি (Ground Floor)</div>
-          <div id="lift-led-status" class="lift-led-status">দরজা খোলা আছে · নাম্বার ক্লিক করুন</div>
+          <div id="lift-led-name" class="lift-led-name">GROUND FLOOR · GRAND LOBBY</div>
+          <div id="lift-led-status" class="lift-led-status">Doors Open · Select a Floor</div>
         </div>
 
-        <p class="lift-hint">যে তলায় যেতে চান সেই নাম্বারে মাউস দিয়ে ক্লিক করুন (অথবা কিবোর্ডে G, 1–9, R চাপুন):</p>
+        <p class="lift-hint">Click a floor button or press G, 1–9, or R on your keyboard:</p>
 
         <div id="lift-btn-grid" class="lift-btn-grid">
           <button type="button" class="lift-floor-btn" data-lift-floor="10">
             <span class="lift-btn-num">R</span>
-            <span class="lift-btn-label">ছাদ · স্কাই লাউঞ্জ</span>
+            <span class="lift-btn-label">Rooftop · Sky Lounge</span>
           </button>
           <button type="button" class="lift-floor-btn" data-lift-floor="9">
             <span class="lift-btn-num">9</span>
-            <span class="lift-btn-label">১০ম তলা · পেন্টহাউস</span>
+            <span class="lift-btn-label">10th Floor · Penthouse</span>
           </button>
           <button type="button" class="lift-floor-btn" data-lift-floor="8">
             <span class="lift-btn-num">8</span>
-            <span class="lift-btn-label">৯ম তলা · ফ্ল্যাট ৮</span>
+            <span class="lift-btn-label">9th Floor · Suite 8</span>
           </button>
           <button type="button" class="lift-floor-btn" data-lift-floor="7">
             <span class="lift-btn-num">7</span>
-            <span class="lift-btn-label">৮ম তলা · স্কাই স্যুট</span>
+            <span class="lift-btn-label">8th Floor · Sky Suite</span>
           </button>
           <button type="button" class="lift-floor-btn" data-lift-floor="6">
             <span class="lift-btn-num">6</span>
-            <span class="lift-btn-label">৭ম তলা · ফ্ল্যাট ৬</span>
+            <span class="lift-btn-label">7th Floor · Suite 6</span>
           </button>
           <button type="button" class="lift-floor-btn" data-lift-floor="5">
             <span class="lift-btn-num">5</span>
-            <span class="lift-btn-label">৬ষ্ঠ তলা · ফ্ল্যাট ৫</span>
+            <span class="lift-btn-label">6th Floor · Suite 5</span>
           </button>
           <button type="button" class="lift-floor-btn" data-lift-floor="4">
             <span class="lift-btn-num">4</span>
-            <span class="lift-btn-label">৫ম তলা · ডুপ্লেক্স</span>
+            <span class="lift-btn-label">5th Floor · Duplex</span>
           </button>
           <button type="button" class="lift-floor-btn" data-lift-floor="3">
             <span class="lift-btn-num">3</span>
-            <span class="lift-btn-label">৪র্থ তলা · ফ্ল্যাট ৩</span>
+            <span class="lift-btn-label">4th Floor · Suite 3</span>
           </button>
           <button type="button" class="lift-floor-btn" data-lift-floor="2">
             <span class="lift-btn-num">2</span>
-            <span class="lift-btn-label">৩য় তলা · মডেল ফ্ল্যাট</span>
+            <span class="lift-btn-label">3rd Floor · Model Flat</span>
           </button>
           <button type="button" class="lift-floor-btn" data-lift-floor="1">
             <span class="lift-btn-num">1</span>
-            <span class="lift-btn-label">২য় তলা · কোচিং ও ফ্ল্যাট</span>
+            <span class="lift-btn-label">2nd Floor · Suite 1</span>
           </button>
           <button type="button" class="lift-floor-btn lift-floor-btn-wide active" data-lift-floor="0">
             <span class="lift-btn-num">G</span>
-            <span class="lift-btn-label">নিচতলা · গ্র্যান্ড লবি ও পার্কিং (Ground)</span>
+            <span class="lift-btn-label">Ground Floor · Grand Lobby &amp; Parking</span>
           </button>
         </div>
 
         <div class="lift-door-controls">
-          <button type="button" id="lift-door-open-btn" class="lift-door-btn">◄► দরজা খুলুন (Open)</button>
-          <button type="button" id="lift-door-close-btn" class="lift-door-btn">►◄ দরজা বন্ধ (Close)</button>
-          <button type="button" id="lift-exit-btn" class="lift-door-btn lift-exit-highlight">লিফট থেকে বের হোন →</button>
+          <button type="button" id="lift-door-open-btn" class="lift-door-btn">◄► OPEN DOORS</button>
+          <button type="button" id="lift-door-close-btn" class="lift-door-btn">►◄ CLOSE DOORS</button>
+          <button type="button" id="lift-exit-btn" class="lift-door-btn lift-exit-highlight">EXIT ELEVATOR →</button>
         </div>
       </div>
     </aside>
 
-    <!-- GTA V-STYLE SMARTPHONE OVERLAY (OPENS WITH ARROW UP [↑]) -->
-    <aside id="gta-phone" class="gta-phone hidden" aria-label="GTA V Smartphone">
+    <!-- GTA V / VI iFRUIT SMARTPHONE OVERLAY ([P] KEY) -->
+    <aside id="gta-phone" class="gta-phone hidden" aria-label="iFruit Smartphone">
       <div class="phone-bezel">
         <div class="phone-notch"></div>
         <div class="phone-statusbar">
@@ -539,39 +539,39 @@
           <span class="phone-carrier">KHULNA 5G · ▮▮▮▮ 🔋</span>
         </div>
         <div class="phone-topbar">
-          <button id="phone-back-btn" class="phone-nav-btn hidden" type="button">← হোম</button>
-          <span class="phone-title">iFruit · খুলনা</span>
+          <button id="phone-back-btn" class="phone-nav-btn hidden" type="button">← HOME</button>
+          <span class="phone-title">iFruit · KHULNA</span>
           <button id="phone-close-btn" class="phone-nav-btn" type="button" title="Close Phone (P)">✕</button>
         </div>
 
         <div id="phone-home" class="phone-screen">
           <div class="phone-wallpaper-banner">
-            <strong>KHULNA OS</strong>
-            <small>তালতলা · ওপেন ওয়ার্ল্ড</small>
+            <strong>iFruit OS</strong>
+            <small>KHULNA · OPEN WORLD</small>
           </div>
           <div class="phone-app-grid">
             <button type="button" class="phone-app-tile tile-dial" data-phone-app="dial">
               <span class="tile-icon">📞</span>
-              <b>ডায়াল প্যাড</b>
-              <small>চিট কোড স্পন</small>
+              <b>DIAL PAD</b>
+              <small>Vehicle Cheats</small>
             </button>
             <button type="button" class="phone-app-tile tile-tp" data-phone-app="teleport">
               <span class="tile-icon">📍</span>
-              <b>টেলিপোর্ট</b>
-              <small>খুলনা ম্যাপ</small>
+              <b>FAST TRAVEL</b>
+              <small>Khulna Map</small>
             </button>
             <button type="button" class="phone-app-tile tile-selfie" data-phone-app="selfie">
               <span class="tile-icon">📸</span>
-              <b>সেলফি</b>
-              <small>ক্যামেরা</small>
+              <b>SNAPMATIC</b>
+              <small>Selfie Cam</small>
             </button>
           </div>
-          <p class="phone-footer-tip"><kbd>P</kbd> চাপলে ফোন বন্ধ/চালু হবে</p>
+          <p class="phone-footer-tip">Press <kbd>P</kbd> to toggle iFruit Phone</p>
         </div>
 
         <div id="phone-dial" class="phone-screen hidden">
           <div id="phone-dial-display" class="phone-dial-display">—</div>
-          <div id="phone-dial-status" class="phone-dial-status">চিট কোড ডায়াল করে কল চাপুন</div>
+          <div id="phone-dial-status" class="phone-dial-status">Dial a cheat code and press Call</div>
           <div class="phone-keypad">
             <button type="button" class="dial-key" data-dial-key="1">1</button>
             <button type="button" class="dial-key" data-dial-key="2">2</button>
@@ -585,35 +585,35 @@
             <button type="button" class="dial-key" data-dial-key="*">*</button>
             <button type="button" class="dial-key" data-dial-key="0">0</button>
             <button type="button" class="dial-key" data-dial-key="BACK">⌫</button>
-            <button type="button" class="dial-key dial-call" data-dial-key="CALL">📞 কল করুন (Spawn)</button>
+            <button type="button" class="dial-key dial-call" data-dial-key="CALL">📞 CALL (SPAWN)</button>
           </div>
-          <div class="phone-cheat-header">গাড়ির চিট কোড (ট্যাপ করে ডায়াল করুন)</div>
+          <div class="phone-cheat-header">VEHICLE CHEAT CODES (TAP TO SPAWN)</div>
           <div id="phone-cheat-list" class="phone-cheat-list"></div>
         </div>
 
         <div id="phone-teleport" class="phone-screen hidden">
-          <div class="phone-section-title">খুলনার যেকোনো জায়গায় যান</div>
+          <div class="phone-section-title">FAST TRAVEL · KHULNA CITY</div>
           <div id="phone-teleport-list" class="phone-teleport-list"></div>
         </div>
 
         <div id="phone-selfie" class="phone-screen hidden">
-          <div class="phone-section-title">সেলফি ক্যামেরা (FRONT CAM)</div>
+          <div class="phone-section-title">SNAPMATIC SELFIE CAM</div>
           <div class="selfie-expr-row">
-            <button type="button" class="selfie-expr-btn active" data-selfie-expr="happy">😊 হাসি</button>
-            <button type="button" class="selfie-expr-btn" data-selfie-expr="normal">😐 সাধারণ</button>
-            <button type="button" class="selfie-expr-btn" data-selfie-expr="surprised">😮 অবাক</button>
+            <button type="button" class="selfie-expr-btn active" data-selfie-expr="happy">😊 Happy</button>
+            <button type="button" class="selfie-expr-btn" data-selfie-expr="normal">😐 Neutral</button>
+            <button type="button" class="selfie-expr-btn" data-selfie-expr="surprised">😮 Surprised</button>
           </div>
-          <button id="phone-selfie-shutter" type="button" class="selfie-shutter-btn">📸 সেলফি তুলুন</button>
+          <button id="phone-selfie-shutter" type="button" class="selfie-shutter-btn">📸 TAKE PHOTO</button>
           <img id="phone-selfie-preview" class="selfie-preview hidden" alt="Captured Selfie" />
-          <a id="phone-selfie-download" class="selfie-download-btn hidden" href="#" download="khulna-selfie.png">⬇ সেলফি ডাউনলোড করুন (PNG)</a>
+          <a id="phone-selfie-download" class="selfie-download-btn hidden" href="#" download="khulna-snapmatic.png">⬇ SAVE PHOTO (PNG)</a>
         </div>
       </div>
     </aside>
 
     <dialog id="reference-modal">
-      <div class="reference-topline"><div><p class="eyebrow">SOURCE MATERIAL</p><h2>The original view</h2></div><button id="close-reference" type="button" aria-label="Close reference">×</button></div>
+      <div class="reference-topline"><div><p class="eyebrow">SOURCE MATERIAL</p><h2>Street View Reference</h2></div><button id="close-reference" type="button" aria-label="Close reference">×</button></div>
       <img src="./assets/reference-streetview.png" alt="Google Street View reference showing the house facade, gate and boundary wall" />
-      <div class="reference-footer"><span>Google Street View · September 2013</span><span>Visible details guided this reconstruction.</span></div>
+      <div class="reference-footer"><span>Google Street View · September 2013</span><span>Real-world Khulna reference photography.</span></div>
     </dialog>
 
     <script type="module" src="./src/main.js"></script>

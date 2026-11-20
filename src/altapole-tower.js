@@ -174,13 +174,13 @@ export function buildAltapoleHeadTower(parent, m) {
 
   const FLOOR_Y = [0.08, 3.72, 6.82, 9.92, 13.02, 16.12, 19.22];
   const STOPS = [
-    { idx: 0, code: 'GF', y: FLOOR_Y[0], label: 'নিচতলা · গ্যারেজ ও লবি (Garage)', nameBn: 'নিচতলা (গ্যারেজ ও লবি)' },
-    { idx: 1, code: '1F', y: FLOOR_Y[1], label: '২য় তলা · ফ্ল্যাট ২-এ (2nd Floor)', nameBn: '২য় তলা (ফ্ল্যাট ২-এ)' },
-    { idx: 2, code: '2F', y: FLOOR_Y[2], label: '৩য় তলা · ফ্ল্যাট ৩-এ (3rd Floor)', nameBn: '৩য় তলা (ফ্ল্যাট ৩-এ)' },
-    { idx: 3, code: '3F', y: FLOOR_Y[3], label: '৪র্থ তলা · ফ্ল্যাট ৪-এ (4th Floor)', nameBn: '৪র্থ তলা (ফ্ল্যাট ৪-এ)' },
-    { idx: 4, code: '4F', y: FLOOR_Y[4], label: '৫ম তলা · ফ্ল্যাট ৫-এ (5th Floor)', nameBn: '৫ম তলা (ফ্ল্যাট ৫-এ)' },
-    { idx: 5, code: '5F', y: FLOOR_Y[5], label: '৬ষ্ঠ তলা · ফ্ল্যাট ৬-এ (6th Floor)', nameBn: '৬ষ্ঠ তলা (ফ্ল্যাট ৬-এ)' },
-    { idx: 6, code: 'R',  y: FLOOR_Y[6], label: 'ছাদ · রুফটপ টেরেস (Rooftop)', nameBn: 'ছাদ (রুফটপ)' },
+    { idx: 0, code: 'GF', y: FLOOR_Y[0], label: 'Ground Floor · Garage & Lobby', nameBn: 'Ground Floor (Garage)' },
+    { idx: 1, code: '1F', y: FLOOR_Y[1], label: '2nd Floor · Flat 2A', nameBn: '2nd Floor (Flat 2A)' },
+    { idx: 2, code: '2F', y: FLOOR_Y[2], label: '3rd Floor · Flat 3A', nameBn: '3rd Floor (Flat 3A)' },
+    { idx: 3, code: '3F', y: FLOOR_Y[3], label: '4th Floor · Flat 4A', nameBn: '4th Floor (Flat 4A)' },
+    { idx: 4, code: '4F', y: FLOOR_Y[4], label: '5th Floor · Flat 5A', nameBn: '5th Floor (Flat 5A)' },
+    { idx: 5, code: '5F', y: FLOOR_Y[5], label: '6th Floor · Flat 6A', nameBn: '6th Floor (Flat 6A)' },
+    { idx: 6, code: 'R',  y: FLOOR_Y[6], label: 'Rooftop · Sky Terrace', nameBn: 'Rooftop Terrace' },
   ];
 
   // Elevator shaft bounds (SW back corner — keeps entire garage open for cars!)
@@ -440,15 +440,97 @@ export function buildAltapoleHeadTower(parent, m) {
   // East shaft jambs flanking doorway (LIFT_DOOR_MIN_Z..LIFT_DOOR_MAX_Z)
   box(exteriorStatic, [0.16, totalShaftH, LIFT_DOOR_MIN_Z - LIFT_MIN_Z], [LIFT_MAX_X, totalShaftH * 0.5, (LIFT_MIN_Z + LIFT_DOOR_MIN_Z) * 0.5], liftSteelMat);
   box(exteriorStatic, [0.16, totalShaftH, LIFT_MAX_Z - LIFT_DOOR_MAX_Z], [LIFT_MAX_X, totalShaftH * 0.5, (LIFT_DOOR_MAX_Z + LIFT_MAX_Z) * 0.5], liftSteelMat);
-  // Floor doorway headers + stainless landing frames + call buttons on every stop
+  // Live 3D Illuminated Elevator Button Panel Texture (used BOTH inside the cabin & on every floor landing!)
+  const liftPanelCanvas = document.createElement('canvas');
+  liftPanelCanvas.width = 256;
+  liftPanelCanvas.height = 512;
+  const liftPanelTex = new THREE.CanvasTexture(liftPanelCanvas);
+  liftPanelTex.colorSpace = THREE.SRGBColorSpace;
+  const liftPanelMat = new THREE.MeshBasicMaterial({ map: liftPanelTex });
+
+  function redrawLiftPanel() {
+    const ctx = liftPanelCanvas.getContext('2d');
+    const curStop = STOPS[state.liftFloorIndex] || STOPS[0];
+    const isMoving = state.liftPhase === 'moving' || state.liftPhase === 'closing';
+    const arrow = isMoving ? (state.liftDirection >= 0 ? '▲' : '▼') : (state.liftDoorOpen > 0.6 ? '●' : '■');
+    const statusText = state.liftPhase === 'moving'
+      ? `GOING TO ${STOPS[state.liftTargetIndex]?.code || curStop.code}`
+      : (state.liftPhase === 'opening' ? 'DOORS OPENING' : (state.liftPhase === 'closing' ? 'DOORS CLOSING' : 'DOOR OPEN · PRESS [E/L]'));
+
+    ctx.fillStyle = '#070b14';
+    ctx.fillRect(0, 0, 256, 512);
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 6;
+    ctx.strokeRect(8, 8, 240, 496);
+
+    ctx.fillStyle = '#03050a';
+    ctx.fillRect(20, 22, 216, 92);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(20, 22, 216, 92);
+
+    ctx.fillStyle = arrow === '●' ? '#22c55e' : '#f59e0b';
+    ctx.font = '900 46px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(arrow, 68, 84);
+
+    ctx.fillStyle = '#ef4444';
+    ctx.font = '900 56px monospace';
+    ctx.fillText(curStop.code, 158, 86);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText('29 UPPER JESSORE · LIFT', 128, 138);
+    ctx.fillStyle = '#fde68a';
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText(statusText, 128, 162);
+
+    const btns = [
+      ['R', 6], ['5', 5],
+      ['4', 4], ['3', 3],
+      ['2', 2], ['1', 1],
+      ['G', 0],
+    ];
+    btns.forEach(([label, idx], i) => {
+      const col = label === 'G' ? 0.5 : (i % 2);
+      const row = label === 'G' ? 3 : Math.floor(i / 2);
+      const cx = label === 'G' ? 128 : (col === 0 ? 78 : 178);
+      const cy = 212 + row * 62;
+      const isCur = idx === state.liftFloorIndex && !isMoving;
+      const isTarget = idx === state.liftTargetIndex && isMoving;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, 24, 0, Math.PI * 2);
+      ctx.fillStyle = isTarget ? '#d97706' : (isCur ? '#15803d' : '#1e293b');
+      ctx.fill();
+      ctx.lineWidth = (isTarget || isCur) ? 4 : 2.5;
+      ctx.strokeStyle = isTarget ? '#fde047' : (isCur ? '#4ade80' : '#94a3b8');
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px Arial';
+      ctx.fillText(label, cx, cy + 8);
+    });
+
+    ctx.fillStyle = '#22c55e';
+    ctx.font = 'bold 16px Arial';
+    ctx.fillText('PRESS [E / L] OR 0-5 / R', 128, 486);
+    liftPanelTex.needsUpdate = true;
+  }
+  redrawLiftPanel();
+
+  // Floor doorway headers + stainless landing frames + 3D Illuminated Call & Floor Display Panels on every stop
   for (let k = 0; k < STOPS.length; k++) {
     const fy = FLOOR_Y[k];
     const nextY = k < STOPS.length - 1 ? FLOOR_Y[k + 1] : fy + 3.0;
     const headerH = Math.max(0.35, nextY - (fy + 2.28));
     box(exteriorStatic, [0.18, headerH, LIFT_DOOR_MAX_Z - LIFT_DOOR_MIN_Z], [LIFT_MAX_X, fy + 2.28 + headerH * 0.5, LIFT_CZ], liftSteelMat);
-    // Illuminated Lift Call Button Panel beside doorway
-    box(exteriorStatic, [0.06, 0.34, 0.16], [LIFT_MAX_X + 0.11, fy + 1.24, LIFT_DOOR_MAX_Z + 0.22], m.darkMetal);
-    box(dynamicG, [0.07, 0.08, 0.08], [LIFT_MAX_X + 0.12, fy + 1.28, LIFT_DOOR_MAX_Z + 0.22], liftLedMat, { castShadow: false });
+    // 3D Illuminated Call Button & Floor Indicator Panel beside doorway on every floor
+    box(exteriorStatic, [0.06, 0.78, 0.36], [LIFT_MAX_X + 0.10, fy + 1.38, LIFT_DOOR_MAX_Z + 0.24], m.darkMetal);
+    const landingPanel = new THREE.Mesh(new THREE.PlaneGeometry(0.30, 0.70), liftPanelMat);
+    landingPanel.position.set(LIFT_MAX_X + 0.135, fy + 1.38, LIFT_DOOR_MAX_Z + 0.24);
+    landingPanel.rotation.y = Math.PI / 2;
+    dynamicG.add(landingPanel);
   }
 
   // Moving 3D Passenger Lift Cabin
@@ -470,9 +552,20 @@ export function buildAltapoleHeadTower(parent, m) {
     box(cg, [cabW, cabH, 0.08], [0, cabH * 0.5, cabD * 0.5 - 0.04], liftInteriorMat);
     // Handrail inside cabin
     box(cg, [0.05, 0.05, cabD * 0.80], [-cabW * 0.5 + 0.16, 0.94, 0], gateGoldMat);
+    // Metallic Bezel Mounts for Interior 3D Lift Floor Button Panels (South & North walls inside cabin!)
+    box(cg, [0.46, 0.88, 0.05], [0.24, 1.36, cabD * 0.5 - 0.09], gateGoldMat);
+    box(cg, [0.46, 0.88, 0.05], [0.24, 1.36, -cabD * 0.5 + 0.09], gateGoldMat);
     mergeStaticMeshes(cg);
     liftCabin.add(cg);
   }
+  // Glowing 3D Floor Button Panels INSIDE the Elevator Cabin (South wall facing North + North wall facing South!)
+  const cabPanelSouth = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.84), liftPanelMat);
+  cabPanelSouth.position.set(0.24, 1.36, cabD * 0.5 - 0.12);
+  cabPanelSouth.rotation.y = Math.PI;
+  const cabPanelNorth = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.84), liftPanelMat);
+  cabPanelNorth.position.set(0.24, 1.36, -cabD * 0.5 + 0.12);
+  liftCabin.add(cabPanelSouth, cabPanelNorth);
+
   // Sliding double stainless-steel lift cabin doors (open along ±Z on East face)
   const liftDoorW = (LIFT_DOOR_MAX_Z - LIFT_DOOR_MIN_Z) * 0.5;
   const liftDoorLeft = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.24, liftDoorW), liftSteelMat);
@@ -632,8 +725,8 @@ export function buildAltapoleHeadTower(parent, m) {
     // Vertical Mint-Green accent band on SE corner of East side (matching 11.06.38 AM corner photo!)
     box(exteriorStatic, [0.14, FL_H, 1.35], [X1 + 0.04, fy + FL_H * 0.5, Z1 - 0.85], mintFrontWall);
 
-    addOpenableThaiWindow({ floorIdx: k, axis: 'X', cx: 154.9, cy: fy + 1.65, cz: Z0 + 0.13, width: 2.6, height: 1.60, label: `বেডরুমের থাই জানালা (${k + 1} তলা)` });
-    addOpenableThaiWindow({ floorIdx: k, axis: 'X', cx: 159.9, cy: fy + 1.65, cz: Z0 + 0.13, width: 2.6, height: 1.60, label: `ড্রয়িং রুমের উত্তর থাই জানালা (${k + 1} তলা)` });
+    addOpenableThaiWindow({ floorIdx: k, axis: 'X', cx: 154.9, cy: fy + 1.65, cz: Z0 + 0.13, width: 2.6, height: 1.60, label: `Bedroom Thai Window (Floor ${k + 1})` });
+    addOpenableThaiWindow({ floorIdx: k, axis: 'X', cx: 159.9, cy: fy + 1.65, cz: Z0 + 0.13, width: 2.6, height: 1.60, label: `Living Room North Window (Floor ${k + 1})` });
 
     // East facade wall (x = X1 - 0.13) with 2 big Thai Window openings overlooking Altapole Lane:
     //  Win E1 (Living Room): z = -514.5..-511.9
@@ -644,8 +737,8 @@ export function buildAltapoleHeadTower(parent, m) {
     box(exteriorStatic, [0.26, 1.60, -509.5 - (-511.9)], [X1 - 0.13, fy + 1.65, -510.7], brownWall);
     box(exteriorStatic, [0.26, 1.60, Z1 - (-506.9)], [X1 - 0.13, fy + 1.65, (-506.9 + Z1) * 0.5], brownWall);
 
-    addOpenableThaiWindow({ floorIdx: k, axis: 'Z', cx: X1 - 0.13, cy: fy + 1.65, cz: -513.2, width: 2.6, height: 1.60, label: `ড্রয়িং রুমের পূর্ব থাই জানালা (${k + 1} তলা)` });
-    addOpenableThaiWindow({ floorIdx: k, axis: 'Z', cx: X1 - 0.13, cy: fy + 1.65, cz: -508.2, width: 2.6, height: 1.60, label: `ডাইনিংয়ের থাই জানালা (${k + 1} তলা)` });
+    addOpenableThaiWindow({ floorIdx: k, axis: 'Z', cx: X1 - 0.13, cy: fy + 1.65, cz: -513.2, width: 2.6, height: 1.60, label: `Living Room East Window (Floor ${k + 1})` });
+    addOpenableThaiWindow({ floorIdx: k, axis: 'Z', cx: X1 - 0.13, cy: fy + 1.65, cz: -508.2, width: 2.6, height: 1.60, label: `Dining Thai Window (Floor ${k + 1})` });
 
     if (k <= 3) {
       box(exteriorStatic, [0.36, 0.54, 0.78], [X1 + 0.22, fy + 0.56, -510.7], m.aluminum);
@@ -677,7 +770,7 @@ export function buildAltapoleHeadTower(parent, m) {
       open: false,
       angle: 0,
       openAngle: -Math.PI * 0.54,
-      label: `ফ্ল্যাট ${k + 1}-এ মেইন দরজা`,
+      label: `Flat ${k + 1}A Main Door`,
       collider: { minX: 158.10, maxX: 159.40, minZ: -506.34, maxZ: -506.06 },
     });
 
@@ -795,9 +888,9 @@ export function buildAltapoleHeadTower(parent, m) {
 
     // Register sittable furniture on this floor
     floorSeats.set(k, [
-      { minX: 157.58, maxX: 158.42, minZ: -514.8, maxZ: -512.4, seatX: 158.08, seatZ: -513.6, seatY: 0.45, yaw: Math.PI / 2, fy, label: `ড্রয়িং রুমের সোফা (${k + 1} তলা)` },
-      { minX: 152.65, maxX: 154.85, minZ: -514.6, maxZ: -512.6, seatX: 154.05, seatZ: -513.6, seatY: 0.54, yaw: Math.PI / 2, fy, label: `মাস্টার বেডরুমের খাট (${k + 1} তলা)` },
-      { minX: 152.65, maxX: 153.25, minZ: -507.45, maxZ: -506.85, seatX: 153.02, seatZ: -507.15, seatY: 0.46, yaw: Math.PI / 2, fy, label: `বাথরুমের কমোড (${k + 1} তলা)` },
+      { minX: 157.58, maxX: 158.42, minZ: -514.8, maxZ: -512.4, seatX: 158.08, seatZ: -513.6, seatY: 0.45, yaw: Math.PI / 2, fy, label: `Living Room Sofa (Floor ${k + 1})` },
+      { minX: 152.65, maxX: 154.85, minZ: -514.6, maxZ: -512.6, seatX: 154.05, seatZ: -513.6, seatY: 0.54, yaw: Math.PI / 2, fy, label: `Master King Bed (Floor ${k + 1})` },
+      { minX: 152.65, maxX: 153.25, minZ: -507.45, maxZ: -506.85, seatX: 153.02, seatZ: -507.15, seatY: 0.46, yaw: Math.PI / 2, fy, label: `Toilet Commode (Floor ${k + 1})` },
     ]);
   }
 
@@ -861,18 +954,26 @@ export function buildAltapoleHeadTower(parent, m) {
     state.liftTargetIndex = idx;
     if (idx === state.liftFloorIndex && state.liftPhase !== 'moving') {
       state.liftPhase = 'opening';
+      redrawLiftPanel();
       return;
     }
     state.liftDirection = STOPS[idx].y >= state.liftY ? 1 : -1;
     state.liftPhase = state.liftDoorOpen > 0.05 ? 'closing' : 'moving';
+    redrawLiftPanel();
   }
 
   function openDoors() {
-    if (state.liftPhase !== 'moving') state.liftPhase = 'opening';
+    if (state.liftPhase !== 'moving') {
+      state.liftPhase = 'opening';
+      redrawLiftPanel();
+    }
   }
 
   function closeDoors() {
-    if (state.liftPhase !== 'moving') state.liftPhase = 'closing';
+    if (state.liftPhase !== 'moving') {
+      state.liftPhase = 'closing';
+      redrawLiftPanel();
+    }
   }
 
   function toggleGate() {
@@ -886,7 +987,7 @@ export function buildAltapoleHeadTower(parent, m) {
 
     // 1) Inside Lift Cabin
     if (isInsideLift(pos) && Math.abs(footY - state.liftY) < 1.6) {
-      return { kind: 'lift_inside', prompt: '[E / L] লিফট ফ্লোর কিপ্যাড খুলুন (Select Floor)' };
+      return { kind: 'lift_inside', prompt: '[E / L] Open Elevator Keypad' };
     }
     // 2) Lift Lobby Call Button
     if (isNearLiftLobby(pos)) {
@@ -895,22 +996,22 @@ export function buildAltapoleHeadTower(parent, m) {
         kind: 'lift_call',
         floorIdx: fl,
         prompt: state.liftFloorIndex === fl && state.liftDoorOpen > 0.7
-          ? '[E / L] লিফটে উঠুন ও ফ্লোর সিলেক্ট করুন (Lift Keypad)'
-          : `[E] লিফট কল করুন (${STOPS[fl].nameBn})`,
+          ? '[E / L] Enter Elevator & Select Floor'
+          : `[E] Call Elevator (${STOPS[fl].label})`,
       };
     }
     // 3) Ground Floor Main Car Gate (North)
     if (footY < 2.2 && Math.hypot(pos.x - (GATE_MIN_X + GATE_MAX_X) * 0.5, pos.z - Z0) < 3.4) {
       return {
         kind: 'main_gate',
-        prompt: state.gateOpen ? '[E] মেইন গ্যারেজ গেট বন্ধ করুন (Close Main Gate)' : '[E] মেইন গ্যারেজ গেট খুলুন (Open Main Gate)',
+        prompt: state.gateOpen ? '[E] Close Main Garage Gate' : '[E] Open Main Garage Gate',
       };
     }
     // 4) Ground Floor Pedestrian Lobby Door (East)
     if (footY < 2.2 && Math.hypot(pos.x - X1, pos.z - (PED_MIN_Z + PED_MAX_Z) * 0.5) < 2.6) {
       return {
         kind: 'ped_door',
-        prompt: state.pedDoorOpen ? '[E] লবি দরজা বন্ধ করুন' : '[E] লবি দরজা খুলুন (ভিতরে যান)',
+        prompt: state.pedDoorOpen ? '[E] Close Lobby Door' : '[E] Open Lobby Door (Enter)',
       };
     }
     // 5) Flat Main Door on current floor
@@ -919,7 +1020,7 @@ export function buildAltapoleHeadTower(parent, m) {
         return {
           kind: 'flat_door',
           door: fd,
-          prompt: fd.open ? `[E] ${fd.label} বন্ধ করুন` : `[E] ${fd.label} খুলুন (ফ্ল্যাটে ঢুকুন)`,
+          prompt: fd.open ? `[E] Close ${fd.label}` : `[E] Open ${fd.label} (Enter Flat)`,
         };
       }
     }
@@ -938,7 +1039,7 @@ export function buildAltapoleHeadTower(parent, m) {
       return {
         kind: 'thai_window',
         win: bestWin,
-        prompt: bestWin.open ? `[E] ${bestWin.label} বন্ধ করুন (Close Thai Window)` : `[E] ${bestWin.label} খুলুন (Open Thai Window)`,
+        prompt: bestWin.open ? `[E] Close ${bestWin.label}` : `[E] Open ${bestWin.label}`,
       };
     }
     return null;
@@ -1130,25 +1231,25 @@ export function buildAltapoleHeadTower(parent, m) {
   function getZoneName(x, z, footY = 0) {
     if (x < X0 || x > X1 || z < Z0 || z > Z1) return null;
     if (isInsideLift({ x, z })) {
-      const stopName = STOPS[state.liftFloorIndex]?.nameBn || 'লিফট';
-      return `২৯ আপার যশোর রোড · প্যাসেঞ্জার লিফট কেবিন (${stopName})`;
+      const stopName = STOPS[state.liftFloorIndex]?.code || 'LIFT';
+      return `29 UPPER JESSORE RD · ELEVATOR CABIN (${stopName})`;
     }
     if (footY < FLOOR_Y[1] - 0.6) {
-      return '২৯ আপার যশোর রোড · নিচতলা কার পার্কিং গ্যারেজ ও লবি';
+      return '29 UPPER JESSORE RD · GROUND GARAGE & LOBBY';
     }
     if (footY >= FLOOR_Y[6] - 0.6) {
-      return '২৯ আপার যশোর রোড · ছাদের টেরেস (Rooftop)';
+      return '29 UPPER JESSORE RD · ROOFTOP TERRACE';
     }
     const fl = nearestFloorIndex(footY);
-    if (z > -506.2) return `২৯ আপার যশোর রোড (${fl + 1} তলা) · লিফট ও সিঁড়ি লবি`;
+    if (z > -506.2) return `29 UPPER JESSORE RD (FLOOR ${fl + 1}) · LIFT & STAIR LOBBY`;
     if (z < -510.1) {
       return x >= 157.3
-        ? `২৯ আপার যশোর রোড (${fl + 1} তলা) · ড্রয়িং রুম ও স্মার্ট টিভি (থাই জানালা)`
-        : `২৯ আপার যশোর রোড (${fl + 1} তলা) · মাস্টার বেডরুম`;
+        ? `29 UPPER JESSORE RD (FLOOR ${fl + 1}) · LIVING ROOM & SMART TV`
+        : `29 UPPER JESSORE RD (FLOOR ${fl + 1}) · MASTER BEDROOM`;
     }
     return x >= 156.2
-      ? `২৯ আপার যশোর রোড (${fl + 1} তলা) · ডাইনিং ও কিচেন`
-      : `২৯ আপার যশোর রোড (${fl + 1} তলা) · অ্যাটাচড বাথরুম`;
+      ? `29 UPPER JESSORE RD (FLOOR ${fl + 1}) · DINING & KITCHEN`
+      : `29 UPPER JESSORE RD (FLOOR ${fl + 1}) · ATTACHED BATHROOM`;
   }
 
   function update(delta, playerPos = null, isLow = false) {
@@ -1194,6 +1295,7 @@ export function buildAltapoleHeadTower(parent, m) {
 
     // 5) Animate 3D Passenger Lift & Doors
     const doorSpeed = 1.6;
+    let panelDirty = false;
     if (state.liftPhase === 'closing') {
       state.liftDoorOpen = Math.max(0, state.liftDoorOpen - doorSpeed * dt);
       if (state.liftDoorOpen <= 0.01) {
@@ -1203,27 +1305,33 @@ export function buildAltapoleHeadTower(parent, m) {
         } else {
           state.liftPhase = 'idle';
         }
+        panelDirty = true;
       }
     } else if (state.liftPhase === 'moving') {
       const targetY = STOPS[state.liftTargetIndex].y;
       const diff = targetY - state.liftY;
       const liftSpeed = 4.2;
+      const prevIdx = state.liftFloorIndex;
       if (Math.abs(diff) <= liftSpeed * dt) {
         state.liftY = targetY;
         state.liftFloorIndex = state.liftTargetIndex;
         state.liftDirection = 0;
         state.liftPhase = 'opening';
+        panelDirty = true;
       } else {
         state.liftY += Math.sign(diff) * liftSpeed * dt;
         state.liftFloorIndex = nearestFloorIndex(state.liftY);
+        if (state.liftFloorIndex !== prevIdx) panelDirty = true;
       }
     } else if (state.liftPhase === 'opening') {
       state.liftDoorOpen = Math.min(1, state.liftDoorOpen + doorSpeed * dt);
       if (state.liftDoorOpen >= 0.99) {
         state.liftDoorOpen = 1;
         state.liftPhase = 'idle';
+        panelDirty = true;
       }
     }
+    if (panelDirty) redrawLiftPanel();
     liftCabin.position.y = state.liftY;
     const slideOff = state.liftDoorOpen * (liftDoorW * 0.88);
     liftDoorLeft.position.z = -liftDoorW * 0.5 - slideOff;

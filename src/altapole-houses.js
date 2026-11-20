@@ -314,7 +314,7 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     dynamicG.add(shutterMesh);
     interactiveDoors.push({
       kind: 'shutter',
-      label: 'ইস্পাহানি বিক্রয় কেন্দ্রের শাটার',
+      label: 'Ispahani Sales Center Shutter',
       mesh: shutterMesh,
       closedY: 1.48,
       openY: 3.12,
@@ -404,7 +404,7 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     dynamicG.add(kGate);
     interactiveDoors.push({
       kind: 'door',
-      label: 'কামিয়াব টিচিং হোমের মেইন গেট',
+      label: 'Kamyab Teaching Home Main Gate',
       pivot: kGate,
       x: wx,
       z: -438.3,
@@ -427,7 +427,7 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     dynamicG.add(kFrontDoor);
     interactiveDoors.push({
       kind: 'door',
-      label: 'কামিয়াব টিচিং হোমের দরজা',
+      label: 'Kamyab Teaching Home Door',
       pivot: kFrontDoor,
       x: x1,
       z: -442.0,
@@ -524,7 +524,7 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     dynamicG.add(pGate);
     interactiveDoors.push({
       kind: 'door',
-      label: 'পরশমনি কলা কেন্দ্রের মেইন গেট',
+      label: 'Parashmoni Kala Kendra Main Gate',
       pivot: pGate,
       x: wx,
       z: -414.15,
@@ -553,7 +553,7 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     dynamicG.add(pFrontDoor);
     interactiveDoors.push({
       kind: 'door',
-      label: 'পরশমনি কলা কেন্দ্রের মূল দরজা',
+      label: 'Parashmoni Kala Kendra Front Door',
       pivot: pFrontDoor,
       x: x1,
       z: -418.0,
@@ -655,7 +655,7 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     dynamicG.add(wGate);
     interactiveDoors.push({
       kind: 'door',
-      label: '১ আলতাপোল লেন বাড়ির গেট',
+      label: '1 Altapole Lane House Gate',
       pivot: wGate,
       x: wx,
       z: -380.25,
@@ -677,7 +677,7 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     dynamicG.add(wFrontDoor);
     interactiveDoors.push({
       kind: 'door',
-      label: '১ আলতাপোল লেন বাড়ির দরজা',
+      label: '1 Altapole Lane Front Door',
       pivot: wFrontDoor,
       x: x1,
       z: -384.0,
@@ -744,13 +744,486 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     helpers.addBroadleafTree?.(treesG, 164.5, 0, -379.2, 1.16, 9841);
   }
 
+  // ============================================================================
+  // 5) ISPAHANI HOUSE COMPLEX (28, Lower Jashore Road, Khulna · M.M. Ispahani Ltd. ESTD-1820)
+  // Directly East & South of Ispahani Sales Center:
+  //   - Grand Striped Gatehouse + Openable Geometric Main Gate & Pocket Gate (z = -515.8)
+  //   - Paved Courtyard with White Badminton Court Lines & Tall Slender Palm (z = -515.2..-500.5)
+  //   - 2-Story Crimson/White Striped Colonial Heritage Mansion (enterable ground floor, z = -500.5..-488.5)
+  //   - M.M. Ispahani Manufacturing & Packaging Factory Unit behind mansion (enterable, z = -484.5..-471.5)
+  // ============================================================================
+  {
+    const ispCrimson = new THREE.MeshStandardMaterial({ color: 0x8f2424, roughness: 0.68 });
+    const ispCream = new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.64 });
+    const ispGreyWall = new THREE.MeshStandardMaterial({ color: 0x8d9299, roughness: 0.80 });
+    const ispMaroonSteel = new THREE.MeshStandardMaterial({ color: 0x5c1818, roughness: 0.48, metalness: 0.42 });
+    const ispFactoryRoof = new THREE.MeshStandardMaterial({ map: makeShutterTexture('#64748b'), roughness: 0.52, metalness: 0.55 });
+    const ispMachineGreen = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.44, metalness: 0.48 });
+    const ispCartonMat = new THREE.MeshStandardMaterial({ color: 0xb88952, roughness: 0.88 });
+    const ispCurbYellow = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.72 });
+    const ispCurbBlack = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.78 });
+    const ispLawnMat = new THREE.MeshStandardMaterial({ color: 0x2f6b2f, roughness: 0.92 });
+    const ispLineWhite = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+
+    // Custom Gold-on-Black Louvered Gatehouse Signboard Texture
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 1024;
+    signCanvas.height = 280;
+    const sctx = signCanvas.getContext('2d');
+    sctx.fillStyle = '#14171c';
+    sctx.fillRect(0, 0, 1024, 280);
+    for (let y = 0; y < 280; y += 16) {
+      sctx.fillStyle = '#262b33';
+      sctx.fillRect(0, y, 1024, 5);
+      sctx.fillStyle = '#0b0d10';
+      sctx.fillRect(0, y + 11, 1024, 5);
+    }
+    sctx.strokeStyle = '#3f4652';
+    sctx.lineWidth = 8;
+    sctx.strokeRect(4, 4, 1016, 272);
+    sctx.textAlign = 'center';
+    sctx.textBaseline = 'middle';
+    sctx.shadowColor = 'rgba(0,0,0,0.85)';
+    sctx.shadowBlur = 8;
+    sctx.fillStyle = '#e6c15c';
+    sctx.font = '900 84px Georgia, "Times New Roman", serif';
+    sctx.fillText('ISPAHANI HOUSE', 512, 76);
+    sctx.fillStyle = '#f2d479';
+    sctx.font = '700 40px "Manrope", "Segoe UI", sans-serif';
+    sctx.fillText('28, LOWER JASHORE ROAD, KHULNA', 512, 162);
+    sctx.font = '700 36px "Manrope", "Segoe UI", sans-serif';
+    sctx.fillText('M.M. ISPAHANI LTD. ESTD-1820', 512, 224);
+    const ispSignTex = new THREE.CanvasTexture(signCanvas);
+    ispSignTex.colorSpace = THREE.SRGBColorSpace;
+    ispSignTex.anisotropy = 4;
+    const ispSignMat = new THREE.MeshStandardMaterial({
+      map: ispSignTex,
+      emissive: 0xffe4a0,
+      emissiveMap: ispSignTex,
+      emissiveIntensity: 0.24,
+      roughness: 0.36,
+      metalness: 0.45,
+      side: THREE.DoubleSide,
+    });
+
+    // Geometric Maroon & White Main Gate Leaf Texture (matches reference photo diagonal design!)
+    const makeGeoGateTex = (isLeft) => {
+      const c = document.createElement('canvas');
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#e8e6e1';
+      ctx.fillRect(0, 0, 512, 512);
+      // Top vertical grille band
+      ctx.fillStyle = '#2b1212';
+      ctx.fillRect(0, 0, 512, 96);
+      ctx.fillStyle = '#d8d5ce';
+      for (let gx = 12; gx < 512; gx += 28) {
+        ctx.fillRect(gx, 10, 14, 76);
+      }
+      ctx.fillStyle = '#5c1818';
+      ctx.fillRect(0, 88, 512, 14);
+      // Geometric diagonal maroon triangles
+      ctx.fillStyle = '#5c1818';
+      ctx.beginPath();
+      if (isLeft) {
+        ctx.moveTo(0, 140);
+        ctx.lineTo(512, 340);
+        ctx.lineTo(512, 512);
+        ctx.lineTo(0, 512);
+      } else {
+        ctx.moveTo(0, 102);
+        ctx.lineTo(512, 102);
+        ctx.lineTo(512, 340);
+        ctx.lineTo(0, 210);
+      }
+      ctx.closePath();
+      ctx.fill();
+      if (!isLeft) {
+        ctx.beginPath();
+        ctx.moveTo(0, 340);
+        ctx.lineTo(512, 512);
+        ctx.lineTo(0, 512);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // White diagonal sash stripe & center diamond emblem
+      ctx.strokeStyle = '#f4f1ea';
+      ctx.lineWidth = 10;
+      ctx.strokeRect(6, 100, 500, 406);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    };
+    const leftGateMat = new THREE.MeshStandardMaterial({ map: makeGeoGateTex(true), roughness: 0.45, metalness: 0.35 });
+    const rightGateMat = new THREE.MeshStandardMaterial({ map: makeGeoGateTex(false), roughness: 0.45, metalness: 0.35 });
+
+    const cMinX = 178.6;
+    const cMaxX = 205.5;
+    const cMinZ = -515.8;
+    const cMaxZ = -470.5;
+    const gateCx = 191.5;
+
+    // 1) Paved Courtyard, Service Yard & Badminton Court Lines
+    box(exteriorStatic, [cMaxX - cMinX, 0.10, cMaxZ - cMinZ], [(cMinX + cMaxX) * 0.5, 0.03, (cMinZ + cMaxZ) * 0.5], m.courtyard, { uvScale: 4.5 });
+    // Green lawn strip on East side of courtyard (like photo left lawn) with low crimson brick border
+    box(exteriorStatic, [3.2, 0.08, 12.6], [203.2, 0.06, -508.0], ispLawnMat);
+    box(exteriorStatic, [0.22, 0.24, 12.8], [201.5, 0.14, -508.0], ispCrimson);
+    // Crisp White Painted Badminton Court Lines in Courtyard (x = 183.5..199.0, z = -512.8..-502.4)
+    const courtY = 0.095;
+    box(exteriorStatic, [13.4, 0.012, 0.09], [191.2, courtY, -512.4], ispLineWhite);
+    box(exteriorStatic, [13.4, 0.012, 0.09], [191.2, courtY, -502.8], ispLineWhite);
+    box(exteriorStatic, [13.4, 0.012, 0.09], [191.2, courtY, -507.6], ispLineWhite);
+    box(exteriorStatic, [0.09, 0.012, 9.6], [184.5, courtY, -507.6], ispLineWhite);
+    box(exteriorStatic, [0.09, 0.012, 9.6], [197.9, courtY, -507.6], ispLineWhite);
+    box(exteriorStatic, [0.09, 0.012, 9.6], [185.2, courtY, -507.6], ispLineWhite);
+    box(exteriorStatic, [0.09, 0.012, 9.6], [197.2, courtY, -507.6], ispLineWhite);
+    box(exteriorStatic, [0.09, 0.012, 9.6], [191.2, courtY, -507.6], ispLineWhite);
+
+    // 2) Front Boundary Wall (Grey plaster + Crimson plinth & coping) + Black/Yellow Curb + Ad Boards
+    // West front wall (178.6..187.3) & East front wall (195.7..205.5)
+    addSolidWall(exteriorStatic, cMinX, 187.3, cMinZ, cMinZ + 0.34, 0, 2.75, ispGreyWall);
+    addSolidWall(exteriorStatic, 195.7, cMaxX, cMinZ, cMinZ + 0.34, 0, 2.75, ispGreyWall);
+    // Crimson bottom plinth & top coping on front boundary walls
+    box(exteriorStatic, [8.7, 0.42, 0.42], [182.95, 0.21, cMinZ + 0.17], ispCrimson);
+    box(exteriorStatic, [8.7, 0.18, 0.44], [182.95, 2.78, cMinZ + 0.17], ispCrimson);
+    box(exteriorStatic, [9.8, 0.42, 0.42], [200.6, 0.21, cMinZ + 0.17], ispCrimson);
+    box(exteriorStatic, [9.8, 0.18, 0.44], [200.6, 2.78, cMinZ + 0.17], ispCrimson);
+    // Black & Yellow striped roadside curb along front apron
+    for (let cx = cMinX; cx < cMaxX; cx += 0.9) {
+      if (cx > 188.0 && cx < 194.8) continue; // Keep driveway apron clear
+      box(exteriorStatic, [0.88, 0.20, 0.26], [cx + 0.44, 0.10, cMinZ - 0.85], Math.floor(cx) % 2 === 0 ? ispCurbYellow : ispCurbBlack);
+    }
+    // Ruchi & Mirzapur Tea Wall Ad Boards (matching Google Street View!)
+    addWallSign(dynamicG, {
+      title: 'রুচি · RUCHI',
+      subtitle: 'ISPAHANI FOODS · SNACKS & SPICES',
+      bg: '#dc2626', fg: '#fef08a', accent: '#ffffff', border: '#991b1b',
+    }, [199.8, 1.48, cMinZ - 0.08], Math.PI, 2.1, 1.35, m.darkMetal);
+    addWallSign(dynamicG, {
+      title: 'ইস্পাহানি মির্জাপুর চা',
+      subtitle: 'MIRZAPUR BEST LEAF TEA',
+      bg: '#facc15', fg: '#14532d', accent: '#b91c1c', border: '#ca8a04',
+    }, [183.2, 1.48, cMinZ - 0.08], Math.PI, 2.0, 1.35, m.darkMetal);
+
+    // Side & Rear Compound Perimeter Walls
+    addSolidWall(exteriorStatic, cMaxX - 0.30, cMaxX, cMinZ, cMaxZ, 0, 2.75, ispGreyWall);
+    addSolidWall(exteriorStatic, cMinX, cMaxX, cMaxZ - 0.30, cMaxZ, 0, 2.75, ispGreyWall);
+    addSolidWall(exteriorStatic, cMinX, cMinX + 0.30, -507.2, cMaxZ, 0, 2.75, ispGreyWall);
+
+    // 3) Grand Striped Gatehouse (x = 187.3..195.7, z = -516.2..-514.6)
+    const addStripedPier = (px, pz, pw, pd, ph) => {
+      const bandH = 0.36;
+      const steps = Math.floor(ph / bandH);
+      for (let i = 0; i < steps; i++) {
+        box(exteriorStatic, [pw, bandH + 0.005, pd], [px, i * bandH + bandH * 0.5, pz], i % 2 === 0 ? ispCrimson : ispCream);
+      }
+      staticColliders.push({ minX: px - pw * 0.5, maxX: px + pw * 0.5, minZ: pz - pd * 0.5, maxZ: pz + pd * 0.5, maxY: ph });
+    };
+    addStripedPier(187.9, -515.4, 1.25, 1.70, 4.32); // West Pier
+    addStripedPier(195.1, -515.4, 1.25, 1.70, 4.32); // East Pier (with guard window)
+    box(exteriorStatic, [0.08, 0.86, 0.62], [194.46, 1.75, -515.35], m.glass);
+    box(exteriorStatic, [0.10, 0.92, 0.68], [194.48, 1.75, -515.35], m.darkMetal);
+
+    // Flat Cream Canopy Roof + Stepped Terracotta Cornice
+    box(exteriorStatic, [9.2, 0.36, 2.10], [gateCx, 4.50, -515.4], ispCream);
+    box(exteriorStatic, [9.5, 0.28, 2.28], [gateCx, 4.82, -515.4], ispCrimson);
+    // Iconic Black-Louvered Gold-Lettered "ISPAHANI HOUSE" Signboard on top of Canopy
+    const ispSignMesh = new THREE.Mesh(new THREE.BoxGeometry(7.9, 1.72, 0.18), ispSignMat);
+    ispSignMesh.position.set(gateCx, 5.82, -515.85);
+    ispSignMesh.rotation.y = Math.PI;
+    dynamicG.add(ispSignMesh);
+    // Support posts behind signboard
+    box(exteriorStatic, [0.10, 1.65, 0.10], [gateCx - 3.2, 5.72, -515.72], m.darkMetal);
+    box(exteriorStatic, [0.10, 1.65, 0.10], [gateCx + 3.2, 5.72, -515.72], m.darkMetal);
+
+    // Openable Pedestrian Pocket Gate (Right side looking North / Left side looking South from road: x = 193.25..194.45)
+    // Starts OPEN so player can walk straight into Ispahani House courtyard immediately!
+    const pocketPivot = new THREE.Group();
+    pocketPivot.position.set(194.42, 0.06, -515.45);
+    const pLeaf = new THREE.Group();
+    box(pLeaf, [1.18, 2.38, 0.08], [-0.59, 1.19, 0], ispMaroonSteel);
+    box(pLeaf, [1.18, 0.10, 0.10], [-0.59, 2.38, 0], ispCream);
+    mergeStaticMeshes(pLeaf);
+    pocketPivot.add(pLeaf);
+    pocketPivot.rotation.y = Math.PI * 0.52;
+    dynamicG.add(pocketPivot);
+    interactiveDoors.push({
+      kind: 'door',
+      label: 'Ispahani House Pocket Gate',
+      pivot: pocketPivot,
+      x: 193.85,
+      z: -515.45,
+      open: true,
+      angle: Math.PI * 0.52,
+      openAngle: Math.PI * 0.52,
+      collider: { minX: 193.22, maxX: 194.45, minZ: -515.65, maxZ: -515.25, maxY: 2.5 },
+    });
+
+    // Openable Geometric Maroon & White Main Vehicle Gate (x = 188.55..193.20)
+    const mainGatePivot = new THREE.Group();
+    mainGatePivot.position.set(188.58, 0.06, -515.45);
+    const mLeaf = new THREE.Group();
+    box(mLeaf, [2.30, 3.05, 0.09], [1.15, 1.525, 0], rightGateMat);
+    box(mLeaf, [2.30, 3.05, 0.09], [3.45, 1.525, 0], leftGateMat);
+    mergeStaticMeshes(mLeaf);
+    mainGatePivot.add(mLeaf);
+    dynamicG.add(mainGatePivot);
+    interactiveDoors.push({
+      kind: 'door',
+      label: 'Ispahani House Main Gate',
+      pivot: mainGatePivot,
+      x: 190.9,
+      z: -515.45,
+      open: false,
+      angle: 0,
+      openAngle: -Math.PI * 0.52,
+      collider: { minX: 188.55, maxX: 193.22, minZ: -515.65, maxZ: -515.25, maxY: 3.1 },
+    });
+
+    // 4) 2-Story Crimson & White Striped Heritage Colonial Mansion ("ISPAHANI HOUSE")
+    // Footprint: x = 180.5..202.5, z = -500.5..-488.5, height = 8.4m
+    const mx0 = 180.5;
+    const mx1 = 202.5;
+    const mz0 = -500.5;
+    const mz1 = -488.5;
+    const mCx = (mx0 + mx1) * 0.5; // 191.5
+    const mCz = (mz0 + mz1) * 0.5; // -494.5
+    const gfH = 4.05;
+    const totH = 8.40;
+
+    // Raised Heritage Plinth, Marble Veranda & Ground Floor + Ceiling
+    box(exteriorStatic, [mx1 - mx0 + 0.4, 0.24, mz1 - mz0 + 0.6], [mCx, 0.12, mCz], ispCrimson);
+    box(exteriorStatic, [mx1 - mx0, 0.10, mz1 - mz0], [mCx, 0.26, mCz], m.pillarTile, { uvScale: 2.2 });
+    box(exteriorStatic, [mx1 - mx0 - 0.4, 0.10, mz1 - mz0 - 0.4], [mCx, 3.92, mCz], m.ceilingMat);
+    // Entry steps in front of center arch
+    box(exteriorStatic, [3.6, 0.12, 0.55], [mCx, 0.06, mz0 - 0.48], ispCrimson);
+    box(exteriorStatic, [3.2, 0.12, 0.35], [mCx, 0.18, mz0 - 0.22], ispCrimson);
+
+    // Outer Ground-Floor Hollow Perimeter Walls (East, West, South; North entrance open through 5-arch veranda -> central hall!)
+    addSolidWall(exteriorStatic, mx0, mx0 + 0.30, mz0, mz1, 0, gfH, ispCrimson);
+    addSolidWall(exteriorStatic, mx1 - 0.30, mx1, mz0, mz1, 0, gfH, ispCrimson);
+    addSolidWall(exteriorStatic, mx0, mx1, mz1 - 0.30, mz1, 0, gfH, ispCrimson);
+
+    // Left & Right Striped Projecting Wings on North Facade (x = 180.5..186.2 and x = 196.8..202.5)
+    for (const [wx0, wx1] of [[180.5, 186.2], [196.8, 202.5]]) {
+      const wCx = (wx0 + wx1) * 0.5;
+      const wW = wx1 - wx0;
+      // Front wing ground-floor solid wall + striped crimson/cream horizontal quoins
+      addSolidWall(exteriorStatic, wx0, wx1, mz0 - 0.55, mz0 + 0.25, 0, gfH, ispCrimson);
+      for (let sy = 0.45; sy < totH; sy += 0.52) {
+        box(exteriorStatic, [wW + 0.12, 0.20, 0.88], [wCx, sy, mz0 - 0.16], ispCream);
+      }
+      // 2nd Floor wing facade
+      box(exteriorStatic, [wW, totH - gfH, 1.0], [wCx, gfH + (totH - gfH) * 0.5, mz0 - 0.15], ispCrimson);
+      // 2 Ground-floor white louvered shutter windows + triangular cream pediments
+      for (const ox of [-1.45, 1.45]) {
+        box(exteriorStatic, [1.42, 2.05, 0.14], [wCx + ox, 1.72, mz0 - 0.60], ispCream);
+        box(exteriorStatic, [1.56, 0.18, 0.22], [wCx + ox, 2.86, mz0 - 0.62], ispCream);
+        // 2nd floor green/dark louvered shutter windows
+        box(exteriorStatic, [1.38, 1.85, 0.14], [wCx + ox, 5.95, mz0 - 0.60], m.glass);
+        box(exteriorStatic, [0.34, 1.85, 0.16], [wCx + ox - 0.78, 5.95, mz0 - 0.62], ispCream);
+        box(exteriorStatic, [0.34, 1.85, 0.16], [wCx + ox + 0.78, 5.95, mz0 - 0.62], ispCream);
+      }
+    }
+
+    // Central 5-Arch Colonnade Veranda (x = 186.2..196.8, z = -500.5..-497.5)
+    const archPierXs = [186.35, 188.25, 190.05, 192.95, 194.75, 196.65];
+    for (const px of archPierXs) {
+      addSolidWall(exteriorStatic, px - 0.24, px + 0.24, mz0 - 0.20, mz0 + 0.30, 0, gfH, ispCrimson);
+      // White horizontal quoin accents on central two grand piers
+      if (Math.abs(px - mCx) < 1.8) {
+        for (let sy = 0.5; sy < gfH; sy += 0.48) {
+          box(exteriorStatic, [0.56, 0.16, 0.56], [px, sy, mz0 + 0.05], ispCream);
+        }
+      }
+    }
+    // Arch lintels, white semicircular trims & decorative circular medallions above 5 arches
+    box(exteriorStatic, [10.6, 0.85, 0.52], [mCx, 3.68, mz0 + 0.05], ispCrimson);
+    box(exteriorStatic, [10.8, 0.18, 0.64], [mCx, 4.10, mz0 + 0.02], ispCream);
+    for (const [ax, aw] of [[187.3, 1.5], [189.15, 1.5], [191.5, 2.5], [193.85, 1.5], [195.7, 1.5]]) {
+      box(exteriorStatic, [aw, 0.12, 0.58], [ax, 3.24, mz0 + 0.04], ispCream);
+    }
+    for (const mx of [188.25, 194.75]) {
+      cylinder(exteriorStatic, 0.22, 0.22, 0.12, [mx, 3.64, mz0 - 0.24], ispCream, 12);
+    }
+
+    // Inner Hall Front Wall at z = -497.5 with Central Wide Openable Heritage Double Door (x = 190.4..192.6)
+    addSolidWall(exteriorStatic, mx0 + 0.30, 190.4, -497.65, -497.35, 0, gfH, ispCream);
+    addSolidWall(exteriorStatic, 192.6, mx1 - 0.30, -497.65, -497.35, 0, gfH, ispCream);
+    box(exteriorStatic, [2.25, 1.35, 0.30], [mCx, 3.38, -497.50], ispCream);
+    const hallDoorPivot = buildHingedPanelDoor(m, [190.45, 0.26, -497.50], 2.10, 2.55, m.wood, 'X');
+    hallDoorPivot.rotation.y = Math.PI * 0.52;
+    dynamicG.add(hallDoorPivot);
+    interactiveDoors.push({
+      kind: 'door',
+      label: 'Ispahani House Heritage Hall Door',
+      pivot: hallDoorPivot,
+      x: mCx,
+      z: -497.50,
+      open: true,
+      angle: Math.PI * 0.52,
+      openAngle: Math.PI * 0.52,
+      collider: { minX: 190.4, maxX: 192.6, minZ: -497.68, maxZ: -497.32, maxY: 2.85 },
+    });
+
+    // 2nd Floor Upper Story Body + Scalloped White Colonial Balcony Arches & Ornate Roof Pediment
+    box(exteriorStatic, [mx1 - mx0, totH - gfH, mz1 - mz0 - 1.2], [mCx, gfH + (totH - gfH) * 0.5, mCz + 0.6], ispCrimson);
+    // Central 2nd-floor white balcony railing & colonnade posts
+    box(exteriorStatic, [10.6, 0.92, 0.16], [mCx, 4.62, mz0 - 0.08], ispCream);
+    for (const px of [186.4, 188.1, 189.9, 193.1, 194.9, 196.6]) {
+      box(exteriorStatic, [0.24, 3.25, 0.24], [px, 6.25, mz0 - 0.08], ispCream);
+    }
+    // Central 2nd-floor arched window bay
+    box(exteriorStatic, [2.75, 2.85, 0.18], [mCx, 6.05, mz0 + 0.25], m.glass);
+    box(exteriorStatic, [3.10, 0.24, 0.32], [mCx, 7.62, mz0 - 0.05], ispCream);
+    // Ornate White Roof Balustrade, Crimson Frieze & Central Heritage Pediment Crest
+    box(exteriorStatic, [mx1 - mx0 + 0.5, 0.24, mz1 - mz0 + 0.6], [mCx, totH, mCz], ispCream);
+    box(exteriorStatic, [mx1 - mx0 + 0.4, 0.52, 0.34], [mCx, totH + 0.36, mz0 - 0.20], ispCrimson);
+    box(exteriorStatic, [mx1 - mx0 + 0.6, 0.22, 0.44], [mCx, totH + 0.72, mz0 - 0.20], ispCream);
+    // Ornate Central Roof Pediment Crest above center bay
+    box(exteriorStatic, [4.2, 0.85, 0.36], [mCx, totH + 1.15, mz0 - 0.20], ispCrimson);
+    box(exteriorStatic, [4.5, 0.20, 0.44], [mCx, totH + 1.64, mz0 - 0.20], ispCream);
+    box(exteriorStatic, [2.2, 0.45, 0.32], [mCx, totH + 1.92, mz0 - 0.20], ispCream);
+    // Decorative Roof Finial Urns along top cornice
+    for (const fx of [180.7, 186.1, 189.5, 191.5, 193.5, 196.9, 202.3]) {
+      cylinder(exteriorStatic, 0.14, 0.20, 0.52, [fx, totH + 1.05, mz0 - 0.20], ispCream, 8);
+    }
+
+    // Furnished Enterable Ground-Floor Heritage Hall Interior (M.M. Ispahani Ltd. Regional Office & Lounge)
+    const mansionInt = new THREE.Group();
+    mansionInt.name = 'AltapoleInterior_IspahaniHouse';
+    // Red carpet runner from entrance to reception
+    box(mansionInt, [2.2, 0.02, 6.2], [mCx, 0.32, -493.8], ispCrimson);
+    // Executive Mahogany Reception Desk
+    box(mansionInt, [3.8, 1.02, 0.84], [mCx, 0.82, -490.8], m.wood);
+    box(mansionInt, [3.9, 0.06, 0.90], [mCx, 1.36, -490.8], m.blackTile);
+    // Heritage Visitor Sofa Lounge (West wing inside)
+    box(mansionInt, [3.2, 0.44, 0.85], [184.6, 0.52, -494.6], m.sofaFabric);
+    box(mansionInt, [3.2, 0.54, 0.20], [184.6, 0.94, -495.0], m.sofaFabric);
+    box(mansionInt, [1.6, 0.46, 0.86], [184.6, 0.54, -492.8], m.wood);
+    // Heritage Conference Table & Display Cabinets (East wing inside)
+    box(mansionInt, [3.4, 0.78, 1.35], [198.2, 0.70, -493.2], m.wood);
+    box(mansionInt, [0.55, 2.35, 3.4], [201.6, 1.48, -493.2], m.wood);
+    for (let k = -1; k <= 1; k++) {
+      box(mansionInt, [0.34, 0.38, 0.45], [201.4, 1.25, -493.2 + k * 0.9], teaGoldMat);
+      box(mansionInt, [0.34, 0.38, 0.45], [201.4, 1.85, -493.2 + k * 0.9], teaGreenMat);
+    }
+    // Ceiling Chandeliers / LED Panels & Spinning Fans
+    for (const lx of [185.0, 191.5, 198.0]) {
+      box(mansionInt, [0.85, 0.06, 0.85], [lx, 3.84, -493.2], m.lamp);
+      createSpinningFan(dynamicG, [lx, 3.82, -493.2], m, animatedFans);
+    }
+    mergeStaticMeshes(mansionInt);
+    root.add(mansionInt);
+    interiorGroups.push({ group: mansionInt, cx: mCx, cz: mCz, maxDistSq: 50 * 50 });
+
+    // Tall Slender Palm Tree right in front of left-center facade (iconic detail from photo!)
+    helpers.addPalm?.(dynamicG, 194.2, 0, -502.4, 14.2, 0.14, 0.16);
+    helpers.addBroadleafTree?.(treesG, 180.2, 0, -503.0, 1.38, 9121);
+    helpers.addBroadleafTree?.(treesG, 203.2, 0, -501.2, 1.44, 9133);
+
+    // 5) M.M. Ispahani Manufacturing & Packaging Factory Unit (Behind Mansion: x = 180.0..203.0, z = -484.5..-471.5)
+    const fx0 = 180.0;
+    const fx1 = 203.0;
+    const fz0 = -484.5;
+    const fz1 = -471.5;
+    const fCx = (fx0 + fx1) * 0.5;
+    const fCz = (fz0 + fz1) * 0.5;
+    const fH = 5.4;
+
+    // Concrete Industrial Floor & Corrugated Steel Roof + Clerestory Monitor
+    box(exteriorStatic, [fx1 - fx0, 0.14, fz1 - fz0], [fCx, 0.06, fCz], m.darkConcrete);
+    box(exteriorStatic, [fx1 - fx0 + 0.6, 0.24, fz1 - fz0 + 0.6], [fCx, fH + 0.12, fCz], ispFactoryRoof);
+    box(exteriorStatic, [fx1 - fx0 - 2.0, 0.85, 3.2], [fCx, fH + 0.62, fCz], ispFactoryRoof);
+
+    // Solid Factory Walls (North loading wall has wide 4.6m loading bay at x = 189.2..193.8)
+    addSolidWall(exteriorStatic, fx0, fx0 + 0.30, fz0, fz1, 0, fH, ispGreyWall);
+    addSolidWall(exteriorStatic, fx1 - 0.30, fx1, fz0, fz1, 0, fH, ispGreyWall);
+    addSolidWall(exteriorStatic, fx0, fx1, fz1 - 0.30, fz1, 0, fH, ispGreyWall);
+    addSolidWall(exteriorStatic, fx0, 189.2, fz0, fz0 + 0.30, 0, fH, ispGreyWall);
+    addSolidWall(exteriorStatic, 193.8, fx1, fz0, fz0 + 0.30, 0, fH, ispGreyWall);
+    box(exteriorStatic, [4.65, 1.65, 0.32], [fCx, 4.58, fz0 + 0.15], ispGreyWall);
+    // Terracotta Industrial Stripe & Signboard
+    box(exteriorStatic, [fx1 - fx0 + 0.1, 0.35, 0.36], [fCx, fH - 0.25, fz0 + 0.12], ispCrimson);
+    addWallSign(dynamicG, {
+      title: 'M.M. ISPAHANI LTD. · MANUFACTURING UNIT',
+      subtitle: 'TEA BLENDING, FOOD PROCESSING & PACKAGING PLANT',
+      bg: '#1e293b', fg: '#facc15', accent: '#ef4444', border: '#64748b',
+    }, [fCx, 4.55, fz0 - 0.06], Math.PI, 8.6, 1.15, m.darkMetal);
+
+    // Openable Industrial Roll-Up Loading Bay Shutter (starts OPEN so player can inspect factory floor!)
+    const fShutterMesh = new THREE.Mesh(new THREE.BoxGeometry(4.56, 3.72, 0.14), ispFactoryRoof);
+    fShutterMesh.position.set(fCx, 3.55, fz0 - 0.02);
+    fShutterMesh.scale.y = 0.18;
+    dynamicG.add(fShutterMesh);
+    interactiveDoors.push({
+      kind: 'shutter',
+      label: 'Ispahani Factory Loading Shutter',
+      mesh: fShutterMesh,
+      closedY: 1.90,
+      openY: 3.55,
+      x: fCx,
+      z: fz0,
+      open: true,
+      progress: 1,
+      collider: { minX: 189.2, maxX: 193.8, minZ: fz0 - 0.15, maxZ: fz0 + 0.32, maxY: 3.75 },
+    });
+
+    // Factory Interior: Conveyor Line, Blending Hoppers, Cartons & Jute Sacks
+    const facInt = new THREE.Group();
+    facInt.name = 'AltapoleInterior_IspahaniFactory';
+    // Automated Conveyor Belt Line (x = 183.0..199.5, z = -478.0)
+    box(facInt, [15.5, 0.85, 1.15], [fCx, 0.52, -478.0], ispMachineGreen);
+    box(facInt, [15.2, 0.08, 0.92], [fCx, 0.98, -478.0], m.darkMetal);
+    // 3 Stainless Tea Blending & Packaging Hoppers along conveyor
+    for (const hx of [185.5, 191.5, 197.5]) {
+      cylinder(facInt, 0.72, 0.42, 1.85, [hx, 2.25, -478.0], m.aluminum, 12);
+      box(facInt, [1.1, 1.1, 1.1], [hx, 3.45, -478.0], ispMachineGreen);
+    }
+    // Packaged Cartons moving on belt
+    for (let bx = 184.5; bx <= 198.5; bx += 1.8) {
+      box(facInt, [0.55, 0.42, 0.50], [bx, 1.24, -478.0], ispCartonMat);
+    }
+    // Stacked Shipping Pallets of Ruchi & Mirzapur Tea Cartons along South & East Walls
+    for (let px = 182.0; px <= 200.0; px += 3.0) {
+      box(facInt, [2.1, 0.16, 1.6], [px, 0.20, fz1 - 1.5], m.wood);
+      for (let tier = 0; tier < 3; tier++) {
+        box(facInt, [0.92, 0.58, 0.72], [px - 0.48, 0.58 + tier * 0.60, fz1 - 1.5], ispCartonMat);
+        box(facInt, [0.92, 0.58, 0.72], [px + 0.48, 0.58 + tier * 0.60, fz1 - 1.5], tier % 2 === 0 ? teaGreenMat : teaRedMat);
+      }
+    }
+    // Stacked Jute Raw Tea Sacks along West Wall
+    for (let sz = fz0 + 2.2; sz <= fz1 - 3.6; sz += 2.2) {
+      for (let tier = 0; tier < 3; tier++) {
+        box(facInt, [1.15, 0.44, 0.78], [fx0 + 1.35, 0.34 + tier * 0.42, sz], juteMat);
+        box(facInt, [1.15, 0.44, 0.78], [fx0 + 1.35, 0.34 + tier * 0.42, sz + 0.85], juteMat);
+      }
+    }
+    // Overhead High-Bay Industrial LED Lights
+    for (const lx of [185.0, 191.5, 198.0]) {
+      box(facInt, [2.4, 0.08, 0.42], [lx, fH - 0.18, -481.0], m.lamp);
+      box(facInt, [2.4, 0.08, 0.42], [lx, fH - 0.18, -475.0], m.lamp);
+    }
+    mergeStaticMeshes(facInt);
+    root.add(facInt);
+    interiorGroups.push({ group: facInt, cx: fCx, cz: fCz, maxDistSq: 54 * 54 });
+  }
+
+  // Solid bounding colliders for the Altapole East Side Lane buildings & dead-end house (z = -404.0, x = 172.6..218.2)
+  staticColliders.push(
+    { minX: 172.5, maxX: 208.6, minZ: -417.5, maxZ: -406.85, maxY: 13.0 }, // North row of East Side Lane
+    { minX: 172.5, maxX: 208.6, minZ: -401.15, maxZ: -390.8, maxY: 13.0 }, // South row of East Side Lane
+    { minX: 208.1, maxX: 218.5, minZ: -411.5, maxZ: -396.5, maxY: 11.0 }, // Dead-end closing house
+  );
+
   mergeStaticMeshes(exteriorStatic);
   helpers.finalizeTrees?.(treesG);
 
   function findNearestDoor(pos) {
-    if (!pos || pos.x < 148 || pos.x > 186 || pos.z < -524 || pos.z > -370) return null;
+    if (!pos || pos.x < 148 || pos.x > 210 || pos.z < -524 || pos.z > -370) return null;
     let best = null;
-    let bestD = 3.2;
+    let bestD = 3.6;
     for (const d of interactiveDoors) {
       const dist = Math.hypot(pos.x - d.x, pos.z - d.z);
       if (dist < bestD) {
@@ -766,7 +1239,7 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     getPrompt(pos) {
       const d = findNearestDoor(pos);
       if (!d) return null;
-      return d.open ? `[E] ${d.label} বন্ধ করুন` : `[E] ${d.label} খুলুন (ভিতরে যান)`;
+      return d.open ? `[E] Close ${d.label}` : `[E] Open ${d.label} (Enter)`;
     },
     interact(pos) {
       const d = findNearestDoor(pos);
@@ -781,22 +1254,36 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     },
     getZoneName(x, z) {
       if (x >= 167.9 && x <= 178.5 && z >= -515.8 && z <= -507.2) {
-        return 'ISPAHANI SALES CENTER · ইস্পাহানি বিক্রয় কেন্দ্র (ভিতরে)';
+        return 'ISPAHANI SALES CENTER · INTERIOR';
+      }
+      if (x >= 171.5 && x <= 210.0 && z >= -407.0 && z <= -401.0) {
+        return 'ALTAPOLE LANE · EAST SIDE ALLEY';
+      }
+      if (x >= 178.6 && x <= 205.5 && z >= -515.8 && z <= -470.5) {
+        if (z >= -484.5 && z <= -471.5 && x >= 180.0 && x <= 203.0) {
+          return 'M.M. ISPAHANI LTD. · MANUFACTURING & PACKAGING UNIT';
+        }
+        if (z >= -500.5 && z <= -488.5 && x >= 180.5 && x <= 202.5) {
+          return z < -497.5
+            ? 'ISPAHANI HOUSE · HERITAGE COLONIAL VERANDA'
+            : 'ISPAHANI HOUSE · HERITAGE MANSION HALL';
+        }
+        return 'ISPAHANI HOUSE · 28 LOWER JASHORE RD COURTYARD';
       }
       if (x >= 154.0 && x <= 164.3 && z >= -448.5 && z <= -435.5) {
         return x >= 162.4
-          ? '১৫ আলতাপোল লেন · কামিয়াব টিচিং হোম উঠান'
-          : (x >= 158.0 ? '১৫ আলতাপোল লেন · কামিয়াব টিচিং হোম (ক্লাসরুম)' : '১৫ আলতাপোল লেন · শিক্ষক কক্ষ ও অফিস');
+          ? '15 ALTAPOLE LANE · KAMYAB TEACHING HOME COURTYARD'
+          : (x >= 158.0 ? '15 ALTAPOLE LANE · KAMYAB TEACHING HOME CLASSROOM' : '15 ALTAPOLE LANE · PRINCIPAL OFFICE');
       }
       if (x >= 156.6 && x <= 166.3 && z >= -424.9 && z <= -411.1) {
-        if (x >= 164.8) return '২৪ আলতাপোল লেন · পরশমনি কলা কেন্দ্র উঠান';
-        if (z < -416.6) return x >= 160.3 ? '২৪ আলতাপোল লেন · পরশমনি কলা কেন্দ্র (সংগীত ও ড্রয়িং হল)' : '২৪ আলতাপোল লেন · মাস্টার বেডরুম';
-        return x >= 160.3 ? '২৪ আলতাপোল লেন · ডাইনিং ও রান্নাঘর' : '২৪ আলতাপোল লেন · অ্যাটাচড বাথরুম';
+        if (x >= 164.8) return '24 ALTAPOLE LANE · PARASHMONI KALA KENDRA COURTYARD';
+        if (z < -416.6) return x >= 160.3 ? '24 ALTAPOLE LANE · PARASHMONI CULTURAL HALL' : '24 ALTAPOLE LANE · MASTER BEDROOM';
+        return x >= 160.3 ? '24 ALTAPOLE LANE · DINING & KITCHEN' : '24 ALTAPOLE LANE · ATTACHED BATHROOM';
       }
       if (x >= 155.8 && x <= 165.9 && z >= -390.7 && z <= -377.3) {
-        if (x >= 164.2) return '১ আলতাপোল লেন · সাদা বাড়ির উঠান';
-        if (z < -383.1) return x >= 159.8 ? '১ আলতাপোল লেন · বসার ঘর ও স্মার্ট টিভি রুম' : '১ আলতাপোল লেন · মাস্টার বেডরুম';
-        return x >= 159.8 ? '১ আলতাপোল লেন · ডাইনিং ও রান্নাঘর' : '১ আলতাপোল লেন · অ্যাটাচড বাথরুম';
+        if (x >= 164.2) return '1 ALTAPOLE LANE · WHITE HOUSE COURTYARD';
+        if (z < -383.1) return x >= 159.8 ? '1 ALTAPOLE LANE · LIVING ROOM & SMART TV' : '1 ALTAPOLE LANE · MASTER BEDROOM';
+        return x >= 159.8 ? '1 ALTAPOLE LANE · DINING & KITCHEN' : '1 ALTAPOLE LANE · ATTACHED BATHROOM';
       }
       return null;
     },
@@ -804,12 +1291,14 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
       if (!pos) return false;
       const { x, z } = pos;
       return (x >= 167.9 && x <= 178.5 && z >= -515.8 && z <= -507.2)
+        || (x >= 180.5 && x <= 202.5 && z >= -500.5 && z <= -488.5)
+        || (x >= 180.0 && x <= 203.0 && z >= -484.5 && z <= -471.5)
         || (x >= 154.0 && x <= 162.4 && z >= -448.5 && z <= -435.5)
         || (x >= 156.6 && x <= 164.8 && z >= -424.9 && z <= -411.1)
         || (x >= 155.8 && x <= 164.2 && z >= -390.7 && z <= -377.3);
     },
     applyCollisions(pos, radius, footY = 0) {
-      if (!pos || pos.x < 150 || pos.x > 184 || pos.z < -520 || pos.z > -372) return;
+      if (!pos || pos.x < 150 || pos.x > 222 || pos.z < -520 || pos.z > -372) return;
       for (let i = 0; i < staticColliders.length; i++) {
         const c = staticColliders[i];
         if (footY > c.maxY - 0.15) continue;
@@ -824,7 +1313,7 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
       }
     },
     update(delta, playerPos = null, isLow = false) {
-      const nearCorridor = !playerPos || ((playerPos.x - 166) ** 2 + (playerPos.z + 425) ** 2) < 250 * 250;
+      const nearCorridor = !playerPos || ((playerPos.x - 176) ** 2 + (playerPos.z + 445) ** 2) < 275 * 275;
       if (root.visible !== nearCorridor) root.visible = nearCorridor;
       if (!nearCorridor) return;
 

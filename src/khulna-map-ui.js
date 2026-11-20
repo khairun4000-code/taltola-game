@@ -15,11 +15,11 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
   const gpsReadout = document.querySelector('#gps-readout');
 
   const TAB_TITLES = {
-    map: 'খুলনা শহর মানচিত্র ও ফাস্ট ট্র্যাভেল',
-    graphics: 'গ্রাফিক্স ও ডিসপ্লে সেটিংস (Graphics)',
-    settings: 'গেম ও ক্যামেরা সেটিংস (Settings)',
-    game: 'গেম অ্যাকশন, স্টুডিও ও ইমোট (Game & Actions)',
-    controls: 'কিবোর্ড ও মাউস কন্ট্রোলস (Controls)',
+    map: 'CITY MAP & GPS NAVIGATION',
+    graphics: 'GRAPHICS & DISPLAY SETTINGS',
+    settings: 'GAMEPLAY & CAMERA SETTINGS',
+    game: 'QUICK ACTIONS, STUDIO & EMOTES',
+    controls: 'KEYBOARD & MOUSE CONTROLS',
   };
   let activeTab = 'map';
 
@@ -60,7 +60,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
   const visibleLandmarks = worldData.landmarks
     .filter((lm) => lm.id !== 'taltola_ward23')
     .map((lm) => lm.id === 'pti_more'
-      ? { ...lm, c: 'hero', isPti: true, n: 'PTI More · Ahsan Ahmed Rd', bn: '🟢 পিটিআই মোড় ও আহসান আহমেদ রোড (PTI More)' }
+      ? { ...lm, c: 'hero', isPti: true, n: 'PTI More · Ahsan Ahmed Rd', bn: 'PTI More · Ahsan Ahmed Rd' }
       : lm);
   const ptiIdx = visibleLandmarks.findIndex((lm) => lm.id === 'pti_more');
   if (ptiIdx > 0) {
@@ -194,7 +194,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     gpsRouteDistM = Math.round(total || directDist);
   }
 
-  function setGpsWaypoint(x, z, label = 'মার্ক করা লোকেশন') {
+  function setGpsWaypoint(x, z, label = 'GPS Waypoint') {
     gpsWaypoint = { x, z, label };
     updateGpsRouteIfNeeded(lastPlayerPos.x, lastPlayerPos.z, true);
     if (isOpen) renderFullMap(lastPlayerPos, lastPlayerYaw);
@@ -306,7 +306,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
         btn.style.boxShadow = '0 0 12px rgba(74, 222, 128, 0.30)';
       }
       btn.innerHTML = `
-        <span class="lm-name"${lm.isPti ? ' style="color:#86efac"' : ''}>${lm.bn}</span>
+        <span class="lm-name"${lm.isPti ? ' style="color:#86efac"' : ''}>${lm.n}</span>
         <small class="lm-meta">${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E · ${distM}m away</small>
       `;
       btn.addEventListener('click', (e) => {
@@ -316,7 +316,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       });
       btn.addEventListener('dblclick', (e) => {
         e.stopPropagation();
-        setGpsWaypoint(lm.x, lm.z, lm.bn || lm.n);
+        setGpsWaypoint(lm.x, lm.z, lm.n);
       });
       mapList.appendChild(btn);
     }
@@ -586,7 +586,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       clearGpsWaypoint();
     } else {
       lastWaypointSetAt = now;
-      setGpsWaypoint(clickW.x, clickW.z, 'মার্ক করা লোকেশন');
+      setGpsWaypoint(clickW.x, clickW.z, 'GPS Waypoint');
     }
   }
   fullCanvas?.addEventListener('click', handleMapCanvasWaypoint);

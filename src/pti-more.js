@@ -2417,10 +2417,10 @@ export function buildPtiMoreDistrict(parent, m) {
   function getNearbyPrompt(pos) {
     if (!pos || pos.y > 3.2) return null;
     if (Math.hypot(pos.x - -291.5, pos.z - -66.0) < 4.5) {
-      return ptiGateTarget > 0.5 ? '[E] পিটিআই গেট বন্ধ করো' : '[E] পিটিআই গেট খোলো';
+      return ptiGateTarget > 0.5 ? '[E] Close PTI Main Gate' : '[E] Open PTI Main Gate';
     }
     if (Math.hypot(pos.x - -292.6, pos.z - -130.0) < 4.8) {
-      return sjGateTarget > 0.5 ? '[E] সেন্ট জোসেফ্স স্কুল গেট বন্ধ করো' : '[E] সেন্ট জোসেফ্স স্কুল গেট খোলো';
+      return sjGateTarget > 0.5 ? "[E] Close St. Joseph's School Gate" : "[E] Open St. Joseph's School Gate";
     }
     return null;
   }

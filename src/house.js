@@ -1223,8 +1223,8 @@ export function buildHouse(scene, m) {
 
       if (nearestFlat && dFlat < 2.15) {
         return nearestFlat.open
-          ? `[E] ফ্ল্যাট ${nearestFlat.unit}-এর দরজা বন্ধ করুন`
-          : `[E] ফ্ল্যাট ${nearestFlat.unit}-এর দরজা খুলুন (ভিতরে যান)`;
+          ? `[E] Close Flat ${nearestFlat.unit} Door`
+          : `[E] Open Flat ${nearestFlat.unit} Door`;
       }
 
       if (footY < 1.5) {
@@ -1232,13 +1232,13 @@ export function buildHouse(scene, m) {
         const dFront = Math.hypot(lp.x - 5.98, lp.z);
         const dBack = Math.hypot(lp.x - 14.34, lp.z);
         if (dGate < 4.5 && dGate <= dFront) {
-          return state.gateOpen ? '[E] মেইন গেট বন্ধ করুন' : '[E] মেইন গেট খুলুন (উঠানে যান)';
+          return state.gateOpen ? '[E] Close Main Gate' : '[E] Open Main Gate';
         }
         if (dFront < 4.0 && dFront <= dBack) {
-          return state.frontDoorOpen ? '[E] ভবনের মূল দরজা বন্ধ করুন' : '[E] ভবনের মূল দরজা খুলুন (ভিতরে ঢুকুন)';
+          return state.frontDoorOpen ? '[E] Close Front Door' : '[E] Open Front Door';
         }
         if (dBack < 4.0) {
-          return state.backDoorOpen ? '[E] ভবনের পিছনের দরজা বন্ধ করুন' : '[E] ভবনের পিছনের দরজা খুলুন (পিছনে যান)';
+          return state.backDoorOpen ? '[E] Close Back Door' : '[E] Open Back Door';
         }
       }
       return null;

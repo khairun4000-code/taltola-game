@@ -392,7 +392,7 @@ export function createRupshaRiverShader(sharedUniforms) {
 export const TIME_OF_DAY_PRESETS = {
   golden: {
     id: 'golden',
-    label: 'সোনালী বিকেল (GOLDEN HR)',
+    label: 'GOLDEN HOUR',
     shortLabel: 'GOLDEN',
     sunPos: [92, 54, -76],
     sunColor: 0xffd199,
@@ -415,7 +415,7 @@ export const TIME_OF_DAY_PRESETS = {
   },
   daylight: {
     id: 'daylight',
-    label: 'দুপুর রোদ (DAYLIGHT)',
+    label: 'MIDDAY SUN',
     shortLabel: 'DAYLIGHT',
     sunPos: [68, 112, -52],
     sunColor: 0xfff5e4,
@@ -438,7 +438,7 @@ export const TIME_OF_DAY_PRESETS = {
   },
   sunset: {
     id: 'sunset',
-    label: 'সন্ধ্যা (SUNSET DUSK)',
+    label: 'SUNSET DUSK',
     shortLabel: 'SUNSET',
     sunPos: [118, 22, -60],
     sunColor: 0xff8c5a,
@@ -461,7 +461,7 @@ export const TIME_OF_DAY_PRESETS = {
   },
   night: {
     id: 'night',
-    label: 'খুলনা রাত (NIGHT)',
+    label: 'KHULNA NIGHT',
     shortLabel: 'NIGHT',
     sunPos: [-52, 74, 48],
     sunColor: 0x8fb4e8,

@@ -100,7 +100,7 @@ function createSmartTVTexture() {
   return tex;
 }
 
-function drawLiftDisplayCanvas(canvas, code = 'GF', arrow = '●', statusText = 'DOOR OPEN · দরজা খোলা', targetIdx = 0) {
+function drawLiftDisplayCanvas(canvas, code = 'GF', arrow = '●', statusText = 'DOOR OPEN', targetIdx = 0) {
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#070b14';
   ctx.fillRect(0, 0, 256, 512);
@@ -126,7 +126,7 @@ function drawLiftDisplayCanvas(canvas, code = 'GF', arrow = '●', statusText = 
 
   ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 20px Arial';
-  ctx.fillText('HIGH-SPEED LIFT · লিফট', 128, 138);
+  ctx.fillText('HIGH-SPEED ELEVATOR', 128, 138);
   ctx.fillStyle = '#fde68a';
   ctx.font = 'bold 16px Arial';
   ctx.fillText(statusText, 128, 162);
@@ -169,7 +169,7 @@ function createLiftDisplayTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 256;
   canvas.height = 512;
-  drawLiftDisplayCanvas(canvas, 'GF', '●', 'DOOR OPEN · দরজা খোলা', 0);
+  drawLiftDisplayCanvas(canvas, 'GF', '●', 'DOOR OPEN', 0);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.userData.canvas = canvas;
@@ -1000,17 +1000,17 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
 
   // All 11 stops of the High-Speed Elevator (0 = Ground, 1..9 = Apartment Floors, 10 = Rooftop)
   const LIFT_STOPS = [
-    { index: 0, code: 'GF', btn: 'G', y: 0.5, label: 'নিচতলা · গ্র্যান্ড লবি ও পার্কিং (Ground Floor)' },
-    { index: 1, code: '1F', btn: '1', y: 4.0, label: '২য় তলা · কোচিং ও ফ্ল্যাট ১ (1st Floor)' },
-    { index: 2, code: '2F', btn: '2', y: 7.0, label: '৩য় তলা · মডেল ফ্ল্যাট ২ (2nd Floor)' },
-    { index: 3, code: '3F', btn: '3', y: 10.0, label: '৪র্থ তলা · লাক্সারি ফ্ল্যাট ৩ (3rd Floor)' },
-    { index: 4, code: '4F', btn: '4', y: 13.0, label: '৫ম তলা · ডুপ্লেক্স ফ্ল্যাট ৪ (4th Floor)' },
-    { index: 5, code: '5F', btn: '5', y: 16.0, label: '৬ষ্ঠ তলা · লাক্সারি ফ্ল্যাট ৫ (5th Floor)' },
-    { index: 6, code: '6F', btn: '6', y: 19.0, label: '৭ম তলা · লাক্সারি ফ্ল্যাট ৬ (6th Floor)' },
-    { index: 7, code: '7F', btn: '7', y: 22.0, label: '৮ম তলা · স্কাই স্যুট ৭ (7th Floor)' },
-    { index: 8, code: '8F', btn: '8', y: 25.0, label: '৯ম তলা · লাক্সারি ফ্ল্যাট ৮ (8th Floor)' },
-    { index: 9, code: '9F', btn: '9', y: 28.0, label: '১০ম তলা · ভিআইপি পেন্টহাউস ৯ (9th Floor)' },
-    { index: 10, code: 'RF', btn: 'R', y: 31.0, label: 'ছাদ · স্কাই লাউঞ্জ ও গার্ডেন (Rooftop)' },
+    { index: 0, code: 'GF', btn: 'G', y: 0.5, label: 'Ground Floor · Grand Lobby & Parking' },
+    { index: 1, code: '1F', btn: '1', y: 4.0, label: '1st Floor · Coaching & Flat 1' },
+    { index: 2, code: '2F', btn: '2', y: 7.0, label: '2nd Floor · Model Flat 2' },
+    { index: 3, code: '3F', btn: '3', y: 10.0, label: '3rd Floor · Luxury Flat 3' },
+    { index: 4, code: '4F', btn: '4', y: 13.0, label: '4th Floor · Duplex Flat 4' },
+    { index: 5, code: '5F', btn: '5', y: 16.0, label: '5th Floor · Luxury Flat 5' },
+    { index: 6, code: '6F', btn: '6', y: 19.0, label: '6th Floor · Luxury Flat 6' },
+    { index: 7, code: '7F', btn: '7', y: 22.0, label: '7th Floor · Sky Suite 7' },
+    { index: 8, code: '8F', btn: '8', y: 25.0, label: '8th Floor · Luxury Flat 8' },
+    { index: 9, code: '9F', btn: '9', y: 28.0, label: '9th Floor · VIP Penthouse 9' },
+    { index: 10, code: 'RF', btn: 'R', y: 31.0, label: 'Rooftop · Sky Lounge & Garden' },
   ];
 
   const state = {
@@ -1488,20 +1488,20 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
     if (!canvas) return;
     const stop = LIFT_STOPS[state.liftFloorIndex] || LIFT_STOPS[0];
     let arrow = '●';
-    let statusText = 'DOOR OPEN · দরজা খোলা';
+    let statusText = 'DOOR OPEN';
     if (state.liftPhase === 'closing') {
       arrow = state.liftDirection > 0 ? '▲' : (state.liftDirection < 0 ? '▼' : '►◄');
-      statusText = 'CLOSING · দরজা বন্ধ হচ্ছে';
+      statusText = 'DOORS CLOSING';
     } else if (state.liftPhase === 'moving') {
       arrow = state.liftDirection >= 0 ? '▲' : '▼';
       const targetStop = LIFT_STOPS[state.liftTargetIndex] || stop;
-      statusText = `GOING TO ${targetStop.code} · চলমান`;
+      statusText = `GOING TO ${targetStop.code}`;
     } else if (state.liftPhase === 'opening') {
       arrow = '◄►';
-      statusText = 'ARRIVED · দরজা খুলছে';
+      statusText = 'ARRIVED · OPENING';
     } else if (state.liftDoorOpen < 0.2) {
       arrow = '■';
-      statusText = 'READY · প্রেস করুন';
+      statusText = 'READY · SELECT FLOOR';
     }
     drawLiftDisplayCanvas(canvas, stop.code, arrow, statusText, state.liftTargetIndex);
     hm.liftDisplay.map.needsUpdate = true;
@@ -1606,22 +1606,22 @@ export function buildSkArshanTower(staticParent, dynamicParent, m, hm) {
         const curStop = LIFT_STOPS[state.liftFloorIndex] || LIFT_STOPS[0];
         if (state.liftPhase === 'moving' || state.liftPhase === 'closing') {
           const dst = LIFT_STOPS[state.liftTargetIndex] || curStop;
-          return `লিফট চলছে: ${curStop.code} → ${dst.label} ...`;
+          return `Elevator Moving: ${curStop.code} → ${dst.label} ...`;
         }
-        return `[E / L / Click] লিফটের ফ্লোর নাম্বার বাটন প্যানেল খুলুন (বর্তমান: ${curStop.code})`;
+        return `[E / L / Click] Open Elevator Keypad (Current: ${curStop.code})`;
       }
       if (isNearLiftLobby(playerPos)) {
         const playerFloorIdx = getNearestFloorIndex(playerPos.y - 1.68);
         const atThisFloor = Math.abs(state.liftY - LIFT_STOPS[playerFloorIdx].y) < 0.25;
         if (atThisFloor && state.liftDoorOpen > 0.7) {
-          return `[ভিতরে হাঁটুন অথবা E / L চাপুন] হাই-স্পিড লিফটে ঢুকুন ও নাম্বার ক্লিক করুন`;
+          return `[Walk Inside or Press E / L] Enter High-Speed Elevator`;
         }
-        return `[E / F / Click] হাই-স্পিড লিফট ডাকুন ও দরজা খুলুন (Call Lift)`;
+        return `[E / F / Click] Call High-Speed Elevator`;
       }
       if (isNearGate(playerPos)) {
         return state.gateOpen
-          ? 'Press E / F · শেখ আরশান আলিফ টাওয়ারের মেইন গেট বন্ধ করুন (Close Gate)'
-          : 'Press E / F · শেখ আরশান আলিফ টাওয়ারের মেইন গেট খুলুন (Open Gate)';
+          ? '[E / F] Close SK Arshan Alif Tower Main Gate'
+          : '[E / F] Open SK Arshan Alif Tower Main Gate';
       }
       return null;
     },
