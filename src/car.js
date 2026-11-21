@@ -104,6 +104,53 @@ export const BICYCLE_PAINT_PRESETS = [
   { name: 'Vintage Silver', hex: '#8b95a5' },
 ];
 
+export const VAN_PAINT_PRESETS = [
+  { name: 'Classic Red & Green', hex: '#ffffff' },
+  { name: 'Khulna Brick Red', hex: '#f2cccc' },
+  { name: 'Forest Green', hex: '#ccebd6' },
+  { name: 'Golden Teak', hex: '#f7e5c1' },
+  { name: 'Royal Blue', hex: '#cce0f7' },
+];
+
+export const VAN_CORNER_SEAT_SPECS = [
+  {
+    id: 'front_left',
+    label: 'Front-Left Corner',
+    seat: [0.34, 0.86, -0.22],
+    footL: [0.58, 0.36, -0.29],
+    footR: [0.58, 0.36, -0.13],
+    dismount: [1.05, 0, -0.22],
+    yawOffset: Math.PI * 0.5,
+  },
+  {
+    id: 'front_right',
+    label: 'Front-Right Corner',
+    seat: [-0.34, 0.86, -0.22],
+    footL: [-0.58, 0.36, -0.13],
+    footR: [-0.58, 0.36, -0.29],
+    dismount: [-1.05, 0, -0.22],
+    yawOffset: -Math.PI * 0.5,
+  },
+  {
+    id: 'rear_left',
+    label: 'Rear-Left Corner',
+    seat: [0.26, 0.86, -1.06],
+    footL: [0.16, 0.36, -1.30],
+    footR: [0.36, 0.36, -1.30],
+    dismount: [0.48, 0, -1.58],
+    yawOffset: Math.PI,
+  },
+  {
+    id: 'rear_right',
+    label: 'Rear-Right Corner',
+    seat: [-0.26, 0.86, -1.06],
+    footL: [-0.36, 0.36, -1.30],
+    footR: [-0.16, 0.36, -1.30],
+    dismount: [-0.48, 0, -1.58],
+    yawOffset: Math.PI,
+  },
+];
+
 export const CAR_FLEET_CONFIGS = [
   {
     id: 'bmw_m3',
@@ -486,6 +533,28 @@ export const CAR_FLEET_CONFIGS = [
     isBMW: false,
     isRickshaw: true,
     isBicycle: true,
+  },
+  {
+    id: 'bangladeshi_cargo_van',
+    name: 'Bangladeshi Cargo Van',
+    badge: 'BANGLADESHI CARGO VAN',
+    assetUrl: './assets/bangladeshi_cargo_van.glb',
+    targetLength: 2.395,
+    width: 1.042,
+    rotateY: 0,
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.35, 0.01, TALTOLA_HOUSE_OFFSET.z - 3.4],
+    spawnHeading: 0.0,
+    paintPresets: VAN_PAINT_PRESETS,
+    maxSpeed: 8.2,
+    boostMaxSpeed: 12.2,
+    engineForce: 9.6,
+    camBack: 3.55,
+    camHeight: 2.02,
+    hoodHeight: 1.62,
+    hoodForward: 0.16,
+    isBMW: false,
+    isRickshaw: true,
+    isVan: true,
   },
 ];
 
@@ -1188,6 +1257,183 @@ function rigMotorcycleWheels(orientedWrapper, config) {
   return { wheels: builtWheels, frontAssemblyPivot, wheelRadius: rCnt ? rSum / rCnt : 0.32 };
 }
 
+let cachedCNGTireTex = null;
+function getCNGTireTexture() {
+  if (cachedCNGTireTex) return cachedCNGTireTex;
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#1b1e23';
+  ctx.fillRect(0, 0, 256, 256);
+  // Crisp circumferential Bajaj 4.00-8 tread grooves & shoulder blocks so spinning is clearly visible!
+  ctx.fillStyle = '#101216';
+  for (const gx of [46, 98, 158, 210]) {
+    ctx.fillRect(gx - 5, 0, 10, 256);
+  }
+  ctx.strokeStyle = '#0d0f12';
+  ctx.lineWidth = 5;
+  for (let y = 0; y < 256; y += 22) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(44, y + 10);
+    ctx.moveTo(256, y);
+    ctx.lineTo(212, y + 10);
+    ctx.moveTo(52, y + 5);
+    ctx.lineTo(94, y + 13);
+    ctx.moveTo(204, y + 5);
+    ctx.lineTo(162, y + 13);
+    ctx.moveTo(106, y);
+    ctx.lineTo(150, y + 8);
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,0.035)';
+  for (let y = 0; y < 256; y += 22) {
+    ctx.fillRect(110, y + 11, 36, 5);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(1, 5);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  cachedCNGTireTex = tex;
+  return tex;
+}
+
+function buildRealisticCNGWheel(radius = 0.245, width = 0.132, isFront = false, outboardSign = 1) {
+  const wheelGroup = new THREE.Group();
+  const hw = width * 0.5;
+  const rimR = radius * 0.54; // Authentic chunky 8-inch Bajaj RE CNG wheel ratio
+
+  const tireTex = getCNGTireTexture();
+  const tireMat = new THREE.MeshStandardMaterial({
+    name: 'CNG_Proc_Tire',
+    color: 0x20242a,
+    map: tireTex,
+    roughness: 0.84,
+    metalness: 0.06,
+    envMapIntensity: 0.55,
+  });
+  tireMat.userData = { keepMaterial: true };
+
+  const rimMat = new THREE.MeshStandardMaterial({
+    name: 'CNG_Proc_Rim',
+    color: 0xc2cbd4,
+    roughness: 0.34,
+    metalness: 0.66,
+    envMapIntensity: 1.45,
+  });
+  rimMat.userData = { keepMaterial: true };
+
+  const darkSteelMat = new THREE.MeshStandardMaterial({
+    name: 'CNG_Proc_DarkSteel',
+    color: 0x1d2228,
+    roughness: 0.52,
+    metalness: 0.55,
+  });
+  darkSteelMat.userData = { keepMaterial: true };
+
+  const chromeLugMat = new THREE.MeshStandardMaterial({
+    name: 'CNG_Proc_Lug',
+    color: 0xe6edf4,
+    roughness: 0.20,
+    metalness: 0.90,
+    envMapIntensity: 1.7,
+  });
+  chromeLugMat.userData = { keepMaterial: true };
+
+  // 1) Rounded balloon tire profile (LatheGeometry around Y, rotated around Z so wheel axle = X!)
+  const tirePts = [
+    new THREE.Vector2(rimR - 0.004, -hw * 0.72),
+    new THREE.Vector2(rimR + 0.022, -hw * 0.92),
+    new THREE.Vector2(radius * 0.82, -hw * 1.02),
+    new THREE.Vector2(radius * 0.96, -hw * 0.84),
+    new THREE.Vector2(radius, -hw * 0.48),
+    new THREE.Vector2(radius, hw * 0.48),
+    new THREE.Vector2(radius * 0.96, hw * 0.84),
+    new THREE.Vector2(radius * 0.82, hw * 1.02),
+    new THREE.Vector2(rimR + 0.022, hw * 0.92),
+    new THREE.Vector2(rimR - 0.004, hw * 0.72),
+  ];
+  const tireGeo = new THREE.LatheGeometry(tirePts, 32);
+  tireGeo.rotateZ(Math.PI / 2);
+  const tireMesh = new THREE.Mesh(tireGeo, tireMat);
+  tireMesh.castShadow = true;
+  tireMesh.receiveShadow = true;
+  wheelGroup.add(tireMesh);
+
+  // Subtle raised sidewall molding ring on both sides
+  for (const s of [-1, 1]) {
+    const swRing = new THREE.Mesh(new THREE.TorusGeometry(radius * 0.76, 0.004, 8, 28), darkSteelMat);
+    swRing.rotation.y = Math.PI / 2;
+    swRing.position.x = s * hw * 0.97;
+    wheelGroup.add(swRing);
+  }
+
+  // 2) Stamped steel deep-dish split rim (authentic Bajaj RE CNG silver-grey steel rim)
+  const rimPts = [
+    new THREE.Vector2(0.018, -hw * 0.30),
+    new THREE.Vector2(rimR * 0.56, -hw * 0.30),
+    new THREE.Vector2(rimR * 0.78, -hw * 0.62),
+    new THREE.Vector2(rimR + 0.006, -hw * 0.74),
+    new THREE.Vector2(rimR + 0.010, -hw * 0.64),
+    new THREE.Vector2(rimR - 0.008, -hw * 0.52),
+    new THREE.Vector2(rimR - 0.008, hw * 0.52),
+    new THREE.Vector2(rimR + 0.010, hw * 0.64),
+    new THREE.Vector2(rimR + 0.006, hw * 0.74),
+    new THREE.Vector2(rimR * 0.78, hw * 0.62),
+    new THREE.Vector2(rimR * 0.56, hw * 0.30),
+    new THREE.Vector2(0.018, hw * 0.30),
+  ];
+  const rimGeo = new THREE.LatheGeometry(rimPts, 28);
+  rimGeo.rotateZ(Math.PI / 2);
+  const rimMesh = new THREE.Mesh(rimGeo, rimMat);
+  wheelGroup.add(rimMesh);
+
+  // 3) Wheel face details: dark vent cutouts, domed center hubcap & 4 chrome lug nuts
+  const faceSides = isFront ? [-1, 1] : [outboardSign];
+  for (const s of faceSides) {
+    // 6 radial cooling slots around the stamped steel disc
+    const slotGeo = new THREE.BoxGeometry(0.008, 0.022, 0.014);
+    for (let i = 0; i < 6; i++) {
+      const ang = (i / 6) * Math.PI * 2;
+      const slot = new THREE.Mesh(slotGeo, darkSteelMat);
+      slot.position.set(s * hw * 0.44, Math.cos(ang) * rimR * 0.72, Math.sin(ang) * rimR * 0.72);
+      slot.rotation.x = ang;
+      wheelGroup.add(slot);
+    }
+    // Raised center hubcap dome
+    const hubCap = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.036, 0.026, 16), rimMat);
+    hubCap.rotation.z = Math.PI / 2;
+    hubCap.position.x = s * (hw * 0.38);
+    wheelGroup.add(hubCap);
+
+    const dustCap = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.020, 0.018, 12), darkSteelMat);
+    dustCap.rotation.z = Math.PI / 2;
+    dustCap.position.x = s * (hw * 0.50);
+    wheelGroup.add(dustCap);
+
+    // 4 chrome lug nuts around bolt circle
+    const lugGeo = new THREE.CylinderGeometry(0.0075, 0.0075, 0.016, 6);
+    lugGeo.rotateZ(Math.PI / 2);
+    for (let i = 0; i < 4; i++) {
+      const ang = (i / 4) * Math.PI * 2 + Math.PI * 0.25;
+      const lug = new THREE.Mesh(lugGeo, chromeLugMat);
+      lug.position.set(s * (hw * 0.36), Math.cos(ang) * 0.056, Math.sin(ang) * 0.056);
+      wheelGroup.add(lug);
+    }
+  }
+
+  // 4) Inboard dark iron brake drum
+  const brakeDrum = new THREE.Mesh(new THREE.CylinderGeometry(rimR * 0.78, rimR * 0.78, hw * 0.78, 18), darkSteelMat);
+  brakeDrum.rotation.z = Math.PI / 2;
+  brakeDrum.position.x = isFront ? 0 : -outboardSign * hw * 0.22;
+  wheelGroup.add(brakeDrum);
+
+  return wheelGroup;
+}
+
 /**
  * Creates a drivable 3D car (BMW M3, Toyota Alphard 2025, Toyota Corolla 2017, etc.)
  * with 4-wheel rigging, clearcoat reflections, engine/horn audio, and Khulna street collisions.
@@ -1247,10 +1493,12 @@ export function createDrivableCar(scene, manager, config) {
     paintName: paintPresets[0].name,
     isRickshaw: Boolean(config.isRickshaw),
     isBicycle: Boolean(config.isBicycle),
+    isVan: Boolean(config.isVan),
     isBike: Boolean(config.isBike),
     isCNG: Boolean(config.isCNG),
     bikeSportLean: Boolean(config.bikeSportLean),
     rideSeat: 'driver',
+    passengerSeatIndex: 0,
     halfWidth: (config.width || 1.88) * 0.48,
     halfLength: (config.targetLength || 4.4) * 0.48,
     camBack: config.camBack || 5.4,
@@ -1464,7 +1712,23 @@ export function createDrivableCar(scene, manager, config) {
     gripR.position.set(-0.165, 0.025, -0.02);
     wheelSpin.add(gripR);
 
-    carDriverRig = { rigGroup, seatAnchor, footL, footR, wheelSpin, gripL, gripR };
+    // CNG Back Passenger Seat Anchors (professionally seated on rear bench with shoes flat on floorboard!)
+    let passengerSeat = null;
+    let passengerFootL = null;
+    let passengerFootR = null;
+    if (config.isCNG) {
+      passengerSeat = new THREE.Object3D();
+      passengerSeat.position.set(-0.05, 0.85, -0.44);
+      rigGroup.add(passengerSeat);
+      passengerFootL = new THREE.Object3D();
+      passengerFootL.position.set(0.09, 0.38, -0.14);
+      rigGroup.add(passengerFootL);
+      passengerFootR = new THREE.Object3D();
+      passengerFootR.position.set(-0.19, 0.38, -0.14);
+      rigGroup.add(passengerFootR);
+    }
+
+    carDriverRig = { rigGroup, seatAnchor, footL, footR, wheelSpin, gripL, gripR, passengerSeat, passengerFootL, passengerFootR };
   }
 
   // Realistic soft wispy radial-cloud tire-to-road friction smoke sprites
@@ -1801,8 +2065,11 @@ export function createDrivableCar(scene, manager, config) {
       const orientedWrapper = new THREE.Group();
       orientedWrapper.add(model);
 
+      let cngProcWheelFront = null;
+      let cngProcWheelRearL = null;
+      let cngProcWheelRearR = null;
       if (config.isCNG) {
-        // Level the slight left lean of the raw CNG body & windshield while keeping all 3 wheels dead-straight & flush on y = 0.000!
+        // Level the slight left lean of the raw CNG body & windshield and replace lumpy scanned wheels with crisp symmetrical Bajaj RE 4.00-8 wheels!
         const cngBody = model.getObjectByName('CNG_Body');
         const cngGlass = model.getObjectByName('CNG_Windshield_Glass');
         if (cngBody) cngBody.rotation.z = 0.020;
@@ -1812,17 +2079,58 @@ export function createDrivableCar(scene, manager, config) {
         const wrl = model.getObjectByName('Wheel_Rear_L');
         const wrr = model.getObjectByName('Wheel_Rear_R');
         if (fs) fs.position.x = 0;
-        if (wf && fs) {
-          wf.position.set(0, -(fs.position.y - 0.242), 0.04);
-          wf.rotation.set(0, 0, 0);
+
+        // Hide the warped/lumpy raw GLB wheel meshes so our crisp procedural wheels define exact ground contact (y = 0.000) & spin with zero wobble
+        for (const oldW of [wf, wrl, wrr]) {
+          if (oldW) {
+            oldW.visible = false;
+            oldW.traverse((o) => { o.visible = false; });
+          }
         }
-        if (wrl) {
-          wrl.position.set(0.52, 0.268, -0.82);
-          wrl.rotation.set(0, 0, 0);
+
+        const cngR = 0.245;
+        const rearZ = -0.82;
+        const rearLX = 0.45;
+        const rearRX = -0.63;
+
+        if (fs) {
+          cngProcWheelFront = buildRealisticCNGWheel(cngR, 0.125, true, 1);
+          cngProcWheelFront.name = 'CNG_Proc_Wheel_Front';
+          cngProcWheelFront.position.set(0, -(fs.position.y - cngR), 0.04);
+          fs.add(cngProcWheelFront);
         }
-        if (wrr) {
-          wrr.position.set(-0.52, 0.266, -0.82);
-          wrr.rotation.set(0, 0, 0);
+        cngProcWheelRearL = buildRealisticCNGWheel(cngR, 0.136, false, 1);
+        cngProcWheelRearL.name = 'CNG_Proc_Wheel_Rear_L';
+        cngProcWheelRearL.position.set(rearLX, cngR, rearZ);
+        model.add(cngProcWheelRearL);
+
+        cngProcWheelRearR = buildRealisticCNGWheel(cngR, 0.136, false, -1);
+        cngProcWheelRearR.name = 'CNG_Proc_Wheel_Rear_R';
+        cngProcWheelRearR.position.set(rearRX, cngR, rearZ);
+        model.add(cngProcWheelRearR);
+
+        // Solid dark-steel rear axle beam + transaxle differential housing + twin rear shock struts
+        const axleMat = new THREE.MeshStandardMaterial({
+          name: 'CNG_Proc_Axle',
+          color: 0x1b2026,
+          roughness: 0.52,
+          metalness: 0.62,
+        });
+        axleMat.userData = { keepMaterial: true };
+        const axleSpan = Math.abs(rearLX - rearRX) - 0.06;
+        const axleMidX = (rearLX + rearRX) * 0.5;
+        const axleTube = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, axleSpan, 12), axleMat);
+        axleTube.rotation.z = Math.PI / 2;
+        axleTube.position.set(axleMidX, cngR, rearZ);
+        model.add(axleTube);
+        const diffBox = new THREE.Mesh(new THREE.SphereGeometry(0.072, 12, 10), axleMat);
+        diffBox.scale.set(1.15, 0.92, 1.05);
+        diffBox.position.set(axleMidX, cngR + 0.01, rearZ);
+        model.add(diffBox);
+        for (const sx of [rearLX - 0.11, rearRX + 0.11]) {
+          const shock = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.26, 10), axleMat);
+          shock.position.set(sx, cngR + 0.14, rearZ);
+          model.add(shock);
         }
       }
       if (config.rotateY) model.rotation.y = config.rotateY;
@@ -2110,6 +2418,10 @@ export function createDrivableCar(scene, manager, config) {
           if (shouldCast) carShadowMeshes.push(child);
 
           const outMats = srcMats.map((mat) => {
+            if (mat.userData?.keepMaterial) {
+              if ((mat.metalness ?? 0) >= 0.45) glossyMaterials.push(mat);
+              return mat;
+            }
             if (clonedMatCache.has(mat)) return clonedMatCache.get(mat);
             const mName = mat.name || '';
             let out;
@@ -2228,17 +2540,17 @@ export function createDrivableCar(scene, manager, config) {
                 mat.map.anisotropy = 8;
                 mat.map.needsUpdate = true;
               }
-              if (/chrome|spoke|aluminum|footwell/.test(mn)) {
+              if (/chrome|spoke|aluminum|footwell|wheel_steel_rim|handlebar_steel/.test(mn)) {
                 mat.metalness = Math.max(mat.metalness ?? 0.5, 0.88);
                 mat.roughness = Math.min(mat.roughness ?? 0.5, 0.18);
                 if ('envMapIntensity' in mat) mat.envMapIntensity = 1.9;
                 glossyMaterials.push(mat);
-              } else if (/hood_top|hood_side|hood_back|body_/.test(mn)) {
-                mat.roughness = Math.min(mat.roughness ?? 0.6, 0.34);
-                if ('envMapIntensity' in mat) mat.envMapIntensity = 1.35;
+              } else if (/hood_top|hood_side|hood_back|body_|van_wood_red|van_wood_green/.test(mn)) {
+                mat.roughness = /van_wood/.test(mn) ? 0.52 : Math.min(mat.roughness ?? 0.6, 0.34);
+                if ('envMapIntensity' in mat) mat.envMapIntensity = /van_wood/.test(mn) ? 0.95 : 1.35;
                 paintMaterials.push(mat);
                 glossyMaterials.push(mat);
-              } else if (/paint_|frame_black/.test(mn)) {
+              } else if (/paint_|frame_black|chassis_black|mudguard_steel/.test(mn)) {
                 mat.roughness = Math.min(mat.roughness ?? 0.5, 0.28);
                 mat.metalness = Math.max(mat.metalness ?? 0.2, 0.35);
                 if ('envMapIntensity' in mat) mat.envMapIntensity = 1.45;
@@ -2252,6 +2564,7 @@ export function createDrivableCar(scene, manager, config) {
           const wheelRear = model.getObjectByName('Wheel_Rear');
           const wheelRearL = model.getObjectByName('Wheel_Rear_L');
           const wheelRearR = model.getObjectByName('Wheel_Rear_R');
+          const rearSprocket = model.getObjectByName('Rear_Sprocket');
           const crank = model.getObjectByName('Crank_Assembly');
           const pedalL = model.getObjectByName('Pedal_L');
           const pedalR = model.getObjectByName('Pedal_R');
@@ -2265,7 +2578,7 @@ export function createDrivableCar(scene, manager, config) {
             chainCurve = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.12);
             chainLength = Math.max(0.25, chainCurve.getLength());
           }
-          if (config.isBicycle) {
+          if (config.isBicycle || config.isVan) {
             measuredWheelRadius = 0.355;
           }
           let gripAnchorL = null;
@@ -2276,6 +2589,9 @@ export function createDrivableCar(scene, manager, config) {
             if (config.isBicycle) {
               gripAnchorL.position.set(0.286, 0.206, -0.150);
               gripAnchorR.position.set(-0.286, 0.206, -0.150);
+            } else if (config.isVan) {
+              gripAnchorL.position.set(0.293, 0.187, -0.155);
+              gripAnchorR.position.set(-0.293, 0.187, -0.155);
             } else {
               gripAnchorL.position.set(0.294, 0.245, -0.137);
               gripAnchorR.position.set(-0.291, 0.245, -0.138);
@@ -2284,7 +2600,11 @@ export function createDrivableCar(scene, manager, config) {
             steering.add(gripAnchorR);
           }
           const saddleAnchor = new THREE.Object3D();
-          saddleAnchor.position.set(0, config.isBicycle ? 1.00 : 1.09, config.isBicycle ? -0.295 : -0.14);
+          saddleAnchor.position.set(
+            0,
+            config.isBicycle ? 1.00 : (config.isVan ? 1.03 : 1.09),
+            config.isBicycle ? -0.295 : (config.isVan ? -0.08 : -0.14),
+          );
           orientedWrapper.add(saddleAnchor);
           const passengerAnchor = new THREE.Object3D();
           passengerAnchor.position.set(0, config.isBicycle ? 0.84 : 0.88, config.isBicycle ? -0.62 : -0.78);
@@ -2295,11 +2615,37 @@ export function createDrivableCar(scene, manager, config) {
           const passengerFootR = new THREE.Object3D();
           passengerFootR.position.set(config.isBicycle ? -0.22 : -0.15, config.isBicycle ? 0.36 : 0.59, config.isBicycle ? -0.50 : -0.34);
           orientedWrapper.add(passengerFootR);
+          let vanSeats = null;
+          if (config.isVan) {
+            vanSeats = VAN_CORNER_SEAT_SPECS.map((spec) => {
+              const seatObj = new THREE.Object3D();
+              seatObj.position.set(...spec.seat);
+              orientedWrapper.add(seatObj);
+              const footLObj = new THREE.Object3D();
+              footLObj.position.set(...spec.footL);
+              orientedWrapper.add(footLObj);
+              const footRObj = new THREE.Object3D();
+              footRObj.position.set(...spec.footR);
+              orientedWrapper.add(footRObj);
+              const dismountObj = new THREE.Object3D();
+              dismountObj.position.set(...spec.dismount);
+              orientedWrapper.add(dismountObj);
+              return {
+                id: spec.id,
+                label: spec.label,
+                yawOffset: spec.yawOffset,
+                seat: seatObj,
+                footL: footLObj,
+                footR: footRObj,
+                dismount: dismountObj,
+              };
+            });
+          }
           const pedalFootL = new THREE.Object3D();
-          pedalFootL.position.set(0.056, config.isBicycle ? 0.022 : 0.018, 0.0);
+          pedalFootL.position.set(0.056, config.isBicycle ? 0.022 : (config.isVan ? 0.020 : 0.018), 0.0);
           if (pedalL) pedalL.add(pedalFootL);
           const pedalFootR = new THREE.Object3D();
-          pedalFootR.position.set(-0.056, config.isBicycle ? 0.022 : 0.018, 0.0);
+          pedalFootR.position.set(-0.056, config.isBicycle ? 0.022 : (config.isVan ? 0.020 : 0.018), 0.0);
           if (pedalR) pedalR.add(pedalFootR);
           rickshawParts = {
             steering,
@@ -2308,6 +2654,7 @@ export function createDrivableCar(scene, manager, config) {
             wheelRear,
             wheelRearL,
             wheelRearR,
+            rearSprocket,
             crank,
             pedalL,
             pedalR,
@@ -2321,6 +2668,7 @@ export function createDrivableCar(scene, manager, config) {
             passengerAnchor,
             passengerFootL,
             passengerFootR,
+            vanSeats,
             pedalFootL,
             pedalFootR,
           };
@@ -2513,6 +2861,9 @@ export function createDrivableCar(scene, manager, config) {
     passengerSeat: new THREE.Vector3(),
     passengerFootL: new THREE.Vector3(),
     passengerFootR: new THREE.Vector3(),
+    passengerYawOffset: 0,
+    passengerSeatIndex: 0,
+    passengerSeatLabel: '',
     pedalL: new THREE.Vector3(),
     pedalR: new THREE.Vector3(),
     gripL: new THREE.Vector3(),
@@ -2564,13 +2915,65 @@ export function createDrivableCar(scene, manager, config) {
     return true;
   }
 
+  const tmpVanSeatPos = new THREE.Vector3();
+  function findNearestVanSeatIndex(worldPos) {
+    if (!config.isVan || !rickshawParts?.vanSeats?.length || !worldPos) return 0;
+    root.updateMatrixWorld(true);
+    let bestIdx = 0;
+    let bestDistSq = Infinity;
+    for (let i = 0; i < rickshawParts.vanSeats.length; i++) {
+      rickshawParts.vanSeats[i].seat.getWorldPosition(tmpVanSeatPos);
+      const dx = worldPos.x - tmpVanSeatPos.x;
+      const dz = worldPos.z - tmpVanSeatPos.z;
+      const dSq = dx * dx + dz * dz;
+      if (dSq < bestDistSq) {
+        bestDistSq = dSq;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
+  function getVanSeatPose(seatIdx = state.passengerSeatIndex) {
+    if (!config.isVan || !rickshawParts?.vanSeats?.length) return null;
+    root.updateMatrixWorld(true);
+    const idx = ((seatIdx % 4) + 4) % 4;
+    const s = rickshawParts.vanSeats[idx];
+    const seatPos = new THREE.Vector3();
+    const dismountPos = new THREE.Vector3();
+    s.seat.getWorldPosition(seatPos);
+    s.dismount.getWorldPosition(dismountPos);
+    return {
+      index: idx,
+      id: s.id,
+      label: s.label,
+      yawOffset: s.yawOffset,
+      seatPos,
+      dismountPos,
+    };
+  }
+
   function getRickshawAnchors() {
     if (!rickshawParts) return null;
     root.updateMatrixWorld(true);
     rickshawParts.saddleAnchor.getWorldPosition(anchorCache.saddle);
-    rickshawParts.passengerAnchor.getWorldPosition(anchorCache.passengerSeat);
-    if (rickshawParts.passengerFootL) rickshawParts.passengerFootL.getWorldPosition(anchorCache.passengerFootL);
-    if (rickshawParts.passengerFootR) rickshawParts.passengerFootR.getWorldPosition(anchorCache.passengerFootR);
+    if (config.isVan && rickshawParts.vanSeats?.length) {
+      const idx = ((state.passengerSeatIndex % rickshawParts.vanSeats.length) + rickshawParts.vanSeats.length) % rickshawParts.vanSeats.length;
+      const s = rickshawParts.vanSeats[idx];
+      s.seat.getWorldPosition(anchorCache.passengerSeat);
+      s.footL.getWorldPosition(anchorCache.passengerFootL);
+      s.footR.getWorldPosition(anchorCache.passengerFootR);
+      anchorCache.passengerYawOffset = s.yawOffset;
+      anchorCache.passengerSeatIndex = idx;
+      anchorCache.passengerSeatLabel = s.label;
+    } else {
+      rickshawParts.passengerAnchor.getWorldPosition(anchorCache.passengerSeat);
+      if (rickshawParts.passengerFootL) rickshawParts.passengerFootL.getWorldPosition(anchorCache.passengerFootL);
+      if (rickshawParts.passengerFootR) rickshawParts.passengerFootR.getWorldPosition(anchorCache.passengerFootR);
+      anchorCache.passengerYawOffset = 0;
+      anchorCache.passengerSeatIndex = 0;
+      anchorCache.passengerSeatLabel = '';
+    }
     if (rickshawParts.pedalFootL) rickshawParts.pedalFootL.getWorldPosition(anchorCache.pedalL);
     if (rickshawParts.pedalFootR) rickshawParts.pedalFootR.getWorldPosition(anchorCache.pedalR);
     if (rickshawParts.gripAnchorL) rickshawParts.gripAnchorL.getWorldPosition(anchorCache.gripL);
@@ -2622,19 +3025,20 @@ export function createDrivableCar(scene, manager, config) {
 
     if (rickshawParts) {
       if (rickshawParts.steering && rickshawParts.steerRestQ) {
-        steerDeltaQ.setFromAxisAngle(steerAxisY, state.steerAngle * (config.isBicycle ? 0.78 : 1.15));
+        steerDeltaQ.setFromAxisAngle(steerAxisY, state.steerAngle * (config.isBicycle ? 0.78 : (config.isVan ? 1.0 : 1.15)));
         rickshawParts.steering.quaternion.copy(rickshawParts.steerRestQ).multiply(steerDeltaQ);
       }
       if (rickshawParts.wheelFront) rickshawParts.wheelFront.rotation.x = state.wheelSpin;
       if (rickshawParts.wheelRear) rickshawParts.wheelRear.rotation.x = state.wheelSpin;
       if (rickshawParts.wheelRearL) rickshawParts.wheelRearL.rotation.x = state.wheelSpin;
       if (rickshawParts.wheelRearR) rickshawParts.wheelRearR.rotation.x = state.wheelSpin;
+      if (rickshawParts.rearSprocket) rickshawParts.rearSprocket.rotation.x = state.wheelSpin;
       if (rickshawParts.crank) rickshawParts.crank.rotation.x = state.pedalPhase;
       if (rickshawParts.pedalL) rickshawParts.pedalL.rotation.x = -state.pedalPhase;
       if (rickshawParts.pedalR) rickshawParts.pedalR.rotation.x = -state.pedalPhase;
       if (rickshawParts.chainLinks && rickshawParts.chainCurve) {
         const n = rickshawParts.chainLinks.length;
-        const advance = (state.pedalPhase * (config.isBicycle ? 0.096 : 0.092)) / rickshawParts.chainLength;
+        const advance = (state.pedalPhase * (config.isBicycle ? 0.096 : (config.isVan ? 0.094 : 0.092))) / rickshawParts.chainLength;
         for (let i = 0; i < n; i++) {
           let u = (i / n + advance) % 1;
           if (u < 0) u += 1;
@@ -3072,15 +3476,30 @@ export function createDrivableCar(scene, manager, config) {
     aiControlInput = input || { throttle: 0, brake: 0, steerInput: 0, handbrake: false };
   }
 
-  function enterCar(seatMode = 'driver') {
+  function enterCar(seatMode = 'driver', passengerSeatIdx = null) {
     state.aiDriving = false;
     aiControlInput = null;
     state.driving = true;
     state.cameraMode = 'chase';
     state.rideSeat = (config.isRickshaw && seatMode === 'passenger') ? 'passenger' : 'driver';
+    if (config.isVan && typeof passengerSeatIdx === 'number' && Number.isFinite(passengerSeatIdx)) {
+      state.passengerSeatIndex = ((passengerSeatIdx % 4) + 4) % 4;
+    }
     ensureAudio();
     for (const m of drlMats) m.emissiveIntensity = 4.5;
     syncInteriorVisibility();
+  }
+
+  function setPassengerSeatIndex(idx) {
+    if (!config.isVan) return 0;
+    state.passengerSeatIndex = ((idx % 4) + 4) % 4;
+    return state.passengerSeatIndex;
+  }
+
+  function cyclePassengerSeat() {
+    if (!config.isVan) return 0;
+    state.passengerSeatIndex = (state.passengerSeatIndex + 1) % 4;
+    return state.passengerSeatIndex;
   }
 
   function toggleRideSeat() {
@@ -3090,6 +3509,8 @@ export function createDrivableCar(scene, manager, config) {
   }
 
   function exitCar(playerPos) {
+    const wasVanPass = Boolean(config.isVan && state.rideSeat === 'passenger');
+    const vanPose = wasVanPass ? getVanSeatPose(state.passengerSeatIndex) : null;
     state.driving = false;
     state.rideSeat = 'driver';
     syncInteriorVisibility();
@@ -3097,6 +3518,10 @@ export function createDrivableCar(scene, manager, config) {
     for (const m of drlMats) m.emissiveIntensity = 1.8;
     for (const m of tailMats) m.emissiveIntensity = 1.6;
 
+    if (vanPose?.dismountPos) {
+      playerPos.set(vanPose.dismountPos.x, state.pos.y + 1.68, vanPose.dismountPos.z);
+      return;
+    }
     const rightVec = new THREE.Vector3(Math.cos(state.heading), 0, -Math.sin(state.heading));
     const exitDist = config.isBicycle ? 0.95 : (config.isRickshaw ? 1.15 : 1.60);
     const exitOffset = state.pos.x < -0.6 ? exitDist : -exitDist;
@@ -3118,6 +3543,12 @@ export function createDrivableCar(scene, manager, config) {
 
   function getPrompt(playerPos) {
     if (state.driving) {
+      if (config.isVan) {
+        const cornerName = VAN_CORNER_SEAT_SPECS[state.passengerSeatIndex % 4]?.label || 'Corner';
+        return state.rideSeat === 'passenger'
+          ? `[1-4] Switch 4 Corner Seats (${state.passengerSeatIndex + 1}/4 ${cornerName}) · [F] Drive Van · [G] Get Off`
+          : `[F] Dismount ${state.name} · [G] Sit in Back (4 Corner Seats) · [H] Bell`;
+      }
       if (config.isBicycle) {
         return state.rideSeat === 'passenger'
           ? '[G] Get Off Back Seat · [F] Switch to Rider Seat'
@@ -3134,6 +3565,9 @@ export function createDrivableCar(scene, manager, config) {
       return `[F] Exit ${state.name} · [E] Open Gate`;
     }
     if (isPlayerNear(playerPos)) {
+      if (config.isVan) {
+        return `[F] Drive ${state.name} · [G] Sit in Back (4 Corners)`;
+      }
       if (config.isBicycle) {
         return `[F] Ride ${state.name} · [G] Sit on Back Seat`;
       }
@@ -3318,7 +3752,7 @@ export function createDrivableCar(scene, manager, config) {
       }
     }
     if (config.isRickshaw) {
-      const gearRatio = config.isBicycle ? 0.50 : 0.72;
+      const gearRatio = config.isBicycle ? 0.50 : (config.isVan ? 0.62 : 0.72);
       const pedalRate = (throttle > 0 || state.speed > 0.15)
         ? Math.max(throttle * 3.8, (state.speed / wheelRadius) * gearRatio)
         : (state.speed < -0.15 ? (state.speed / wheelRadius) * 0.5 : 0);
@@ -3436,6 +3870,10 @@ export function createDrivableCar(scene, manager, config) {
     exitAICar,
     setAIControl,
     toggleRideSeat,
+    setPassengerSeatIndex,
+    cyclePassengerSeat,
+    findNearestVanSeatIndex,
+    getVanSeatPose,
     exitCar,
     distanceToPlayer,
     isPlayerNear,

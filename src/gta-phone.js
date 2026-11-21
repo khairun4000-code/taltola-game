@@ -18,6 +18,7 @@ export const PHONE_CHEAT_CODES = [
   { code: '9999', carId: 'toyota_townace', label: 'Toyota TownAce GL 2005' },
   { code: '0000', carId: 'bangladeshi_cng', label: 'Bangladeshi CNG Auto' },
   { code: '1234', carId: 'atlas_roadster_bicycle', label: 'Atlas Roadster Bicycle' },
+  { code: '5678', carId: 'bangladeshi_cargo_van', label: 'Bangladeshi Cargo Van' },
 ];
 
 export function createGTAPhoneUI({

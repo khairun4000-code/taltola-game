@@ -1824,7 +1824,7 @@ function syncCarHUD() {
   const driving = Boolean(activeCar);
   if (carToggleButton) {
     carToggleButton.innerHTML = driving
-      ? (activeCar.state.isBicycle ? 'EXIT BICYCLE <span>[T]</span>' : (activeCar.state.isRickshaw ? 'EXIT RICKSHAW <span>[T]</span>' : (activeCar.state.isBike ? 'EXIT BIKE <span>[T]</span>' : 'EXIT CAR <span>[T]</span>')))
+      ? (activeCar.state.isVan ? 'EXIT VAN <span>[T]</span>' : (activeCar.state.isBicycle ? 'EXIT BICYCLE <span>[T]</span>' : (activeCar.state.isRickshaw ? 'EXIT RICKSHAW <span>[T]</span>' : (activeCar.state.isBike ? 'EXIT BIKE <span>[T]</span>' : 'EXIT CAR <span>[T]</span>'))))
       : 'DRIVE CAR <span>[T]</span>';
   }
   carHud?.classList.toggle('hidden', !driving);
@@ -1832,14 +1832,15 @@ function syncCarHUD() {
   if (driving && activeCar) {
     const isRick = Boolean(activeCar.state.isRickshaw);
     const isBicycle = Boolean(activeCar.state.isBicycle);
+    const isVan = Boolean(activeCar.state.isVan);
     const isBike = Boolean(activeCar.state.isBike);
     const isPass = isRick && activeCar.state.rideSeat === 'passenger';
     if (carBadgeEl) {
       if (isRick) {
         const stR = activeCar.state;
-        const pedLabel = isBicycle ? 'ATLAS BICYCLE' : 'RICKSHAW';
+        const pedLabel = isVan ? 'CARGO VAN' : (isBicycle ? 'ATLAS BICYCLE' : 'RICKSHAW');
         carBadgeEl.textContent = isPass
-          ? (isBicycle ? 'ATLAS BICYCLE · BACK SEAT' : 'RICKSHAW · PASSENGER SEAT')
+          ? (isVan ? `CARGO VAN · BACK SEAT (${stR.passengerSeatIndex + 1}/4)` : (isBicycle ? 'ATLAS BICYCLE · BACK SEAT' : 'RICKSHAW · PASSENGER SEAT'))
           : (stR.boostCooldown > 0
             ? `${pedLabel} · COOLDOWN (${Math.ceil(stR.boostCooldown)}s)`
             : (stR.standingPedal
@@ -1853,8 +1854,8 @@ function syncCarHUD() {
     if (carHudDoorsEl) carHudDoorsEl.classList.toggle('hidden', isRick || isBike);
     if (carSeatLabelEl && isRick) {
       carSeatLabelEl.textContent = isPass
-        ? (isBicycle ? 'RIDER SEAT' : 'DRIVER SEAT')
-        : (isBicycle ? 'BACK SEAT' : 'PASSENGER SEAT');
+        ? (isVan ? `CORNER ${activeCar.state.passengerSeatIndex + 1}/4` : (isBicycle ? 'RIDER SEAT' : 'DRIVER SEAT'))
+        : (isVan ? 'BACK SEATS (4)' : (isBicycle ? 'BACK SEAT' : 'PASSENGER SEAT'));
     }
     if (carCamLabelEl) {
       const camNames = { chase: '3RD PERSON', hood: 'HOOD CAM', pov: 'POV SPEEDO', front: 'FRONT CAM' };
@@ -2012,6 +2013,7 @@ const vehicleTransition = {
   type: null, // 'rickshaw_mount_driver' | 'rickshaw_dismount_driver' | 'rickshaw_mount_passenger' | 'rickshaw_dismount_passenger' | 'car_enter' | 'car_exit'
   car: null,
   seatMode: 'driver',
+  passengerSeatIndex: 0,
   elapsed: 0,
   duration: 0.75,
   fadeSwapped: false,
@@ -2023,7 +2025,7 @@ const vehicleTransition = {
   handTarget: new THREE.Vector3(),
 };
 
-function startVehicleTransition(type, car, seatMode = 'driver') {
+function startVehicleTransition(type, car, seatMode = 'driver', passengerSeatIndex = 0) {
   const st = car.state;
   const sinH = Math.sin(st.heading);
   const cosH = Math.cos(st.heading);
@@ -2034,6 +2036,7 @@ function startVehicleTransition(type, car, seatMode = 'driver') {
   vehicleTransition.type = type;
   vehicleTransition.car = car;
   vehicleTransition.seatMode = seatMode;
+  vehicleTransition.passengerSeatIndex = passengerSeatIndex;
   vehicleTransition.elapsed = 0;
   vehicleTransition.fadeSwapped = false;
   vehicleTransition.doorOpenedCue = false;
@@ -2050,25 +2053,37 @@ function startVehicleTransition(type, car, seatMode = 'driver') {
     vehicleTransition.startPos.set(st.pos.x - sinH * 0.18, st.pos.y + 0.04 + EYE_HEIGHT, st.pos.z - cosH * 0.18);
     vehicleTransition.endPos.set(st.pos.x + rx * 0.88 - sinH * 0.18, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.88 - cosH * 0.18);
   } else if (type === 'rickshaw_mount_driver') {
-    const seatBack = st.isBicycle ? 0.28 : 0.05;
-    const seatLift = st.isBicycle ? 0.08 : 0.16;
+    const seatBack = st.isBicycle ? 0.28 : (st.isVan ? 0.08 : 0.05);
+    const seatLift = st.isBicycle ? 0.08 : (st.isVan ? 0.10 : 0.16);
     vehicleTransition.duration = 0.78;
     vehicleTransition.startPos.set(st.pos.x + rx * 0.78 - sinH * seatBack, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.78 - cosH * seatBack);
     vehicleTransition.endPos.set(st.pos.x - sinH * seatBack, st.pos.y + seatLift + EYE_HEIGHT, st.pos.z - cosH * seatBack);
   } else if (type === 'rickshaw_dismount_driver') {
-    const seatBack = st.isBicycle ? 0.28 : 0.05;
-    const seatLift = st.isBicycle ? 0.08 : 0.16;
+    const seatBack = st.isBicycle ? 0.28 : (st.isVan ? 0.08 : 0.05);
+    const seatLift = st.isBicycle ? 0.08 : (st.isVan ? 0.10 : 0.16);
     vehicleTransition.duration = 0.68;
     vehicleTransition.startPos.set(st.pos.x - sinH * seatBack, st.pos.y + seatLift + EYE_HEIGHT, st.pos.z - cosH * seatBack);
     vehicleTransition.endPos.set(st.pos.x + rx * 0.92 - sinH * seatBack, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * seatBack);
   } else if (type === 'rickshaw_mount_passenger') {
     vehicleTransition.duration = 0.54;
-    vehicleTransition.startPos.set(st.pos.x + rx * 0.92 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * 0.62);
-    vehicleTransition.endPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.24 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
+    const vanPose = st.isVan ? car.getVanSeatPose?.(passengerSeatIndex) : null;
+    if (vanPose) {
+      vehicleTransition.startPos.set(vanPose.dismountPos.x, st.pos.y + EYE_HEIGHT, vanPose.dismountPos.z);
+      vehicleTransition.endPos.set(vanPose.seatPos.x, st.pos.y + 0.22 + EYE_HEIGHT, vanPose.seatPos.z);
+    } else {
+      vehicleTransition.startPos.set(st.pos.x + rx * 0.92 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * 0.62);
+      vehicleTransition.endPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.24 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
+    }
   } else if (type === 'rickshaw_dismount_passenger') {
     vehicleTransition.duration = 0.50;
-    vehicleTransition.startPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.24 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
-    vehicleTransition.endPos.set(st.pos.x + rx * 1.00 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.00 - cosH * 0.62);
+    const vanPose = st.isVan ? car.getVanSeatPose?.(passengerSeatIndex) : null;
+    if (vanPose) {
+      vehicleTransition.startPos.set(vanPose.seatPos.x, st.pos.y + 0.22 + EYE_HEIGHT, vanPose.seatPos.z);
+      vehicleTransition.endPos.set(vanPose.dismountPos.x, st.pos.y + EYE_HEIGHT, vanPose.dismountPos.z);
+    } else {
+      vehicleTransition.startPos.set(st.pos.x - sinH * 0.62, st.pos.y + 0.24 + EYE_HEIGHT, st.pos.z - cosH * 0.62);
+      vehicleTransition.endPos.set(st.pos.x + rx * 1.00 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 1.00 - cosH * 0.62);
+    }
   } else if (type === 'car_enter' || type === 'car_exit') {
     vehicleTransition.duration = 0.78;
   }
@@ -2312,11 +2327,12 @@ function updateVehicleTransition(delta) {
   if (p >= 1.0) {
     const doneType = vt.type;
     const doneSeat = vt.seatMode;
+    const donePassIdx = vt.passengerSeatIndex;
     vt.active = false;
     vt.type = null;
     car.setDriverDoorOpen?.(0);
     if (doneType === 'bike_mount' || doneType === 'rickshaw_mount_driver' || doneType === 'rickshaw_mount_passenger' || doneType === 'car_enter') {
-      car.enterCar(doneSeat);
+      car.enterCar(doneSeat, donePassIdx);
       syncCursorVisibility();
       syncCarHUD();
       updateHUDPrompt();
@@ -2344,6 +2360,7 @@ function toggleCarDriving(targetCar = null, seatMode = 'driver') {
     const wasRick = Boolean(activeCar.state.isRickshaw);
     const wasBike = Boolean(activeCar.state.isBike);
     const wasPass = wasRick && activeCar.state.rideSeat === 'passenger';
+    const passIdx = activeCar.state.passengerSeatIndex || 0;
     if (wasBike) {
       activeCar.exitCar(playerPos);
       syncCarHUD();
@@ -2355,6 +2372,7 @@ function toggleCarDriving(targetCar = null, seatMode = 'driver') {
         wasPass ? 'rickshaw_dismount_passenger' : 'rickshaw_dismount_driver',
         activeCar,
         'driver',
+        passIdx,
       );
     } else {
       startVehicleTransition('car_exit', activeCar, 'driver');
@@ -2369,10 +2387,14 @@ function toggleCarDriving(targetCar = null, seatMode = 'driver') {
   if (!started) beginWalking();
   const isRick = Boolean(carToEnter.state.isRickshaw);
   const isBike = Boolean(carToEnter.state.isBike);
+  const passIdx = (carToEnter.state.isVan && seatMode === 'passenger')
+    ? (carToEnter.findNearestVanSeatIndex?.(playerPos) ?? 0)
+    : 0;
   startVehicleTransition(
     isBike ? 'bike_mount' : (isRick ? (seatMode === 'passenger' ? 'rickshaw_mount_passenger' : 'rickshaw_mount_driver') : 'car_enter'),
     carToEnter,
     seatMode,
+    passIdx,
   );
 }
 
@@ -2998,10 +3020,10 @@ async function initialize() {
       updateHUDPrompt();
     },
   });
-  // Park the custom Atlas Roadster Bicycle and Bangladeshi CNG Auto right outside Taltola House on startup; other vehicles spawn via [P] phone cheat codes
+  // Park the custom Atlas Roadster Bicycle, Bangladeshi CNG Auto, and Bangladeshi Cargo Van right outside Taltola House on startup; other vehicles spawn via [P] phone cheat codes
   cars = [];
   bmwCar = null;
-  const starterVehicleIds = ['atlas_roadster_bicycle', 'bangladeshi_cng'];
+  const starterVehicleIds = ['atlas_roadster_bicycle', 'bangladeshi_cng', 'bangladeshi_cargo_van'];
   const selectiveEnvStartup = (quality === 'ultra' || quality === 'high') ? null : (skySystem?.getEnvTexture?.() || null);
   for (const vid of starterVehicleIds) {
     const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);
@@ -3679,7 +3701,18 @@ carToggleButton?.addEventListener('click', (e) => {
 carSeatBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
   const activeCar = getDrivingCar();
-  if (activeCar?.state.isRickshaw) {
+  if (activeCar?.state.isVan) {
+    if (activeCar.state.rideSeat === 'driver') {
+      activeCar.setPassengerSeatIndex?.(0);
+      activeCar.toggleRideSeat();
+    } else if (activeCar.state.passengerSeatIndex < 3) {
+      activeCar.cyclePassengerSeat?.();
+    } else {
+      activeCar.toggleRideSeat();
+    }
+    syncCarHUD();
+    updateHUDPrompt();
+  } else if (activeCar?.state.isRickshaw) {
     activeCar.toggleRideSeat();
     syncCarHUD();
     updateHUDPrompt();
@@ -4041,6 +4074,16 @@ window.addEventListener('keydown', (event) => {
       return;
     }
     if (activeCar.state.isRickshaw) {
+      if (activeCar.state.isVan && activeCar.state.rideSeat === 'passenger' && !event.repeat) {
+        const vanCornerKeyMap = { Digit1: 0, Numpad1: 0, Digit2: 1, Numpad2: 1, Digit3: 2, Numpad3: 2, Digit4: 3, Numpad4: 3 };
+        if (event.code in vanCornerKeyMap) {
+          event.preventDefault();
+          activeCar.setPassengerSeatIndex?.(vanCornerKeyMap[event.code]);
+          syncCarHUD();
+          updateHUDPrompt();
+          return;
+        }
+      }
       if (event.code === 'KeyF' && !event.repeat) {
         event.preventDefault();
         if (activeCar.state.rideSeat === 'passenger') {
@@ -4055,6 +4098,7 @@ window.addEventListener('keydown', (event) => {
       if (event.code === 'KeyG' && !event.repeat) {
         event.preventDefault();
         if (activeCar.state.rideSeat === 'driver') {
+          if (activeCar.state.isVan) activeCar.setPassengerSeatIndex?.(0);
           activeCar.toggleRideSeat();
           syncCarHUD();
           updateHUDPrompt();
@@ -5433,12 +5477,18 @@ function updateMovement(delta) {
         } else if (st.isRickshaw) {
           const anchors = drivingCar.getRickshawAnchors?.();
           const isPassenger = st.rideSeat === 'passenger';
-          const seatBackOffset = isPassenger ? 0.62 : (st.isBicycle ? 0.28 : 0.05);
-          const riderPos = {
-            x: st.pos.x - sinH * seatBackOffset,
-            y: st.pos.y + EYE_HEIGHT,
-            z: st.pos.z - cosH * seatBackOffset,
-          };
+          const seatBackOffset = isPassenger ? 0.62 : (st.isBicycle ? 0.28 : (st.isVan ? 0.08 : 0.05));
+          const riderPos = (st.isVan && isPassenger && anchors?.passengerSeat)
+            ? {
+              x: anchors.passengerSeat.x,
+              y: st.pos.y + EYE_HEIGHT,
+              z: anchors.passengerSeat.z,
+            }
+            : {
+              x: st.pos.x - sinH * seatBackOffset,
+              y: st.pos.y + EYE_HEIGHT,
+              z: st.pos.z - cosH * seatBackOffset,
+            };
           playerCharacter.update(delta, {
             position: riderPos,
             yaw: st.heading + Math.PI,
@@ -5452,6 +5502,7 @@ function updateMovement(delta) {
               active: true,
               seat: st.rideSeat,
               isBicycle: Boolean(st.isBicycle),
+              isVan: Boolean(st.isVan),
               heading: st.heading,
               pedalPhase: st.pedalPhase,
               steerAngle: st.steerAngle,

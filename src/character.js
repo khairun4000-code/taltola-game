@@ -1333,9 +1333,17 @@ export function createPlayerCharacter(scene, manager, options = {}) {
 
     if (ride.seat === 'passenger') {
       const isBikePass = Boolean(ride.isBicycle);
+      const isVanPass = Boolean(ride.isVan);
+      const seatYaw = h + (a.passengerYawOffset || 0);
+      if (isVanPass && Math.abs(a.passengerYawOffset || 0) > 0.001) {
+        state.facingYaw = seatYaw;
+        root.rotation.y = seatYaw;
+        ikFwd.set(Math.sin(seatYaw), 0, Math.cos(seatYaw));
+        ikRight.set(Math.cos(seatYaw), 0, -Math.sin(seatYaw));
+      }
       resetUpperAndLimbBonesToRest();
       if (spineBone) {
-        eulerTemp.set(isBikePass ? 0.06 : -0.08, 0, 0);
+        eulerTemp.set(isBikePass ? 0.06 : (isVanPass ? 0.04 : -0.08), 0, 0);
         qTempA.setFromEuler(eulerTemp);
         spineBone.quaternion.copy(restSpineQ).multiply(qTempA);
       }
@@ -1345,11 +1353,11 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       ikTarget.copy(a.passengerSeat);
       alignHipsToWorldPoint(ikTarget);
 
-      // Lock BOTH passenger shoes cleanly on rickshaw footwell or bicycle rear carrier footrests (zero wheel clipping!)
+      // Lock BOTH passenger shoes cleanly on rickshaw footwell, bicycle footrests, or dangling cleanly off the van flatbed edge!
       if (a.passengerFootL && a.passengerFootR) {
-        const kneeFwd = isBikePass ? 0.52 : 0.78;
+        const kneeFwd = isBikePass ? 0.52 : (isVanPass ? 0.56 : 0.78);
         const kneeOut = isBikePass ? 0.28 : 0.16;
-        const kneeLift = isBikePass ? 0.10 : 0.22;
+        const kneeLift = isBikePass ? 0.10 : (isVanPass ? 0.08 : 0.22);
         ikPole.copy(a.passengerSeat).addScaledVector(ikFwd, kneeFwd).addScaledVector(ikRight, kneeOut);
         ikPole.y += kneeLift;
         solveTwoBoneIK(leftUpLeg, leftLeg, leftFoot, a.passengerFootL, ikPole);
@@ -1359,10 +1367,10 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         solveTwoBoneIK(rightUpLeg, rightLeg, rightFoot, a.passengerFootR, ikPole);
       }
 
-      // Rest passenger hands naturally on lap/knees or bicycle rear carrier sides (never floating!)
-      const handFwd = isBikePass ? 0.14 : 0.24;
-      const handOut = isBikePass ? 0.18 : 0.16;
-      const handDrop = isBikePass ? 0.06 : 0.04;
+      // Rest passenger hands naturally on lap/knees, bicycle carrier, or wooden van flatbed edge!
+      const handFwd = isBikePass ? 0.14 : (isVanPass ? 0.06 : 0.24);
+      const handOut = isBikePass ? 0.18 : (isVanPass ? 0.23 : 0.16);
+      const handDrop = isBikePass ? 0.06 : (isVanPass ? 0.05 : 0.04);
       ikTarget.copy(a.passengerSeat).addScaledVector(ikFwd, handFwd).addScaledVector(ikRight, handOut);
       ikTarget.y -= handDrop;
       ikPole.copy(a.passengerSeat).addScaledVector(ikRight, 0.34).addScaledVector(ikFwd, -0.06);
@@ -1381,10 +1389,11 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     // 1. Hard-reset ALL torso/head/limb bones to exact neutral symmetric pose
     resetUpperAndLimbBonesToRest();
 
-    // 2. Natural riding posture: bicycle rider banks with frame & twists torso smoothly into turns so BOTH hands stay 100% locked on grips!
+    // 2. Natural riding posture: bicycle/van rider twists torso smoothly into turns so BOTH hands stay 100% locked on grips!
     const isBike = Boolean(ride.isBicycle);
+    const isVan = Boolean(ride.isVan);
     const stand = THREE.MathUtils.clamp(ride.standingBlend || 0, 0, 1);
-    const steerYaw = isBike ? THREE.MathUtils.clamp(ride.steerAngle || 0, -0.60, 0.60) : 0;
+    const steerYaw = (isBike || isVan) ? THREE.MathUtils.clamp(ride.steerAngle || 0, -0.60, 0.60) : 0;
     const leanRoll = isBike ? THREE.MathUtils.clamp(ride.roll || 0, -0.25, 0.25) : 0;
     if (hipsBone && isBike && Math.abs(leanRoll) > 0.0005) {
       eulerTemp.set(0, 0, leanRoll);
