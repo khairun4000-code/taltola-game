@@ -208,6 +208,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     micActive: false,
     voicePlaying: false,
     voiceExpression: null,
+    sacredSilence: false,
     speechLevel: 0,
     attackTimer: 0,
     attackType: 0,
@@ -431,6 +432,10 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   }
 
   async function playVoiceClip(urls, { expression = null, volume = 1.0, onEnd = null } = {}) {
+    if (state.sacredSilence) {
+      onEnd?.();
+      return false;
+    }
     const candidates = (Array.isArray(urls) ? urls : [urls]).filter((u) => u && !missingVoiceUrls.has(u));
     if (!candidates.length) {
       onEnd?.();
@@ -504,13 +509,31 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   }
 
   function setTalking(enabled) {
+    if (enabled && state.sacredSilence) return false;
     state.talking = Boolean(enabled);
     if (state.talking && state.micActive) stopMicLipSync();
     return state.talking;
   }
 
   function toggleTalking() {
+    if (state.sacredSilence) return false;
     return setTalking(!state.talking);
+  }
+
+  function setSacredSilence(enabled) {
+    const next = Boolean(enabled);
+    state.sacredSilence = next;
+    if (next) {
+      if (state.voicePlaying) stopVoiceClip();
+      if (state.talking) state.talking = false;
+      if (state.attackTimer > 0) state.attackTimer = 0;
+      if (state.emote === 'kick' || state.emote === 'kick2' || state.emote === 'combo' || state.emote === 'angry1' || state.emote === 'angry2') {
+        state.emote = null;
+        state.emoteTimer = 0;
+      }
+      if (state.expression === 'angry') state.expression = 'normal';
+    }
+    return state.sacredSilence;
   }
 
   function buildProceduralFacialMorphTargets(mesh, srcMat) {
@@ -554,20 +577,20 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       return t * t * (3 - 2 * t);
     };
 
+    // Lean 12 GPU morph targets registered via updateMorphTargets() for 100% WebGL compatibility & 60 FPS
     const morphNames = [
       'jawOpen',
       'mouthUpperUpLeft', 'mouthUpperUpRight',
       'mouthLowerDownLeft', 'mouthLowerDownRight',
-      'mouthFunnel', 'mouthPucker',
-      'mouthStretchLeft', 'mouthStretchRight',
+      'mouthFunnel',
       'mouthSmileLeft', 'mouthSmileRight',
       'mouthFrownLeft', 'mouthFrownRight',
-      'mouthClose', 'mouthPressLeft', 'mouthPressRight',
-      'browDownLeft', 'browDownRight', 'browInnerUp',
+      'browDownLeft', 'browDownRight',
     ];
     const arrays = Object.fromEntries(morphNames.map((n) => [n, new Float32Array(count * 3)]));
 
-    const jawAngle = 0.26;
+    // Clear 25-degree TMJ jaw hinge + lower lip opening so talking is visibly obvious even in 3rd-person!
+    const jawAngle = 0.44;
     const cosJ = Math.cos(jawAngle);
     const sinJ = Math.sin(jawAngle);
 
@@ -583,101 +606,95 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       const rightSide = sStep(-0.006, 0.012, -dx);
 
       // 1) jawOpen: TMJ hinge rotation for lower lip + chin + lower jaw, keeping upper lip & nose anchored
-      if (y < mouthY + 0.004 && y > noseY - 0.098 && z > jawPivotZ + 0.012) {
-        const seamMask = sStep(mouthY + 0.003, mouthY - 0.007, y);
-        const neckMask = sStep(noseY - 0.098, noseY - 0.068, y);
-        const sideMask = 1.0 - sStep(0.034, 0.072, adx);
-        const frontMask = sStep(jawPivotZ + 0.012, mouthZ - 0.025, z);
+      if (y < mouthY + 0.004 && y > noseY - 0.102 && z > jawPivotZ + 0.010) {
+        const seamMask = sStep(mouthY + 0.003, mouthY - 0.006, y);
+        const neckMask = sStep(noseY - 0.102, noseY - 0.068, y);
+        const sideMask = 1.0 - sStep(0.036, 0.076, adx);
+        const frontMask = sStep(jawPivotZ + 0.010, mouthZ - 0.025, z);
         const wJaw = seamMask * neckMask * sideMask * frontMask;
         if (wJaw > 0.001) {
           const ry = y - jawPivotY;
           const rz = z - jawPivotZ;
           const ny = ry * cosJ - rz * sinJ;
           const nz = ry * sinJ + rz * cosJ;
-          const lipBoost = (1.0 - sStep(0.016, 0.034, adx)) * sStep(mouthY - 0.026, mouthY - 0.006, y);
-          arrays.jawOpen[i3 + 1] = (ny - ry) * wJaw - 0.0095 * lipBoost * seamMask;
-          arrays.jawOpen[i3 + 2] = (nz - rz) * wJaw - 0.0020 * lipBoost * seamMask;
+          const lipBoost = (1.0 - sStep(0.018, 0.038, adx)) * sStep(mouthY - 0.032, mouthY - 0.004, y);
+          arrays.jawOpen[i3 + 1] = (ny - ry) * wJaw - 0.0180 * lipBoost * seamMask;
+          arrays.jawOpen[i3 + 2] = (nz - rz) * wJaw - 0.0030 * lipBoost * seamMask;
         }
       }
 
-      // 2) Lip articulation targets (upper lip, lower lip, funnel/pucker, stretch, smile, frown, press)
-      if (y > mouthY - 0.026 && y < mouthY + 0.020 && adx < 0.052 && z > mouthZ - 0.032) {
-        const zMask = sStep(mouthZ - 0.032, mouthZ - 0.008, z);
-        const wX = 1.0 - sStep(0.022, 0.044, adx);
-        const wUp = Math.exp(-(((y - (mouthY + 0.0055)) / 0.0072) ** 2)) * sStep(mouthY - 0.002, mouthY + 0.002, y) * wX * zMask;
-        const wLo = Math.exp(-(((y - (mouthY - 0.0065)) / 0.0080) ** 2)) * sStep(mouthY + 0.002, mouthY - 0.002, y) * wX * zMask;
-        const wLipBoth = Math.exp(-(((y - mouthY) / 0.0125) ** 2)) * wX * zMask;
-        const wCorner = Math.exp(-(((adx - 0.026) / 0.014) ** 2)) * Math.exp(-(((y - mouthY) / 0.013) ** 2)) * zMask;
+      // 2) Lip articulation targets (upper lip, lower lip, funnel, smile, frown)
+      if (y > mouthY - 0.030 && y < mouthY + 0.022 && adx < 0.056 && z > mouthZ - 0.034) {
+        const zMask = sStep(mouthZ - 0.034, mouthZ - 0.008, z);
+        const wX = 1.0 - sStep(0.024, 0.048, adx);
+        const wUp = Math.exp(-(((y - (mouthY + 0.0060)) / 0.0082) ** 2)) * sStep(mouthY - 0.002, mouthY + 0.002, y) * wX * zMask;
+        const wLo = Math.exp(-(((y - (mouthY - 0.0075)) / 0.0092) ** 2)) * sStep(mouthY + 0.002, mouthY - 0.002, y) * wX * zMask;
+        const wLipBoth = Math.exp(-(((y - mouthY) / 0.014) ** 2)) * wX * zMask;
+        const wCorner = Math.exp(-(((adx - 0.028) / 0.015) ** 2)) * Math.exp(-(((y - mouthY) / 0.014) ** 2)) * zMask;
         const signX = dx >= 0 ? 1 : -1;
 
         if (wUp > 0.001) {
-          arrays.mouthUpperUpLeft[i3 + 1] = 0.0085 * wUp * leftSide;
-          arrays.mouthUpperUpLeft[i3 + 2] = 0.0028 * wUp * leftSide;
-          arrays.mouthUpperUpRight[i3 + 1] = 0.0085 * wUp * rightSide;
-          arrays.mouthUpperUpRight[i3 + 2] = 0.0028 * wUp * rightSide;
+          arrays.mouthUpperUpLeft[i3 + 1] = 0.0115 * wUp * leftSide;
+          arrays.mouthUpperUpLeft[i3 + 2] = 0.0038 * wUp * leftSide;
+          arrays.mouthUpperUpRight[i3 + 1] = 0.0115 * wUp * rightSide;
+          arrays.mouthUpperUpRight[i3 + 2] = 0.0038 * wUp * rightSide;
         }
         if (wLo > 0.001) {
-          arrays.mouthLowerDownLeft[i3 + 1] = -0.0110 * wLo * leftSide;
-          arrays.mouthLowerDownLeft[i3 + 2] = 0.0020 * wLo * leftSide;
-          arrays.mouthLowerDownRight[i3 + 1] = -0.0110 * wLo * rightSide;
-          arrays.mouthLowerDownRight[i3 + 2] = 0.0020 * wLo * rightSide;
+          arrays.mouthLowerDownLeft[i3 + 1] = -0.0160 * wLo * leftSide;
+          arrays.mouthLowerDownLeft[i3 + 2] = 0.0028 * wLo * leftSide;
+          arrays.mouthLowerDownRight[i3 + 1] = -0.0160 * wLo * rightSide;
+          arrays.mouthLowerDownRight[i3 + 2] = 0.0028 * wLo * rightSide;
         }
         if (wLipBoth > 0.001) {
-          arrays.mouthFunnel[i3] = -dx * 0.18 * wLipBoth;
-          arrays.mouthFunnel[i3 + 2] = 0.0105 * wLipBoth;
-          arrays.mouthPucker[i3] = -dx * 0.28 * wLipBoth;
-          arrays.mouthPucker[i3 + 2] = 0.0125 * wLipBoth;
-          const closeDir = y >= mouthY ? -1 : 1;
-          arrays.mouthClose[i3 + 1] = closeDir * 0.0032 * wLipBoth;
-          arrays.mouthPressLeft[i3 + 1] = closeDir * 0.0030 * wLipBoth * leftSide;
-          arrays.mouthPressRight[i3 + 1] = closeDir * 0.0030 * wLipBoth * rightSide;
+          arrays.mouthFunnel[i3] = -dx * 0.22 * wLipBoth;
+          arrays.mouthFunnel[i3 + 2] = 0.0135 * wLipBoth;
         }
         if (wCorner > 0.001) {
-          arrays.mouthStretchLeft[i3] = signX * 0.0090 * wCorner * leftSide;
-          arrays.mouthStretchLeft[i3 + 2] = -0.0025 * wCorner * leftSide;
-          arrays.mouthStretchRight[i3] = signX * 0.0090 * wCorner * rightSide;
-          arrays.mouthStretchRight[i3 + 2] = -0.0025 * wCorner * rightSide;
+          arrays.mouthSmileLeft[i3] = signX * 0.0065 * wCorner * leftSide;
+          arrays.mouthSmileLeft[i3 + 1] = 0.0090 * wCorner * leftSide;
+          arrays.mouthSmileLeft[i3 + 2] = -0.0036 * wCorner * leftSide;
+          arrays.mouthSmileRight[i3] = signX * 0.0065 * wCorner * rightSide;
+          arrays.mouthSmileRight[i3 + 1] = 0.0090 * wCorner * rightSide;
+          arrays.mouthSmileRight[i3 + 2] = -0.0036 * wCorner * rightSide;
 
-          arrays.mouthSmileLeft[i3] = signX * 0.0055 * wCorner * leftSide;
-          arrays.mouthSmileLeft[i3 + 1] = 0.0075 * wCorner * leftSide;
-          arrays.mouthSmileLeft[i3 + 2] = -0.0032 * wCorner * leftSide;
-          arrays.mouthSmileRight[i3] = signX * 0.0055 * wCorner * rightSide;
-          arrays.mouthSmileRight[i3 + 1] = 0.0075 * wCorner * rightSide;
-          arrays.mouthSmileRight[i3 + 2] = -0.0032 * wCorner * rightSide;
-
-          arrays.mouthFrownLeft[i3 + 1] = -0.0072 * wCorner * leftSide;
-          arrays.mouthFrownRight[i3 + 1] = -0.0072 * wCorner * rightSide;
+          arrays.mouthFrownLeft[i3 + 1] = -0.0090 * wCorner * leftSide;
+          arrays.mouthFrownRight[i3 + 1] = -0.0090 * wCorner * rightSide;
         }
       }
 
-      // 3) Eyebrow expression targets (angry furrow + expressive speech brow lift)
+      // 3) Eyebrow expression targets (angry furrow)
       if (y > browY - 0.016 && y < browY + 0.020 && adx < 0.056 && z > noseZ - 0.045) {
         const bZ = sStep(noseZ - 0.045, noseZ - 0.020, z);
         const bY = Math.exp(-(((y - browY) / 0.011) ** 2));
         const bX = (1.0 - sStep(0.036, 0.056, adx)) * sStep(0.004, 0.016, adx);
         const wBrow = bZ * bY * bX;
         if (wBrow > 0.001) {
-          arrays.browDownLeft[i3 + 1] = -0.0062 * wBrow * leftSide;
-          arrays.browDownLeft[i3 + 2] = 0.0022 * wBrow * leftSide;
-          arrays.browDownRight[i3 + 1] = -0.0062 * wBrow * rightSide;
-          arrays.browDownRight[i3 + 2] = 0.0022 * wBrow * rightSide;
-        }
-        const wInner = bZ * bY * (1.0 - sStep(0.014, 0.034, adx));
-        if (wInner > 0.001) {
-          arrays.browInnerUp[i3 + 1] = 0.0060 * wInner;
+          arrays.browDownLeft[i3 + 1] = -0.0085 * wBrow * leftSide;
+          arrays.browDownLeft[i3 + 2] = 0.0028 * wBrow * leftSide;
+          arrays.browDownRight[i3 + 1] = -0.0085 * wBrow * rightSide;
+          arrays.browDownRight[i3 + 2] = 0.0028 * wBrow * rightSide;
         }
       }
     }
 
-    geom.morphAttributes.position = morphNames.map((n) => new THREE.Float32BufferAttribute(arrays[n], 3));
-    geom.morphTargetsRelative = true;
-    mesh.morphTargetDictionary = {};
-    mesh.morphTargetInfluences = new Array(morphNames.length).fill(0);
-    morphNames.forEach((n, idx) => {
-      mesh.morphTargetDictionary[n] = idx;
+    geom.morphAttributes.position = morphNames.map((n) => {
+      const attr = new THREE.Float32BufferAttribute(arrays[n], 3);
+      attr.name = n;
+      return attr;
     });
+    geom.morphTargetsRelative = true;
+    mesh.updateMorphTargets();
+    if (!mesh.morphTargetDictionary || !Object.keys(mesh.morphTargetDictionary).length) {
+      mesh.morphTargetDictionary = {};
+      morphNames.forEach((n, idx) => {
+        mesh.morphTargetDictionary[n] = idx;
+      });
+    }
+    if (!mesh.morphTargetInfluences || mesh.morphTargetInfluences.length !== morphNames.length) {
+      mesh.morphTargetInfluences = new Array(morphNames.length).fill(0);
+    }
 
-    // Inject subtle oral-cavity shading on the head material so parted lips reveal a realistic dark mouth interior & upper teeth
+    // Inject crisp oral-cavity, upper teeth & tongue shading on the head material when jawOpen > 0.04
     if (srcMat && !srcMat.userData?.hasOralCavityShader) {
       const jawUniform = { value: 0.0 };
       oralCavityUniforms.push(jawUniform);
@@ -686,7 +703,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       srcMat.onBeforeCompile = (shader, rendererRef) => {
         if (prevCompile) prevCompile(shader, rendererRef);
         shader.uniforms.uJawOpen = jawUniform;
-        shader.uniforms.uMouthCenter = { value: new THREE.Vector3(cx, mouthY - 0.0015, mouthZ) };
+        shader.uniforms.uMouthCenter = { value: new THREE.Vector3(cx, mouthY - 0.0020, mouthZ) };
         shader.vertexShader = shader.vertexShader
           .replace('#include <common>', '#include <common>\nvarying vec3 vHeadBindPos;')
           .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHeadBindPos = position;');
@@ -698,22 +715,28 @@ export function createPlayerCharacter(scene, manager, options = {}) {
           .replace(
             '#include <map_fragment>',
             `#include <map_fragment>
-            if (uJawOpen > 0.03 && vHeadBindPos.z > uMouthCenter.z - 0.022) {
-              float openAmt = clamp((uJawOpen - 0.03) * 1.45, 0.0, 1.0);
-              float rx = (vHeadBindPos.x - uMouthCenter.x) / (0.021 + openAmt * 0.006);
-              float ry = (vHeadBindPos.y - uMouthCenter.y) / (0.0022 + openAmt * 0.0052);
+            if (uJawOpen > 0.04 && vHeadBindPos.z > uMouthCenter.z - 0.028) {
+              float openAmt = clamp((uJawOpen - 0.04) * 1.40, 0.0, 1.0);
+              float rx = (vHeadBindPos.x - uMouthCenter.x) / (0.025 + openAmt * 0.008);
+              float ry = (vHeadBindPos.y - (uMouthCenter.y - openAmt * 0.004)) / (0.0038 + openAmt * 0.0145);
               float d2 = rx * rx + ry * ry;
-              float cavityMask = (1.0 - smoothstep(0.45, 1.0, d2)) * smoothstep(0.0, 0.25, openAmt);
+              float rimMask = (1.0 - smoothstep(0.85, 1.30, d2)) * smoothstep(0.0, 0.20, openAmt);
+              float cavityMask = (1.0 - smoothstep(0.55, 0.96, d2)) * smoothstep(0.0, 0.22, openAmt);
+              if (rimMask > 0.001) {
+                diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.62, rimMask * 0.55);
+              }
               if (cavityMask > 0.001) {
-                vec3 oralCol = vec3(0.055, 0.015, 0.018);
-                float teethBand = smoothstep(0.10, 0.55, ry) * (1.0 - smoothstep(0.55, 0.92, ry)) * (1.0 - smoothstep(0.55, 0.92, abs(rx)));
-                oralCol = mix(oralCol, vec3(0.76, 0.72, 0.66), teethBand * 0.72 * openAmt);
-                diffuseColor.rgb = mix(diffuseColor.rgb, oralCol, cavityMask * 0.94);
+                vec3 oralCol = vec3(0.028, 0.006, 0.010);
+                float teethBand = smoothstep(0.20, 0.52, ry) * (1.0 - smoothstep(0.62, 0.94, ry)) * (1.0 - smoothstep(0.58, 0.92, abs(rx)));
+                float tongueMask = (1.0 - smoothstep(0.0, 0.65, abs(rx))) * smoothstep(-0.92, -0.35, ry) * (1.0 - smoothstep(-0.20, 0.15, ry));
+                oralCol = mix(oralCol, vec3(0.36, 0.11, 0.13), tongueMask * 0.65);
+                oralCol = mix(oralCol, vec3(0.88, 0.84, 0.78), teethBand * 0.88 * openAmt);
+                diffuseColor.rgb = mix(diffuseColor.rgb, oralCol, cavityMask * 0.98);
               }
             }`
           );
       };
-      srcMat.customProgramCacheKey = () => `hd_head_lipsync_${options.id || 'default'}`;
+      srcMat.customProgramCacheKey = () => `hd_head_lipsync_v2_${options.id || 'default'}`;
       srcMat.needsUpdate = true;
     }
 
@@ -1013,6 +1036,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   }
 
   function triggerAttack(kind = null) {
+    if (state.sacredSilence) return null;
     const nextKind = kind !== null ? kind : state.attackType % 4;
     state.attackType = (nextKind + 1) % 4;
     state.attackTimer = nextKind >= 2 ? 0.68 : 0.46;
@@ -1032,6 +1056,9 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   }
 
   function triggerEmote(emoteName, cameraYaw = null) {
+    if (state.sacredSilence && (emoteName === 'kick' || emoteName === 'kick2' || emoteName === 'combo' || emoteName === 'angry1' || emoteName === 'angry2')) {
+      return null;
+    }
     if (state.emote === emoteName) {
       state.emote = null;
       state.emoteTimer = 0;
@@ -1131,13 +1158,15 @@ export function createPlayerCharacter(scene, manager, options = {}) {
 
       if (energy > 0.022) {
         audioDriven = true;
-        const norm = THREE.MathUtils.clamp((energy - 0.022) * 3.8, 0, 1);
+        talkClock += dt;
+        const norm = THREE.MathUtils.clamp((energy - 0.022) * 4.2, 0, 1);
+        const syllableWave = 0.72 + 0.28 * Math.sin(talkClock * 17.5);
         const f1Open = THREE.MathUtils.clamp((mid1 * 0.78 + low * 0.48) * 2.4, 0, 1);
         const roundO = THREE.MathUtils.clamp((low - mid2 * 1.10) * 3.0, 0, 1);
         const wideE  = THREE.MathUtils.clamp((mid2 - low * 0.50) * 3.0, 0, 1);
         const fric   = THREE.MathUtils.clamp((high - low * 0.38) * 4.0, 0, 1);
 
-        m.jawOpen = Math.min(0.74, norm * (0.36 + f1Open * 0.42));
+        m.jawOpen = Math.min(0.95, norm * (0.48 + f1Open * 0.48) * syllableWave);
         const ld = Math.min(0.45, m.jawOpen * 0.62);
         const uu = Math.min(0.38, norm * 0.18 + wideE * 0.20 + fric * 0.18);
         m.mouthLowerDownLeft = ld;
@@ -2164,6 +2193,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     triggerAttack,
     triggerEmote,
     setExpression,
+    setSacredSilence,
     setTalking,
     toggleTalking,
     playVoiceClip,

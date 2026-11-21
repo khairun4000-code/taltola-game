@@ -12,6 +12,7 @@ import {
   setModelMosqueNightFactor,
   getModelMosqueZoneName,
   isInsideModelMosque,
+  isInModelMosqueZone,
   findNearestModelMosqueSeat,
 } from './khulna-model-mosque.js';
 
@@ -1894,6 +1895,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
     toggleGate,
     getModelMosqueZoneName,
     isInsideModelMosque,
+    isInModelMosqueZone,
     findNearestModelMosqueSeat,
     setNightFactor(nightFactor = 0) {
       const nf = THREE.MathUtils.clamp(nightFactor, 0, 1);

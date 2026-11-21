@@ -1650,6 +1650,13 @@ export function isInsideModelMosque(pos) {
   return pos.x >= X_WEST && pos.x <= X_EAST && pos.z >= Z_NORTH && pos.z <= Z_SOUTH && pos.y - 1.68 < Y_ROOF;
 }
 
+export function isInModelMosqueZone(pos) {
+  if (!pos) return false;
+  const inMainOrVeranda = pos.x >= X_WEST - 0.3 && pos.x <= X_VERANDA + 0.3 && pos.z >= Z_NORTH - 0.3 && pos.z <= Z_SOUTH + 0.3;
+  const onFrontStairs = pos.x >= FRONT_STAIR_X0 - 0.2 && pos.x <= FRONT_STAIR_X1 + 0.4 && pos.z >= FRONT_STAIR_Z0 - 0.5 && pos.z <= FRONT_STAIR_Z1 + 0.5;
+  return inMainOrVeranda || onFrontStairs;
+}
+
 export function getModelMosqueZoneName(x, z, footY = 0) {
   if (x < X_WEST - 1.5 || x > FRONT_STAIR_X1 + 2.0 || z < Z_NORTH - 2.0 || z > Z_SOUTH + 2.0) {
     return null;

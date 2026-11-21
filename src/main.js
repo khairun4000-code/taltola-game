@@ -434,6 +434,26 @@ function getLiveMapPos() {
   if (freeCam.active) return freeCam.pos;
   return playerPos;
 }
+
+const FIGHT_EMOTE_NAMES = new Set(['kick', 'kick2', 'combo', 'angry1', 'angry2']);
+let lastMosqueToastAt = 0;
+let wasPlayerInModelMosque = false;
+
+function isPosInModelMosque(pos) {
+  if (!pos || inStudio) return false;
+  return Boolean(environment?.landmarks?.aliaMadrasah?.isInModelMosqueZone?.(pos));
+}
+
+function isFightEmote(emoteName) {
+  return FIGHT_EMOTE_NAMES.has(emoteName);
+}
+
+function notifyMosqueSilence(msg = '🕌 মডেল মসজিদে ফাইট ও কথা বলা বন্ধ আছে — রাস্তায় বের হলে আবার চালু হবে।') {
+  const now = performance.now();
+  if (now - lastMosqueToastAt < 1800) return;
+  lastMosqueToastAt = now;
+  gtaPhoneUI?.showToast?.(msg);
+}
 let sun;
 let ambientLight;
 let hemisphereLight;
@@ -1175,6 +1195,7 @@ function setMode(studioMode) {
     scene.environment = null;
     for (const actor of Object.values(characterActors)) {
       actor?.setEnvironmentMap?.(null);
+      actor?.setSacredSilence?.(false);
     }
     if (brandTitle) brandTitle.textContent = 'CHARACTER STUDIO';
     if (brandSubtitle) brandSubtitle.textContent = 'SELECT HERO · DRAG TO ROTATE 360°';
@@ -2577,6 +2598,10 @@ function bindGtaPauseSettingsUI() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const emoteName = btn.dataset.gtaEmote;
+      if (isFightEmote(emoteName) && isPosInModelMosque(playerPos)) {
+        notifyMosqueSilence();
+        return;
+      }
       khulnaMapUI?.closeMap?.();
       if (started && !inStudio) controls.lock();
       if (playerCharacter && emoteName) {
@@ -2787,6 +2812,12 @@ async function initialize() {
     onPlayFunnyVoice: async (clip) => {
       const huzzatullah = characterActors.kurta_blue || playerCharacter;
       if (!huzzatullah || !clip?.urls) return false;
+      const inMosque = isPosInModelMosque(playerPos)
+        || (huzzatullah !== playerCharacter && isPosInModelMosque(autonomousPartner.position));
+      if (inMosque || huzzatullah.state?.sacredSilence) {
+        notifyMosqueSilence('🕌 মডেল মসজিদে ভয়েস বন্ধ আছে — বাইরে বের হলে আবার বলবে।');
+        return false;
+      }
       huzzatullah.setExpression?.(clip.expression || 'happy');
       return await huzzatullah.playVoiceClip?.(clip.urls, {
         expression: clip.expression || 'happy',
@@ -3116,6 +3147,11 @@ studioMicBtn?.addEventListener('click', async () => {
 gameTalkBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
   if (!playerCharacter) return;
+  if (isPosInModelMosque(playerPos)) {
+    notifyMosqueSilence('🕌 মডেল মসজিদে কথা বলা বন্ধ আছে — বাইরে বের হলে আবার চালু হবে।');
+    syncTalkUI();
+    return;
+  }
   playerCharacter.toggleTalking();
   syncTalkUI();
 });
@@ -3169,6 +3205,8 @@ canvas.addEventListener('pointerdown', (event) => {
       activeCar.playHorn();
     } else if (sittingState.active || findNearestSeat(playerPos) || findNearestEnterableCar(playerPos) || environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos)) {
       handleDoorInteraction();
+    } else if (isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence();
     } else {
       mouseAttackHeld = true;
       playerCharacter?.triggerAttack();
@@ -3766,6 +3804,10 @@ gameEmoteButtons.forEach((btn) => {
     e.stopPropagation();
     const emoteName = btn.dataset.gameEmote;
     if (!playerCharacter) return;
+    if (isFightEmote(emoteName) && isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence();
+      return;
+    }
     controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
     const next = playerCharacter.triggerEmote(emoteName, controls.euler.y);
     syncEmoteUI(next);
@@ -4054,6 +4096,10 @@ window.addEventListener('keydown', (event) => {
 
   if (mappedEmote && playerCharacter) {
     event.preventDefault();
+    if (isFightEmote(mappedEmote) && isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence();
+      return;
+    }
     controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
     const next = playerCharacter.triggerEmote(mappedEmote, controls.euler.y);
     syncEmoteUI(next);
@@ -4083,8 +4129,12 @@ window.addEventListener('keydown', (event) => {
     toggleRunMode();
   } else if (event.code === 'KeyX') {
     event.preventDefault();
-    playerCharacter?.triggerAttack(null);
-    syncEmoteUI(null);
+    if (isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence();
+    } else {
+      playerCharacter?.triggerAttack(null);
+      syncEmoteUI(null);
+    }
   }
 
   shiftHeld = event.shiftKey || event.code === 'ShiftLeft' || event.code === 'ShiftRight';
@@ -5671,8 +5721,22 @@ function updateMovement(delta) {
     || (airPeakY - playerPos.y) > 1.45
   );
 
+  const playerInMosque = isPosInModelMosque(playerPos);
+  if (playerCharacter) {
+    playerCharacter.setSacredSilence?.(playerInMosque);
+  }
+  if (playerInMosque !== wasPlayerInModelMosque) {
+    wasPlayerInModelMosque = playerInMosque;
+    if (playerInMosque) {
+      mouseAttackHeld = false;
+      syncTalkUI();
+      syncEmoteUI(playerCharacter?.state?.emote || null);
+    }
+  }
+
   if (
     mouseAttackHeld
+    && !playerInMosque
     && !inStudio
     && started
     && !freeCursorMode

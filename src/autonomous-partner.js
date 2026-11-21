@@ -131,33 +131,43 @@ export function createAutonomousPartner() {
 
   function update(delta, ctx) {
     if (!actor || !actor.state.loaded) return;
-    const { playerPos, playerCharacter, inStudio, quality } = ctx;
+    const { playerPos, playerCharacter, environment, inStudio, quality } = ctx;
     if (inStudio) return;
 
     const dt = Math.min(delta, 0.09);
     if (annoyCooldown > 0) annoyCooldown = Math.max(0, annoyCooldown - dt);
 
+    const partnerInMosque = Boolean(environment?.landmarks?.aliaMadrasah?.isInModelMosqueZone?.(pos));
+    const playerInMosque = Boolean(environment?.landmarks?.aliaMadrasah?.isInModelMosqueZone?.(playerPos));
+    actor.setSacredSilence?.(partnerInMosque);
+
     const distToPlayer = Math.hypot((playerPos?.x ?? 0) - pos.x, (playerPos?.z ?? 0) - pos.z);
 
-    // Detect if Sabit is punching/kicking nearby OR persistently crowding/bothering Huzzatullah
-    const playerAttacking = Boolean(
-      playerCharacter?.state?.attackTimer > 0
-      || playerCharacter?.state?.emote === 'kick'
-      || playerCharacter?.state?.emote === 'kick2'
-      || playerCharacter?.state?.emote === 'combo'
-    );
-    if (playerAttacking && distToPlayer < 4.8) {
-      triggerAnnoyedReaction(playerPos, true);
-    } else if (distToPlayer < 1.18) {
-      crowdTimer += dt;
-      if (crowdTimer >= 0.75) {
-        triggerAnnoyedReaction(playerPos, false);
-      }
+    if (partnerInMosque || playerInMosque) {
+      angryReactTimer = 0;
+      crowdTimer = 0;
+      if (actor.isVoicePlaying?.()) actor.stopVoiceClip?.();
     } else {
-      crowdTimer = Math.max(0, crowdTimer - dt * 1.5);
+      // Detect if Sabit is punching/kicking nearby OR persistently crowding/bothering Huzzatullah
+      const playerAttacking = Boolean(
+        playerCharacter?.state?.attackTimer > 0
+        || playerCharacter?.state?.emote === 'kick'
+        || playerCharacter?.state?.emote === 'kick2'
+        || playerCharacter?.state?.emote === 'combo'
+      );
+      if (playerAttacking && distToPlayer < 4.8) {
+        triggerAnnoyedReaction(playerPos, true);
+      } else if (distToPlayer < 1.18) {
+        crowdTimer += dt;
+        if (crowdTimer >= 0.75) {
+          triggerAnnoyedReaction(playerPos, false);
+        }
+      } else {
+        crowdTimer = Math.max(0, crowdTimer - dt * 1.5);
+      }
     }
 
-    const isFunnyVoicePlaying = Boolean(actor.isVoicePlaying?.() && actor.state?.voiceExpression === 'happy');
+    const isFunnyVoicePlaying = Boolean(!partnerInMosque && !playerInMosque && actor.isVoicePlaying?.() && actor.state?.voiceExpression === 'happy');
     if (angryReactTimer > 0 || isFunnyVoicePlaying) {
       if (angryReactTimer > 0) angryReactTimer = Math.max(0, angryReactTimer - dt);
       if (playerPos) {
@@ -179,7 +189,7 @@ export function createAutonomousPartner() {
     }
 
     if (distToPlayer < 120 || quality !== 'low') {
-      const isAngryReacting = angryReactTimer > 0 || (actor.isVoicePlaying?.() && actor.state?.voiceExpression === 'angry');
+      const isAngryReacting = !partnerInMosque && !playerInMosque && (angryReactTimer > 0 || (actor.isVoicePlaying?.() && actor.state?.voiceExpression === 'angry'));
       const activeClipNow = isAngryReacting ? angryClipName : (isFunnyVoicePlaying ? 'StandingRelax' : actionClip);
       actor.state.facingYaw = yaw;
       actor.setPhoneInHand?.(!isAngryReacting && !isFunnyVoicePlaying && (actionClip === 'PhoneCall' || actionClip === 'MobileGame'));
