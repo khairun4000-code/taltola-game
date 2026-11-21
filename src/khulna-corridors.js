@@ -324,12 +324,18 @@ function mergeCorridorStatic(root) {
   });
 
   for (const b of buckets.values()) {
-    if (b.meshes.length < 2) continue;
+    if (b.meshes.length < 2) {
+      for (const g of b.geometries) g.dispose();
+      continue;
+    }
     const merged = mergeGeometries(b.geometries, false);
+    for (const g of b.geometries) g.dispose();
     if (!merged) continue;
     const mesh = new THREE.Mesh(merged, b.material);
     mesh.castShadow = b.cast;
     mesh.receiveShadow = b.receive;
+    mesh.matrixAutoUpdate = false;
+    mesh.updateMatrix();
     for (const orig of b.meshes) orig.removeFromParent();
     root.add(mesh);
   }
@@ -518,6 +524,153 @@ function buildDetailedBuilding(staticG, dynamicG, bank, opts) {
   return { frontLocalX: frontX, signY: 3.36 };
 }
 
+/**
+ * High-Graphics 1024x1024 Authentic Bangladeshi Pitch-Asphalt Road Texture (বাংলাদেশি পিচ ঢালাই রাস্তা)
+ * Deep charcoal bitumen pitch + fine basalt stone aggregate + tar repair patches + hairline cracks + worn tire tracks + dusty shoulders.
+ */
+function makeBangladeshiPitchRoadTexture({ seedVal = 841, centerStripe = null, edgeStripe = null, dustyShoulder = true } = {}) {
+  const S = 1024;
+  const c = document.createElement('canvas');
+  c.width = S;
+  c.height = S;
+  const ctx = c.getContext('2d');
+  const rnd = seeded(seedVal);
+
+  // Deep rich charcoal bitumen base
+  ctx.fillStyle = '#22262b';
+  ctx.fillRect(0, 0, S, S);
+
+  // Subtle organic bitumen tar repair patches
+  for (let i = 0; i < 28; i++) {
+    const px = 70 + rnd() * (S - 140);
+    const py = rnd() * S;
+    const rw = 44 + rnd() * 124;
+    const rh = 34 + rnd() * 98;
+    ctx.fillStyle = rnd() > 0.45 ? 'rgba(15, 17, 21, 0.34)' : 'rgba(54, 58, 65, 0.22)';
+    ctx.fillRect(px, py, rw, rh);
+  }
+
+  // Longitudinal rubber tire-wear polish tracks
+  for (const lx of [S * 0.23, S * 0.37, S * 0.63, S * 0.77]) {
+    const g = ctx.createLinearGradient(lx - 48, 0, lx + 48, 0);
+    g.addColorStop(0, 'rgba(14,16,20,0)');
+    g.addColorStop(0.5, 'rgba(10,12,16,0.30)');
+    g.addColorStop(1, 'rgba(14,16,20,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(lx - 48, 0, 96, S);
+  }
+
+  // Authentic hairline bitumen stress cracks (very subtle, high realism)
+  ctx.strokeStyle = 'rgba(10, 12, 14, 0.42)';
+  ctx.lineWidth = 1.4;
+  for (let k = 0; k < 14; k++) {
+    let cx = 90 + rnd() * (S - 180);
+    let cy = rnd() * S;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    for (let s = 0; s < 6; s++) {
+      cx += (rnd() - 0.5) * 34;
+      cy += (rnd() - 0.5) * 44;
+      ctx.lineTo(cx, cy);
+    }
+    ctx.stroke();
+  }
+
+  // Dense high-res crushed basalt stone aggregate grit (পাথরকুচি + পিচ ঢালাই)
+  for (let i = 0; i < 18000; i++) {
+    const v = 28 + Math.floor(rnd() * 52);
+    const a = 0.20 + rnd() * 0.30;
+    ctx.fillStyle = `rgba(${v},${v + 1},${v + 3},${a})`;
+    const sz = 1.2 + rnd() * 2.6;
+    ctx.fillRect(rnd() * S, rnd() * S, sz, sz);
+  }
+
+  // Natural dusty sandy-earth Bangladeshi road shoulders near curbs
+  if (dustyShoulder) {
+    const leftG = ctx.createLinearGradient(0, 0, 74, 0);
+    leftG.addColorStop(0, 'rgba(120, 102, 80, 0.62)');
+    leftG.addColorStop(0.55, 'rgba(98, 86, 70, 0.24)');
+    leftG.addColorStop(1, 'rgba(116, 102, 82, 0)');
+    ctx.fillStyle = leftG;
+    ctx.fillRect(0, 0, 74, S);
+    const rightG = ctx.createLinearGradient(S, 0, S - 74, 0);
+    rightG.addColorStop(0, 'rgba(120, 102, 80, 0.62)');
+    rightG.addColorStop(0.55, 'rgba(98, 86, 70, 0.24)');
+    rightG.addColorStop(1, 'rgba(116, 102, 82, 0)');
+    ctx.fillStyle = rightG;
+    ctx.fillRect(S - 74, 0, 74, S);
+  }
+
+  if (edgeStripe) {
+    ctx.fillStyle = edgeStripe;
+    ctx.fillRect(48, 0, 14, S);
+    ctx.fillRect(S - 62, 0, 14, S);
+  }
+
+  if (centerStripe) {
+    ctx.fillStyle = centerStripe;
+    const cw = 24;
+    const cx = Math.floor(S * 0.5 - cw * 0.5);
+    ctx.fillRect(cx, 56, cw, 336);
+    ctx.fillRect(cx, 568, cw, 336);
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/** High-Graphics 512x512 Authentic Khulna Red Clay Brick Footpath Texture (লাল ইটের ফুটপাত) */
+function makeRedBrickFootpathTexture(seedVal = 819) {
+  const S = 512;
+  const c = document.createElement('canvas');
+  c.width = S;
+  c.height = S;
+  const ctx = c.getContext('2d');
+  const rnd = seeded(seedVal);
+
+  // Damp dark sandy mortar joints
+  ctx.fillStyle = '#3f2b22';
+  ctx.fillRect(0, 0, S, S);
+
+  const rows = 12;
+  const cols = 6;
+  const bh = S / rows;
+  const bw = S / cols;
+
+  for (let r = 0; r < rows; r++) {
+    const xOff = (r % 2) * (bw * 0.5);
+    for (let col = -1; col <= cols; col++) {
+      const bx = col * bw + xOff;
+      const by = r * bh;
+      const red = 152 + Math.floor(rnd() * 38);
+      const grn = 52 + Math.floor(rnd() * 24);
+      const blu = 38 + Math.floor(rnd() * 18);
+      ctx.fillStyle = `rgb(${red}, ${grn}, ${blu})`;
+      ctx.fillRect(bx + 2.5, by + 2.5, bw - 5, bh - 5);
+      ctx.strokeStyle = 'rgba(255, 198, 165, 0.18)';
+      ctx.lineWidth = 1.4;
+      ctx.strokeRect(bx + 4, by + 4, bw - 8, bh - 8);
+      // Subtle mossy patina in humid Khulna corners
+      if (rnd() > 0.72) {
+        ctx.fillStyle = 'rgba(46, 66, 38, 0.22)';
+        ctx.fillRect(bx + 2, by + 2, bw - 4, 6);
+      }
+      for (let d = 0; d < 18; d++) {
+        ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,220,200,0.09)' : 'rgba(22,12,8,0.14)';
+        ctx.fillRect(bx + 5 + rnd() * (bw - 10), by + 5 + rnd() * (bh - 10), 2.2, 2.2);
+      }
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  return tex;
+}
+
 function createCorridorBank() {
   const shutterSteel = makeCorrugatedShutterTexture('#5d6c75');
   const shutterBlue = makeCorrugatedShutterTexture('#264c6b');
@@ -533,6 +686,31 @@ function createCorridorBank() {
     attachDerivedPBRMaps(mat, tex, { strength: opts.subtleBrick ? 2.6 : 1.9, roughBase: rough, normalScale: 0.72 });
     return mat;
   };
+
+  const mkPitchMat = (opts, polyFactor = -2) => {
+    const tex = makeBangladeshiPitchRoadTexture(opts);
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex,
+      roughness: 0.72,
+      metalness: 0.07,
+      envMapIntensity: 0.65,
+      polygonOffset: true,
+      polygonOffsetFactor: polyFactor,
+      polygonOffsetUnits: polyFactor,
+    });
+    attachDerivedPBRMaps(mat, tex, { size: 512, strength: 2.5, roughBase: 0.72, normalScale: 0.78 });
+    upgradeWetAsphaltMaterial(mat, null, 0.38);
+    return mat;
+  };
+
+  const pitchMainMat = mkPitchMat({ seedVal: 845, centerStripe: 'rgba(241, 245, 249, 0.84)', edgeStripe: 'rgba(241, 245, 249, 0.62)', dustyShoulder: true }, -2);
+  const pitchLaneMat = mkPitchMat({ seedVal: 847, centerStripe: null, edgeStripe: null, dustyShoulder: true }, -2);
+  const pitchJunctionMat = mkPitchMat({ seedVal: 841, centerStripe: null, edgeStripe: null, dustyShoulder: false }, -3);
+  pitchJunctionMat.map.repeat.set(3.5, 3.5);
+
+  const redBrickFootpathTex = makeRedBrickFootpathTexture(819);
+  const redBrickFootpathMat = new THREE.MeshStandardMaterial({ map: redBrickFootpathTex, roughness: 0.84, metalness: 0.02, envMapIntensity: 0.45 });
+  attachDerivedPBRMaps(redBrickFootpathMat, redBrickFootpathTex, { size: 512, strength: 2.6, roughBase: 0.84, normalScale: 0.76 });
 
   const revetTex = makeRiverRevetmentTexture();
   const riverRevetMat = new THREE.MeshStandardMaterial({ map: revetTex, roughness: 0.94, metalness: 0.02, envMapIntensity: 0.45 });
@@ -558,6 +736,11 @@ function createCorridorBank() {
     brickRed: plasterStd('#9b4634', 505, 0.88, { subtleBrick: true }),
     modernWhite: plasterStd('#e6ebf0', 606, 0.72),
     dampPlinth: plasterStd('#3c3e38', 707, 0.93, { darkStreak: 0.25 }),
+    pitchMain: pitchMainMat,
+    pitchLane: pitchLaneMat,
+    pitchJunction: pitchJunctionMat,
+    redBrickFootpath: redBrickFootpathMat,
+    roadLineWhite: new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.78, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
     darkSlate: new THREE.MeshStandardMaterial({ color: 0x1e252b, roughness: 0.55, metalness: 0.35 }),
     aluminum: new THREE.MeshStandardMaterial({ color: 0xd1dae0, roughness: 0.24, metalness: 0.88, envMapIntensity: 1.25 }),
     darkMetal: new THREE.MeshStandardMaterial({ color: 0x22282e, roughness: 0.45, metalness: 0.75 }),
@@ -671,6 +854,75 @@ function buildPavedSegmentRoad(staticG, pts, width, y, mat, uvScale = 5.5) {
       uvScale,
     });
   }
+}
+
+/**
+ * Builds ONE continuous, mitered, ZERO-Z-fighting Bangladeshi Pitch-Asphalt road ribbon
+ * along a polyline (eliminates overhanging box corners & flickering at curves and road mouths).
+ */
+function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.056) {
+  if (!pts || pts.length < 2) return;
+  const positions = [];
+  const normals = [];
+  const uvs = [];
+  const indices = [];
+  let distAcc = 0;
+
+  for (let i = 0; i < pts.length; i++) {
+    const [x, z] = pts[i];
+    let nx = 0;
+    let nz = 0;
+    if (i > 0) {
+      const dx = x - pts[i - 1][0];
+      const dz = z - pts[i - 1][1];
+      const l = Math.hypot(dx, dz) || 1;
+      distAcc += l;
+      nx += -dz / l;
+      nz += dx / l;
+    }
+    if (i < pts.length - 1) {
+      const dx = pts[i + 1][0] - x;
+      const dz = pts[i + 1][1] - z;
+      const l = Math.hypot(dx, dz) || 1;
+      nx += -dz / l;
+      nz += dx / l;
+    }
+    const nl = Math.hypot(nx, nz) || 1;
+    nx /= nl;
+    nz /= nl;
+
+    positions.push(x - nx * roadHalfW, yTop, z - nz * roadHalfW);
+    positions.push(x + nx * roadHalfW, yTop, z + nz * roadHalfW);
+    normals.push(0, 1, 0, 0, 1, 0);
+    const vCoord = distAcc * 0.11;
+    uvs.push(0, vCoord, 1, vCoord);
+
+    if (i > 0) {
+      const b = (i - 1) * 2;
+      indices.push(b, b + 1, b + 3, b, b + 3, b + 2);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  mesh.castShadow = false;
+  staticG.add(mesh);
+}
+
+/** Flat circular Bangladeshi pitch-asphalt junction pad so intersecting roads & road mouths blend seamlessly */
+function addPitchJunctionDisc(staticG, cx, cz, radius, mat, yTop = 0.064) {
+  const geo = new THREE.CircleGeometry(radius, 32);
+  geo.rotateX(-Math.PI * 0.5);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(cx, yTop, cz);
+  mesh.receiveShadow = true;
+  mesh.castShadow = false;
+  staticG.add(mesh);
 }
 
 function buildHajiMohsinCorridor(staticG, dynamicG, bank, m, helpers, treesG = staticG) {
@@ -1122,7 +1374,7 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   const ox = 420.0;
   const oz = 975.0;
 
-  // Curbed paved lane following real OSM spline & continuing south into Tootpara Cross Junction
+  // Seamless Bangladeshi Pitch-Asphalt road along Tootpara Taltola Hospital Cross Rd & South/North Road Mouths
   const crossLanePts = [
     [414.2, 922],
     [415.3, 936.2],
@@ -1131,13 +1383,19 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
     [421.1, 1013.2],
     [418.2, 1034.0],
   ];
-  buildPavedSegmentRoad(staticG, crossLanePts, 5.8, 0.028, m.road, 5.2);
-  buildPavedSegmentRoad(staticG, [[421.1, 1013.2], [396.0, 1011.8]], 4.8, 0.024, m.road, 5.2);
+  addPitchRoadAlongPolyline(staticG, crossLanePts, 2.95, bank.pitchLane, 0.052);
+  addPitchRoadAlongPolyline(staticG, [[421.1, 1013.2], [396.0, 1011.8]], 2.45, bank.pitchLane, 0.052);
+  // Smooth circular pitch junction pads right at the Taltola road mouths (zero jagged corners / zero Z-fighting!)
+  addPitchJunctionDisc(staticG, 421.1, 1013.2, 4.4, bank.pitchJunction, 0.060);
+  addPitchJunctionDisc(staticG, 414.2, 922.0, 3.8, bank.pitchJunction, 0.060);
 
-  // Continuous red-brick footpaths on East (leaving driveway gap at house gate z=971..979) and West
-  addBox(staticG, [1.45, 0.13, 35.5], [ox + 2.35, 0.02, oz - 21.25], m.brick, { uvScale: 2.2 });
-  addBox(staticG, [1.45, 0.13, 35.5], [ox + 2.35, 0.02, oz + 21.25], m.brick, { uvScale: 2.2 });
-  addBox(staticG, [1.35, 0.13, 74.0], [ox - 3.95, 0.02, oz], m.brick, { uvScale: 2.2 });
+  // Continuous red-brick footpaths + crisp cream curbs on East (leaving driveway gap at house gate z=971..979) and West
+  addBox(staticG, [1.45, 0.14, 35.5], [ox + 2.35, 0.03, oz - 21.25], bank.redBrickFootpath, { castShadow: false, uvScale: 1.8 });
+  addBox(staticG, [1.45, 0.14, 35.5], [ox + 2.35, 0.03, oz + 21.25], bank.redBrickFootpath, { castShadow: false, uvScale: 1.8 });
+  addBox(staticG, [1.35, 0.14, 74.0], [ox - 3.95, 0.03, oz], bank.redBrickFootpath, { castShadow: false, uvScale: 1.8 });
+  addBox(staticG, [0.16, 0.16, 35.5], [ox + 1.62, 0.04, oz - 21.25], bank.creamTrim, { castShadow: false });
+  addBox(staticG, [0.16, 0.16, 35.5], [ox + 1.62, 0.04, oz + 21.25], bank.creamTrim, { castShadow: false });
+  addBox(staticG, [0.16, 0.16, 74.0], [ox - 3.26, 0.04, oz], bank.creamTrim, { castShadow: false });
 
   // Green tropical roadside verges, tea-garden lawn & shaded compound plots
   addBox(staticG, [9.2, 0.08, 22.5], [ox - 9.0, 0.015, oz + 4.2], m.grass, { castShadow: false, uvScale: 2.6 });
@@ -1790,11 +2048,272 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
 }
 
 /**
- * Builds ALL four GTA-VI-quality sliced Showcase Corridors:
+ * Builds the complete Taltola-House-style road network surrounding:
+ *  - Khulna Boro Maath (South Upper Jessore Rd & West Fire Brigade Rd edge)
+ *  - Behind Circuit House 1 & 2 & opposite Khulna Judge Court (Circuit House Rd + NE connector)
+ *  - All around Khulna District Stadium (North, West VIP side, SW & SE portal links)
+ * Built with seamless mitered Bangladeshi Pitch-Asphalt ribbons (zero overhanging corners /
+ * zero Z-fighting), smooth circular pitch junction pads, red-brick footpaths & cream curbs.
+ */
+function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, treesG = staticG) {
+  function buildPitchStyledRoad(pts, roadWidth = 6.2, { withPoles = true, poleSide = 1, poleStep = 38 } = {}) {
+    // 1) Continuous mitered Bangladeshi Pitch-Asphalt carriageway (exact clean Taltola House pitch style — no artificial stripes!)
+    addPitchRoadAlongPolyline(staticG, pts, roadWidth * 0.5, bank.pitchLane, 0.056);
+
+    const poleCoords = [];
+    let accumPole = poleStep * 0.4;
+
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, z0] = pts[i];
+      const [x1, z1] = pts[i + 1];
+      const dx = x1 - x0;
+      const dz = z1 - z0;
+      const segLen = Math.hypot(dx, dz);
+      if (segLen < 1.0) continue;
+      const yaw = Math.atan2(dx, dz);
+      // Right-hand unit normal perpendicular to travel direction
+      const nx = dz / segLen;
+      const nz = -dx / segLen;
+      const mx = (x0 + x1) * 0.5;
+      const mz = (z0 + z1) * 0.5;
+
+      // 2) Continuous Red-Brick Footpaths + Cream Concrete Curbs on BOTH sides (micro-staggered so joints never Z-fight)
+      const swOffset = roadWidth * 0.5 + 0.78;
+      const curbOffset = roadWidth * 0.5 + 0.08;
+      const segH = 0.14 + (i % 2) * 0.002;
+      for (const side of [-1, 1]) {
+        addBox(
+          staticG,
+          [1.42, segH, segLen + 0.45],
+          [mx + nx * side * swOffset, segH * 0.5, mz + nz * side * swOffset],
+          bank.redBrickFootpath,
+          { rotY: yaw, castShadow: false, uvScale: 1.8 }
+        );
+        addBox(
+          staticG,
+          [0.16, segH + 0.02, segLen + 0.48],
+          [mx + nx * side * curbOffset, (segH + 0.02) * 0.5, mz + nz * side * curbOffset],
+          bank.creamTrim,
+          { rotY: yaw, castShadow: false }
+        );
+      }
+
+      // 3) Utility Poles with LED Cobra Streetlamps along one footpath edge
+      if (withPoles) {
+        let d = accumPole;
+        while (d < segLen) {
+          const t = d / segLen;
+          const px = x0 + dx * t + nx * poleSide * (roadWidth * 0.5 + 1.05);
+          const pz = z0 + dz * t + nz * poleSide * (roadWidth * 0.5 + 1.05);
+          const armDir = -Math.sign(nx * poleSide || 1);
+          const tier = (poleCoords.length % 2 === 0) ? 2 : 0;
+          addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDir, false, poleCoords, tier);
+          d += poleStep;
+        }
+        accumPole = d - segLen;
+      }
+    }
+
+    // Connect overhead wires cleanly between consecutive poles along this road
+    for (let i = 0; i < poleCoords.length - 1; i++) {
+      const a = poleCoords[i];
+      const b = poleCoords[i + 1];
+      if (Math.hypot(b[0] - a[0], b[2] - a[2]) > poleStep * 1.8) continue;
+      helpers.addWire?.(staticG, [a[0], a[1], a[2]], [b[0], b[1], b[2]], m.wire, 0.42, 0.016);
+      helpers.addWire?.(staticG, [a[0] + 0.18, a[1] - 0.48, a[2]], [b[0] + 0.18, b[1] - 0.48, b[2]], m.wire, 0.56, 0.016);
+    }
+  }
+
+  // 1) South Main Road in front of Boro Maath (Upper Jessore Rd: Shamsur Rahman Rd -> Boro Maath Gate -> Circuit House Rd -> Altapole Ln)
+  buildPitchStyledRoad([
+    [-165, -515],
+    [-110, -518],
+    [-38, -516],
+    [40, -522],
+    [109, -521],
+    [166, -519],
+  ], 6.8, { withPoles: true, poleSide: -1, poleStep: 36 });
+
+  // 2) East Road behind Circuit House 1 & 2 & in front of Khulna Judge Court (সার্কিট হাউজ রোড)
+  buildPitchStyledRoad([
+    [109, -521],
+    [118, -567],
+    [138, -651],
+    [143, -684],
+    [156, -727],
+    [166, -760],
+    [184, -814],
+    [204, -862],
+  ], 6.6, { withPoles: true, poleSide: 1, poleStep: 36 });
+
+  // 3) North-East Connector behind Circuit House & North of Boro Maath -> Stadium North-East corner
+  buildPitchStyledRoad([
+    [156, -727],
+    [132, -778],
+    [99, -824],
+    [28, -843],
+    [14, -788],
+  ], 6.0, { withPoles: true, poleSide: -1, poleStep: 38 });
+
+  // 4) West Road alongside Boro Maath -> Stadium SE Grand Portal Gate (Fire Brigade Rd link)
+  buildPitchStyledRoad([
+    [-38, -516],
+    [-27, -551],
+    [-37, -610],
+    [-24, -652],
+    [-4, -688],
+    [14, -745],
+    [14, -788],
+  ], 6.0, { withPoles: true, poleSide: -1, poleStep: 36 });
+
+  // 5) North Stadium Perimeter Road (wrapping North of Khulna District Stadium directly into Shaheed Hadis Park East Rd!)
+  buildPitchStyledRoad([
+    [28, -843],
+    [1, -859],
+    [-51, -870],
+    [-89, -879],
+    [-140, -897],
+    [-188, -895],
+    [-261, -935],
+  ], 6.2, { withPoles: true, poleSide: -1, poleStep: 38 });
+
+  // 6) West Stadium Perimeter Road (wrapping West VIP Pavilion side of Stadium down to Shamsur Rahman Rd)
+  buildPitchStyledRoad([
+    [-188, -895],
+    [-176, -825],
+    [-166, -750],
+    [-165, -675],
+    [-166, -600],
+    [-165, -515],
+  ], 6.2, { withPoles: true, poleSide: 1, poleStep: 38 });
+
+  // 7) South-West Stadium Front Link connecting West Stadium Perimeter Road directly to Boro Maath West Road
+  buildPitchStyledRoad([
+    [-166, -635],
+    [-118, -616],
+    [-70, -595],
+    [-37, -610],
+  ], 5.8, { withPoles: true, poleSide: 1, poleStep: 38 });
+
+  // 8) Shaheed Hadis Park South Front Road (Main Gate Road -> links straight into Stadium West Road!)
+  buildPitchStyledRoad([
+    [-384, -831],
+    [-332, -831],
+    [-295, -831],
+    [-261, -831],
+    [-176, -825],
+  ], 6.6, { withPoles: true, poleSide: 1, poleStep: 38 });
+
+  // 9) Shaheed Hadis Park East Front Road (P C Rai Rd running along Hadis Park East fence)
+  buildPitchStyledRoad([
+    [-261, -831],
+    [-261, -885],
+    [-261, -935],
+    [-261, -967],
+  ], 6.4, { withPoles: true, poleSide: 1, poleStep: 40 });
+
+  // 10) Shaheed Hadis Park North Back-Gate Road (running right in front of Hadis Park Back Gate)
+  buildPitchStyledRoad([
+    [-384, -967],
+    [-332, -967],
+    [-295, -967],
+    [-261, -967],
+  ], 6.0, { withPoles: true, poleSide: -1, poleStep: 40 });
+
+  // 11) Shaheed Hadis Park West Perimeter Road (wrapping West side of Hadis Park)
+  buildPitchStyledRoad([
+    [-384, -967],
+    [-384, -900],
+    [-384, -831],
+  ], 6.0, { withPoles: true, poleSide: -1, poleStep: 40 });
+
+  // Smooth Circular Bangladeshi Pitch Junction Pads at all 16 road mouths & intersections (zero jagged corners / zero Z-fighting!)
+  for (const [jx, jz, jr] of [
+    [-165, -515, 5.4],
+    [-38, -516, 5.2],
+    [109, -521, 5.6],
+    [166, -519, 5.2],
+    [156, -727, 5.4],
+    [28, -843, 5.0],
+    [14, -788, 4.8],
+    [-188, -895, 5.2],
+    [-166, -635, 4.8],
+    [-37, -610, 4.6],
+    [-176, -825, 5.2],
+    [-261, -831, 5.4],
+    [-261, -935, 5.4],
+    [-261, -967, 5.0],
+    [-384, -831, 5.0],
+    [-384, -967, 5.0],
+  ]) {
+    addPitchJunctionDisc(staticG, jx, jz, jr, bank.pitchJunction, 0.064);
+  }
+
+  // Authentic Khulna Asphalt Speed Breakers (স্পিড ব্রেকার) near Hadis Park Main Gate, Boro Maath Gate & Judge Court Gate
+  for (const [bx, bz, w, yaw] of [
+    [-295.0, -831.0, 6.4, Math.PI * 0.5],
+    [40.0, -522.0, 6.6, Math.PI * 0.5],
+    [143.0, -684.0, 6.4, 0.22],
+  ]) {
+    addBox(staticG, [w, 0.09, 0.72], [bx, 0.078, bz], bank.dampPlinth, { rotY: yaw, castShadow: false });
+    addBox(staticG, [w * 0.96, 0.04, 0.34], [bx, 0.118, bz], bank.darkSlate, { rotY: yaw, castShadow: false });
+  }
+
+  // Roadside Cast-Iron Storm-Drain Grates along curbs (merged into staticG — zero extra draw calls!)
+  for (const [dx, dz, yaw] of [
+    [-280, -834.1, Math.PI * 0.5], [-318, -834.1, Math.PI * 0.5], [-264.1, -885, 0],
+    [18, -525.1, Math.PI * 0.5], [78, -524.5, Math.PI * 0.5], [134, -636, 0.22],
+    [-88, -875.5, 1.35], [-162.5, -720, 0.02],
+  ]) {
+    addBox(staticG, [0.52, 0.04, 0.84], [dx, 0.062, dz], bank.darkSlate, { rotY: yaw, castShadow: false });
+  }
+
+  // Parked Authentic Khulna CNG Auto-Rickshaws at Hadis Park, Boro Maath & Judge Court Curbs (merged into staticG!)
+  const cngBank = {
+    tire: bank.darkSlate, rim: bank.aluminum, darkTrim: bank.darkMetal, chrome: bank.aluminum,
+    windshield: bank.windowGlass, headlight: bank.lampBulb, taillight: bank.ferryOrange, amber: bank.ferryOrange,
+    cngGreen: bank.deckGreen, cngYellow: bank.tinBlue, cngRexine: bank.darkSlate,
+  };
+  for (const [cx, cz, cyaw] of [
+    [-281.5, -833.4, Math.PI * 0.52],
+    [55.5, -524.6, -Math.PI * 0.48],
+    [146.5, -662.0, 0.24],
+  ]) {
+    const cng = buildCNGAuto(cngBank);
+    cng.position.set(cx, 0.06, cz);
+    cng.rotation.y = cyaw;
+    staticG.add(cng);
+  }
+
+  // Illuminated Bengali Street Direction Signboards at Key Landmarks
+  for (const [sx, sz, srot, title, subtitle] of [
+    [-264.5, -835.2, 0, 'শহীদ হাদিস পার্ক রোড · পিসি রায় রোড', 'SHAHEED HADIS PARK · STADIUM LINK'],
+    [104.5, -525.2, 0, 'সার্কিট হাউজ ও খুলনা জজ কোর্ট রোড', 'CIRCUIT HOUSE · BORO MAATH · JUDGE COURT'],
+    [-172.0, -829.5, Math.PI * 0.5, 'খুলনা জেলা স্টেডিয়াম রোড', 'KHULNA DISTRICT STADIUM RING ROAD'],
+  ]) {
+    addCyl(staticG, 0.06, 0.08, 3.6, [sx, 1.8, sz], bank.darkMetal, 8);
+    addIlluminatedSign(dynamicG, bank, { title, subtitle, bg: '#0f3d2e', accent: '#fde047' }, [sx, 3.42, sz], srot, 3.8, 1.05);
+  }
+
+  // Roadside Shade Trees & Palms framing Circuit House Rd, Stadium Ring & Hadis Park Frontage
+  for (const [tx, tz, isPalm] of [
+    [126, -590, false], [148, -675, true], [172, -775, false],
+    [72, -834, true], [-58, -878, false], [-152, -892, true],
+    [-174, -765, false], [-174, -640, true], [-102, -605, false],
+    [-253, -860, false], [-253, -915, true], [-315, -822, false], [-360, -822, true],
+  ]) {
+    if (isPalm) helpers.addPalm?.(dynamicG, tx, 0, tz, 7.6, (tx + tz) * 0.02, 0.35);
+    else helpers.addBroadleafTree?.(treesG, tx, 0, tz, 1.04, 1400 + Math.abs(tx + tz));
+  }
+}
+
+/**
+ * Builds ALL five GTA-VI-quality sliced Showcase Corridors:
  * 1) Haji Mohsin Road Corridor (z = -140..+140)
  * 2) Rupsha Strand Road, Natun Bazar Launch Ghat & Rupsha Ferry Terminal
  * 3) Tootpara Taltola House Neighborhood (420, 975)
  * 4) Altapole Lane Corridor (আলতাপোল লেন · x ≈ 166, z = -519..-296)
+ * 5) Hadis Park, Stadium, Boro Maath, Circuit House & Judge Court Taltola-Style Pitch Road Network
  */
 export function buildKhulnaCorridors(parent, m, helpers = {}) {
   const group = new THREE.Group();
@@ -1818,13 +2337,15 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
   const rupshaSlice = makeSlice('KhulnaSlice_RupshaWaterfront', 1160, 320, 440);
   const taltolaSlice = makeSlice('KhulnaSlice_TaltolaHouse', 420, 975, 260);
   const altapoleSlice = makeSlice('KhulnaSlice_AltapoleLane', 166, -408, 250);
+  const circuitRoadsSlice = makeSlice('KhulnaSlice_CircuitStadiumRoads', -95, -735, 660);
 
   buildHajiMohsinCorridor(hajiSlice.staticG, hajiSlice.dynamicG, bank, m, helpers, hajiSlice.treesG);
   const riverVessels = buildRupshaWaterfrontCorridor(rupshaSlice.staticG, rupshaSlice.dynamicG, bank, m, helpers);
   buildTaltolaNeighborhoodCorridor(taltolaSlice.staticG, taltolaSlice.dynamicG, bank, m, helpers, taltolaSlice.treesG);
   buildAltapoleLaneCorridor(altapoleSlice.staticG, altapoleSlice.dynamicG, bank, m, helpers, altapoleSlice.treesG);
+  buildCircuitStadiumRoadNetwork(circuitRoadsSlice.staticG, circuitRoadsSlice.dynamicG, bank, m, helpers, circuitRoadsSlice.treesG);
 
-  const slices = [hajiSlice, rupshaSlice, taltolaSlice, altapoleSlice];
+  const slices = [hajiSlice, rupshaSlice, taltolaSlice, altapoleSlice, circuitRoadsSlice];
   for (const s of slices) {
     mergeCorridorStatic(s.staticG);
     if (s !== rupshaSlice) mergeCorridorStatic(s.dynamicG);

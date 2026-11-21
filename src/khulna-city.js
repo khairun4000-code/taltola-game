@@ -476,7 +476,16 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
     }
   };
 
-  const isInsidePtiPitchZone = (x, z) => x >= -370 && x <= -256 && z >= -228 && z <= 12;
+  const isInsideCustomPitchZone = (x, z, roadName = '') => {
+    // 1) PTI More & Ahsan Ahmed Rd pitch-asphalt zone
+    if (x >= -370 && x <= -256 && z >= -228 && z <= 12) return true;
+    // 2) Connected Royal More <-> PTI More <-> Kaborkhana More Khan Jahan Ali Road corridor (ZERO Z-fighting!)
+    if (roadName === 'Khan Jahan Ali Road' && x >= -652 && x <= 52 && z >= -262 && z <= 150) return true;
+    // 3) Kaborkhana More junction & Haji Mohsin / Tutpara / Babu Khan immediate mouths
+    if (x >= -56 && x <= 4 && z >= 90 && z <= 120) return true;
+    if (x >= -202 && x <= -172 && z >= 76 && z <= 104) return true;
+    return false;
+  };
 
   for (let rIdx = 0; rIdx < roadList.length; rIdx++) {
     const r = roadList[rIdx];
@@ -504,11 +513,11 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
       const z0 = pts[i + 1];
       const x1 = pts[i + 2];
       const z1 = pts[i + 3];
-      // Skip ANY OSM road segment touching the PTI More & Ahsan Ahmed Rd pitch-asphalt zone (ZERO Z-fighting!)
+      // Skip ANY OSM road segment touching custom high-detail pitch-asphalt zones (ZERO Z-fighting!)
       if (
-        isInsidePtiPitchZone(x0, z0)
-        || isInsidePtiPitchZone(x1, z1)
-        || isInsidePtiPitchZone((x0 + x1) * 0.5, (z0 + z1) * 0.5)
+        isInsideCustomPitchZone(x0, z0, r.n)
+        || isInsideCustomPitchZone(x1, z1, r.n)
+        || isInsideCustomPitchZone((x0 + x1) * 0.5, (z0 + z1) * 0.5, r.n)
       ) continue;
       const dx = x1 - x0;
       const dz = z1 - z0;
@@ -526,8 +535,8 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
       if (i > 0) addCap(x0, z0, halfW * 0.99, 8);
     }
     if (pts.length >= 4) {
-      if (!isInsidePtiPitchZone(pts[0], pts[1])) addCap(pts[0], pts[1], halfW * 0.99, 8);
-      if (!isInsidePtiPitchZone(pts[pts.length - 2], pts[pts.length - 1])) addCap(pts[pts.length - 2], pts[pts.length - 1], halfW * 0.99, 8);
+      if (!isInsideCustomPitchZone(pts[0], pts[1], r.n)) addCap(pts[0], pts[1], halfW * 0.99, 8);
+      if (!isInsideCustomPitchZone(pts[pts.length - 2], pts[pts.length - 1], r.n)) addCap(pts[pts.length - 2], pts[pts.length - 1], halfW * 0.99, 8);
     }
   }
 

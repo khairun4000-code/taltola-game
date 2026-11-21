@@ -88,6 +88,14 @@ export const BIKE_PAINT_PRESETS = [
   { name: 'Pearl White', hex: '#eef3f8' },
 ];
 
+export const CNG_PAINT_PRESETS = [
+  { name: 'Dhaka/Khulna Green', hex: '#ffffff' },
+  { name: 'Emerald Green', hex: '#d4ffe2' },
+  { name: 'Golden Yellow', hex: '#fff0c4' },
+  { name: 'Sky Blue', hex: '#d4e8ff' },
+  { name: 'Crimson Red', hex: '#ffd6d6' },
+];
+
 export const CAR_FLEET_CONFIGS = [
   {
     id: 'bmw_m3',
@@ -420,6 +428,33 @@ export const CAR_FLEET_CONFIGS = [
       povEye: [0, 1.38, -0.20],
       povLook: [0, 1.18, 2.4],
     },
+  },
+  {
+    id: 'bangladeshi_cng',
+    name: 'Bangladeshi CNG Auto',
+    badge: 'BANGLADESHI CNG AUTO',
+    assetUrl: './assets/bangladeshi_cng.glb',
+    targetLength: 2.65,
+    width: 1.32,
+    rotateY: 0,
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.35, 0.01, TALTOLA_HOUSE_OFFSET.z + 3.8],
+    spawnHeading: 0.0,
+    paintPresets: CNG_PAINT_PRESETS,
+    glassMats: ['CNG_Glass'],
+    hasBuiltInSteeringWheel: true,
+    gearCount: 4,
+    maxSpeed: 19.5,
+    boostMaxSpeed: 26.5,
+    engineForce: 14.5,
+    engineBaseFreq: 44,
+    engineRangeFreq: 165,
+    hornFreqs: [460, 580],
+    camBack: 3.65,
+    camHeight: 1.92,
+    hoodHeight: 1.48,
+    hoodForward: 0.36,
+    isBMW: false,
+    isCNG: true,
   },
 ];
 
@@ -1170,6 +1205,7 @@ export function createDrivableCar(scene, manager, config) {
     paintName: paintPresets[0].name,
     isRickshaw: Boolean(config.isRickshaw),
     isBike: Boolean(config.isBike),
+    isCNG: Boolean(config.isCNG),
     bikeSportLean: Boolean(config.bikeSportLean),
     rideSeat: 'driver',
     halfWidth: (config.width || 1.88) * 0.48,
@@ -1182,12 +1218,12 @@ export function createDrivableCar(scene, manager, config) {
     headlightsMode: 0, // 0 = OFF, 1 = LOW BEAM, 2 = HIGH BEAM
   };
 
-  // Real 3D Dual Car/Bike Headlight Beams (toggled with [L] while driving!)
+  // Real 3D Dual Car/Bike/CNG Headlight Beams (toggled with [L] while driving!)
   const headlightBeams = [];
   if (!config.isRickshaw) {
-    const hlOffsets = config.isBike ? [0] : [-(config.width || 1.85) * 0.34, (config.width || 1.85) * 0.34];
+    const hlOffsets = (config.isBike || config.isCNG) ? [0] : [-(config.width || 1.85) * 0.34, (config.width || 1.85) * 0.34];
     const hlZ = (config.targetLength || 4.4) * 0.48;
-    const hlY = config.isBike ? 0.88 : 0.76;
+    const hlY = config.isBike ? 0.88 : (config.isCNG ? 0.72 : 0.76);
     for (const ox of hlOffsets) {
       const spot = new THREE.SpotLight(0xfff6dc, 0, 52, Math.PI * 0.24, 0.52, 1.35);
       spot.position.set(ox, hlY, hlZ);
@@ -1202,8 +1238,9 @@ export function createDrivableCar(scene, manager, config) {
 
   let riggedWheels = [];
   let bikeFrontAssembly = null;
-  let measuredWheelRadius = config.isRickshaw ? 0.365 : (config.isBike ? 0.32 : 0.34);
+  let measuredWheelRadius = config.isRickshaw ? 0.365 : (config.isBike ? 0.32 : (config.isCNG ? 0.255 : 0.34));
   let rickshawParts = null;
+  let cngParts = null;
   let bikeDriverRig = null;
   let carDoors = {};
   let driverDoorOverride = null;
@@ -1318,6 +1355,7 @@ export function createDrivableCar(scene, manager, config) {
       toyota_alphard:  { x:  0.34, y: 0.60, z:  0.46, wy: 0.32, wz: 0.44 },
       toyota_hiace:    { x:  0.34, y: 0.62, z:  0.88, wy: 0.32, wz: 0.44 },
       toyota_townace:  { x:  0.33, y: 0.78, z:  0.38, wy: 0.34, wz: 0.42 },
+      bangladeshi_cng: { x:  0.00, y: 0.84, z:  0.22, wy: 0.26, wz: 0.32 },
     };
     const sp = seatPresets[baseCarId] || { x: 0.33, y: 0.40, z: 0.14, wy: 0.32, wz: 0.42 };
     const seatX = sp.x;
@@ -1333,10 +1371,18 @@ export function createDrivableCar(scene, manager, config) {
     rigGroup.add(seatAnchor);
 
     const footL = new THREE.Object3D();
-    footL.position.set(seatX + 0.13, Math.max(0.18, seatY - 0.22), seatZ + 0.54);
+    footL.position.set(
+      config.isCNG ? 0.14 : seatX + 0.13,
+      config.isCNG ? 0.32 : Math.max(0.18, seatY - 0.22),
+      config.isCNG ? 0.64 : seatZ + 0.54,
+    );
     rigGroup.add(footL);
     const footR = new THREE.Object3D();
-    footR.position.set(seatX - 0.13, Math.max(0.18, seatY - 0.22), seatZ + 0.54);
+    footR.position.set(
+      config.isCNG ? -0.14 : seatX - 0.13,
+      config.isCNG ? 0.32 : Math.max(0.18, seatY - 0.22),
+      config.isCNG ? 0.64 : seatZ + 0.54,
+    );
     rigGroup.add(footR);
 
     // Visible 3D steering wheel right in front of the driver inside the cabin
@@ -1939,13 +1985,13 @@ export function createDrivableCar(scene, manager, config) {
             } else if (glassSet.has(mName)) {
               out = new THREE.MeshPhysicalMaterial({
                 name: mName,
-                color: new THREE.Color('#0c1724'),
+                color: new THREE.Color(config.isCNG ? '#142433' : '#0c1724'),
                 side: THREE.DoubleSide,
                 transparent: true,
-                opacity: 0.34,
+                opacity: config.isCNG ? 0.30 : 0.34,
                 depthWrite: false,
                 metalness: 0.35,
-                roughness: 0.06,
+                roughness: config.isCNG ? 0.05 : 0.06,
                 clearcoat: 1.0,
                 clearcoatRoughness: 0.04,
                 reflectivity: 1.0,
@@ -2118,6 +2164,32 @@ export function createDrivableCar(scene, manager, config) {
           riggedWheels = res.wheels;
           bikeFrontAssembly = res.frontAssemblyPivot || null;
           measuredWheelRadius = res.wheelRadius;
+        } else if (config.isCNG) {
+          const frontSteer = model.getObjectByName('CNG_Front_Steer');
+          const wheelFront = model.getObjectByName('Wheel_Front');
+          const handlebar = model.getObjectByName('CNG_Handlebar');
+          const wheelRearL = model.getObjectByName('Wheel_Rear_L');
+          const wheelRearR = model.getObjectByName('Wheel_Rear_R');
+          let gripL = null;
+          let gripR = null;
+          if (handlebar) {
+            gripL = new THREE.Object3D();
+            gripL.position.set(0.22, 0.04, -0.16);
+            handlebar.add(gripL);
+            gripR = new THREE.Object3D();
+            gripR.position.set(-0.22, 0.04, -0.16);
+            handlebar.add(gripR);
+          }
+          measuredWheelRadius = 0.255;
+          cngParts = {
+            frontSteer,
+            wheelFront,
+            handlebar,
+            wheelRearL,
+            wheelRearR,
+            gripL,
+            gripR,
+          };
         } else {
           if (config.wheelNameRegex || config.wheelMatRegex) {
             const res = rigGenericCarWheels(orientedWrapper, config.wheelNameRegex, config.wheelMatRegex);
@@ -2144,6 +2216,15 @@ export function createDrivableCar(scene, manager, config) {
       }
       if (rickshawParts) {
         for (const v of Object.values(rickshawParts)) {
+          if (v?.isObject3D) {
+            v.traverse((o) => {
+              if (o.isMesh) dynamicNodes.add(o);
+            });
+          }
+        }
+      }
+      if (cngParts) {
+        for (const v of Object.values(cngParts)) {
           if (v?.isObject3D) {
             v.traverse((o) => {
               if (o.isMesh) dynamicNodes.add(o);
@@ -2287,8 +2368,13 @@ export function createDrivableCar(scene, manager, config) {
     carDriverRig.seatAnchor.getWorldPosition(carDriverAnchorCache.seat);
     carDriverRig.footL.getWorldPosition(carDriverAnchorCache.footL);
     carDriverRig.footR.getWorldPosition(carDriverAnchorCache.footR);
-    carDriverRig.gripL.getWorldPosition(carDriverAnchorCache.gripL);
-    carDriverRig.gripR.getWorldPosition(carDriverAnchorCache.gripR);
+    if (cngParts?.gripL && cngParts?.gripR) {
+      cngParts.gripL.getWorldPosition(carDriverAnchorCache.gripL);
+      cngParts.gripR.getWorldPosition(carDriverAnchorCache.gripR);
+    } else {
+      carDriverRig.gripL.getWorldPosition(carDriverAnchorCache.gripL);
+      carDriverRig.gripR.getWorldPosition(carDriverAnchorCache.gripR);
+    }
     return carDriverAnchorCache;
   }
 
@@ -2370,6 +2456,15 @@ export function createDrivableCar(scene, manager, config) {
       if (rickshawParts.crank) rickshawParts.crank.rotation.x = state.pedalPhase;
       if (rickshawParts.pedalL) rickshawParts.pedalL.rotation.x = -state.pedalPhase;
       if (rickshawParts.pedalR) rickshawParts.pedalR.rotation.x = -state.pedalPhase;
+      return;
+    }
+
+    if (cngParts) {
+      if (cngParts.frontSteer) cngParts.frontSteer.rotation.y = state.steerAngle;
+      if (cngParts.handlebar) cngParts.handlebar.rotation.y = state.steerAngle * 0.95;
+      if (cngParts.wheelFront) cngParts.wheelFront.rotation.x = state.wheelSpin;
+      if (cngParts.wheelRearL) cngParts.wheelRearL.rotation.x = state.wheelSpin;
+      if (cngParts.wheelRearR) cngParts.wheelRearR.rotation.x = state.wheelSpin;
       return;
     }
 

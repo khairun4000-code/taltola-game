@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
+import { attachDerivedPBRMaps } from './aaa-shaders.js';
 import { decorateCorridorPole } from './khulna-street-props.js';
 import { buildCNGAuto, buildEasybike } from './khulna-vehicles.js';
 
@@ -19,6 +20,52 @@ import { buildCNGAuto, buildEasybike } from './khulna-vehicles.js';
 
 export const SATRASTA_MORE_CENTER = { x: -920.0, z: -292.0 };
 
+function makeWeatheredPlasterTex(baseHex, seedVal = 701, { streakAlpha = 0.11, brickLines = false } = {}) {
+  const S = 512;
+  const c = document.createElement('canvas');
+  c.width = S;
+  c.height = S;
+  const ctx = c.getContext('2d');
+  let s = seedVal >>> 0;
+  const rnd = () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+  ctx.fillStyle = baseHex;
+  ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 5200; i++) {
+    const x = rnd() * S;
+    const y = rnd() * S;
+    const sz = 1.5 + rnd() * 3.5;
+    ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.055)' : `rgba(22,18,14,${0.03 + rnd() * 0.055})`;
+    ctx.fillRect(x, y, sz, sz);
+  }
+  for (let i = 0; i < 44; i++) {
+    const x = rnd() * S;
+    const h = 48 + rnd() * 170;
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, `rgba(20,24,20,${streakAlpha})`);
+    g.addColorStop(1, 'rgba(20,24,20,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, 0, 4 + rnd() * 10, h);
+  }
+  if (brickLines) {
+    ctx.strokeStyle = 'rgba(24,18,14,0.22)';
+    ctx.lineWidth = 2;
+    for (let y = 0; y < S; y += 32) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(S, y);
+      ctx.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  return tex;
+}
+
 function makeSignTexture({
   title,
   subtitle = '',
@@ -26,8 +73,8 @@ function makeSignTexture({
   fg = '#ffffff',
   accent = '#fde047',
   border = '#ffffff',
-  width = 640,
-  height = 192,
+  width = 1024,
+  height = 300,
 }) {
   const c = document.createElement('canvas');
   c.width = width;
@@ -36,46 +83,57 @@ function makeSignTexture({
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, width, height);
   const g = ctx.createLinearGradient(0, 0, 0, height);
-  g.addColorStop(0, 'rgba(255,255,255,0.20)');
-  g.addColorStop(0.45, 'rgba(255,255,255,0.02)');
-  g.addColorStop(1, 'rgba(0,0,0,0.30)');
+  g.addColorStop(0, 'rgba(255,255,255,0.22)');
+  g.addColorStop(0.42, 'rgba(255,255,255,0.03)');
+  g.addColorStop(1, 'rgba(0,0,0,0.34)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, width, height);
+  const bw = Math.max(8, Math.round(height * 0.036));
   ctx.strokeStyle = border;
-  ctx.lineWidth = 7;
-  ctx.strokeRect(7, 7, width - 14, height - 14);
+  ctx.lineWidth = bw;
+  ctx.strokeRect(bw, bw, width - bw * 2, height - bw * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.24)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(bw * 2.2, bw * 2.2, width - bw * 4.4, height - bw * 4.4);
   ctx.fillStyle = accent;
-  ctx.fillRect(18, 18, 11, height - 36);
-  ctx.fillStyle = fg;
+  ctx.fillRect(bw * 2.6, bw * 2.4, Math.max(12, Math.round(width * 0.015)), height - bw * 4.8);
+
+  const titlePx = Math.round(height * 0.22);
+  const subPx = Math.round(height * 0.125);
   ctx.textBaseline = 'middle';
-  ctx.font = 'bold 38px "Noto Sans Bengali", "Segoe UI", sans-serif';
-  ctx.fillText(title, 44, subtitle ? height * 0.39 : height * 0.52, width - 64);
+  ctx.shadowColor = 'rgba(0,0,0,0.55)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 3;
+  ctx.fillStyle = fg;
+  ctx.font = `bold ${titlePx}px "Noto Sans Bengali", "Segoe UI", sans-serif`;
+  ctx.fillText(title, bw * 5.6, subtitle ? height * 0.38 : height * 0.52, width - bw * 8);
   if (subtitle) {
+    ctx.shadowBlur = 4;
     ctx.fillStyle = accent;
-    ctx.font = '600 22px "Manrope", "Noto Sans Bengali", sans-serif';
-    ctx.fillText(subtitle, 44, height * 0.75, width - 64);
+    ctx.font = `600 ${subPx}px "Manrope", "Noto Sans Bengali", sans-serif`;
+    ctx.fillText(subtitle, bw * 5.6, height * 0.74, width - bw * 8);
   }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
   return tex;
 }
 
 function makeBlackWoodGrainTexture() {
   const c = document.createElement('canvas');
-  c.width = 256;
+  c.width = 512;
   c.height = 512;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#171311';
-  ctx.fillRect(0, 0, 256, 512);
-  for (let i = 0; i < 110; i++) {
-    const x = (i / 110) * 256;
-    ctx.strokeStyle = i % 3 === 0 ? 'rgba(68,48,35,0.48)' : 'rgba(6,5,4,0.72)';
-    ctx.lineWidth = 1.4 + (i % 4) * 0.55;
+  ctx.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 160; i++) {
+    const x = (i / 160) * 512;
+    ctx.strokeStyle = i % 3 === 0 ? 'rgba(72,52,38,0.48)' : 'rgba(6,5,4,0.72)';
+    ctx.lineWidth = 1.6 + (i % 4) * 0.6;
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    for (let y = 0; y <= 512; y += 28) {
-      ctx.lineTo(x + Math.sin(y * 0.032 + i * 0.8) * 4.2, y);
+    for (let y = 0; y <= 512; y += 24) {
+      ctx.lineTo(x + Math.sin(y * 0.032 + i * 0.8) * 5.0, y);
     }
     ctx.stroke();
   }
@@ -83,27 +141,42 @@ function makeBlackWoodGrainTexture() {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(2, 4);
+  tex.anisotropy = 8;
   return tex;
 }
 
 function makeTileFloorTexture(c1 = '#ece8df', c2 = '#dfd8ca', grout = '#b8b0a0') {
+  const S = 512;
   const c = document.createElement('canvas');
-  c.width = 256;
-  c.height = 256;
+  c.width = S;
+  c.height = S;
   const ctx = c.getContext('2d');
   ctx.fillStyle = grout;
-  ctx.fillRect(0, 0, 256, 256);
-  const step = 64;
-  for (let y = 0; y < 256; y += step) {
-    for (let x = 0; x < 256; x += step) {
+  ctx.fillRect(0, 0, S, S);
+  const step = 128;
+  for (let y = 0; y < S; y += step) {
+    for (let x = 0; x < S; x += step) {
       ctx.fillStyle = ((x / step + y / step) % 2 === 0) ? c1 : c2;
-      ctx.fillRect(x + 2, y + 2, step - 4, step - 4);
+      ctx.fillRect(x + 3, y + 3, step - 6, step - 6);
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 12, y + 24);
+      ctx.bezierCurveTo(x + 48, y + 54, x + 78, y + 36, x + 114, y + 98);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(120,112,96,0.12)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x + 18, y + 102);
+      ctx.bezierCurveTo(x + 56, y + 76, x + 88, y + 90, x + 116, y + 26);
+      ctx.stroke();
     }
   }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(6, 6);
+  tex.anisotropy = 8;
   return tex;
 }
 
@@ -198,26 +271,36 @@ function makeFootpathTileTex() {
 
 function makeMenuBoardTexture(title, lines, bg = '#3b0f0f', accent = '#fde047') {
   const c = document.createElement('canvas');
-  c.width = 512;
-  c.height = 256;
+  c.width = 1024;
+  c.height = 512;
   const ctx = c.getContext('2d');
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, 512, 256);
+  ctx.fillRect(0, 0, 1024, 512);
+  const g = ctx.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0, 'rgba(255,255,255,0.12)');
+  g.addColorStop(1, 'rgba(0,0,0,0.28)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 1024, 512);
   ctx.strokeStyle = accent;
-  ctx.lineWidth = 8;
-  ctx.strokeRect(8, 8, 496, 240);
+  ctx.lineWidth = 14;
+  ctx.strokeRect(14, 14, 996, 484);
+  ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(30, 30, 964, 452);
   ctx.fillStyle = accent;
   ctx.textAlign = 'center';
-  ctx.font = 'bold 28px "Noto Sans Bengali", sans-serif';
-  ctx.fillText(title, 256, 44);
+  ctx.font = 'bold 52px "Noto Sans Bengali", sans-serif';
+  ctx.fillText(title, 512, 92);
+  ctx.fillRect(140, 118, 744, 4);
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
-  ctx.font = '600 20px "Noto Sans Bengali", sans-serif';
+  ctx.font = '600 38px "Noto Sans Bengali", sans-serif';
   lines.forEach((line, idx) => {
-    ctx.fillText(line, 30, 92 + idx * 38, 452);
+    ctx.fillText(line, 66, 186 + idx * 76, 892);
   });
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
   return tex;
 }
 
@@ -258,37 +341,68 @@ export function buildSatrastaMoreDistrict(parent, m) {
   const panGreenMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.62 });
   const emberGlowMat = new THREE.MeshStandardMaterial({ color: 0xff5500, emissive: 0xff3b00, emissiveIntensity: 2.0, roughness: 0.4 });
   const meatSkewMat = new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.64 });
+  const mkPbrPlaster = (hex, seedVal, rough = 0.78, opts = {}) => {
+    const tex = makeWeatheredPlasterTex(hex, seedVal, opts);
+    const mat = new THREE.MeshStandardMaterial({
+      map: tex,
+      roughness: rough,
+      metalness: 0.03,
+      envMapIntensity: 0.75,
+    });
+    attachDerivedPBRMaps(mat, tex, { strength: opts.brickLines ? 2.4 : 1.7, roughBase: rough, normalScale: 0.62 });
+    return mat;
+  };
+  const asphaltTex = makeAsphaltRoadTexture();
   const asphaltMat = new THREE.MeshStandardMaterial({
-    map: makeAsphaltRoadTexture(),
+    map: asphaltTex,
     color: 0xd9dde2,
-    roughness: 0.82,
-    metalness: 0.04,
+    roughness: 0.80,
+    metalness: 0.05,
+    envMapIntensity: 0.55,
   });
+  attachDerivedPBRMaps(asphaltMat, asphaltTex, { strength: 2.2, roughBase: 0.80, normalScale: 0.70 });
+  const footpathTex = makeFootpathTileTex();
   const footpathMat = new THREE.MeshStandardMaterial({
-    map: makeFootpathTileTex(),
+    map: footpathTex,
     color: 0xe6e2d8,
-    roughness: 0.84,
+    roughness: 0.82,
   });
+  attachDerivedPBRMaps(footpathMat, footpathTex, { strength: 2.0, roughBase: 0.82, normalScale: 0.64 });
   const urbanGroundMat = new THREE.MeshStandardMaterial({ color: 0x74726c, roughness: 0.92 });
   const curbBlackYellow = new THREE.MeshStandardMaterial({ map: makeCurbStripeTex(), roughness: 0.68 });
   const roadLineWhite = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.78 });
   const roadLineYellow = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.76 });
   const drainGrateMat = new THREE.MeshStandardMaterial({ color: 0x262c33, roughness: 0.45, metalness: 0.78 });
   const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3d28, roughness: 0.88 });
-  const steelDark = new THREE.MeshStandardMaterial({ color: 0x1e252c, roughness: 0.40, metalness: 0.76 });
-  const chromeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.16, metalness: 0.92 });
-  const creamWall = new THREE.MeshStandardMaterial({ color: 0xf0e9da, roughness: 0.74 });
-  const warmOchre = new THREE.MeshStandardMaterial({ color: 0xd9a86c, roughness: 0.78 });
-  const maroonWall = new THREE.MeshStandardMaterial({ color: 0x6b1720, roughness: 0.60 });
-  const emeraldWall = new THREE.MeshStandardMaterial({ color: 0x0f5132, roughness: 0.62 });
-  const modernSlate = new THREE.MeshStandardMaterial({ color: 0x2c3540, roughness: 0.55, metalness: 0.25 });
-  const acWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.36, metalness: 0.12 });
-  const tinAwningMat = new THREE.MeshStandardMaterial({ color: 0x5c6b7a, roughness: 0.44, metalness: 0.65 });
-  const woodMat = m.wood || new THREE.MeshStandardMaterial({ color: 0x784421, roughness: 0.66 });
-  const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x432818, roughness: 0.55 });
-  const tileFloorMat = new THREE.MeshStandardMaterial({ map: makeTileFloorTexture('#eeeadf', '#e2dcd0', '#bcb4a4'), roughness: 0.36, metalness: 0.06 });
-  const luxuryMarbleMat = new THREE.MeshStandardMaterial({ map: makeTileFloorTexture('#f7f3ea', '#e8dec8', '#caa763'), roughness: 0.24, metalness: 0.10 });
-  const kacchiGhorFloorMat = new THREE.MeshStandardMaterial({ map: makeTileFloorTexture('#f2ede2', '#d7e2d6', '#a8b5a6'), roughness: 0.30, metalness: 0.08 });
+  const steelDark = m.darkMetal || new THREE.MeshStandardMaterial({ color: 0x1e252c, roughness: 0.40, metalness: 0.76 });
+  const chromeMat = m.chrome || new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.16, metalness: 0.92 });
+  const aluminumMat = m.aluminum || new THREE.MeshStandardMaterial({ color: 0xd6ded9, roughness: 0.24, metalness: 0.86 });
+  const railMat = m.rail || chromeMat;
+  const brickMat = m.brick || mkPbrPlaster('#a8503b', 731, 0.86, { brickLines: true });
+  const porcelainMat = m.porcelain || new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.14, clearcoat: 0.85 });
+  const mirrorSurfaceMat = m.mirrorMat || chromeMat;
+  const ceilingBrightMat = m.ceilingMat || new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x5c5a54, emissiveIntensity: 0.68, roughness: 0.84 });
+  const pvcPipeMat = m.pvcPipe || new THREE.MeshStandardMaterial({ color: 0xb8c0bc, roughness: 0.42 });
+  const terracottaMat = m.terracotta || new THREE.MeshStandardMaterial({ color: 0x9c4a2d, roughness: 0.82 });
+  const wallArtMat = m.wallArt || new THREE.MeshStandardMaterial({ color: 0x0f766e, roughness: 0.5 });
+  const creamWall = mkPbrPlaster('#f2eadb', 701, 0.76, { streakAlpha: 0.11 });
+  const warmOchre = mkPbrPlaster('#d9a86c', 703, 0.78, { streakAlpha: 0.13 });
+  const maroonWall = mkPbrPlaster('#6b1720', 705, 0.62, { streakAlpha: 0.09 });
+  const emeraldWall = mkPbrPlaster('#0f5132', 707, 0.64, { streakAlpha: 0.09 });
+  const modernSlate = mkPbrPlaster('#2c3540', 709, 0.56, { streakAlpha: 0.08 });
+  const acWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.34, metalness: 0.14 });
+  const tinAwningMat = new THREE.MeshStandardMaterial({ color: 0x5c6b7a, roughness: 0.42, metalness: 0.68 });
+  const woodMat = m.wood || new THREE.MeshStandardMaterial({ color: 0x784421, roughness: 0.60 });
+  const darkWoodMat = m.darkWood || new THREE.MeshStandardMaterial({ color: 0x432818, roughness: 0.52 });
+  const tileTex1 = makeTileFloorTexture('#eeeadf', '#e2dcd0', '#bcb4a4');
+  const tileFloorMat = new THREE.MeshStandardMaterial({ map: tileTex1, roughness: 0.32, metalness: 0.06, envMapIntensity: 0.85 });
+  attachDerivedPBRMaps(tileFloorMat, tileTex1, { strength: 1.5, roughBase: 0.32, normalScale: 0.50 });
+  const marbleTex = makeTileFloorTexture('#f7f3ea', '#e8dec8', '#caa763');
+  const luxuryMarbleMat = new THREE.MeshStandardMaterial({ map: marbleTex, roughness: 0.22, metalness: 0.10, envMapIntensity: 1.05 });
+  attachDerivedPBRMaps(luxuryMarbleMat, marbleTex, { strength: 1.4, roughBase: 0.22, normalScale: 0.45 });
+  const kgFloorTex = makeTileFloorTexture('#f2ede2', '#d7e2d6', '#a8b5a6');
+  const kacchiGhorFloorMat = new THREE.MeshStandardMaterial({ map: kgFloorTex, roughness: 0.26, metalness: 0.08, envMapIntensity: 0.95 });
+  attachDerivedPBRMaps(kacchiGhorFloorMat, kgFloorTex, { strength: 1.4, roughBase: 0.26, normalScale: 0.48 });
   const grassMat = new THREE.MeshStandardMaterial({ color: 0x2f7d3a, roughness: 0.92 });
   const flowerRed = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.74 });
   const flowerGold = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.74 });
@@ -311,7 +425,7 @@ export function buildSatrastaMoreDistrict(parent, m) {
     clearcoat: 1.0,
     side: THREE.DoubleSide,
   });
-  const tvScreenMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, emissive: 0x22c55e, emissiveIntensity: 0.85, roughness: 0.2 });
+  const tvScreenMat = m.tvScreen || new THREE.MeshStandardMaterial({ color: 0x16a34a, emissive: 0x22c55e, emissiveIntensity: 0.85, roughness: 0.2 });
   const lampGlow = new THREE.MeshStandardMaterial({ color: 0xfff8e6, emissive: 0xffd98a, emissiveIntensity: 1.05 });
   const uplightGold = new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xf59e0b, emissiveIntensity: 0.95 });
   const emissiveList = [
@@ -653,11 +767,11 @@ export function buildSatrastaMoreDistrict(parent, m) {
   addZebraCrosswalk(CX + 11.5, CZ + 14.8, Math.PI - 0.55, 9.0);// SE Tootpara
 
   // ============================================================================
-  // 2) REALISTIC SCULPTED WOOD LOG / TREE-TRUNK MONUMENT AT SATRASTA MORE
-  //    ("সাতরাস্তা মোড়ের কাঠের গুঁড়ির ভাস্কর্য" — Natural Gnarled Sundarbans Wood Log!)
+  // 2) TALL, SLENDER SCULPTED WOOD LOG / TREE-TRUNK MONUMENT AT SATRASTA MORE
+  //    ("সাতরাস্তা মোড়ের কাঠের গুঁড়ির ভাস্কর্য" — আরও চিকন ও লম্বা!)
   // ============================================================================
   {
-    addCircle(CX, CZ, 6.30, 10.0);
+    addCircle(CX, CZ, 6.30, 12.0);
     const mon = new THREE.Group();
     mon.position.set(CX, 0, CZ);
     staticG.add(mon);
@@ -680,16 +794,16 @@ export function buildSatrastaMoreDistrict(parent, m) {
     cutWoodTex.colorSpace = THREE.SRGBColorSpace;
     const cutWoodMat = new THREE.MeshStandardMaterial({ map: cutWoodTex, roughness: 0.78 });
     const barkMat = new THREE.MeshStandardMaterial({
-      color: 0x2a1f18,
+      color: 0x261c15,
       map: blackWoodTex,
-      roughness: 0.88,
-      metalness: 0.04,
+      roughness: 0.84,
+      metalness: 0.05,
     });
     const darkBarkMat = new THREE.MeshStandardMaterial({
-      color: 0x1a130e,
+      color: 0x17110c,
       map: blackWoodTex,
-      roughness: 0.92,
-      metalness: 0.03,
+      roughness: 0.90,
+      metalness: 0.04,
     });
     const mossStoneMat = new THREE.MeshStandardMaterial({ color: 0x4b5349, roughness: 0.90 });
 
@@ -720,48 +834,46 @@ export function buildSatrastaMoreDistrict(parent, m) {
       mon.add(fl);
     }
 
-    // Raised Stone Pedestal & Mossy Earth Mound holding the Giant Wood Log (y = 0.76 -> 1.85m)
-    cylinder(mon, 2.75, 2.95, 0.52, [0, 1.02, 0], graniteMat, 12);
-    cylinder(mon, 2.30, 2.55, 0.52, [0, 1.50, 0], mossStoneMat, 12);
-    // Natural rocky boulders around the base of the wooden log
-    for (let i = 0; i < 9; i++) {
-      const a = (i / 9) * Math.PI * 2 + 0.2;
-      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55 + (i % 3) * 0.14, 1), i % 2 === 0 ? graniteMat : mossStoneMat);
-      rock.scale.set(1.2, 0.65, 1.0);
-      rock.position.set(Math.cos(a) * 1.85, 1.62, Math.sin(a) * 1.85);
+    // Sleek Raised Stone Pedestal & Mossy Earth Mound (narrower to accentuate tall slender silhouette)
+    cylinder(mon, 2.25, 2.48, 0.52, [0, 1.02, 0], graniteMat, 12);
+    cylinder(mon, 1.78, 2.02, 0.54, [0, 1.52, 0], mossStoneMat, 12);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + 0.2;
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.42 + (i % 3) * 0.10, 1), i % 2 === 0 ? graniteMat : mossStoneMat);
+      rock.scale.set(1.15, 0.60, 0.95);
+      rock.position.set(Math.cos(a) * 1.48, 1.62, Math.sin(a) * 1.48);
       rock.rotation.y = a;
       mon.add(rock);
     }
 
-    // 6 Warm Golden Ground Uplights illuminating the sculpted wooden log at night
+    // 6 Warm Golden Ground Uplights illuminating the tall sculpted wooden column at night
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2 + 0.35;
-      const ul = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.19, 0.14, 10), uplightGold);
-      ul.position.set(CX + Math.cos(a) * 2.45, 1.32, CZ + Math.sin(a) * 2.45);
+      const ul = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.14, 10), uplightGold);
+      ul.position.set(CX + Math.cos(a) * 2.08, 1.32, CZ + Math.sin(a) * 2.08);
       dynamicG.add(ul);
     }
 
-    // MASSIVE NATURAL SCULPTED WOODEN LOG / TREE-TRUNK MONUMENT (কাঠের গুঁড়ি · y = 1.6m -> 6.8m!)
-    // 1) Main Thick Gnarled Tree Trunk (built from organic slightly-curving stacked segments + bark ribs!)
+    // TALL & SLENDER SCULPTED WOODEN LOG / TREE-TRUNK MONUMENT (চিকন ও লম্বা · y = 1.55m -> 10.6m!)
+    // 1) Main Tall, Slim Gnarled Timber Trunk with organic S-curve & fluted bark ridges
     const mainTrunkPts = [
       new THREE.Vector3(0.0, 1.55, 0.0),
-      new THREE.Vector3(0.14, 2.65, -0.08),
-      new THREE.Vector3(-0.08, 3.85, 0.12),
-      new THREE.Vector3(0.10, 5.10, -0.06),
-      new THREE.Vector3(-0.04, 6.25, 0.04),
+      new THREE.Vector3(0.11, 3.65, -0.06),
+      new THREE.Vector3(-0.09, 5.95, 0.09),
+      new THREE.Vector3(0.08, 8.30, -0.05),
+      new THREE.Vector3(-0.03, 10.55, 0.03),
     ];
     const mainCurve = new THREE.CatmullRomCurve3(mainTrunkPts);
-    const trunkGeo = new THREE.TubeGeometry(mainCurve, 24, 0.92, 14, false);
-    // Organically taper & furrow the bark vertices so it looks like real carved/weathered timber!
+    const trunkGeo = new THREE.TubeGeometry(mainCurve, 34, 0.50, 14, false);
     const posAttr = trunkGeo.attributes.position;
     for (let i = 0; i < posAttr.count; i++) {
       const vx = posAttr.getX(i);
       const vy = posAttr.getY(i);
       const vz = posAttr.getZ(i);
-      const hFrac = THREE.MathUtils.clamp((vy - 1.55) / 4.70, 0, 1);
+      const hFrac = THREE.MathUtils.clamp((vy - 1.55) / 9.0, 0, 1);
       const ang = Math.atan2(vz, vx);
-      const taper = THREE.MathUtils.lerp(1.24, 0.62, hFrac);
-      const barkRidge = 1.0 + Math.sin(ang * 7.0 + hFrac * 2.6) * 0.10 + Math.cos(ang * 13.0 - hFrac * 4.0) * 0.05;
+      const taper = THREE.MathUtils.lerp(1.16, 0.46, hFrac);
+      const barkRidge = 1.0 + Math.sin(ang * 7.0 + hFrac * 3.8) * 0.11 + Math.cos(ang * 13.0 - hFrac * 5.2) * 0.05;
       posAttr.setXYZ(i, vx * taper * barkRidge, vy, vz * taper * barkRidge);
     }
     trunkGeo.computeVertexNormals();
@@ -770,53 +882,52 @@ export function buildSatrastaMoreDistrict(parent, m) {
     trunkMesh.receiveShadow = true;
     mon.add(trunkMesh);
 
-    // Sawed/Sculpted Top Cut-Face of Main Log showing wood growth rings!
-    const topCut = new THREE.Mesh(new THREE.CylinderGeometry(0.54, 0.56, 0.08, 14), cutWoodMat);
-    topCut.position.set(-0.04, 6.26, 0.04);
-    topCut.rotation.z = 0.18;
+    // Sculpted Angled Cut-Face at the Tall Crown showing wood growth rings
+    const topCut = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.08, 14), cutWoodMat);
+    topCut.position.set(-0.03, 10.56, 0.03);
+    topCut.rotation.z = 0.22;
     mon.add(topCut);
 
-    // 2) 7 Thick Flared Sundarbans Buttress Roots gripping the stone mound
+    // 2) 7 Slim Flared Sundarbans Buttress Roots hugging the tall base
     for (let r = 0; r < 7; r++) {
       const a = (r / 7) * Math.PI * 2 + (r % 2) * 0.14;
       const rootCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(Math.cos(a) * 0.65, 3.15 + (r % 2) * 0.35, Math.sin(a) * 0.65),
-        new THREE.Vector3(Math.cos(a + 0.08) * 1.18, 2.20, Math.sin(a + 0.08) * 1.18),
-        new THREE.Vector3(Math.cos(a + 0.14) * 1.85, 1.58, Math.sin(a + 0.14) * 1.85),
+        new THREE.Vector3(Math.cos(a) * 0.36, 3.65 + (r % 2) * 0.55, Math.sin(a) * 0.36),
+        new THREE.Vector3(Math.cos(a + 0.08) * 0.78, 2.35, Math.sin(a + 0.08) * 0.78),
+        new THREE.Vector3(Math.cos(a + 0.14) * 1.38, 1.58, Math.sin(a + 0.14) * 1.38),
       ]);
-      const rootMesh = new THREE.Mesh(new THREE.TubeGeometry(rootCurve, 14, 0.28 + (r % 2) * 0.06, 8, false), darkBarkMat);
+      const rootMesh = new THREE.Mesh(new THREE.TubeGeometry(rootCurve, 14, 0.16 + (r % 2) * 0.04, 8, false), darkBarkMat);
       rootMesh.castShadow = true;
       mon.add(rootMesh);
     }
 
-    // 3) 3 Thick Sculpted Cut-Log Boughs branching organically out from the main trunk!
+    // 3) 3 Sleek Upward-Sweeping Sculpted Wooden Boughs branching high up the tall trunk
     const boughs = [
-      { ang: 0.45, y0: 3.7, len: 2.05, rise: 1.55, r: 0.42 },
-      { ang: 2.55, y0: 4.1, len: 1.85, rise: 1.75, r: 0.36 },
-      { ang: 4.55, y0: 3.3, len: 1.75, rise: 1.35, r: 0.38 },
+      { ang: 0.45, y0: 5.5, len: 1.45, rise: 2.35, r: 0.21 },
+      { ang: 2.55, y0: 6.4, len: 1.35, rise: 2.55, r: 0.19 },
+      { ang: 4.55, y0: 4.9, len: 1.30, rise: 2.05, r: 0.20 },
     ];
     for (const b of boughs) {
-      const p0 = new THREE.Vector3(Math.cos(b.ang) * 0.45, b.y0, Math.sin(b.ang) * 0.45);
-      const p1 = new THREE.Vector3(Math.cos(b.ang + 0.12) * (b.len * 0.55), b.y0 + b.rise * 0.52, Math.sin(b.ang + 0.12) * (b.len * 0.55));
+      const p0 = new THREE.Vector3(Math.cos(b.ang) * 0.26, b.y0, Math.sin(b.ang) * 0.26);
+      const p1 = new THREE.Vector3(Math.cos(b.ang + 0.10) * (b.len * 0.58), b.y0 + b.rise * 0.55, Math.sin(b.ang + 0.10) * (b.len * 0.58));
       const p2 = new THREE.Vector3(Math.cos(b.ang) * b.len, b.y0 + b.rise, Math.sin(b.ang) * b.len);
       const bCurve = new THREE.CatmullRomCurve3([p0, p1, p2]);
       const bMesh = new THREE.Mesh(new THREE.TubeGeometry(bCurve, 14, b.r, 10, false), barkMat);
       bMesh.castShadow = true;
       mon.add(bMesh);
-      // Natural wood-ring cut cap on each cut log branch
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(b.r * 0.94, b.r * 0.96, 0.07, 12), cutWoodMat);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(b.r * 0.92, b.r * 0.95, 0.06, 12), cutWoodMat);
       cap.position.copy(p2);
-      cap.lookAt(p2.clone().add(new THREE.Vector3(Math.cos(b.ang), 0.7, Math.sin(b.ang))));
+      cap.lookAt(p2.clone().add(new THREE.Vector3(Math.cos(b.ang), 1.1, Math.sin(b.ang))));
       cap.rotateX(Math.PI * 0.5);
       mon.add(cap);
     }
 
-    // 4) Iconic Sundarbans Wooden Pneumatophores (শ্বাসমূল) & Small Resting Log at the Base
+    // 4) Iconic Sundarbans Wooden Pneumatophores (শ্বাসমূল) around the stone mound
     for (let k = 0; k < 12; k++) {
       const a = (k / 12) * Math.PI * 2;
-      const dist = 1.95 + (k % 3) * 0.32;
-      const ph = 0.55 + (k % 4) * 0.22;
-      cylinder(mon, 0.04, 0.09, ph, [Math.cos(a) * dist, 1.55 + ph * 0.4, Math.sin(a) * dist], darkBarkMat, 6);
+      const dist = 1.55 + (k % 3) * 0.26;
+      const ph = 0.52 + (k % 4) * 0.20;
+      cylinder(mon, 0.032, 0.072, ph, [Math.cos(a) * dist, 1.55 + ph * 0.4, Math.sin(a) * dist], darkBarkMat, 6);
     }
 
     // Clean Engraved Plaques facing East (Royal More) & West (Moylapota)
@@ -824,12 +935,12 @@ export function buildSatrastaMoreDistrict(parent, m) {
       title: 'সাতরাস্তা মোড় · খুলনা',
       subtitle: 'SATRASTA MORE · KDA AVENUE',
       bg: '#14110f', fg: '#fde047', accent: '#f59e0b', border: '#eab308',
-    }, [CX + 2.15, 1.48, CZ], Math.PI * 0.5, 2.55, 0.78);
+    }, [CX + 1.88, 1.48, CZ], Math.PI * 0.5, 2.45, 0.76);
     addSignBox(dynamicG, {
       title: 'সাতরাস্তা মোড় · খুলনা',
       subtitle: '← ময়লাপোতা  |  রয়্যাল মোড় →',
       bg: '#14110f', fg: '#fde047', accent: '#f59e0b', border: '#eab308',
-    }, [CX - 2.15, 1.48, CZ], -Math.PI * 0.5, 2.55, 0.78);
+    }, [CX - 1.88, 1.48, CZ], -Math.PI * 0.5, 2.45, 0.76);
   }
 
   // ============================================================================
@@ -861,15 +972,25 @@ export function buildSatrastaMoreDistrict(parent, m) {
     shopDyn.rotation.y = rotY;
     dynamicG.add(shopDyn);
 
-    // Tiled Floor + Front Veranda Apron + Ceiling Slab
+    // Tiled Floor + Front Veranda Apron + Bright Self-Lit Ceiling Slab (Taltola-House Quality!)
     box(shopStatic, [w, 0.18, d], [0, 0.09, 0], floorMat, { uvScale: 1.8 });
     box(shopStatic, [w + 0.8, 0.14, 2.0], [0, 0.07, hd + 1.0], footpathMat, { castShadow: false });
     addWalkableSlab(cx, cz, w + 0.8, d + 2.4, rotY, 0.18);
     box(shopStatic, [w + 0.35, 0.26, d + 0.35], [0, h, 0], creamWall);
+    box(shopStatic, [w - 0.48, 0.05, d - 0.48], [0, h - 0.14, 0], ceilingBrightMat, { castShadow: false });
 
-    // Decorative Front Corner Pilasters
+    // Decorative Front Corner Pilasters with Black Granite Plinths, Brass Collar & Terracotta Potted Plants
     for (const px of [-hw + 0.18, hw - 0.18]) {
-      box(shopStatic, [0.42, h, 0.42], [px, h * 0.5, hd - 0.10], accentMat);
+      box(shopStatic, [0.46, h, 0.46], [px, h * 0.5, hd - 0.08], accentMat);
+      box(shopStatic, [0.54, 0.52, 0.54], [px, 0.26, hd - 0.08], graniteMat);
+      box(shopStatic, [0.52, 0.08, 0.52], [px, 0.54, hd - 0.08], brassMat);
+      box(shopStatic, [0.52, 0.08, 0.52], [px, h - 0.28, hd - 0.08], brassMat);
+      // Terracotta potted plant flanking entrance veranda
+      const potX = px - Math.sign(px) * 0.25;
+      cylinder(shopStatic, 0.22, 0.16, 0.38, [potX, 0.33, hd + 0.72], terracottaMat, 10);
+      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.30, 1), panGreenMat);
+      bush.position.set(potX, 0.66, hd + 0.72);
+      shopStatic.add(bush);
     }
 
     // Hollow Perimeter Walls
@@ -886,28 +1007,33 @@ export function buildSatrastaMoreDistrict(parent, m) {
     if (sideW > 0.3) {
       addLocalWall(-hw + sideW * 0.5, hd - 0.14, sideW, 0.28, 0.95);
       addLocalWall(hw - sideW * 0.5, hd - 0.14, sideW, 0.28, 0.95);
-      // Tall framed glass storefront windows
+      // Tall Aluminum-Framed Multi-Pane Storefront Windows
       for (const sgn of [-1, 1]) {
         const wx = sgn * (hw - sideW * 0.5);
-        box(shopStatic, [sideW - 0.12, h - 1.25, 0.08], [wx, 0.95 + (h - 1.25) * 0.5, hd - 0.12], glassMat, { castShadow: false });
-        box(shopStatic, [sideW, 0.08, 0.14], [wx, 0.98, hd - 0.12], steelDark);
-        box(shopStatic, [sideW, 0.08, 0.14], [wx, h - 0.32, hd - 0.12], steelDark);
+        const winH = h - 1.25;
+        const winY = 0.95 + winH * 0.5;
+        box(shopStatic, [sideW - 0.12, winH, 0.06], [wx, winY, hd - 0.12], glassMat, { castShadow: false });
+        box(shopStatic, [sideW, 0.08, 0.16], [wx, 0.98, hd - 0.10], aluminumMat);
+        box(shopStatic, [sideW, 0.08, 0.16], [wx, h - 0.32, hd - 0.10], aluminumMat);
+        box(shopStatic, [0.06, winH, 0.14], [wx, winY, hd - 0.10], aluminumMat);
+        box(shopStatic, [sideW - 0.08, 0.05, 0.12], [wx, winY + winH * 0.22, hd - 0.10], aluminumMat);
       }
     }
-    // Header lintel above doorway
+    // Header lintel above doorway with brass accent molding
     box(shopStatic, [doorWidth + 0.14, h - 2.75, 0.30], [0, 2.75 + (h - 2.75) * 0.5, hd - 0.14], accentMat);
+    box(shopStatic, [doorWidth + 0.18, 0.06, 0.34], [0, 2.76, hd - 0.12], brassMat);
 
-    // Projecting Front Awning + Warm Under-Awning Lights + Illuminated Bengali Signboard
+    // Projecting Front Awning + Warm Under-Awning Recessed Lights + 1024px Illuminated Bengali Signboard
     const awn = box(shopStatic, [w + 0.6, 0.12, 1.75], [0, 3.12, hd + 0.78], awningMat);
     awn.rotation.x = 0.15;
-    for (let lx = -hw + 1.5; lx <= hw - 1.5; lx += 3.0) {
+    for (let lx = -hw + 1.5; lx <= hw - 1.5; lx += 2.6) {
       const b = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), lampGlow);
       b.position.set(lx, 2.94, hd + 0.82);
       shopDyn.add(b);
     }
     addSignBox(shopDyn, {
-      title: signTitle, subtitle: signSub, bg: signBg, fg: signFg, accent: signAccent, width: 640,
-    }, [0, h - 0.15, hd + 0.22], 0, Math.min(w - 0.2, 12.6), 1.18);
+      title: signTitle, subtitle: signSub, bg: signBg, fg: signFg, accent: signAccent, width: 1024, height: 300,
+    }, [0, h - 0.12, hd + 0.24], 0, Math.min(w - 0.2, 13.4), 1.24);
 
     // Optional Openable Double Glass Entrance Door (starts OPEN for immediate walk-in!)
     if (hasGlassDoor) {
@@ -928,23 +1054,70 @@ export function buildSatrastaMoreDistrict(parent, m) {
       });
     }
 
-    // Detailed Upper Commercial Floors (Balconies, AC Units & Mullioned Windows!)
+    // TALTOLA-HOUSE QUALITY UPPER FLOORS (Aluminum-Framed Windows, Sunshades, Balconies, Steel Railings, AC Condensers & PVC Pipes!)
     if (upperFloors > 0) {
       const upH = upperFloors * 3.25;
       box(shopStatic, [w, upH, d], [0, h + upH * 0.5, 0], wallMat);
+      // Vertical Red-Brick Accent Corner Bands & Exterior PVC Drainage Pipes
+      for (const sgn of [-1, 1]) {
+        box(shopStatic, [0.46, upH + 0.4, 0.46], [sgn * (hw - 0.14), h + upH * 0.5, hd - 0.06], brickMat);
+        cylinder(shopStatic, 0.045, 0.045, h + upH, [sgn * (hw + 0.08), (h + upH) * 0.5, hd - 0.65], pvcPipeMat, 8);
+        for (let py = 2.0; py < h + upH; py += 3.0) {
+          box(shopStatic, [0.14, 0.05, 0.14], [sgn * (hw + 0.04), py, hd - 0.65], steelDark);
+        }
+      }
       for (let f = 0; f < upperFloors; f++) {
         const fy = h + f * 3.25;
-        box(shopStatic, [w + 0.44, 0.24, d + 0.44], [0, fy + 3.20, 0], creamWall);
+        // Floor slab band + white cornice trim
+        box(shopStatic, [w + 0.46, 0.24, d + 0.46], [0, fy + 3.20, 0], creamWall);
+        box(shopStatic, [w + 0.52, 0.07, d + 0.52], [0, fy + 3.08, 0], accentMat);
+
+        // Cantilevered Front Balcony with Steel Railing & Balusters!
+        const balW = Math.min(w - 2.0, 5.4);
+        if (balW > 2.2) {
+          const balY = fy + 0.14;
+          box(shopStatic, [balW, 0.18, 1.10], [0, balY, hd + 0.52], creamWall);
+          box(shopStatic, [balW, 0.44, 0.14], [0, balY + 0.28, hd + 1.00], accentMat);
+          rodBetween(shopStatic, [-balW * 0.48, balY + 0.96, hd + 1.02], [balW * 0.48, balY + 0.96, hd + 1.02], 0.024, railMat, 8);
+          rodBetween(shopStatic, [-balW * 0.48, balY + 0.72, hd + 1.02], [balW * 0.48, balY + 0.72, hd + 1.02], 0.018, railMat, 8);
+          const postCount = Math.max(3, Math.floor(balW / 0.72));
+          for (let pi = 0; pi <= postCount; pi++) {
+            const pxP = -balW * 0.48 + (pi / postCount) * (balW * 0.96);
+            rodBetween(shopStatic, [pxP, balY + 0.48, hd + 1.02], [pxP, balY + 0.96, hd + 1.02], 0.018, railMat, 6);
+          }
+        }
+
         for (let wx = -hw + 2.0; wx <= hw - 2.0; wx += 3.4) {
-          box(shopStatic, [2.25, 1.68, 0.14], [wx, fy + 1.62, hd + 0.04], glassTintBlue, { castShadow: false });
-          box(shopStatic, [2.35, 0.12, 0.28], [wx, fy + 0.74, hd + 0.12], accentMat);
+          // Recessed Aluminum-Framed Multi-Pane Window + Projecting Sunshade Canopy
+          const wy = fy + 1.64;
+          box(shopStatic, [2.20, 1.66, 0.08], [wx, wy, hd + 0.03], glassTintBlue, { castShadow: false });
+          box(shopStatic, [2.32, 0.07, 0.14], [wx, wy - 0.84, hd + 0.06], aluminumMat);
+          box(shopStatic, [2.32, 0.07, 0.14], [wx, wy + 0.84, hd + 0.06], aluminumMat);
+          box(shopStatic, [0.07, 1.72, 0.14], [wx - 1.12, wy, hd + 0.06], aluminumMat);
+          box(shopStatic, [0.07, 1.72, 0.14], [wx + 1.12, wy, hd + 0.06], aluminumMat);
+          box(shopStatic, [0.055, 1.66, 0.14], [wx, wy, hd + 0.06], aluminumMat);
+          box(shopStatic, [2.20, 0.045, 0.14], [wx, wy + 0.22, hd + 0.06], aluminumMat);
+          // Projecting concrete sunshade canopy (chajja) + sill
+          box(shopStatic, [2.56, 0.10, 0.46], [wx, wy + 0.96, hd + 0.22], creamWall);
+          box(shopStatic, [2.42, 0.12, 0.26], [wx, wy - 0.90, hd + 0.12], accentMat);
+
+          // Detailed Outdoor Split AC Condenser with Fan Grille & Wall Brackets
           if (Math.abs(wx) < hw - 3.5 && f % 2 === 0) {
-            // Outdoor AC condenser unit
-            box(shopStatic, [0.76, 0.52, 0.34], [wx + 1.45, fy + 1.05, hd + 0.18], acWhiteMat);
+            const acX = wx + 1.48;
+            const acY = fy + 1.06;
+            box(shopStatic, [0.78, 0.54, 0.32], [acX, acY, hd + 0.20], acWhiteMat);
+            const fanG = cylinder(shopStatic, 0.19, 0.19, 0.34, [acX - 0.12, acY, hd + 0.20], steelDark, 12);
+            fanG.rotation.x = Math.PI / 2;
+            for (const bx of [-0.28, 0.28]) {
+              box(shopStatic, [0.05, 0.32, 0.34], [acX + bx, acY - 0.26, hd + 0.18], steelDark);
+            }
           }
         }
       }
+      // Rooftop Parapet with Coping Cap & Water Tank
       box(shopStatic, [w + 0.30, 0.95, 0.24], [0, h + upH + 0.48, hd], accentMat);
+      box(shopStatic, [w + 0.38, 0.10, 0.32], [0, h + upH + 0.98, hd], creamWall);
+      cylinder(shopStatic, 0.62, 0.62, 1.42, [-hw + 2.2, h + upH + 0.72, -hd + 2.2], steelDark, 12);
     }
 
     // High-Detail Furnished Interior Group (Batched & Distance Culled at 62m!)
@@ -959,175 +1132,108 @@ export function buildSatrastaMoreDistrict(parent, m) {
   }
 
   // ============================================================================
-  // 3) SHOP #1 (HERO CORNER): বেলাল ভাইয়ের স্পেশাল চায়ের দোকান + ঢোকার ডান হাতে পানওয়ালার দোকান!
-  //    Exact User Spec:
-  //    - সবসময় খোলা থাকবে, সামনেই চা বিক্রি হবে ও সবসময় গরম চা থাকবে।
-  //    - সোজাসুজি হবে দোকানটা (বেশি চ্যাপ্টা নয়, ভিতরের দিকে বড় — w: 7.6m × d: 14.8m), ভিতরে বসার অনেক জায়গা!
-  //    - দোকানে ঢোকার একদম ডান হাতে (local +X, front entrance) থাকবে পানওয়ালার দোকান ও খালি বসার টুল (কোনো পানওয়ালা NPC ছাড়া)।
+  // 3) SHOP #1 (NORTH SIDE — OPPOSITE BILLAL BHAI): GRAND বড় সাতরাস্তা কাচ্চি ঘর!
+  //    (Swapped to North side of KDA Avenue directly opposite Billal Bhai Tea Shop)
   // ============================================================================
   createEnterableShop({
-    name: 'বেলাল ভাইয়ের স্পেশাল চায়ের দোকান',
-    zoneLabel: 'SATRASTA MORE · BELAL BHAI SPECIAL TEA STALL',
-    cx: -902.5, cz: -309.5, rotY: -0.32, w: 7.6, d: 14.8, h: 4.0, upperFloors: 1,
-    wallMat: warmOchre, accentMat: emeraldWall, awningMat: emeraldWall, floorMat: tileFloorMat,
-    doorWidth: 5.4, hasGlassDoor: false,
-    signTitle: 'বেলাল ভাইয়ের স্পেশাল চায়ের দোকান · সাতরাস্তা',
-    signSub: 'খুলনার বিখ্যাত মালাই চা · দুধ চা · মশলা চা · ২৪ ঘণ্টা খোলা · ভিতরে বসার সুব্যবস্থা',
-    signBg: '#065f46', signAccent: '#fde047',
+    name: 'সাতরাস্তা কাচ্চি ঘর · গ্র্যান্ড হল',
+    zoneLabel: 'SATRASTA MORE · GRAND KACCHI GHOR RESTAURANT',
+    cx: -885.5, cz: -310.5, rotY: -0.08, w: 20.5, d: 13.8, h: 4.5, upperFloors: 3,
+    wallMat: creamWall, accentMat: emeraldWall, awningMat: emeraldWall, floorMat: kacchiGhorFloorMat,
+    doorWidth: 4.0, hasGlassDoor: true,
+    signTitle: 'সাতরাস্তা কাচ্চি ঘর · GRAND KACCHI GHOR',
+    signSub: 'খাসির স্পেশাল কাচ্চি · খুলনার চুইঝাল গরুর মাংস · বিফ তেহারি · ফ্যামিলি ডাইনিং',
+    signBg: '#0f3d2e', signAccent: '#fde047',
     buildInterior(intG, shopDyn, toWorld, { hw, hd, h }) {
-      // ------------------------------------------------------------------------
-      // A) FRONT ENTRANCE LEFT: LIVE TEA COUNTER (সামনেই সবসময় গরম চা বিক্রি হচ্ছে!)
-      // ------------------------------------------------------------------------
-      const teaZ = hd - 2.1; // right at the open front entrance!
-      box(intG, [2.75, 1.00, 1.05], [-hw + 1.65, 0.50, teaZ], chromeMat);
-      box(intG, [2.80, 0.08, 1.10], [-hw + 1.65, 1.02, teaZ], steelDark);
-      // 3-Burner Glowing Gas Stove + 3 Steaming Brass/Steel Tea Kettles (কেতলি)
-      box(intG, [1.45, 0.14, 0.58], [-hw + 1.25, 1.12, teaZ], steelDark);
-      for (const kx of [-hw + 0.78, -hw + 1.25, -hw + 1.72]) {
-        cylinder(intG, 0.13, 0.15, 0.04, [kx, 1.21, teaZ], emberGlowMat, 8);
-        cylinder(intG, 0.14, 0.19, 0.30, [kx, 1.38, teaZ], kx === -hw + 1.25 ? brassMat : chromeMat, 10);
+      const steamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.32, roughness: 1.0 });
+      // Grand Emerald & Gold Marble Serving Counter + 4 Steaming Copper Handis + Brass Ladles!
+      box(intG, [10.4, 1.06, 1.02], [-1.2, 0.53, -hd + 1.75], emeraldWall);
+      box(intG, [10.5, 0.08, 1.10], [-1.2, 1.08, -hd + 1.75], brassMat);
+      for (const dx of [-4.6, -2.6, -0.6, 1.4]) {
+        cylinder(intG, 0.46, 0.38, 0.56, [dx, 1.38, -hd + 1.75], redClothMat, 14);
+        cylinder(intG, 0.48, 0.48, 0.08, [dx, 1.68, -hd + 1.75], copperMat, 14);
+        cylinder(intG, 0.14, 0.14, 0.06, [dx, 1.75, -hd + 1.75], brassMat, 10);
+        rodBetween(intG, [dx + 0.44, 1.14, -hd + 1.55], [dx + 0.62, 1.52, -hd + 1.92], 0.016, brassMat, 6);
+        const st = new THREE.Mesh(new THREE.SphereGeometry(0.14, 6, 5), steamMat);
+        st.position.set(dx, 1.98, -hd + 1.75);
+        intG.add(st);
       }
-      // Ready-to-Serve Hot Tea Cups Tray right on the front counter (সবসময় চা থাকবে!)
-      box(intG, [0.85, 0.04, 0.52], [-hw + 2.45, 1.08, teaZ + 0.18], brassMat);
-      for (const [cxCup, czCup] of [[-0.25, -0.10], [0.0, -0.10], [0.25, -0.10], [-0.12, 0.12], [0.14, 0.12]]) {
-        cylinder(intG, 0.045, 0.034, 0.09, [-hw + 2.45 + cxCup, 1.14, teaZ + 0.18 + czCup], creamWall, 8);
-        cylinder(intG, 0.040, 0.040, 0.015, [-hw + 2.45 + cxCup, 1.185, teaZ + 0.18 + czCup], warmOchre, 8);
-      }
-      // Pyramid of Condensed Milk Tins + Glass Biscuit & Cake Showcase behind tea counter
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 3 - row; col++) {
-          cylinder(intG, 0.055, 0.055, 0.11, [-hw + 2.25 + col * 0.13 + row * 0.065, 1.12 + row * 0.11, teaZ - 0.30], flowerRed, 8);
+      // Cash Billing Desk + POS Monitor & Receipt Printer on West end of counter
+      box(intG, [2.1, 1.06, 0.88], [-7.8, 0.53, -hd + 1.75], darkWoodMat);
+      box(intG, [2.16, 0.06, 0.94], [-7.8, 1.08, -hd + 1.75], brassMat);
+      box(intG, [0.48, 0.34, 0.06], [-7.8, 1.28, -hd + 1.75], steelDark);
+      box(intG, [0.24, 0.18, 0.24], [-7.1, 1.20, -hd + 1.75], acWhiteMat);
+
+      // Stocked Glass Borhani, Firni & Cold-Drinks Display Chiller
+      box(intG, [2.4, 1.62, 0.85], [5.8, 0.81, -hd + 1.75], acWhiteMat);
+      box(intG, [2.2, 1.02, 0.88], [5.8, 1.08, -hd + 1.75], glassMat, { castShadow: false });
+      const bottleCols = [porcelainMat, flowerGold, panGreenMat, flowerRed];
+      for (let shelf = 0; shelf < 2; shelf++) {
+        const sy = 0.78 + shelf * 0.42;
+        for (let bi = 0; bi < 6; bi++) {
+          cylinder(intG, 0.055, 0.055, 0.22, [4.95 + bi * 0.34, sy, -hd + 1.72], bottleCols[(bi + shelf) % bottleCols.length], 8);
         }
       }
-      box(intG, [0.65, 1.75, 1.95], [-hw + 0.52, 0.88, teaZ - 1.75], chromeMat);
-      box(intG, [0.58, 0.90, 1.85], [-hw + 0.54, 1.35, teaZ - 1.75], glassMat, { castShadow: false });
-      const jarCols = [flowerGold, warmOchre, flowerRed, panGreenMat, flowerPink];
-      for (let i = 0; i < 5; i++) {
-        cylinder(intG, 0.09, 0.09, 0.22, [-hw + 0.52, 1.15, teaZ - 2.45 + i * 0.34], jarCols[i % jarCols.length], 8);
-        cylinder(intG, 0.08, 0.08, 0.20, [-hw + 0.52, 1.50, teaZ - 2.45 + i * 0.34], jarCols[(i + 2) % jarCols.length], 8);
-      }
 
-      // ------------------------------------------------------------------------
-      // B) FRONT ENTRANCE RIGHT HAND (+X): পানওয়ালার দোকান (খালি বসার জায়গা, কোনো NPC ছাড়া!)
-      //    ("পানওয়ালার বসার জায়গা একদম ওই বেলাল ভাইয়ের দোকানে ঢোকার ডান হাতে")
-      // ------------------------------------------------------------------------
-      const panX = hw - 1.12;
-      const panZ = hd - 1.05;
-      // Pan Stall Wooden & Steel Counter Base + Glass Showcase facing entrance
-      box(intG, [1.55, 0.96, 1.25], [panX, 0.48, panZ], woodMat);
-      box(intG, [1.60, 0.07, 1.30], [panX, 0.99, panZ], chromeMat);
-      box(intG, [1.48, 0.72, 0.92], [panX, 1.38, panZ + 0.12], glassMat, { castShadow: false });
-      // Neat Green Betel Leaf Stacks (পানের বিড়া) + Colorful Jorda/Supari/Misti Masala Jars
-      for (let bx = -0.45; bx <= 0.46; bx += 0.30) {
-        cylinder(intG, 0.11, 0.13, 0.20, [panX + bx, 1.12, panZ + 0.22], panGreenMat, 8);
-      }
-      const spiceCols = [flowerRed, flowerGold, brassMat, creamWall, copperMat, flowerPink];
-      for (let i = 0; i < 6; i++) {
-        cylinder(intG, 0.065, 0.065, 0.18, [panX - 0.50 + i * 0.20, 1.50, panZ - 0.08], spiceCols[i % spiceCols.length], 8);
-      }
-      // Small red cloth backdrop + glowing mini-bulb over Pan Stall
-      box(intG, [0.06, 1.85, 1.35], [hw - 0.32, 1.45, panZ], redClothMat, { castShadow: false });
-      const panBulb = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), lampGlow);
-      panBulb.position.set(panX, 2.30, panZ);
-      shopDyn.add(panBulb);
-      // Empty Panwala Wooden Seat / Stool behind the pan counter (NO NPC sitting there!)
-      box(intG, [0.58, 0.46, 0.58], [panX + 0.05, 0.23, panZ - 1.02], darkWoodMat);
-      box(intG, [0.54, 0.07, 0.54], [panX + 0.05, 0.49, panZ - 1.02], redClothMat);
-      const swPan = toWorld(panX + 0.05, panZ - 1.02);
-      seats.push({ seatX: swPan.x, seatZ: swPan.z, seatY: 0.52, yaw: -0.32, fy: 0.18, label: 'পানওয়ালার খালি আসন' });
-
-      // Mini Signboard on Right-Hand Pan Stall
-      addSignBox(shopDyn, {
-        title: 'শাহী মিষ্টি পান',
-        subtitle: 'বেলাল ভাই কর্নার · পান স্টল',
-        bg: '#14532d', fg: '#ffffff', accent: '#fde047', width: 384, height: 144,
-      }, [panX, 2.55, panZ + 0.65], 0, 1.75, 0.56);
-
-      // ------------------------------------------------------------------------
-      // C) DEEP STRAIGHT-IN SEATING HALL (ভিতরের দিকে বড় বসার জায়গা — ৬টি আড্ডা টেবিল ও বেঞ্চ!)
-      //    Clean wide straight central walkway (lx ∈ [-1.1 .. +1.1]) down the middle!
-      // ------------------------------------------------------------------------
-      for (const tz of [1.6, -1.6, -4.8]) {
-        // Left-side bench + table
-        const lx = -2.25;
-        box(intG, [1.55, 0.06, 0.82], [lx, 0.72, tz], woodMat);
-        box(intG, [0.06, 0.70, 0.66], [lx - 0.65, 0.35, tz], steelDark);
-        box(intG, [0.06, 0.70, 0.66], [lx + 0.65, 0.35, tz], steelDark);
-        cylinder(intG, 0.045, 0.035, 0.09, [lx - 0.32, 0.79, tz - 0.10], creamWall, 6);
-        cylinder(intG, 0.045, 0.035, 0.09, [lx + 0.30, 0.79, tz + 0.12], creamWall, 6);
-        box(intG, [1.50, 0.06, 0.36], [lx, 0.44, tz + 0.68], darkWoodMat);
-        box(intG, [1.50, 0.06, 0.36], [lx, 0.44, tz - 0.68], darkWoodMat);
-        const swL = toWorld(lx, tz + 0.68);
-        seats.push({ seatX: swL.x, seatZ: swL.z, seatY: 0.46, yaw: -0.32 + Math.PI, fy: 0.18, label: 'বেলাল ভাইয়ের চায়ের আড্ডা বেঞ্চ' });
-
-        // Right-side bench + table
-        const rx = 2.25;
-        box(intG, [1.55, 0.06, 0.82], [rx, 0.72, tz], woodMat);
-        box(intG, [0.06, 0.70, 0.66], [rx - 0.65, 0.35, tz], steelDark);
-        box(intG, [0.06, 0.70, 0.66], [rx + 0.65, 0.35, tz], steelDark);
-        cylinder(intG, 0.045, 0.035, 0.09, [rx - 0.28, 0.79, tz + 0.10], creamWall, 6);
-        cylinder(intG, 0.045, 0.035, 0.09, [rx + 0.34, 0.79, tz - 0.12], creamWall, 6);
-        box(intG, [1.50, 0.06, 0.36], [rx, 0.44, tz + 0.68], darkWoodMat);
-        box(intG, [1.50, 0.06, 0.36], [rx, 0.44, tz - 0.68], darkWoodMat);
-        const swR = toWorld(rx, tz + 0.68);
-        seats.push({ seatX: swR.x, seatZ: swR.z, seatY: 0.46, yaw: -0.32 + Math.PI, fy: 0.18, label: 'বেলাল ভাইয়ের চায়ের আড্ডা বেঞ্চ' });
-      }
-
-      // Back Wall: Big Cricket LED TV + Famous Belal Bhai Special Tea Menu Board!
-      box(intG, [1.80, 1.05, 0.08], [0, 2.72, -hd + 0.34], steelDark);
-      box(intG, [1.68, 0.94, 0.09], [0, 2.72, -hd + 0.35], tvScreenMat, { castShadow: false });
-      const menu = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.45), new THREE.MeshStandardMaterial({
-        map: makeMenuBoardTexture('বেলাল ভাইয়ের স্পেশাল চা · ২৪ ঘণ্টা', [
-          '১. স্পেশাল মালাই চা ............ ২৫ টাকা',
-          '২. গরম দুধ-এলাচ চা ............. ১৫ টাকা',
-          '৩. আদা-লেবু মশলা চা ........... ১৫ টাকা',
-          '৪. বাটার বান · বিস্কুট · কেক .... ৪০ টাকা',
+      // High-Resolution 1024px Illuminated Bengali Menu Board on Back Wall
+      const kgMenu = new THREE.Mesh(new THREE.PlaneGeometry(6.6, 1.95), new THREE.MeshStandardMaterial({
+        map: makeMenuBoardTexture('সাতরাস্তা কাচ্চি ঘর · স্পেশাল মেনু', [
+          'খাসির শাহী কাচ্চি বিরিয়ানি .......... ৪২০ টাকা',
+          'খুলনার স্পেশাল চুইঝাল গরুর মাংস ...... ৩২০ টাকা',
+          'বিফ তেহারি ও মোরগ পোলাও ............. ২৬০ টাকা',
+          'স্পেশাল বোরহানি ও জর্দা ............. ৮০ টাকা',
         ], '#064e3b', '#fde047'),
       }));
-      menu.position.set(0, 1.32, -hd + 0.34);
-      intG.add(menu);
+      kgMenu.position.set(-1.2, 2.82, -hd + 0.34);
+      intG.add(kgMenu);
 
-      // Bright Tube Lights & 3 Spinning Ceiling Fans down the deep straight hall!
-      for (const lz of [4.2, 0.0, -4.2]) {
-        box(intG, [1.8, 0.06, 0.16], [0, h - 0.28, lz], lampGlow, { castShadow: false });
-        addSpinningFan(0, h - 0.18, lz, shopDyn);
+      // Porcelain Double Hand-Wash Basin Station with Chrome Faucets & Real Reflective Mirror
+      box(intG, [0.64, 0.88, 2.10], [hw - 0.62, 0.44, 0.2], porcelainMat);
+      box(intG, [0.68, 0.06, 2.16], [hw - 0.62, 0.90, 0.2], graniteMat);
+      for (const bz of [-0.32, 0.72]) {
+        cylinder(intG, 0.18, 0.14, 0.10, [hw - 0.62, 0.94, bz], porcelainMat, 12);
+        cylinder(intG, 0.018, 0.018, 0.16, [hw - 0.38, 1.00, bz], chromeMat, 8);
+        rodBetween(intG, [hw - 0.38, 1.06, bz], [hw - 0.54, 1.03, bz], 0.014, chromeMat, 8);
       }
-    },
-  });
+      box(intG, [0.05, 1.08, 1.90], [hw - 0.33, 1.66, 0.2], brassMat);
+      box(intG, [0.06, 0.98, 1.80], [hw - 0.34, 1.66, 0.2], mirrorSurfaceMat);
 
-  // ============================================================================
-  // 4) SHOP #2: সাতরাস্তা বেকারি ও কনফেকশনারি (Adjacent NE Shop beside Belal Bhai!)
-  // ============================================================================
-  createEnterableShop({
-    name: 'সাতরাস্তা বেকারি ও কনফেকশনারি',
-    zoneLabel: 'SATRASTA MORE · BAKERY & CONFECTIONERY',
-    cx: -890.2, cz: -309.2, rotY: -0.18, w: 7.4, d: 8.4, h: 3.7, upperFloors: 1,
-    wallMat: creamWall, accentMat: warmOchre, awningMat: maroonWall, floorMat: tileFloorMat,
-    doorWidth: 3.8, hasGlassDoor: false,
-    signTitle: 'সাতরাস্তা বেকারি ও কনফেকশনারি',
-    signSub: 'তাজা পাউরুটি · পেস্ট্রি · বিস্কুট · কোল্ড ড্রিংকস',
-    signBg: '#78350f', signAccent: '#fde047',
-    buildInterior(intG, shopDyn, toWorld, { hd, h }) {
-      box(intG, [4.2, 1.02, 0.92], [0, 0.51, -hd + 1.65], chromeMat);
-      box(intG, [4.0, 0.78, 0.84], [0, 1.40, -hd + 1.65], glassMat, { castShadow: false });
-      const cakeCols = [warmOchre, flowerGold, flowerPink, creamWall, flowerRed];
-      for (let i = 0; i < 6; i++) {
-        cylinder(intG, 0.15, 0.16, 0.16, [-1.5 + i * 0.60, 1.18, -hd + 1.60], cakeCols[i % cakeCols.length], 10);
+      // Framed Mughlai Wall Art Panels along West Dining Wall
+      for (const az of [-2.2, 1.2, 4.2]) {
+        box(intG, [0.05, 0.92, 1.38], [-hw + 0.31, 2.05, az], brassMat);
+        box(intG, [0.06, 0.82, 1.28], [-hw + 0.32, 2.05, az], wallArtMat);
       }
-      box(intG, [1.6, 0.06, 0.16], [0, h - 0.28, 0], lampGlow, { castShadow: false });
-      addSpinningFan(0, h - 0.18, 0.2, shopDyn);
+
+      // 9 Spacious Luxury 4-Seater Dining Booths (3 Rows × 3 Columns!)
+      for (const tx of [-7.0, -0.4, 6.2]) {
+        for (const tz of [-2.4, 0.8, 4.0]) {
+          addDetailedDiningBooth(intG, tx, tz, emeraldWall, toWorld, Math.PI - 0.08, 'কাচ্চি ঘর ডাইনিং টেবিল', 0.18);
+        }
+      }
+      // 3 Crystal Chandeliers + 4 Spinning Ceiling Fans + 3 Split ACs
+      for (const cxCh of [-6.8, -0.4, 6.0]) {
+        addChandelier(intG, cxCh, h - 0.15, 0.8);
+      }
+      addSplitAC(intG, -hw + 0.28, h - 0.75, -1.0, Math.PI * 0.5);
+      addSplitAC(intG, -hw + 0.28, h - 0.75, 3.5, Math.PI * 0.5);
+      addSplitAC(intG, hw - 0.28, h - 0.75, 3.5, -Math.PI * 0.5);
+      for (const fx of [-5.2, 4.6]) {
+        for (const fz of [-1.8, 3.6]) {
+          addSpinningFan(fx, h - 0.18, fz, shopDyn);
+        }
+      }
     },
   });
 
   // ============================================================================
   // 5) SHIMLA PLAZA 5-STORY TOWER + 3RD & 4TH FLOOR ENTERABLE KACCHI BHAI!
   //    ("কাচ্চি ভাইটা একটু উপরে তিন চার তলার উপরে করবেন একটা বিল্ডিংয়ের")
-  //    Location: North KDA Avenue (cx = -864.0, cz = -309.5, facing South +Z)
+  //    Location: North KDA Avenue (cx = -862.5, cz = -308.5, facing South +Z)
   //    Walkable Marble Staircase climbs GF (0.18m) -> 2nd (3.68m) -> 3rd (7.18m) -> 4th Floor (10.68m)!
   // ============================================================================
   {
-    const KCX = -864.0;
-    const KCZ = -309.5;
+    const KCX = -862.5;
+    const KCZ = -308.5;
     const KW = 17.6;
     const KD = 13.0;
     const hw = KW * 0.5;
@@ -1326,62 +1432,218 @@ export function buildSatrastaMoreDistrict(parent, m) {
   }
 
   // ============================================================================
-  // 6) SHOP #4: GRAND বড় সাতরাস্তা কাচ্চি ঘর (LARGE 21m × 14m FLAGSHIP RESTAURANT!)
-  //    ("কাচ্চি ঘরটা একটু বড় করবেন")
+  // 6) SHOP #4 (SOUTH SIDE — OPPOSITE KACCHI GHOR): বিল্লাল ভাইয়ের স্পেশাল চায়ের দোকান!
+  //    Redesigned Authentic Khulna Tea House + Right-Hand Entrance পানওয়ালার দোকান
+  //    - বিপরীত সাইডে (South KDA Avenue, directly facing North toward Kacchi Ghor)
+  //    - সবসময় খোলা (rolled-up shutter, hanging Edison lights, side glowing blade sign)
+  //    - সামনেই লাইভ চা কাউন্টার (৩ কেতলি, গরম চায়ের কাপ, কলার ছড়ি, বিস্কুট/বান শোকেস)
+  //    - ঢোকার একদম ডান হাতে (+X) শাহী মিষ্টি পানের দোকান ও খালি বসার আসন (কোনো NPC নেই)
+  //    - ভিতরে সোজাসুজি বড় বসার হল (৮টি কাঠের ব্যাকরেস্ট আড্ডা বুথ, টিভি, ফ্রিজ ও বেসিন)
   // ============================================================================
   createEnterableShop({
-    name: 'সাতরাস্তা কাচ্চি ঘর · গ্র্যান্ড হল',
-    zoneLabel: 'SATRASTA MORE · GRAND KACCHI GHOR RESTAURANT',
-    cx: -862.0, cz: -264.5, rotY: Math.PI, w: 21.0, d: 14.0, h: 4.5, upperFloors: 3,
-    wallMat: creamWall, accentMat: emeraldWall, awningMat: emeraldWall, floorMat: kacchiGhorFloorMat,
-    doorWidth: 4.0, hasGlassDoor: true,
-    signTitle: 'সাতরাস্তা কাচ্চি ঘর · GRAND KACCHI GHOR',
-    signSub: 'খাসির স্পেশাল কাচ্চি · খুলনার চুইঝাল গরুর মাংস · বিফ তেহারি · ফ্যামিলি ডাইনিং',
-    signBg: '#0f3d2e', signAccent: '#fde047',
+    name: 'বিল্লাল ভাইয়ের স্পেশাল চায়ের দোকান',
+    zoneLabel: 'SATRASTA MORE · BILLAL BHAI SPECIAL TEA HOUSE',
+    cx: -881.5, cz: -268.2, rotY: Math.PI, w: 8.8, d: 14.8, h: 4.1, upperFloors: 1,
+    wallMat: creamWall, accentMat: emeraldWall, awningMat: emeraldWall, floorMat: luxuryMarbleMat,
+    doorWidth: 6.8, hasGlassDoor: false,
+    signTitle: 'বিল্লাল ভাইয়ের স্পেশাল চায়ের দোকান · সাতরাস্তা',
+    signSub: 'খুলনার বিখ্যাত মালাই চা · দুধ চা · মশলা চা · ২৪ ঘণ্টা খোলা · ভিতরে বসার সুব্যবস্থা',
+    signBg: '#064e3b', signAccent: '#fde047',
     buildInterior(intG, shopDyn, toWorld, { hw, hd, h }) {
-      // Grand Emerald & Gold Marble Serving Counter + 4 Copper Handis + Dessert Chiller + Cash Desk!
-      box(intG, [10.4, 1.06, 1.02], [-1.2, 0.53, -hd + 1.75], emeraldWall);
-      box(intG, [10.5, 0.08, 1.10], [-1.2, 1.08, -hd + 1.75], brassMat);
-      for (const dx of [-4.6, -2.6, -0.6, 1.4]) {
-        cylinder(intG, 0.46, 0.38, 0.56, [dx, 1.38, -hd + 1.75], redClothMat, 12);
-        cylinder(intG, 0.48, 0.48, 0.08, [dx, 1.68, -hd + 1.75], copperMat, 12);
+      const shopRotY = Math.PI;
+      const steamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.34, roughness: 1.0 });
+      const bananaMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.55 });
+      const woodPanelMat = new THREE.MeshStandardMaterial({ color: 0x6b3f20, roughness: 0.58 });
+      const tileWallMat = new THREE.MeshStandardMaterial({ map: makeTileFloorTexture('#f8fafc', '#e2e8f0', '#94a3b8'), roughness: 0.22 });
+
+      // ------------------------------------------------------------------------
+      // 0) AUTHENTIC TEA HOUSE ARCHITECTURAL DETAILING
+      //    Rolled-up shutter box (always open!), warm Edison festoon lights, wood wainscoting & blade sign
+      // ------------------------------------------------------------------------
+      // Rolled-up open steel shutter housing at top of wide entrance
+      cylinder(intG, 0.22, 0.22, 6.7, [0, 2.74, hd - 0.22], steelDark, 10);
+      // Warm hanging festoon Edison bulbs across the open front entrance
+      for (let bx = -3.0; bx <= 3.05; bx += 1.0) {
+        cylinder(intG, 0.008, 0.008, 0.32, [bx, 2.66, hd + 0.10], steelDark, 5);
+        const eBulb = new THREE.Mesh(new THREE.SphereGeometry(0.068, 8, 6), uplightGold);
+        eBulb.position.set(bx, 2.48, hd + 0.10);
+        shopDyn.add(eBulb);
       }
-      // Glass Borhani & Firni Display Chiller
-      box(intG, [2.4, 1.45, 0.85], [5.8, 0.725, -hd + 1.75], acWhiteMat);
-      box(intG, [2.2, 0.82, 0.88], [5.8, 0.98, -hd + 1.75], glassMat, { castShadow: false });
-      // Menu Board on Back Wall
-      const kgMenu = new THREE.Mesh(new THREE.PlaneGeometry(6.2, 1.85), new THREE.MeshStandardMaterial({
-        map: makeMenuBoardTexture('সাতরাস্তা কাচ্চি ঘর · স্পেশাল মেনু', [
-          'খাসির শাহী কাচ্চি বিরিয়ানি .......... ৪২০ টাকা',
-          'খুলনার স্পেশাল চুইঝাল গরুর মাংস ...... ৩২০ টাকা',
-          'বিফ তেহারি ও মোরগ পোলাও ............. ২৬০ টাকা',
-          'স্পেশাল বোরহানি ও জর্দা ............. ৮০ টাকা',
+      // Side-projecting glowing blade sign visible straight from Satrasta Roundabout!
+      addSignBox(shopDyn, {
+        title: 'বিল্লাল ভাইয়ের চা',
+        subtitle: 'মালাই চা · ২৪ ঘণ্টা',
+        bg: '#065f46', fg: '#fde047', accent: '#ffffff', width: 384, height: 160,
+      }, [-hw - 0.18, 3.25, hd + 0.55], -Math.PI * 0.5, 1.85, 0.78);
+
+      // Warm wooden wainscoting + vertical timber battens along both interior side walls
+      for (const sgn of [-1, 1]) {
+        box(intG, [0.06, 1.25, 14.0], [sgn * (hw - 0.31), 0.625, 0], woodPanelMat);
+        box(intG, [0.09, 0.07, 14.0], [sgn * (hw - 0.32), 1.26, 0], brassMat);
+        for (let bz = -6.2; bz <= 6.2; bz += 1.55) {
+          box(intG, [0.08, h - 0.35, 0.12], [sgn * (hw - 0.32), h * 0.5, bz], darkWoodMat);
+        }
+      }
+      // Ceiling wooden acoustic beams
+      for (let czB = -5.6; czB <= 5.8; czB += 2.28) {
+        box(intG, [8.2, 0.14, 0.18], [0, h - 0.16, czB], darkWoodMat);
+      }
+
+      // ------------------------------------------------------------------------
+      // A) FRONT ENTRANCE LEFT (-X): LIVE AUTHENTIC TEA BAR (সামনেই সবসময় গরম চা বিক্রি!)
+      // ------------------------------------------------------------------------
+      const teaZ = hd - 1.95;
+      // Clean white tiled backsplash behind tea stove
+      box(intG, [0.06, 2.20, 4.4], [-hw + 0.31, 1.15, teaZ - 0.7], tileWallMat);
+      // L-Shaped Stainless Steel & Marble-Top Tea Counter
+      box(intG, [3.15, 1.02, 1.12], [-hw + 1.85, 0.51, teaZ], emeraldWall);
+      box(intG, [3.22, 0.08, 1.18], [-hw + 1.85, 1.04, teaZ], chromeMat);
+      box(intG, [3.22, 0.05, 0.05], [-hw + 1.85, 0.96, teaZ + 0.58], uplightGold, { castShadow: false });
+      // 3-Burner Glowing Gas Stove + 3 Detailed Steaming Brass/Copper Tea Kettles (with spouts & handles)!
+      box(intG, [1.72, 0.14, 0.62], [-hw + 1.38, 1.14, teaZ], steelDark);
+      const kettleXs = [-hw + 0.80, -hw + 1.38, -hw + 1.96];
+      for (let ki = 0; ki < kettleXs.length; ki++) {
+        const kx = kettleXs[ki];
+        const kMat = ki === 1 ? brassMat : copperMat;
+        cylinder(intG, 0.14, 0.16, 0.04, [kx, 1.23, teaZ], emberGlowMat, 10);
+        cylinder(intG, 0.15, 0.21, 0.34, [kx, 1.42, teaZ], kMat, 12);
+        cylinder(intG, 0.09, 0.11, 0.06, [kx, 1.61, teaZ], chromeMat, 10);
+        rodBetween(intG, [kx + 0.14, 1.36, teaZ + 0.05], [kx + 0.26, 1.56, teaZ + 0.10], 0.018, kMat, 6);
+        rodBetween(intG, [kx - 0.15, 1.35, teaZ], [kx - 0.22, 1.55, teaZ], 0.014, steelDark, 6);
+        const s1 = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), steamMat);
+        s1.position.set(kx, 1.82, teaZ);
+        const s2 = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 5), steamMat);
+        s2.position.set(kx + 0.05, 2.02, teaZ - 0.04);
+        intG.add(s1, s2);
+      }
+      // Brass Tray with Ready-to-Serve Hot Malai Tea Porcelain Cups + Saucers right at the front!
+      box(intG, [1.02, 0.04, 0.58], [-hw + 2.82, 1.10, teaZ + 0.20], brassMat);
+      for (const [cxCup, czCup] of [[-0.32, -0.12], [0.0, -0.12], [0.32, -0.12], [-0.16, 0.14], [0.16, 0.14]]) {
+        cylinder(intG, 0.070, 0.055, 0.014, [-hw + 2.82 + cxCup, 1.125, teaZ + 0.20 + czCup], porcelainMat, 10);
+        cylinder(intG, 0.046, 0.034, 0.095, [-hw + 2.82 + cxCup, 1.175, teaZ + 0.20 + czCup], porcelainMat, 10);
+        cylinder(intG, 0.042, 0.042, 0.015, [-hw + 2.82 + cxCup, 1.222, teaZ + 0.20 + czCup], warmOchre, 10);
+      }
+      // Pyramid of Condensed Milk Tins + Hanging Iconic Banana Bunch (কলার ছড়ি)!
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3 - row; col++) {
+          cylinder(intG, 0.056, 0.056, 0.115, [-hw + 2.55 + col * 0.13 + row * 0.065, 1.14 + row * 0.115, teaZ - 0.30], flowerRed, 8);
+        }
+      }
+      rodBetween(intG, [-hw + 2.95, 2.80, teaZ + 0.45], [-hw + 2.95, 2.18, teaZ + 0.45], 0.016, steelDark, 5);
+      for (let bi = 0; bi < 7; bi++) {
+        const ba = (bi / 7) * Math.PI * 2;
+        const ban = cylinder(intG, 0.028, 0.022, 0.22, [-hw + 2.95 + Math.cos(ba) * 0.08, 2.06, teaZ + 0.45 + Math.sin(ba) * 0.08], bananaMat, 6);
+        ban.rotation.z = Math.cos(ba) * 0.45;
+        ban.rotation.x = Math.sin(ba) * 0.45;
+      }
+      // Double-Tier Glass Biscuit, Butter-Bun & Cake Display Cabinet behind tea bar
+      box(intG, [0.72, 1.85, 2.35], [-hw + 0.56, 0.925, teaZ - 1.90], chromeMat);
+      box(intG, [0.64, 0.98, 2.25], [-hw + 0.58, 1.42, teaZ - 1.90], glassMat, { castShadow: false });
+      const jarCols = [flowerGold, warmOchre, flowerRed, panGreenMat, flowerPink, brassMat];
+      for (let i = 0; i < 6; i++) {
+        cylinder(intG, 0.092, 0.092, 0.22, [-hw + 0.56, 1.18, teaZ - 2.82 + i * 0.36], jarCols[i % jarCols.length], 8);
+        cylinder(intG, 0.084, 0.084, 0.20, [-hw + 0.56, 1.56, teaZ - 2.82 + i * 0.36], jarCols[(i + 2) % jarCols.length], 8);
+      }
+
+      // ------------------------------------------------------------------------
+      // B) FRONT ENTRANCE RIGHT HAND (+X): শাহী মিষ্টি পান স্টল (খালি বসার আসন, কোনো NPC নেই!)
+      // ------------------------------------------------------------------------
+      const panX = hw - 1.18;
+      const panZ = hd - 1.15;
+      box(intG, [1.68, 0.98, 1.32], [panX, 0.49, panZ], woodPanelMat);
+      box(intG, [1.74, 0.07, 1.38], [panX, 1.01, panZ], chromeMat);
+      box(intG, [1.60, 0.78, 0.96], [panX, 1.43, panZ + 0.14], glassMat, { castShadow: false });
+      for (let bx = -0.50; bx <= 0.52; bx += 0.34) {
+        cylinder(intG, 0.115, 0.135, 0.22, [panX + bx, 1.14, panZ + 0.24], panGreenMat, 8);
+      }
+      const spiceCols = [flowerRed, flowerGold, brassMat, porcelainMat, copperMat, flowerPink];
+      for (let i = 0; i < 6; i++) {
+        cylinder(intG, 0.068, 0.068, 0.19, [panX - 0.54 + i * 0.215, 1.54, panZ - 0.08], spiceCols[i % spiceCols.length], 8);
+      }
+      box(intG, [0.06, 1.95, 1.45], [hw - 0.32, 1.48, panZ], redClothMat, { castShadow: false });
+      box(intG, [0.08, 0.07, 1.45], [hw - 0.33, 2.46, panZ], brassMat);
+      const panBulb = new THREE.Mesh(new THREE.SphereGeometry(0.072, 8, 6), uplightGold);
+      panBulb.position.set(panX, 2.34, panZ);
+      shopDyn.add(panBulb);
+      box(intG, [0.60, 0.46, 0.60], [panX + 0.05, 0.23, panZ - 1.05], darkWoodMat);
+      box(intG, [0.56, 0.08, 0.56], [panX + 0.05, 0.50, panZ - 1.05], redClothMat);
+      const swPan = toWorld(panX + 0.05, panZ - 1.05);
+      seats.push({ seatX: swPan.x, seatZ: swPan.z, seatY: 0.54, yaw: shopRotY, fy: 0.18, label: 'পানওয়ালার খালি আসন' });
+      addSignBox(shopDyn, {
+        title: 'শাহী মিষ্টি পান',
+        subtitle: 'বিল্লাল ভাই কর্নার · পান স্টল',
+        bg: '#14532d', fg: '#ffffff', accent: '#fde047', width: 512, height: 180,
+      }, [panX, 2.58, panZ + 0.68], 0, 1.80, 0.58);
+
+      // ------------------------------------------------------------------------
+      // C) DEEP STRAIGHT-IN COZY SEATING HALL (৮টি ব্যাকরেস্ট কাঠের আড্ডা বুথ!)
+      //    Wide central walkway (lx ∈ [-1.2 .. +1.2]) all the way to the back!
+      // ------------------------------------------------------------------------
+      for (const tz of [2.5, 0.0, -2.5, -5.0]) {
+        for (const sgn of [-1, 1]) {
+          const tx = sgn * 2.65;
+          box(intG, [1.75, 0.07, 0.88], [tx, 0.74, tz], woodPanelMat);
+          box(intG, [1.78, 0.025, 0.90], [tx, 0.70, tz], brassMat);
+          box(intG, [0.10, 0.72, 0.54], [tx, 0.36, tz], steelDark);
+          box(intG, [0.64, 0.04, 0.64], [tx, 0.02, tz], steelDark);
+          cylinder(intG, 0.045, 0.035, 0.09, [tx - 0.42, 0.82, tz - 0.16], porcelainMat, 10);
+          cylinder(intG, 0.045, 0.035, 0.09, [tx + 0.40, 0.82, tz + 0.16], porcelainMat, 10);
+          cylinder(intG, 0.055, 0.055, 0.11, [tx, 0.83, tz - 0.18], brassMat, 8);
+          box(intG, [0.18, 0.07, 0.10], [tx, 0.81, tz + 0.14], emeraldWall);
+          for (const szOff of [-0.72, 0.72]) {
+            box(intG, [1.72, 0.42, 0.40], [tx, 0.21, tz + szOff], darkWoodMat);
+            box(intG, [1.68, 0.06, 0.38], [tx, 0.45, tz + szOff], emeraldWall);
+            box(intG, [1.72, 0.46, 0.09], [tx, 0.68, tz + szOff + Math.sign(szOff) * 0.17], woodPanelMat);
+          }
+          const sw = toWorld(tx, tz + 0.70);
+          seats.push({ seatX: sw.x, seatZ: sw.z, seatY: 0.48, yaw: shopRotY + Math.PI, fy: 0.18, label: 'বিল্লাল ভাইয়ের চায়ের আড্ডা বুথ' });
+        }
+      }
+
+      // Stocked Cold-Drinks Glass Fridge (ফ্রিজ) with Bottles Inside + Porcelain Hand-Wash Basin & Reflective Mirror
+      box(intG, [0.85, 2.05, 0.92], [hw - 0.72, 1.025, 4.35], acWhiteMat);
+      box(intG, [0.88, 1.45, 0.78], [hw - 0.74, 1.18, 4.35], glassMat, { castShadow: false });
+      const sodaCols = [flowerRed, panGreenMat, flowerGold, porcelainMat];
+      for (let sh = 0; sh < 3; sh++) {
+        const sy = 0.68 + sh * 0.40;
+        for (let bi = 0; bi < 3; bi++) {
+          cylinder(intG, 0.046, 0.046, 0.22, [hw - 0.72, sy, 4.10 + bi * 0.24], sodaCols[(bi + sh) % sodaCols.length], 8);
+        }
+      }
+      box(intG, [1.25, 0.86, 0.58], [hw - 1.10, 0.43, -hd + 0.65], porcelainMat);
+      cylinder(intG, 0.18, 0.14, 0.10, [hw - 1.10, 0.88, -hd + 0.65], porcelainMat, 12);
+      cylinder(intG, 0.018, 0.018, 0.16, [hw - 1.10, 0.96, -hd + 0.44], chromeMat, 8);
+      rodBetween(intG, [hw - 1.10, 1.02, -hd + 0.44], [hw - 1.10, 0.99, -hd + 0.58], 0.014, chromeMat, 8);
+      box(intG, [1.14, 0.90, 0.05], [hw - 1.10, 1.56, -hd + 0.34], brassMat);
+      box(intG, [1.04, 0.80, 0.06], [hw - 1.10, 1.56, -hd + 0.35], mirrorSurfaceMat);
+
+      // Framed Wall Art on Side Walls
+      box(intG, [0.05, 0.82, 1.24], [-hw + 0.32, 2.02, -1.25], brassMat);
+      box(intG, [0.06, 0.72, 1.14], [-hw + 0.33, 2.02, -1.25], wallArtMat);
+      box(intG, [0.05, 0.82, 1.24], [hw - 0.32, 2.02, -1.25], brassMat);
+      box(intG, [0.06, 0.72, 1.14], [hw - 0.33, 2.02, -1.25], wallArtMat);
+
+      // Back Wall: 55-inch 4K Live Smart TV (matching Taltola House!) + Media Shelf + High-Res Menu Board
+      box(intG, [2.10, 1.22, 0.09], [-0.4, 2.82, -hd + 0.34], steelDark);
+      const tvPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.94, 1.08), tvScreenMat);
+      tvPlane.position.set(-0.4, 2.82, -hd + 0.40);
+      intG.add(tvPlane);
+      box(intG, [1.50, 0.07, 0.28], [-0.4, 2.15, -hd + 0.44], darkWoodMat);
+      const menu = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 1.52), new THREE.MeshStandardMaterial({
+        map: makeMenuBoardTexture('বিল্লাল ভাইয়ের স্পেশাল চা · সাতরাস্তা', [
+          '১. স্পেশাল মালাই চা ............ ২৫ টাকা',
+          '২. গরম দুধ-এলাচ চা ............. ১৫ টাকা',
+          '৩. আদা-লেবু মশলা চা ........... ১৫ টাকা',
+          '৪. বাটার বান · বিস্কুট · কেক .... ৪০ টাকা',
         ], '#064e3b', '#fde047'),
       }));
-      kgMenu.position.set(-1.2, 2.75, -hd + 0.34);
-      intG.add(kgMenu);
+      menu.position.set(-0.4, 1.32, -hd + 0.34);
+      intG.add(menu);
 
-      // Hand-Wash Basin Station with Mirror on East Corner
-      box(intG, [1.8, 0.88, 0.62], [hw - 1.2, 0.44, 0.2], acWhiteMat);
-      box(intG, [1.5, 0.95, 0.06], [hw - 0.34, 1.65, 0.2], chromeMat);
-
-      // 9 Spacious Luxury 4-Seater Dining Booths (3 Rows × 3 Columns!)
-      for (const tx of [-7.0, -0.4, 6.2]) {
-        for (const tz of [-2.4, 0.8, 4.0]) {
-          addDetailedDiningBooth(intG, tx, tz, emeraldWall, toWorld, 0, 'কাচ্চি ঘর ডাইনিং টেবিল', 0.18);
-        }
-      }
-      // 3 Crystal Chandeliers + 4 Spinning Ceiling Fans + 3 Split ACs
-      for (const cxCh of [-6.8, -0.4, 6.0]) {
-        addChandelier(intG, cxCh, h - 0.15, 0.8);
-      }
-      addSplitAC(intG, -hw + 0.28, h - 0.75, -1.0, Math.PI * 0.5);
-      addSplitAC(intG, -hw + 0.28, h - 0.75, 3.5, Math.PI * 0.5);
-      addSplitAC(intG, hw - 0.28, h - 0.75, 3.5, -Math.PI * 0.5);
-      for (const fx of [-5.2, 4.6]) {
-        for (const fz of [-1.8, 3.6]) {
-          addSpinningFan(fx, h - 0.18, fz, shopDyn);
-        }
+      // Warm Overhead Pendant Lights & 3 Spinning Ceiling Fans down the hall
+      for (const lz of [4.2, 0.0, -4.2]) {
+        box(intG, [2.1, 0.06, 0.18], [0, h - 0.28, lz], lampGlow, { castShadow: false });
+        addSpinningFan(0, h - 0.20, lz, shopDyn);
       }
     },
   });
@@ -1425,25 +1687,27 @@ export function buildSatrastaMoreDistrict(parent, m) {
   });
 
   // ============================================================================
-  // 8) SHOP #6: ২য় মিষ্টি পান ও জুস কর্নার (SE Corner of Satrasta More!)
+  // 8) SHOP #6: সাতরাস্তা বেকারি ও মিষ্টি পান কর্নার (Adjacent South Shop beside Billal Bhai!)
   // ============================================================================
   createEnterableShop({
-    name: 'মা-বাবার দোয়া মিষ্টি পান ও জুস কর্নার',
-    zoneLabel: 'SATRASTA MORE · MISTI PAN & JUICE CORNER',
-    cx: -895.5, cz: -272.0, rotY: Math.PI + 0.30, w: 7.6, d: 6.4, h: 3.7, upperFloors: 1,
-    wallMat: creamWall, accentMat: emeraldWall, awningMat: panGreenMat, floorMat: tileFloorMat,
-    doorWidth: 3.8, hasGlassDoor: false,
-    signTitle: 'সাতরাস্তা মিষ্টি পান ও জুস কর্নার',
-    signSub: 'শাহী মিষ্টি পান · ফালুদা · লাচ্ছি · কোল্ড ড্রিংকস',
-    signBg: '#065f46', signAccent: '#fde047',
+    name: 'সাতরাস্তা বেকারি ও মিষ্টি পান কর্নার',
+    zoneLabel: 'SATRASTA MORE · BAKERY & MISTI PAN CORNER',
+    cx: -867.5, cz: -269.5, rotY: Math.PI, w: 11.4, d: 9.2, h: 3.8, upperFloors: 2,
+    wallMat: creamWall, accentMat: warmOchre, awningMat: maroonWall, floorMat: tileFloorMat,
+    doorWidth: 4.2, hasGlassDoor: false,
+    signTitle: 'সাতরাস্তা বেকারি ও মিষ্টি পান কর্নার',
+    signSub: 'তাজা পাউরুটি · পেস্ট্রি · শাহী মিষ্টি পান · ফালুদা ও লাচ্ছি',
+    signBg: '#78350f', signAccent: '#fde047',
     buildInterior(intG, shopDyn, toWorld, { hd, h }) {
-      box(intG, [3.8, 1.02, 0.88], [0, 0.51, -hd + 1.50], chromeMat);
-      box(intG, [3.6, 0.72, 0.80], [0, 1.38, -hd + 1.50], glassMat, { castShadow: false });
-      for (let bx = -1.2; bx <= 1.25; bx += 0.6) {
-        cylinder(intG, 0.15, 0.17, 0.22, [bx, 1.15, -hd + 1.46], panGreenMat, 8);
+      box(intG, [6.4, 1.02, 0.92], [0, 0.51, -hd + 1.65], chromeMat);
+      box(intG, [6.2, 0.78, 0.84], [0, 1.40, -hd + 1.65], glassMat, { castShadow: false });
+      const cakeCols = [warmOchre, flowerGold, flowerPink, creamWall, flowerRed, panGreenMat];
+      for (let i = 0; i < 8; i++) {
+        cylinder(intG, 0.15, 0.16, 0.18, [-2.4 + i * 0.68, 1.18, -hd + 1.60], cakeCols[i % cakeCols.length], 10);
       }
-      box(intG, [1.5, 0.06, 0.16], [0, h - 0.28, 0], lampGlow, { castShadow: false });
-      addSpinningFan(0, h - 0.18, 0.2, shopDyn);
+      box(intG, [2.0, 0.06, 0.16], [0, h - 0.28, 0], lampGlow, { castShadow: false });
+      addSpinningFan(-1.8, h - 0.18, 0.2, shopDyn);
+      addSpinningFan(1.8, h - 0.18, 0.2, shopDyn);
     },
   });
 
@@ -1466,10 +1730,16 @@ export function buildSatrastaMoreDistrict(parent, m) {
     box(bg, [b.w, b.h, b.d], [0, b.h * 0.5, 0], b.wall);
     box(bg, [b.w + 0.44, 0.90, b.d + 0.44], [0, b.h + 0.44, 0], b.accent);
     for (let fy = 4.0; fy < b.h - 1.5; fy += 3.2) {
-      box(bg, [b.w + 0.34, 0.22, b.d + 0.34], [0, fy, 0], creamWall);
+      box(bg, [b.w + 0.38, 0.22, b.d + 0.38], [0, fy, 0], creamWall);
       for (let wx = -b.w * 0.38; wx <= b.w * 0.39; wx += 3.6) {
-        box(bg, [2.3, 1.62, 0.14], [wx, fy + 1.50, b.d * 0.5 + 0.05], glassTintBlue, { castShadow: false });
-        box(bg, [2.4, 0.12, 0.28], [wx, fy + 0.66, b.d * 0.5 + 0.12], b.accent);
+        const wy = fy + 1.52;
+        const fz = b.d * 0.5;
+        box(bg, [2.24, 1.60, 0.08], [wx, wy, fz + 0.04], glassTintBlue, { castShadow: false });
+        box(bg, [2.36, 0.07, 0.14], [wx, wy - 0.81, fz + 0.06], aluminumMat);
+        box(bg, [2.36, 0.07, 0.14], [wx, wy + 0.81, fz + 0.06], aluminumMat);
+        box(bg, [0.06, 1.64, 0.14], [wx, wy, fz + 0.06], aluminumMat);
+        box(bg, [2.52, 0.10, 0.42], [wx, wy + 0.92, fz + 0.20], creamWall);
+        box(bg, [2.42, 0.12, 0.26], [wx, wy - 0.88, fz + 0.12], b.accent);
       }
     }
     const cosR = Math.cos(b.rotY);
