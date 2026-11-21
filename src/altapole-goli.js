@@ -1753,8 +1753,8 @@ export function buildAltapoleOppositeGoli(parent, m, helpers = {}) {
   ];
 
   const buildings = specs.map((cfg) => createEnterableGoliBuilding(root, shared, cfg));
-  // Dead-end Cul-de-Sac: User's Signature 3-Story Dream Home with Shiny Green & Steel Gate, Drive-In Car/Bike Garage, Left Staircase & Interactive Big Flats!
-  const userDreamHome = createUserDreamHome(root, shared, { cx: 215.3, cz: -404.0, rotY: -Math.PI / 2 });
+  // Dead-end Cul-de-Sac: User's Grand 5-Story Dream Home (4 Big Flats/Floor, Open Rooftop Garden, Walkable Penthouse Roof & Dual Water Tanks)
+  const userDreamHome = createUserDreamHome(root, shared, { cx: 217.8, cz: -404.0, rotY: -Math.PI / 2 });
   buildings.push(userDreamHome);
   const liftBuildings = buildings.filter((b) => b.hasLift && b.liftApi);
 
@@ -1763,7 +1763,7 @@ export function buildAltapoleOppositeGoli(parent, m, helpers = {}) {
   helpers.addPalm?.(propsDynamic, 208.2, 0, -395.4, 7.0, -0.15, 0.22);
 
   function inGoliBounds(pos, pad = 6.0) {
-    return pos && pos.x >= 169 - pad && pos.x <= 232 + pad && pos.z >= -422 - pad && pos.z <= -386 + pad;
+    return pos && pos.x >= 169 - pad && pos.x <= 236 + pad && pos.z >= -422 - pad && pos.z <= -386 + pad;
   }
 
   return {

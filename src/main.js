@@ -2367,7 +2367,7 @@ function handleDoorInteraction(allowClimbFallback = false) {
     return true;
   }
   const nearSeat = findNearestSeat(playerPos);
-  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house?.getPrompt(playerPos));
+  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house?.getPrompt(playerPos));
   if (nearSeat && (!hasDoorOrLiftPrompt || nearSeat.dist < 1.25)) {
     sitOnSeat(nearSeat);
     return true;
@@ -2403,6 +2403,10 @@ function handleDoorInteraction(allowClimbFallback = false) {
     return true;
   }
   if (environment?.landmarks?.ptiMore?.toggleGate?.(playerPos)) {
+    syncHUDButtons(false, true);
+    return true;
+  }
+  if (environment?.landmarks?.satrastaMore?.interact?.(playerPos)) {
     syncHUDButtons(false, true);
     return true;
   }
@@ -4369,6 +4373,8 @@ function findNearestSeat(pos) {
   if (goliSeat) return goliSeat;
   const mosqueSeat = environment?.landmarks?.aliaMadrasah?.findNearestModelMosqueSeat?.(pos);
   if (mosqueSeat) return mosqueSeat;
+  const satrastaSeat = environment?.landmarks?.satrastaMore?.findNearestSeat?.(pos);
+  if (satrastaSeat) return satrastaSeat;
   const footY = pos.y - EYE_HEIGHT;
   let building = null;
   let fy = 0;
@@ -4993,7 +4999,7 @@ function updateHUDPrompt() {
       const nearSeat = findNearestSeat(playerPos);
       const nearCar = findNearestEnterableCar(playerPos);
       const carPrompt = nearCar ? nearCar.getPrompt(playerPos) : null;
-      const doorOrLiftPrompt = environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
+      const doorOrLiftPrompt = environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
       if (carPrompt && !doorOrLiftPrompt && !nearSeat) {
         promptText = carPrompt;
       } else if (nearSeat && (!doorOrLiftPrompt || nearSeat.dist < 1.25)) {
@@ -5093,6 +5099,8 @@ function updateHUDPrompt() {
       zone = environment?.landmarks?.aliaMadrasah?.getModelMosqueZoneName?.(x, z, footY) || 'KHULNA DISTRICT MODEL MOSQUE · ALIA MADRASAH';
     } else if (x >= 144 && x <= 222 && z >= -524 && z <= -292) {
       zone = environment?.altapoleGoli?.getZoneName?.(x, z, footY) || environment?.altapoleTower?.getZoneName?.(x, z, footY) || environment?.altapole?.getZoneName?.(x, z) || 'ALTAPOLE LANE · KHULNA';
+    } else if (environment?.landmarks?.satrastaMore?.getZoneName?.(x, z, footY)) {
+      zone = environment.landmarks.satrastaMore.getZoneName(x, z, footY);
     } else if (Math.abs(x) < 35 && Math.abs(z) < 42) {
       zone = 'HAJI MOHSIN ROAD · KHULNA';
     } else {
@@ -5653,7 +5661,8 @@ function updateMovement(delta) {
     || Boolean(environment?.altapole?.isInsideAnyHouse?.(playerPos))
     || Boolean(environment?.altapoleTower?.isInsideAnyRoom?.(playerPos))
     || Boolean(environment?.altapoleGoli?.isInsideAnyRoom?.(playerPos))
-    || Boolean(environment?.landmarks?.aliaMadrasah?.isInsideModelMosque?.(playerPos));
+    || Boolean(environment?.landmarks?.aliaMadrasah?.isInsideModelMosque?.(playerPos))
+    || Boolean(environment?.landmarks?.satrastaMore?.getZoneName?.(playerPos.x, playerPos.z, camFootY) && !environment?.landmarks?.satrastaMore?.getZoneName?.(playerPos.x, playerPos.z, camFootY)?.includes('KDA AVENUE'));
 
   if (indoorLight) {
     indoorLight.visible = insideHouse && quality !== 'low' && quality !== 'medium';

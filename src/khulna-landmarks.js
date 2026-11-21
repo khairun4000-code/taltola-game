@@ -5,6 +5,7 @@ import { buildCNGAuto } from './khulna-vehicles.js';
 import { buildRoyalMoreDistrict } from './royal-more.js';
 import { buildPtiMoreDistrict } from './pti-more.js';
 import { buildAliaMadrasahDistrict } from './alia-madrasah.js';
+import { buildSatrastaMoreDistrict } from './satrasta-more.js';
 
 function makeSignTexture({
   title,
@@ -1401,6 +1402,7 @@ export function buildKhulnaLandmarks(parent, m) {
   const aliaMadrasah = buildAliaMadrasahDistrict(group, m);
   const royalMore = buildRoyalMoreDistrict(group, m);
   const ptiMore = buildPtiMoreDistrict(group, m);
+  const satrastaMore = buildSatrastaMoreDistrict(group, m);
 
   for (const s of slices) {
     mergeStaticMeshes(s.staticG);
@@ -1417,6 +1419,7 @@ export function buildKhulnaLandmarks(parent, m) {
     aliaMadrasah.syncVisibility(playerPos);
     royalMore.syncVisibility(playerPos);
     ptiMore.syncVisibility(playerPos);
+    satrastaMore.syncVisibility(playerPos);
   }
 
   return {
@@ -1424,6 +1427,7 @@ export function buildKhulnaLandmarks(parent, m) {
     aliaMadrasah,
     royalMore,
     ptiMore,
+    satrastaMore,
     syncVisibility,
     getGroundHeight(pos) {
       let hadisY = 0;
@@ -1456,6 +1460,7 @@ export function buildKhulnaLandmarks(parent, m) {
         aliaMadrasah.getGroundHeight?.(pos) ?? 0,
         royalMore.getGroundHeight?.(pos) ?? 0,
         ptiMore.getGroundHeight?.(pos) ?? 0,
+        satrastaMore.getGroundHeight?.(pos) ?? 0,
       );
     },
     applyCollisions(pos, radius, footY = 0) {
@@ -1479,17 +1484,20 @@ export function buildKhulnaLandmarks(parent, m) {
       aliaMadrasah.applyCollisions?.(pos, radius, footY);
       royalMore.applyCollisions?.(pos, radius, footY);
       ptiMore.applyCollisions?.(pos, radius, footY);
+      satrastaMore.applyCollisions?.(pos, radius, footY);
     },
     setNightFactor(nf) {
       aliaMadrasah.setNightFactor(nf);
       royalMore.setNightFactor(nf);
       ptiMore.setNightFactor(nf);
+      satrastaMore.setNightFactor(nf);
     },
     update(time, playerPos = null) {
       if (playerPos) syncVisibility(playerPos);
       aliaMadrasah.update(time, playerPos);
       royalMore.update(time, playerPos);
       ptiMore.update(time, playerPos);
+      satrastaMore.update(time, playerPos);
     },
     setVisible(visible) {
       group.visible = visible;

@@ -94,20 +94,17 @@ function makeArtCanvasTexture(variant = 0) {
     ctx.beginPath();
     ctx.arc(172, 74, 22, 0, Math.PI * 2);
     ctx.fill();
-    // River reflection
     const river = ctx.createLinearGradient(0, 118, 0, 176);
     river.addColorStop(0, '#c2410c');
     river.addColorStop(1, '#0f172a');
     ctx.fillStyle = river;
     ctx.fillRect(0, 118, 256, 58);
-    // Mangroves silhouette
     ctx.fillStyle = '#064e3b';
     for (let x = 0; x < 256; x += 22) {
       ctx.beginPath();
       ctx.arc(x + 8, 118, 14 + (x % 3) * 5, Math.PI, 0);
       ctx.fill();
     }
-    // Traditional wooden boat
     ctx.fillStyle = '#1e1b18';
     ctx.beginPath();
     ctx.moveTo(64, 144);
@@ -190,28 +187,28 @@ function makeMeterPanelTexture() {
   ctx.lineWidth = 8;
   ctx.strokeRect(4, 4, 248, 248);
   ctx.fillStyle = '#0f172a';
-  ctx.fillRect(16, 14, 224, 28);
+  ctx.fillRect(14, 12, 228, 26);
   ctx.fillStyle = '#fde047';
-  ctx.font = 'bold 14px sans-serif';
+  ctx.font = 'bold 13px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('WZPDCL KHULNA · 8 METERS', 128, 33);
-  for (let r = 0; r < 2; r++) {
+  ctx.fillText('WZPDCL KHULNA · 16 FLAT METERS', 128, 30);
+  for (let r = 0; r < 4; r++) {
     for (let col = 0; col < 4; col++) {
-      const mx = 18 + col * 56;
-      const my = 56 + r * 92;
+      const mx = 16 + col * 58;
+      const my = 46 + r * 49;
       ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(mx, my, 46, 76);
+      ctx.fillRect(mx, my, 48, 41);
       ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(mx, my, 46, 76);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(mx, my, 48, 41);
       ctx.fillStyle = '#052e16';
-      ctx.fillRect(mx + 6, my + 12, 34, 18);
+      ctx.fillRect(mx + 5, my + 6, 38, 13);
       ctx.fillStyle = '#4ade80';
-      ctx.font = 'bold 10px monospace';
-      ctx.fillText(`${r + 2}${col < 2 ? 'A' : 'B'}`, mx + 23, my + 24);
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText(`${r + 2}${col < 2 ? 'A' : 'B'}${(col % 2) + 1}`, mx + 24, my + 16);
       ctx.fillStyle = '#ef4444';
       ctx.beginPath();
-      ctx.arc(mx + 23, my + 48, 4, 0, Math.PI * 2);
+      ctx.arc(mx + 24, my + 30, 3, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -250,27 +247,30 @@ function makeTvScreenTexture(isOn) {
 }
 
 /**
- * Builds the user's Grand 5-Story Dream Home directly straight at the end of Altapole East Goli:
- *  - Elevated Ground Floor (Level 0 at y = 0.85m) with a 4.2m Hill-Climb Tiled Ramp for Cars & Bikes + 6-step Side Stairs with Stainless Handrail
- *  - Tall, Wide Shiny Emerald Green + Mirror Stainless Steel Double Garage Gate (3.8m × 3.4m, gleams in sun & at night!)
- *  - Detailed Open Drive-In Car & Bike Parking Garage on Level 0 (Guard Desk, WZPDCL 8-Meter Panel, Pump Manifold, Wheel Stoppers, Fire Extinguisher)
- *  - Central Staircase & Corridor Core down the middle (GF -> 2F -> 3F -> 4F -> 5F -> Rooftop) with Brass Flat Number Plaques
- *  - 2 Big, Separate, Enclosed Luxury Flats (Flat A + Flat B) on EVERY Upper Floor (Floors 2, 3, 4, 5)
- *  - 3 Openable Main Wooden Doors right beside the Staircase on EVERY Upper Floor!
- *  - Fully Detailed & Interactive Flats: TV Slat Wall + Soundbar, Curtains, Split ACs, Framed Khulna Art, 4-Seater Dining Set, Dressing Table & Lamps, Modular Kitchen + Chimney + LPG Cylinder, Full Attached Bathroom, Openable Almirahs, Openable Fridges, ON/OFF Smart TVs, Sittable Sofas/Beds/Commodes, Openable Thai Windows
- *  - Lush Rooftop Flower & Fruit-Tree Garden (ছাদ বাগান) with Fairy-Lit Pergola, Stepping Stones & Furnished Enterable Rooftop Room (ছাদের রুম)!
+ * Builds the user's Grand Expanded 5-Story Dream Home directly straight at the end of Altapole East Goli:
+ *  - Large 18m × 18m Footprint!
+ *  - Elevated Ground Floor (Level 0 at y = 0.85m) with 4.2m Hill-Climb Tiled Ramp + 6-Step Stainless-Railed Stairs
+ *  - Tall, Wide Shiny Emerald Green + Mirror Stainless Steel Double Garage Gate (3.8m × 3.4m)
+ *  - Huge 18m × 18m Open Drive-In Car & Bike Parking Garage on Level 0 (Guard Desk, WZPDCL 16-Meter Board, Pump Manifold, Wheel Stoppers)
+ *  - Central Staircase & Corridor Core down the middle (GF -> 2F -> 3F -> 4F -> 5F -> Open Rooftop)
+ *  - 4 BIG, SEPARATE, ENCLOSED LUXURY FLATS on EVERY Upper Floor (2 on Left: A1, A2 + 2 on Right: B1, B2 = 16 Flats!)
+ *  - Openable Doors, Smart TVs, Openable Almirahs, Openable Fridges, Split ACs, Curtains, Khulna Art, Modular Kitchens & Full Bathrooms in EVERY Flat!
+ *  - Grand OPEN Rooftop with a BIG Lush Rooftop Flower & Fruit-Tree Garden (বড় ছাদ বাগান)
+ *  - Half-Roof Enterable Penthouse Room (ছাদের রুম) + Walkable Exterior Staircase UP onto the Penthouse Room Roof!
+ *  - Light Garden (হালকা বাগান) & Sky-View Bench on top of the Penthouse Room Roof (y = 20.90m)!
+ *  - 2 Large Gazi Overhead Water Tanks on the Very Top Concrete Platform (y = 21.35m)!
  */
 export function createUserDreamHome(parent, shared, cfg = {}) {
   const m = shared.m;
-  const cx = cfg.cx ?? 215.3;
+  const cx = cfg.cx ?? 217.8;
   const cz = cfg.cz ?? -404.0;
   const rotY = cfg.rotY ?? (-Math.PI / 2); // Faces West (-X) straight down the alley!
-  const W = 16.4;
-  const D = 13.0;
-  const floors = 5; // 5 Stories: GF (0) + 2F (1) + 3F (2) + 4F (3) + 5F (4) + Rooftop (5)
-  const hw = W * 0.5; // 8.2
-  const hd = D * 0.5; // 6.5
-  const gfBaseY = 0.85; // Elevated Level 0 for real hill-climb car/bike ramp!
+  const W = 18.0;
+  const D = 18.0;
+  const floors = 5; // GF (0) + 2F (1) + 3F (2) + 4F (3) + 5F (4) + Open Rooftop (5)
+  const hw = W * 0.5; // 9.0
+  const hd = D * 0.5; // 9.0
+  const gfBaseY = 0.85;
   const gfH = 4.10;
   const flH = 3.20;
   const FLOOR_Y = [gfBaseY];
@@ -278,6 +278,9 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     FLOOR_Y.push(Number((gfBaseY + gfH + (k - 1) * flH).toFixed(2)));
   }
   const roofY = FLOOR_Y[floors]; // 17.75m
+  const rH = 3.15;
+  const upperRoofY = Number((roofY + rH).toFixed(2)); // 20.90m (walkable roof on top of rooftop room!)
+  const tankStandY = Number((upperRoofY + 0.45).toFixed(2)); // 21.35m (very top 2 water tanks platform!)
 
   const nameBn = '২৬ · আলতাপোল গলি ভিলা (৫-তলা)';
   const zonePrefix = '26 ALTAPOLE GOLI VILLA';
@@ -297,7 +300,7 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     };
   };
 
-  // Materials: Soft Off-White + Glossy Emerald Green & Mirror Stainless Steel + Rich Architectural & Interior Details!
+  // Shared Materials (zero duplicate materials inside loops for clean 60 FPS batching!)
   const softWhiteWall = shared.makeWall('#f7f8f5', 4808, false);
   const greenEnamelSteel = new THREE.MeshPhysicalMaterial({
     color: 0x16a34a,
@@ -365,8 +368,6 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   const clothRed = flowerMats[0];
   const clothBlue = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.8 });
   const clothGold = flowerMats[1];
-
-  // Rich Detailing Materials (shared across all merged groups for 60 FPS!)
   const warmWoodSlat = new THREE.MeshStandardMaterial({ color: 0x7c4a26, roughness: 0.62 });
   const darkWalnut = new THREE.MeshStandardMaterial({ color: 0x432818, roughness: 0.58 });
   const curtainTeal = new THREE.MeshStandardMaterial({ color: 0x0f766e, roughness: 0.86 });
@@ -386,38 +387,51 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   const artMat1 = new THREE.MeshStandardMaterial({ map: makeArtCanvasTexture(1), roughness: 0.45 });
   const clockFaceMat = new THREE.MeshStandardMaterial({ map: makeWallClockTexture(), roughness: 0.35 });
   const meterPanelMat = new THREE.MeshStandardMaterial({ map: makeMeterPanelTexture(), roughness: 0.42 });
+  const tankRibMat = new THREE.MeshStandardMaterial({ color: 0x0b1116, roughness: 0.38, metalness: 0.25 });
 
   // Geometry Constants (Local Space: +Z is front facade straight facing the alley!)
   const ENT_CX = 0.0;
   const ENT_MIN_X = -1.90;
-  const ENT_MAX_X = 1.90;  // 3.80m wide grand garage gate dead-center on alley!
-  const ENT_DOOR_H = 3.40; // Extra tall!
-  const RAMP_LEN = 4.20;   // Long smooth hill-climb ramp (y = 0 -> 0.85m)!
+  const ENT_MAX_X = 1.90;
+  const ENT_DOOR_H = 3.40;
+  const RAMP_LEN = 4.20;
 
   // Central Staircase & Corridor Core down the middle (lx ∈ [-1.75, +1.75])
   const CORR_MIN_X = -1.75;
   const CORR_MAX_X = 1.75;
   const STAIR_MIN_X = -1.55;
-  const STAIR_MAX_X = -0.05; // 1.50m wide marble staircase in center-left of core
-  const STAIR_START_Z = 2.40;
-  const STAIR_END_Z = -3.40;
+  const STAIR_MAX_X = -0.05;
+  const STAIR_START_Z = 2.80;
+  const STAIR_END_Z = -2.80;
 
-  // 3 Main Doors beside the Central Staircase on EVERY Upper Floor:
-  const D_FRONT_MIN_Z = 2.60;
-  const D_FRONT_MAX_Z = 3.85;
+  // 4 Separate Flat Doors on EVERY Upper Floor (2 on Left: A1, A2; 2 on Right: B1, B2)
+  const D_FRONT_MIN_Z = 3.40;
+  const D_FRONT_MAX_Z = 4.65;
   const D_FRONT_CZ = (D_FRONT_MIN_Z + D_FRONT_MAX_Z) * 0.5;
-  const D_REAR_MIN_Z = -4.45;
-  const D_REAR_MAX_Z = -3.20;
+  const D_REAR_MIN_Z = -4.65;
+  const D_REAR_MAX_Z = -3.40;
   const D_REAR_CZ = (D_REAR_MIN_Z + D_REAR_MAX_Z) * 0.5;
 
-  // Rooftop Penthouse Room (well-crafted enterable room at back-right of rooftop)
-  const RROOM_MIN_X = 2.30;
-  const RROOM_MAX_X = 7.60;
-  const RROOM_MIN_Z = -6.00;
-  const RROOM_MAX_Z = -1.10;
-  const RROOM_DOOR_MIN_X = 3.20;
-  const RROOM_DOOR_MAX_X = 4.45;
+  // Half-Roof Penthouse Room on Open Rooftop (Back-Right Half: lx ∈ [2.10, 8.65], lz ∈ [-8.65, -0.40])
+  const RROOM_MIN_X = 2.10;
+  const RROOM_MAX_X = 8.65;
+  const RROOM_MIN_Z = -8.65;
+  const RROOM_MAX_Z = -0.40;
+  const RROOM_DOOR_MIN_X = 3.40;
+  const RROOM_DOOR_MAX_X = 4.70;
   const RROOM_DOOR_CX = (RROOM_DOOR_MIN_X + RROOM_DOOR_MAX_X) * 0.5;
+
+  // Walkable Exterior Staircase UP onto the Penthouse Room Roof (roofY -> upperRoofY)
+  const UP_STAIR_MIN_X = 0.55;
+  const UP_STAIR_MAX_X = 1.95;
+  const UP_STAIR_START_Z = 2.60;  // Bottom step at y = roofY (17.75m)
+  const UP_STAIR_END_Z = -2.20;   // Top step at y = upperRoofY (20.90m)
+
+  // Main Stairhead Mumty on Rooftop (lx ∈ [-1.85, +0.20], lz ∈ [-3.20, +3.10], top at upperRoofY = 20.90m!)
+  const MUM_MIN_X = -1.85;
+  const MUM_MAX_X = 0.20;
+  const MUM_MIN_Z = -3.20;
+  const MUM_MAX_Z = 3.10;
 
   const root = new THREE.Group();
   root.name = 'AltapoleGoli_UserDreamHome_5Story';
@@ -436,13 +450,14 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   const interactiveProps = [];
   const animatedFans = [];
   const floorInteriorGroups = [];
+  const floorDynamicGroups = []; // Per-floor dynamic culling so 16 flats stay locked at 60 FPS!
   const floorSeats = new Map();
 
   // Helper: Spinning Ceiling Fan
-  function addCeilingFan(lx, ceilY, lz, floorIdx) {
+  function addCeilingFan(targetDynG, lx, ceilY, lz, floorIdx) {
     const fg = new THREE.Group();
     fg.position.set(lx, ceilY + 0.02, lz);
-    dynamicG.add(fg);
+    targetDynG.add(fg);
     cylinder(fg, 0.018, 0.018, 0.26, [0, -0.13, 0], shared.whiteBand, 6);
     const rotor = new THREE.Group();
     rotor.position.set(0, -0.26, 0);
@@ -459,7 +474,7 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     animatedFans.push({ rotor, floorIdx });
   }
 
-  // Helper: Small Decorative Potted Plant (for balconies, landings, corners)
+  // Helper: Small Decorative Potted Plant
   function addPottedPlant(targetG, px, py, pz, scale = 1.0, flowerIdx = 0) {
     cylinder(targetG, 0.16 * scale, 0.11 * scale, 0.28 * scale, [px, py + 0.14 * scale, pz], potMat, 8);
     const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.20 * scale, 1), flowerIdx % 2 === 0 ? leafBright : leafDark);
@@ -478,12 +493,10 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   // Helper: Floor Slab with Central Stairwell Cutout
   function addFloorSlab(y, isGround = false) {
     if (isGround) {
-      // Elevated Level 0 Plinth Slab (y = 0 -> 0.85m!)
-      box(exteriorStatic, [W, y, D], [0, y * 0.5, 0], shared.garageFloorTile, { uvScale: 3.0 });
-      // Decorative colorful tile skirt wrapping the elevated 0.85m front plinth
-      box(exteriorStatic, [W + 0.10, y, 0.08], [0, y * 0.5, hd + 0.02], shared.colorfulTile, { uvScale: 2.0 });
+      box(exteriorStatic, [W, y, D], [0, y * 0.5, 0], shared.garageFloorTile, { uvScale: 3.4 });
+      box(exteriorStatic, [W + 0.10, y, 0.08], [0, y * 0.5, hd + 0.02], shared.colorfulTile, { uvScale: 2.2 });
 
-      // LONG HILL-CLIMB ANTI-SLIP TILED RAMP FOR CARS & BIKES (3.60m wide × 4.20m long, y = 0 -> 0.85m!)
+      // LONG HILL-CLIMB ANTI-SLIP TILED RAMP FOR CARS & BIKES
       const rampW = 3.60;
       const rampSegs = 22;
       for (let rs = 0; rs < rampSegs; rs++) {
@@ -492,7 +505,6 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
         const segZ = hd + frac * RAMP_LEN;
         box(exteriorStatic, [rampW, segH, RAMP_LEN / rampSegs + 0.03], [0, segH * 0.5, segZ], shared.bikeRampTile, { uvScale: 1.1 });
       }
-      // Sloped Colorful Mosaic Tile Retaining Curbs along both sides of the Hill-Climb Ramp
       for (let rs = 0; rs < 12; rs++) {
         const frac = (rs + 0.5) / 12;
         const curbH = THREE.MathUtils.lerp(y + 0.16, 0.16, frac);
@@ -501,7 +513,7 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
         box(exteriorStatic, [0.18, curbH, RAMP_LEN / 12 + 0.04], [rampW * 0.5 + 0.09, curbH * 0.5, segZ], shared.colorfulTile, { uvScale: 0.9 });
       }
 
-      // Adjacent 6-Step Colorful-Tiled Pedestrian Stairs (সিঁড়ি) right next to the Hill-Climb Ramp (lx ∈ [2.05, 3.75])
+      // 6-Step Colorful-Tiled Pedestrian Stairs + Stainless Steel Handrail
       const stepW = 1.70;
       const stepCx = 2.90;
       for (let st = 0; st < 6; st++) {
@@ -510,7 +522,6 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
         box(exteriorStatic, [stepW, stH, 0.39], [stepCx, stH * 0.5, stZ], shared.colorfulTile, { uvScale: 0.9 });
         box(exteriorStatic, [stepW + 0.04, 0.035, 0.41], [stepCx, stH + 0.015, stZ], shared.whiteBand);
       }
-      // Sleek Stainless Steel Handrail along outer side of 6-step Pedestrian Stairs
       rodBetween(exteriorStatic, [3.70, y + 0.88, hd + 0.10], [3.70, 0.96, hd + 2.24], 0.025, shinyStainlessSteel, 6);
       rodBetween(exteriorStatic, [3.70, y + 0.46, hd + 0.10], [3.70, 0.54, hd + 2.24], 0.014, shinyStainlessSteel, 6);
       for (const [pz, py] of [[hd + 0.12, y], [hd + 1.18, y * 0.5], [hd + 2.22, 0.08]]) {
@@ -521,38 +532,37 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
 
     const slabH = 0.22;
     const slabY = y - 0.11;
-    // 1) Left Wing Slab (Flat A: lx ∈ [-hw, CORR_MIN_X])
-    box(exteriorStatic, [CORR_MIN_X - (-hw), slabH, D], [(-hw + CORR_MIN_X) * 0.5, slabY, 0], m.pillarTile || shared.stairConcrete, { uvScale: 2.2 });
-    // 2) Right Wing Slab (Flat B: lx ∈ [CORR_MAX_X, +hw])
-    box(exteriorStatic, [hw - CORR_MAX_X, slabH, D], [(CORR_MAX_X + hw) * 0.5, slabY, 0], m.pillarTile || shared.stairConcrete, { uvScale: 2.2 });
-    // 3) Center Corridor Front Landing (lx ∈ [CORR_MIN_X, CORR_MAX_X], lz ∈ [STAIR_START_Z, +hd])
+    // Left Wing Slab (A1 + A2)
+    box(exteriorStatic, [CORR_MIN_X - (-hw), slabH, D], [(-hw + CORR_MIN_X) * 0.5, slabY, 0], m.pillarTile || shared.stairConcrete, { uvScale: 2.4 });
+    // Right Wing Slab (B1 + B2)
+    box(exteriorStatic, [hw - CORR_MAX_X, slabH, D], [(CORR_MAX_X + hw) * 0.5, slabY, 0], m.pillarTile || shared.stairConcrete, { uvScale: 2.4 });
+    // Center Front Landing (lz ∈ [STAIR_START_Z, +hd])
     box(exteriorStatic, [CORR_MAX_X - CORR_MIN_X, slabH, hd - STAIR_START_Z], [0, slabY, (STAIR_START_Z + hd) * 0.5], m.pillarTile || shared.stairConcrete, { uvScale: 1.8 });
-    // 4) Center Corridor Back Landing (lx ∈ [CORR_MIN_X, CORR_MAX_X], lz ∈ [-hd, STAIR_END_Z])
+    // Center Back Landing (lz ∈ [-hd, STAIR_END_Z])
     box(exteriorStatic, [CORR_MAX_X - CORR_MIN_X, slabH, STAIR_END_Z - (-hd)], [0, slabY, (-hd + STAIR_END_Z) * 0.5], m.pillarTile || shared.stairConcrete, { uvScale: 1.8 });
-    // 5) Center Right Walkway beside Stairwell (lx ∈ [STAIR_MAX_X, CORR_MAX_X], lz ∈ [STAIR_END_Z, STAIR_START_Z])
+    // Center Right Walkway beside Stairwell (lx ∈ [STAIR_MAX_X, CORR_MAX_X])
     box(exteriorStatic, [CORR_MAX_X - STAIR_MAX_X, slabH, STAIR_START_Z - STAIR_END_Z], [(STAIR_MAX_X + CORR_MAX_X) * 0.5, slabY, (STAIR_END_Z + STAIR_START_Z) * 0.5], m.pillarTile || shared.stairConcrete, { uvScale: 1.8 });
     // Crisp Pearl-White Cornice Trim Band
-    box(exteriorStatic, [W + 0.34, 0.24, D + 0.34], [0, y - 0.08, 0], shared.whiteBand);
+    box(exteriorStatic, [W + 0.36, 0.24, D + 0.36], [0, y - 0.08, 0], shared.whiteBand);
   }
 
-  function addOpenableThaiWindow({ floorIdx, lx, ly, lz, w, h, label }) {
+  function addOpenableThaiWindow({ floorIdx, lx, ly, lz, w, h, label, faceSign = 1 }) {
     const halfW = w * 0.5;
     box(exteriorStatic, [w + 0.10, 0.06, 0.22], [lx, ly + h * 0.5, lz], shared.thaiFrame);
     box(exteriorStatic, [w + 0.10, 0.06, 0.22], [lx, ly - h * 0.5, lz], shared.thaiFrame);
     box(exteriorStatic, [0.06, h, 0.22], [lx - halfW, ly, lz], shared.thaiFrame);
     box(exteriorStatic, [0.06, h, 0.22], [lx + halfW, ly, lz], shared.thaiFrame);
-    // Exterior Sunshade Eyebrow (কার্নিশ) & Granite Window Sill
-    box(exteriorStatic, [w + 0.32, 0.10, 0.34], [lx, ly + h * 0.5 + 0.08, lz + 0.16], shared.whiteBand);
-    box(exteriorStatic, [w + 0.20, 0.06, 0.28], [lx, ly - h * 0.5 - 0.04, lz + 0.10], m.blackTile || shared.whiteBand);
-    box(exteriorStatic, [halfW - 0.03, h - 0.08, 0.03], [lx - halfW * 0.5, ly, lz - 0.03], shared.thaiGlass, { castShadow: false });
+    box(exteriorStatic, [w + 0.32, 0.10, 0.34], [lx, ly + h * 0.5 + 0.08, lz + faceSign * 0.16], shared.whiteBand);
+    box(exteriorStatic, [w + 0.20, 0.06, 0.28], [lx, ly - h * 0.5 - 0.04, lz + faceSign * 0.10], m.blackTile || shared.whiteBand);
+    box(exteriorStatic, [halfW - 0.03, h - 0.08, 0.03], [lx - halfW * 0.5, ly, lz - faceSign * 0.03], shared.thaiGlass, { castShadow: false });
     for (let gx = -halfW + 0.30; gx <= halfW - 0.25; gx += 0.38) {
-      box(exteriorStatic, [0.028, h - 0.08, 0.028], [lx + gx, ly, lz + 0.11], shared.whiteBand);
+      box(exteriorStatic, [0.028, h - 0.08, 0.028], [lx + gx, ly, lz + faceSign * 0.11], shared.whiteBand);
     }
-    box(exteriorStatic, [w - 0.06, 0.035, 0.028], [lx, ly, lz + 0.11], shared.whiteBand);
+    box(exteriorStatic, [w - 0.06, 0.035, 0.028], [lx, ly, lz + faceSign * 0.11], shared.whiteBand);
     const sash = new THREE.Group();
     const closedX = lx + halfW * 0.5;
     const openX = lx - halfW * 0.42;
-    sash.position.set(closedX, ly, lz + 0.02);
+    sash.position.set(closedX, ly, lz + faceSign * 0.02);
     const sw = halfW - 0.02;
     const sh = h - 0.08;
     box(sash, [sw, sh, 0.03], [0, 0, 0], shared.thaiGlass, { castShadow: false });
@@ -560,12 +570,11 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     box(sash, [sw, 0.045, 0.045], [0, -sh * 0.5, 0], shared.thaiFrame);
     box(sash, [0.045, sh, 0.045], [-sw * 0.5, 0, 0], shared.thaiFrame);
     box(sash, [0.045, sh, 0.045], [sw * 0.5, 0, 0], shared.thaiFrame);
-    box(sash, [0.03, 0.20, 0.05], [sw * 0.34, -0.04, -0.04], m.darkMetal);
+    box(sash, [0.03, 0.20, 0.05], [sw * 0.34, -0.04, -faceSign * 0.04], m.darkMetal);
     dynamicG.add(sash);
     thaiWindows.push({ floorIdx, mesh: sash, closedX, openX, open: false, progress: 0, lx, ly, lz, label });
   }
 
-  // Helper: Decorative Side/Rear Exterior Window (for realistic 360-degree architectural look!)
   function addExteriorDecorWindow(lx, ly, lz, w, h, onSideX = true) {
     if (onSideX) {
       const sign = lx > 0 ? 1 : -1;
@@ -580,13 +589,12 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   }
 
   // ==========================================================================
-  // 1) ELEVATED LEVEL 0: HUGE DRIVE-IN GARAGE + TALL SHINY GREEN & STEEL GATE
+  // 1) ELEVATED LEVEL 0: HUGE 18m × 18m DRIVE-IN GARAGE + SHINY GREEN & STEEL GATE
   // ==========================================================================
   addFloorSlab(FLOOR_Y[0], true);
   const gfWallTop = FLOOR_Y[0] + gfH; // 4.95
   const doorTopY = FLOOR_Y[0] + ENT_DOOR_H; // 4.25
 
-  // Exterior Ground Floor Walls (Soft Off-White)
   box(exteriorStatic, [0.26, gfWallTop, D], [-hw + 0.13, gfWallTop * 0.5, 0], softWhiteWall);
   box(exteriorStatic, [0.26, gfWallTop, D], [hw - 0.13, gfWallTop * 0.5, 0], softWhiteWall);
   box(exteriorStatic, [W, gfWallTop, 0.26], [0, gfWallTop * 0.5, -hd + 0.13], softWhiteWall);
@@ -594,13 +602,13 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   box(exteriorStatic, [hw - ENT_MAX_X, gfWallTop, 0.28], [(ENT_MAX_X + hw) * 0.5, gfWallTop * 0.5, hd - 0.14], softWhiteWall);
   box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 0.04, Math.max(0.28, gfWallTop - doorTopY), 0.28], [ENT_CX, doorTopY + Math.max(0.28, gfWallTop - doorTopY) * 0.5, hd - 0.14], softWhiteWall);
 
-  // Colorful Glazed Mosaic Tiles cladding both Front Wings of Ground Floor
+  // Colorful Glazed Mosaic Tiles cladding both Front Wings
   const wingW = ENT_MIN_X - (-hw) - 0.30;
-  box(exteriorStatic, [wingW, 3.25, 0.07], [-hw + 0.14 + wingW * 0.5, gfBaseY + 1.62, hd + 0.02], shared.colorfulTile, { uvScale: 2.0 });
-  box(exteriorStatic, [wingW, 3.25, 0.07], [ENT_MAX_X + 0.28 + wingW * 0.5, gfBaseY + 1.62, hd + 0.02], shared.colorfulTile, { uvScale: 2.0 });
+  box(exteriorStatic, [wingW, 3.25, 0.07], [-hw + 0.14 + wingW * 0.5, gfBaseY + 1.62, hd + 0.02], shared.colorfulTile, { uvScale: 2.2 });
+  box(exteriorStatic, [wingW, 3.25, 0.07], [ENT_MAX_X + 0.28 + wingW * 0.5, gfBaseY + 1.62, hd + 0.02], shared.colorfulTile, { uvScale: 2.2 });
 
-  // Lush Front Entrance Mosaic Planter Beds with Flowering Shrubs flanking both outer wings
-  for (const [plX, plW, fOff] of [[-5.55, 4.4, 0], [5.85, 3.8, 2]]) {
+  // Lush Front Entrance Mosaic Planter Beds with Flowering Shrubs
+  for (const [plX, plW, fOff] of [[-5.95, 5.1, 0], [6.25, 4.5, 2]]) {
     box(exteriorStatic, [plW, 0.62, 0.64], [plX, 0.31, hd + 0.36], shared.colorfulTile, { uvScale: 1.2 });
     box(exteriorStatic, [plW + 0.08, 0.07, 0.70], [plX, 0.64, hd + 0.36], shared.whiteBand);
     box(exteriorStatic, [plW - 0.14, 0.52, 0.50], [plX, 0.34, hd + 0.36], soilMat);
@@ -620,7 +628,7 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     }
   }
 
-  // Two Tall Colorful-Tiled Gate Pillars + Stainless Bands + Glowing Globe Lamps + Intercom & CCTV
+  // Two Tall Colorful-Tiled Gate Pillars + Glowing Globe Lamps + Intercom & CCTV
   for (const px of [ENT_MIN_X - 0.26, ENT_MAX_X + 0.26]) {
     box(exteriorStatic, [0.54, doorTopY + 0.26, 0.56], [px, (doorTopY + 0.26) * 0.5, hd + 0.14], shared.colorfulTile, { uvScale: 1.4 });
     box(exteriorStatic, [0.58, 0.09, 0.60], [px, gfBaseY + ENT_DOOR_H * 0.5, hd + 0.14], shinyStainlessSteel);
@@ -629,17 +637,15 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     globe.position.set(px, doorTopY + 0.54, hd + 0.14);
     dynamicG.add(globe);
   }
-  // Intercom / Doorbell Panel on Right Gate Pillar
   box(exteriorStatic, [0.18, 0.30, 0.06], [ENT_MAX_X + 0.26, gfBaseY + 1.38, hd + 0.44], shinyStainlessSteel, { castShadow: false });
   box(exteriorStatic, [0.10, 0.14, 0.07], [ENT_MAX_X + 0.26, gfBaseY + 1.42, hd + 0.45], m.darkMetal, { castShadow: false });
   box(exteriorStatic, [0.04, 0.04, 0.08], [ENT_MAX_X + 0.26, gfBaseY + 1.29, hd + 0.45], acLedGreen, { castShadow: false });
-  // Sleek CCTV Security Dome Camera under Gate Canopy
   cylinder(exteriorStatic, 0.09, 0.07, 0.08, [ENT_MIN_X + 0.32, doorTopY - 0.04, hd + 0.36], acUnitWhite, 8);
   const cctvLens = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), m.darkMetal);
   cctvLens.position.set(ENT_MIN_X + 0.32, doorTopY - 0.09, hd + 0.36);
   exteriorStatic.add(cctvLens);
 
-  // Grand Overhead Canopy + Warm LED Bar + Real PointLight so Green & Steel Gate SPARKLES Day & Night!
+  // Grand Overhead Canopy + Warm LED Bar + PointLight
   box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 1.25, 0.28, 0.78], [ENT_CX, doorTopY + 0.14, hd + 0.18], shared.whiteBand);
   box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 1.28, 0.08, 0.80], [ENT_CX, doorTopY + 0.30, hd + 0.18], shinyStainlessSteel);
   box(dynamicG, [2.70, 0.05, 0.22], [ENT_CX, doorTopY - 0.02, hd + 0.28], shared.liftLed, { castShadow: false });
@@ -648,7 +654,7 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   dynamicG.add(gateGlowLight);
 
   // Glowing Emerald & Steel Nameplate Signboard above Gate
-  const signTex = makeNameplateTexture(nameBn, 'হিল-ক্লাইম্ব গ্যারেজ · ২ বড় ফ্ল্যাট ও ছাদ বাগান [E]');
+  const signTex = makeNameplateTexture(nameBn, 'প্রতি তলায় ৪টি বড় ফ্ল্যাট · গ্যারেজ ও ছাদ বাগান [E]');
   const signMat = new THREE.MeshStandardMaterial({
     map: signTex,
     emissive: 0xffffff,
@@ -656,11 +662,11 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     emissiveIntensity: 0.38,
     roughness: 0.28,
   });
-  const signMesh = new THREE.Mesh(new THREE.BoxGeometry(3.95, 0.74, 0.09), signMat);
+  const signMesh = new THREE.Mesh(new THREE.BoxGeometry(4.25, 0.76, 0.09), signMat);
   signMesh.position.set(ENT_CX, doorTopY + 0.64, hd + 0.16);
   dynamicG.add(signMesh);
 
-  // TALL & WIDE SHINY EMERALD GREEN + MIRROR STAINLESS STEEL DOUBLE GARAGE GATE (3.80m × 3.40m!)
+  // SHINY EMERALD GREEN + MIRROR STAINLESS STEEL DOUBLE GARAGE GATE (3.80m × 3.40m)
   const leafW = (ENT_MAX_X - ENT_MIN_X) * 0.5 - 0.03;
   const gateH = ENT_DOOR_H - 0.06;
   function buildShinyGreenSteelLeaf(isRight) {
@@ -700,61 +706,57 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   entDoorPivotRight.add(buildShinyGreenSteelLeaf(true));
   dynamicG.add(entDoorPivotRight);
 
-  // Level 0 Detailed Open Drive-In Car & Bike Parking Garage Interior
+  // Level 0 Detailed Huge 18m × 18m Car & Bike Parking Garage Interior
   {
     const garG = new THREE.Group();
     garG.name = 'UserHome_ParkingGarage_GF';
     const fy = FLOOR_Y[0];
     const ceilY = fy + gfH - 0.16;
-    // Parking bay markings + yellow/black wheel stoppers at rear of bays
-    for (const lxLine of [-6.0, -2.6, 2.6, 6.0]) {
-      box(garG, [0.09, 0.016, 7.6], [lxLine, fy + 0.01, -0.8], shared.whiteBand, { castShadow: false });
+    for (const lxLine of [-7.2, -4.4, -2.2, 2.2, 4.4, 7.2]) {
+      box(garG, [0.09, 0.016, 11.4], [lxLine, fy + 0.01, -0.8], shared.whiteBand, { castShadow: false });
     }
-    for (const stopX of [-4.3, 4.3]) {
-      box(garG, [1.85, 0.11, 0.18], [stopX, fy + 0.055, -4.65], m.darkMetal, { castShadow: false });
-      box(garG, [0.36, 0.12, 0.19], [stopX - 0.55, fy + 0.06, -4.65], hazardYellowMat, { castShadow: false });
-      box(garG, [0.36, 0.12, 0.19], [stopX + 0.55, fy + 0.06, -4.65], hazardYellowMat, { castShadow: false });
+    for (const stopX of [-5.8, -3.3, 3.3, 5.8]) {
+      box(garG, [1.85, 0.11, 0.18], [stopX, fy + 0.055, -6.65], m.darkMetal, { castShadow: false });
+      box(garG, [0.36, 0.12, 0.19], [stopX - 0.55, fy + 0.06, -6.65], hazardYellowMat, { castShadow: false });
+      box(garG, [0.36, 0.12, 0.19], [stopX + 0.55, fy + 0.06, -6.65], hazardYellowMat, { castShadow: false });
     }
-    // Bright Ceiling LED Tubes
-    for (const lxLed of [-5.2, 0.0, 5.2]) {
-      box(garG, [1.85, 0.05, 0.16], [lxLed, ceilY, 2.4], shared.liftLed, { castShadow: false });
-      box(garG, [1.85, 0.05, 0.16], [lxLed, ceilY, -2.8], shared.liftLed, { castShadow: false });
+    for (const lxLed of [-5.6, 0.0, 5.6]) {
+      for (const lzLed of [4.6, 0.0, -4.6]) {
+        box(garG, [1.85, 0.05, 0.16], [lxLed, ceilY, lzLed], shared.liftLed, { castShadow: false });
+      }
     }
-    // Colorful Mosaic Dado along rear garage wall
-    box(garG, [W - 0.6, 1.45, 0.06], [0, fy + 0.72, -hd + 0.30], shared.colorfulTile, { uvScale: 2.2 });
+    box(garG, [W - 0.6, 1.45, 0.06], [0, fy + 0.72, -hd + 0.30], shared.colorfulTile, { uvScale: 2.6 });
 
-    // WZPDCL Khulna 8-Flat Electric Meter & Breaker Board (Left wall)
-    box(garG, [0.14, 1.25, 1.40], [-hw + 0.34, fy + 1.85, 3.20], m.darkMetal, { castShadow: false });
-    const meterFace = new THREE.Mesh(new THREE.PlaneGeometry(1.30, 1.15), meterPanelMat);
+    // WZPDCL Khulna 16-Flat Electric Meter & Breaker Board
+    box(garG, [0.14, 1.45, 1.65], [-hw + 0.34, fy + 1.85, 5.20], m.darkMetal, { castShadow: false });
+    const meterFace = new THREE.Mesh(new THREE.PlaneGeometry(1.54, 1.34), meterPanelMat);
     meterFace.rotation.y = Math.PI / 2;
-    meterFace.position.set(-hw + 0.42, fy + 1.85, 3.20);
+    meterFace.position.set(-hw + 0.42, fy + 1.85, 5.20);
     garG.add(meterFace);
-    for (const pz of [2.75, 3.20, 3.65]) {
-      cylinder(garG, 0.022, 0.022, 1.45, [-hw + 0.32, fy + 3.15, pz], pvcPipeGrey, 6);
+    for (const pz of [4.65, 5.20, 5.75]) {
+      cylinder(garG, 0.022, 0.022, 1.45, [-hw + 0.32, fy + 3.25, pz], pvcPipeGrey, 6);
     }
 
     // Security Guard / Caretaker Desk & Chair (Front-Right Corner)
-    box(garG, [1.25, 0.76, 0.65], [6.45, fy + 0.38, 4.90], warmWoodSlat);
-    box(garG, [1.30, 0.05, 0.70], [6.45, fy + 0.78, 4.90], darkWalnut);
-    box(garG, [0.34, 0.03, 0.24], [6.25, fy + 0.82, 4.88], curtainCream, { castShadow: false }); // Guard logbook
-    cylinder(garG, 0.08, 0.11, 0.14, [6.85, fy + 0.88, 4.78], warmLampGlow, 8); // Desk lamp
-    box(garG, [0.46, 0.44, 0.46], [6.45, fy + 0.22, 5.58], darkWalnut);
-    box(garG, [0.46, 0.48, 0.07], [6.45, fy + 0.66, 5.78], darkWalnut);
+    box(garG, [1.35, 0.76, 0.68], [7.10, fy + 0.38, 6.90], warmWoodSlat);
+    box(garG, [1.40, 0.05, 0.72], [7.10, fy + 0.78, 6.90], darkWalnut);
+    box(garG, [0.34, 0.03, 0.24], [6.90, fy + 0.82, 6.88], curtainCream, { castShadow: false });
+    cylinder(garG, 0.08, 0.11, 0.14, [7.55, fy + 0.88, 6.76], warmLampGlow, 8);
+    box(garG, [0.46, 0.44, 0.46], [7.10, fy + 0.22, 7.60], darkWalnut);
+    box(garG, [0.46, 0.48, 0.07], [7.10, fy + 0.66, 7.80], darkWalnut);
 
-    // Submersible Water Pump & Blue/Grey PVC Manifold (Rear-Left Utility Corner)
-    box(garG, [0.85, 0.24, 0.75], [-6.95, fy + 0.12, -5.55], shared.stairConcrete);
-    cylinder(garG, 0.16, 0.16, 0.46, [-6.95, fy + 0.46, -5.55], pumpBlueMat, 10);
-    cylinder(garG, 0.04, 0.04, gfH - 0.6, [-7.45, fy + gfH * 0.5, -5.85], pvcPipeGrey, 8);
-    cylinder(garG, 0.035, 0.035, gfH - 0.6, [-7.25, fy + gfH * 0.5, -5.85], pvcPipeGrey, 8);
+    // Submersible Water Pump & Dual PVC Risers (Rear-Left Utility Corner)
+    box(garG, [1.05, 0.24, 0.85], [-7.55, fy + 0.12, -7.85], shared.stairConcrete);
+    cylinder(garG, 0.17, 0.17, 0.48, [-7.55, fy + 0.46, -7.85], pumpBlueMat, 10);
+    cylinder(garG, 0.04, 0.04, gfH - 0.5, [-8.15, fy + gfH * 0.5, -8.25], pvcPipeGrey, 8);
+    cylinder(garG, 0.035, 0.035, gfH - 0.5, [-7.95, fy + gfH * 0.5, -8.25], pvcPipeGrey, 8);
 
-    // Red Fire Extinguisher + Safety Bumper near Staircase Foot + Shoe/Helmet Rack
-    cylinder(garG, 0.09, 0.09, 0.48, [0.18, fy + 1.32, 2.32], lpgRedMat, 10);
-    box(garG, [0.06, 0.10, 0.06], [0.18, fy + 1.60, 2.32], m.darkMetal, { castShadow: false });
-    box(garG, [0.12, 0.90, 0.12], [0.02, fy + 0.55, 2.42], hazardYellowMat, { castShadow: false });
-    // Wooden Shoe & Helmet Shelf on Right side of Staircase entry
-    box(garG, [0.38, 1.05, 1.15], [1.48, fy + 0.525, 2.85], warmWoodSlat);
+    // Fire Extinguisher, Safety Bumper & Shoe/Helmet Rack near Staircase
+    cylinder(garG, 0.09, 0.09, 0.48, [0.18, fy + 1.32, 2.75], lpgRedMat, 10);
+    box(garG, [0.12, 0.90, 0.12], [0.02, fy + 0.55, 2.86], hazardYellowMat, { castShadow: false });
+    box(garG, [0.38, 1.05, 1.25], [1.48, fy + 0.525, 3.25], warmWoodSlat);
     for (const sy of [0.35, 0.70]) {
-      box(garG, [0.36, 0.04, 1.10], [1.48, fy + sy, 2.85], darkWalnut, { castShadow: false });
+      box(garG, [0.36, 0.04, 1.20], [1.48, fy + sy, 3.25], darkWalnut, { castShadow: false });
     }
 
     mergeStaticMeshes(garG);
@@ -779,7 +781,6 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
         const sy = y0 + (s + 0.5) * stepRise;
         box(exteriorStatic, [stairW, stepRise + 0.16, stepSpan + 0.04], [stairX, sy - 0.04, sz], shared.stairConcrete);
       }
-      // Shiny Stainless Steel Handrail + Mid-Bar on right (+X) side of central staircase
       rodBetween(exteriorStatic, [STAIR_MAX_X - 0.05, y0 + 0.94, STAIR_START_Z], [STAIR_MAX_X - 0.05, y1 + 0.94, STAIR_END_Z], 0.026, shinyStainlessSteel, 6);
       rodBetween(exteriorStatic, [STAIR_MAX_X - 0.05, y0 + 0.52, STAIR_START_Z], [STAIR_MAX_X - 0.05, y1 + 0.52, STAIR_END_Z], 0.014, shinyStainlessSteel, 6);
       for (let p = 0; p <= 5; p++) {
@@ -791,207 +792,206 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     }
   }
 
-  // Helper: Build one complete Luxury Furnished & Interactive Wing Flat (side = -1 for Flat A, +1 for Flat B)
-  function buildWingFlat(intG, k, fy, h, side, ceilY) {
+  // ==========================================================================
+  // HELPER: Build ONE Complete Luxury Furnished Flat (4 Flats per Upper Floor!)
+  //   side  = -1 (Left: A1/A2) or +1 (Right: B1/B2)
+  //   halfZ = +1 (Front half: lz ∈ [0.10, +8.74]) or -1 (Back half: lz ∈ [-8.74, -0.10])
+  // ==========================================================================
+  function buildQuadFlat(intG, dynFloorG, k, fy, h, side, halfZ, ceilY) {
     const isLeft = side < 0;
+    const isFront = halfZ > 0;
     const minX = isLeft ? (-hw + 0.26) : (CORR_MAX_X + 0.10);
     const maxX = isLeft ? (CORR_MIN_X - 0.10) : (hw - 0.26);
     const midX = (minX + maxX) * 0.5;
-    const minZ = -hd + 0.26;
-    const maxZ = hd - 0.26;
-    const tag = isLeft ? `ফ্ল্যাট ${k + 1}A` : `ফ্ল্যাট ${k + 1}B`;
-    const inSign = isLeft ? 1 : -1; // Points inward from outer wall toward center corridor
+    const inSign = isLeft ? 1 : -1; // Points inward toward central corridor
 
-    // Room divider walls inside each flat (Front Living Room lz > 0.60, Back Master Bed + Kitchen/Dining + Bath)
-    const divZ = 0.60;
-    const bathZ = -3.10;
-    const bedDivX = isLeft ? (minX + 3.25) : (maxX - 3.25);
+    // Map local Z symmetrically for Front (+1) and Back (-1) flats!
+    // outerZ = ±8.74 (window facade), partyZ = ±0.10 (center party wall)
+    const outerZ = halfZ * (hd - 0.26);
+    const partyZ = halfZ * 0.10;
+    const zAt = (distFromParty) => halfZ * (0.10 + distFromParty); // distFromParty ∈ [0, 8.64]
 
-    // Living/Bedroom divider along lz = divZ (leaving 1.45m doorway!)
+    const tag = `ফ্ল্যাট ${k + 1}${isLeft ? 'A' : 'B'}${isFront ? '1' : '2'}`;
+
+    // Internal Room Divisions:
+    //   Living/Dining Room: distFromParty ∈ [4.25, 8.64] (4.39m deep × 6.89m wide — spacious front/back window bay!)
+    //   Master Bedroom:     distFromParty ∈ [0.00, 4.25], outer X side (width 3.65m)
+    //   Kitchen & Bath:     distFromParty ∈ [0.00, 4.25], inner corridor X side (width 3.24m)
+    const divZ = zAt(4.25);
+    const bathZ = zAt(2.15);
+    const bedDivX = isLeft ? (minX + 3.65) : (maxX - 3.65);
+
+    // Living/Bedroom divider along divZ (leaving 1.35m wide doorway!)
     if (isLeft) {
-      box(exteriorStatic, [bedDivX - minX - 0.15, h, 0.14], [(minX + bedDivX - 0.15) * 0.5, fy + h * 0.5, divZ], m.roomWall);
+      box(exteriorStatic, [bedDivX - minX - 0.20, h, 0.14], [(minX + bedDivX - 0.20) * 0.5, fy + h * 0.5, divZ], m.roomWall);
     } else {
-      box(exteriorStatic, [maxX - (bedDivX + 0.15), h, 0.14], [(bedDivX + 0.15 + maxX) * 0.5, fy + h * 0.5, divZ], m.roomWall);
+      box(exteriorStatic, [maxX - (bedDivX + 0.20), h, 0.14], [(bedDivX + 0.20 + maxX) * 0.5, fy + h * 0.5, divZ], m.roomWall);
     }
-    // Bedroom / Kitchen-Bath vertical divider at lx = bedDivX (lz ∈ [minZ, divZ])
-    box(exteriorStatic, [0.14, h, divZ - minZ], [bedDivX, fy + h * 0.5, (minZ + divZ) * 0.5], m.roomWall);
+    // Bedroom / Kitchen-Bath divider along bedDivX (between partyZ and divZ)
+    box(exteriorStatic, [0.14, h, Math.abs(divZ - partyZ)], [bedDivX, fy + h * 0.5, (partyZ + divZ) * 0.5], m.roomWall);
 
-    // ======================================================================
-    // 1) LIVING & DRAWING ROOM (Front: lz ∈ [divZ, maxZ])
-    // ======================================================================
-    const livCz = (divZ + maxZ) * 0.5;
-    box(intG, [3.6, 0.025, 3.0], [midX, fy + 0.02, livCz], m.rugMat, { castShadow: false });
+    // 1) LIVING & DINING ROOM (Window Bay: distFromParty ∈ [4.25, 8.64])
+    const livCz = zAt(6.45);
+    box(intG, [3.4, 0.025, 2.7], [midX, fy + 0.02, livCz], m.rugMat, { castShadow: false });
 
-    // Luxury Cushioned Sofa with Armrests & 3 Colorful Accent Throw Pillows
+    // Plush Sofa with Armrests & 3 Colorful Throw Pillows
     const sofaX = isLeft ? (minX + 0.58) : (maxX - 0.58);
-    box(intG, [0.85, 0.42, 2.85], [sofaX, fy + 0.21, livCz], m.sofaFabric);
-    box(intG, [0.18, 0.56, 2.85], [sofaX - inSign * 0.34, fy + 0.60, livCz], m.sofaFabric);
-    // Sofa armrests
-    box(intG, [0.88, 0.28, 0.20], [sofaX, fy + 0.48, livCz - 1.36], m.sofaFabric);
-    box(intG, [0.88, 0.28, 0.20], [sofaX, fy + 0.48, livCz + 1.36], m.sofaFabric);
-    // Throw pillows
-    box(intG, [0.16, 0.32, 0.36], [sofaX - inSign * 0.16, fy + 0.56, livCz - 0.85], cushionGold, { castShadow: false });
-    box(intG, [0.16, 0.32, 0.36], [sofaX - inSign * 0.16, fy + 0.56, livCz], curtainTeal, { castShadow: false });
-    box(intG, [0.16, 0.32, 0.36], [sofaX - inSign * 0.16, fy + 0.56, livCz + 0.85], cushionCoral, { castShadow: false });
+    box(intG, [0.84, 0.42, 2.55], [sofaX, fy + 0.21, livCz], m.sofaFabric);
+    box(intG, [0.18, 0.56, 2.55], [sofaX - inSign * 0.33, fy + 0.60, livCz], m.sofaFabric);
+    box(intG, [0.86, 0.28, 0.18], [sofaX, fy + 0.48, livCz - 1.22], m.sofaFabric);
+    box(intG, [0.86, 0.28, 0.18], [sofaX, fy + 0.48, livCz + 1.22], m.sofaFabric);
+    box(intG, [0.15, 0.30, 0.34], [sofaX - inSign * 0.15, fy + 0.56, livCz - 0.72], cushionGold, { castShadow: false });
+    box(intG, [0.15, 0.30, 0.34], [sofaX - inSign * 0.15, fy + 0.56, livCz], curtainTeal, { castShadow: false });
+    box(intG, [0.15, 0.30, 0.34], [sofaX - inSign * 0.15, fy + 0.56, livCz + 0.72], cushionCoral, { castShadow: false });
 
-    // Framed Khulna / Sundarbans Wall Art above Sofa + Split AC Indoor Unit!
+    // Framed Khulna Art + Split AC Indoor Unit on Outer Wall
     const outerWallX = isLeft ? (minX + 0.04) : (maxX - 0.04);
-    box(intG, [0.05, 1.02, 1.48], [outerWallX, fy + 1.88, livCz], darkWalnut, { castShadow: false });
-    const livArt = new THREE.Mesh(new THREE.PlaneGeometry(1.36, 0.90), isLeft ? artMat0 : artMat1);
+    box(intG, [0.05, 0.98, 1.42], [outerWallX, fy + 1.88, livCz], darkWalnut, { castShadow: false });
+    const livArt = new THREE.Mesh(new THREE.PlaneGeometry(1.30, 0.86), (isLeft === isFront) ? artMat0 : artMat1);
     livArt.rotation.y = isLeft ? (Math.PI / 2) : (-Math.PI / 2);
     livArt.position.set(outerWallX + inSign * 0.032, fy + 1.88, livCz);
     intG.add(livArt);
-    // Split AC Indoor Unit high on Living Room outer wall
-    box(intG, [0.22, 0.30, 1.02], [outerWallX + inSign * 0.10, fy + 2.74, livCz], acUnitWhite, { castShadow: false });
-    box(intG, [0.03, 0.03, 0.03], [outerWallX + inSign * 0.22, fy + 2.66, livCz + 0.38], acLedGreen, { castShadow: false });
+    box(intG, [0.22, 0.30, 1.00], [outerWallX + inSign * 0.10, fy + 2.74, livCz], acUnitWhite, { castShadow: false });
+    box(intG, [0.03, 0.03, 0.03], [outerWallX + inSign * 0.22, fy + 2.66, livCz + 0.36], acLedGreen, { castShadow: false });
 
-    // Glass-Top Center Coffee Table with Decorative Tea Tray & Fruit Bowl
-    box(intG, [0.95, 0.06, 1.45], [midX, fy + 0.44, livCz], darkWalnut);
-    box(intG, [0.84, 0.02, 1.32], [midX, fy + 0.48, livCz], shared.thaiGlass, { castShadow: false });
-    for (const [tx, tz] of [[-0.38, -0.58], [0.38, -0.58], [-0.38, 0.58], [0.38, 0.58]]) {
-      box(intG, [0.06, 0.42, 0.06], [midX + tx, fy + 0.21, livCz + tz], darkWalnut);
+    // Glass-Top Coffee Table with Tea Tray & Ceramic Bowl
+    box(intG, [0.92, 0.06, 1.38], [midX, fy + 0.44, livCz], darkWalnut);
+    box(intG, [0.80, 0.02, 1.24], [midX, fy + 0.48, livCz], shared.thaiGlass, { castShadow: false });
+    for (const [tx, tz] of [[-0.36, -0.54], [0.36, -0.54], [-0.36, 0.54], [0.36, 0.54]]) {
+      box(intG, [0.055, 0.42, 0.055], [midX + tx, fy + 0.21, livCz + tz], darkWalnut);
     }
-    // Tea tray, kettle & ceramic bowl on coffee table
-    box(intG, [0.34, 0.03, 0.46], [midX, fy + 0.50, livCz - 0.18], warmWoodSlat, { castShadow: false });
-    cylinder(intG, 0.07, 0.09, 0.14, [midX - 0.05, fy + 0.58, livCz - 0.26], shinyStainlessSteel, 8);
-    cylinder(intG, 0.04, 0.035, 0.07, [midX + 0.08, fy + 0.55, livCz - 0.08], curtainCream, 8);
-    cylinder(intG, 0.13, 0.08, 0.08, [midX, fy + 0.53, livCz + 0.35], potMat, 8);
+    box(intG, [0.32, 0.03, 0.42], [midX, fy + 0.50, livCz - 0.16], warmWoodSlat, { castShadow: false });
+    cylinder(intG, 0.065, 0.085, 0.13, [midX - 0.04, fy + 0.58, livCz - 0.22], shinyStainlessSteel, 8);
+    cylinder(intG, 0.12, 0.075, 0.075, [midX, fy + 0.53, livCz + 0.32], potMat, 8);
 
-    // Luxury TV Feature Slat Wall + Interactive 65" Smart TV + Soundbar + Floating Shelf
+    // Luxury Wood-Slat TV Feature Wall + Interactive 65" Smart TV + Soundbar + Floating Shelf
     const tvWallX = isLeft ? (maxX - 0.06) : (minX + 0.06);
-    const tvLz = 1.45;
-    // Vertical decorative wooden slats behind TV
+    const tvLz = zAt(6.25);
     for (let s = -4; s <= 4; s++) {
-      box(intG, [0.035, 2.35, 0.08], [tvWallX + inSign * 0.02, fy + 1.28, tvLz + s * 0.22], warmWoodSlat, { castShadow: false });
+      box(intG, [0.035, 2.30, 0.08], [tvWallX + inSign * 0.02, fy + 1.26, tvLz + s * 0.21], warmWoodSlat, { castShadow: false });
     }
-    box(intG, [0.42, 0.48, 1.85], [tvWallX - inSign * 0.22, fy + 0.24, tvLz], darkWalnut);
-    box(intG, [0.10, 0.09, 1.15], [tvWallX - inSign * 0.18, fy + 0.53, tvLz], m.darkMetal, { castShadow: false }); // Soundbar
-    box(intG, [0.07, 1.00, 1.68], [tvWallX - inSign * 0.02, fy + 1.40, tvLz], m.darkMetal);
-    // Floating display shelf above TV with colorful books & vase
-    box(intG, [0.24, 0.05, 1.55], [tvWallX - inSign * 0.12, fy + 2.22, tvLz], darkWalnut, { castShadow: false });
-    box(intG, [0.16, 0.22, 0.08], [tvWallX - inSign * 0.12, fy + 2.36, tvLz - 0.45], clothRed, { castShadow: false });
-    box(intG, [0.16, 0.20, 0.08], [tvWallX - inSign * 0.12, fy + 2.35, tvLz - 0.35], clothBlue, { castShadow: false });
-    box(intG, [0.16, 0.24, 0.08], [tvWallX - inSign * 0.12, fy + 2.37, tvLz - 0.25], clothGold, { castShadow: false });
-    cylinder(intG, 0.06, 0.08, 0.24, [tvWallX - inSign * 0.12, fy + 2.37, tvLz + 0.42], curtainTeal, 8);
-    // Analog Wall Clock on Front-Inner Corridor Wall above Flat Door
-    const clockMesh = new THREE.Mesh(new THREE.CircleGeometry(0.22, 16), clockFaceMat);
+    box(intG, [0.40, 0.46, 1.78], [tvWallX - inSign * 0.21, fy + 0.23, tvLz], darkWalnut);
+    box(intG, [0.10, 0.085, 1.12], [tvWallX - inSign * 0.17, fy + 0.51, tvLz], m.darkMetal, { castShadow: false });
+    box(intG, [0.07, 0.96, 1.62], [tvWallX - inSign * 0.02, fy + 1.38, tvLz], m.darkMetal);
+    box(intG, [0.22, 0.05, 1.48], [tvWallX - inSign * 0.11, fy + 2.18, tvLz], darkWalnut, { castShadow: false });
+    box(intG, [0.15, 0.22, 0.08], [tvWallX - inSign * 0.11, fy + 2.32, tvLz - 0.40], clothRed, { castShadow: false });
+    box(intG, [0.15, 0.20, 0.08], [tvWallX - inSign * 0.11, fy + 2.31, tvLz - 0.30], clothBlue, { castShadow: false });
+    cylinder(intG, 0.055, 0.075, 0.22, [tvWallX - inSign * 0.11, fy + 2.33, tvLz + 0.38], curtainTeal, 8);
+    // Wall Clock above flat door
+    const clockMesh = new THREE.Mesh(new THREE.CircleGeometry(0.20, 14), clockFaceMat);
     clockMesh.rotation.y = isLeft ? (-Math.PI / 2) : (Math.PI / 2);
-    clockMesh.position.set(tvWallX - inSign * 0.02, fy + 2.55, D_FRONT_CZ);
+    clockMesh.position.set(tvWallX - inSign * 0.02, fy + 2.52, halfZ * D_FRONT_CZ);
     intG.add(clockMesh);
 
-    const tvScr = new THREE.Mesh(new THREE.PlaneGeometry(1.58, 0.90), tvOnMat);
+    const tvScr = new THREE.Mesh(new THREE.PlaneGeometry(1.52, 0.86), tvOnMat);
     tvScr.rotation.y = isLeft ? (-Math.PI / 2) : (Math.PI / 2);
-    tvScr.position.set(tvWallX - inSign * 0.07, fy + 1.40, tvLz);
-    dynamicG.add(tvScr);
+    tvScr.position.set(tvWallX - inSign * 0.07, fy + 1.38, tvLz);
+    dynFloorG.add(tvScr);
     interactiveProps.push({
       kind: 'tv', floorIdx: k,
       lx: tvWallX - inSign * 0.5, ly: fy, lz: tvLz,
       on: true, mesh: tvScr, label: `${tag} স্মার্ট টিভি`,
     });
 
-    // Floor-to-Ceiling Window Curtains framing Front Thai Window (lx = ±4.95, lz = maxZ - 0.10)
-    const winCx = isLeft ? -4.95 : 4.95;
-    rodBetween(intG, [winCx - 1.74, fy + 2.66, maxZ - 0.10], [winCx + 1.74, fy + 2.66, maxZ - 0.10], 0.018, shinyStainlessSteel, 6);
-    for (const cOff of [-1.52, 1.52]) {
-      box(intG, [0.42, 2.52, 0.09], [winCx + cOff, fy + 1.38, maxZ - 0.12], curtainTeal, { castShadow: false });
-      box(intG, [0.22, 2.48, 0.06], [winCx + cOff * 0.80, fy + 1.38, maxZ - 0.08], curtainCream, { castShadow: false });
+    // Floor-to-Ceiling Window Curtains framing the Outer Thai Window (lx = ±5.35)
+    const winCx = isLeft ? -5.35 : 5.35;
+    const curtZ = outerZ - halfZ * 0.12;
+    rodBetween(intG, [winCx - 1.72, fy + 2.66, curtZ], [winCx + 1.72, fy + 2.66, curtZ], 0.018, shinyStainlessSteel, 6);
+    for (const cOff of [-1.50, 1.50]) {
+      box(intG, [0.40, 2.52, 0.09], [winCx + cOff, fy + 1.38, curtZ], curtainTeal, { castShadow: false });
+      box(intG, [0.20, 2.48, 0.06], [winCx + cOff * 0.80, fy + 1.38, curtZ + halfZ * 0.04], curtainCream, { castShadow: false });
     }
 
-    // 4-Seater Compact Dining Set in bright Front-Inner Corner (lx near corridor, lz = 5.22 — clear of doorway!)
-    const dinX = isLeft ? (maxX - 1.55) : (minX + 1.55);
-    const dinZ = 5.22;
-    box(intG, [1.28, 0.06, 0.86], [dinX, fy + 0.76, dinZ], darkWalnut);
-    box(intG, [0.90, 0.015, 0.28], [dinX, fy + 0.80, dinZ], curtainTeal, { castShadow: false }); // Table runner
-    cylinder(intG, 0.06, 0.07, 0.22, [dinX, fy + 0.91, dinZ], shared.thaiGlass, 8); // Water jug
-    for (const [lxO, lzO] of [[-0.54, -0.34], [0.54, -0.34], [-0.54, 0.34], [0.54, 0.34]]) {
-      box(intG, [0.055, 0.74, 0.055], [dinX + lxO, fy + 0.37, dinZ + lzO], darkWalnut);
+    // 4-Seater Dining Table Set near window corner (clear of doorway!)
+    const dinX = isLeft ? (maxX - 1.50) : (minX + 1.50);
+    const dinZ = zAt(7.65);
+    box(intG, [1.24, 0.06, 0.84], [dinX, fy + 0.76, dinZ], darkWalnut);
+    box(intG, [0.86, 0.015, 0.26], [dinX, fy + 0.80, dinZ], curtainTeal, { castShadow: false });
+    cylinder(intG, 0.055, 0.065, 0.21, [dinX, fy + 0.90, dinZ], shared.thaiGlass, 8);
+    for (const [lxO, lzO] of [[-0.52, -0.32], [0.52, -0.32], [-0.52, 0.32], [0.52, 0.32]]) {
+      box(intG, [0.05, 0.74, 0.05], [dinX + lxO, fy + 0.37, dinZ + lzO], darkWalnut);
     }
-    // 4 Dining Chairs tucked neatly around table
-    for (const [cxO, czO, backDir] of [[-0.32, -0.58, -1], [0.32, -0.58, -1], [-0.32, 0.58, 1], [0.32, 0.58, 1]]) {
-      box(intG, [0.40, 0.44, 0.40], [dinX + cxO, fy + 0.22, dinZ + czO], warmWoodSlat, { castShadow: false });
-      box(intG, [0.40, 0.46, 0.05], [dinX + cxO, fy + 0.65, dinZ + czO + backDir * 0.18], warmWoodSlat, { castShadow: false });
+    for (const [cxO, czO, backDir] of [[-0.30, -0.56, -1], [0.30, -0.56, -1], [-0.30, 0.56, 1], [0.30, 0.56, 1]]) {
+      box(intG, [0.38, 0.44, 0.38], [dinX + cxO, fy + 0.22, dinZ + czO], warmWoodSlat, { castShadow: false });
+      box(intG, [0.38, 0.44, 0.05], [dinX + cxO, fy + 0.64, dinZ + czO + backDir * 0.17], warmWoodSlat, { castShadow: false });
     }
 
-    // Living Room Ceiling Light & Potted Corner Plant
-    box(intG, [0.58, 0.04, 0.58], [midX, ceilY, livCz], m.lamp, { castShadow: false });
-    addPottedPlant(intG, isLeft ? (minX + 0.45) : (maxX - 0.45), fy, maxZ - 0.45, 1.15, k);
+    box(intG, [0.56, 0.04, 0.56], [midX, ceilY, livCz], m.lamp, { castShadow: false });
+    addPottedPlant(intG, isLeft ? (minX + 0.44) : (maxX - 0.44), fy, outerZ - halfZ * 0.44, 1.1, k + (isFront ? 0 : 2));
+    addCeilingFan(dynFloorG, midX, ceilY, livCz, k);
 
-    // ======================================================================
-    // 2) MASTER BEDROOM (Outer Back Corner: King Bed, Lamps, Dressing Table, Almirah, AC & Fan!)
-    // ======================================================================
+    // 2) MASTER BEDROOM (distFromParty ∈ [0.00, 4.25], outer X side)
     const bedMinX = isLeft ? minX : bedDivX;
     const bedMaxX = isLeft ? bedDivX : maxX;
     const bedCx = (bedMinX + bedMaxX) * 0.5;
-    const bedBodyZ = minZ + 1.25;
-    // Bedroom Rug
-    box(intG, [2.35, 0.02, 1.45], [bedCx, fy + 0.02, bedBodyZ + 1.35], m.rugMat, { castShadow: false });
-    // King Bed with Paneled Headboard, Layered Pillows & Quilt
-    box(intG, [2.10, 0.30, 2.05], [bedCx, fy + 0.15, bedBodyZ], darkWalnut);
-    box(intG, [2.22, 1.12, 0.16], [bedCx, fy + 0.56, minZ + 0.14], darkWalnut);
-    box(intG, [1.96, 0.72, 0.05], [bedCx, fy + 0.72, minZ + 0.23], m.sofaFabric, { castShadow: false }); // Tufted headboard inset
-    box(intG, [2.00, 0.20, 1.92], [bedCx, fy + 0.40, bedBodyZ], m.mattressMat);
-    box(intG, [2.02, 0.21, 1.25], [bedCx, fy + 0.41, bedBodyZ + 0.34], m.blanketMat);
-    box(intG, [0.62, 0.12, 0.36], [bedCx - 0.48, fy + 0.54, minZ + 0.46], shared.whiteBand, { castShadow: false });
-    box(intG, [0.62, 0.12, 0.36], [bedCx + 0.48, fy + 0.54, minZ + 0.46], shared.whiteBand, { castShadow: false });
-    box(intG, [0.36, 0.20, 0.16], [bedCx, fy + 0.58, minZ + 0.62], cushionGold, { castShadow: false });
+    const bedBodyZ = zAt(1.25);
+    const headZ = zAt(0.18);
+    box(intG, [2.25, 0.02, 1.35], [bedCx, fy + 0.02, zAt(2.75)], m.rugMat, { castShadow: false });
+    box(intG, [2.05, 0.30, 1.98], [bedCx, fy + 0.15, bedBodyZ], darkWalnut);
+    box(intG, [2.16, 1.08, 0.15], [bedCx, fy + 0.54, headZ], darkWalnut);
+    box(intG, [1.92, 0.68, 0.05], [bedCx, fy + 0.70, headZ + halfZ * 0.09], m.sofaFabric, { castShadow: false });
+    box(intG, [1.96, 0.20, 1.86], [bedCx, fy + 0.40, bedBodyZ], m.mattressMat);
+    box(intG, [1.98, 0.21, 1.20], [bedCx, fy + 0.41, bedBodyZ + halfZ * 0.30], m.blanketMat);
+    box(intG, [0.58, 0.12, 0.34], [bedCx - 0.46, fy + 0.54, zAt(0.48)], shared.whiteBand, { castShadow: false });
+    box(intG, [0.58, 0.12, 0.34], [bedCx + 0.46, fy + 0.54, zAt(0.48)], shared.whiteBand, { castShadow: false });
+    box(intG, [0.34, 0.18, 0.15], [bedCx, fy + 0.57, zAt(0.64)], cushionGold, { castShadow: false });
 
-    // Twin Bedside Nightstands with Warm Glowing Table Lamps
-    for (const nsOff of [-1.32, 1.32]) {
+    // Twin Nightstands with Warm Table Lamps
+    for (const nsOff of [-1.28, 1.28]) {
       const nsX = bedCx + nsOff;
       if (nsX > bedMinX + 0.22 && nsX < bedMaxX - 0.22) {
-        box(intG, [0.44, 0.48, 0.42], [nsX, fy + 0.24, minZ + 0.34], darkWalnut);
-        cylinder(intG, 0.03, 0.06, 0.16, [nsX, fy + 0.56, minZ + 0.34], shinyStainlessSteel, 6);
-        cylinder(intG, 0.09, 0.13, 0.18, [nsX, fy + 0.71, minZ + 0.34], warmLampGlow, 8);
+        box(intG, [0.42, 0.46, 0.40], [nsX, fy + 0.23, zAt(0.34)], darkWalnut);
+        cylinder(intG, 0.028, 0.055, 0.15, [nsX, fy + 0.54, zAt(0.34)], shinyStainlessSteel, 6);
+        cylinder(intG, 0.085, 0.12, 0.16, [nsX, fy + 0.69, zAt(0.34)], warmLampGlow, 8);
       }
     }
-    // Framed Wall Art above Bed + Bedroom Split AC Unit
-    box(intG, [1.26, 0.84, 0.05], [bedCx, fy + 1.72, minZ + 0.05], darkWalnut, { castShadow: false });
-    const bedArt = new THREE.Mesh(new THREE.PlaneGeometry(1.16, 0.74), isLeft ? artMat1 : artMat0);
-    bedArt.position.set(bedCx, fy + 1.72, minZ + 0.085);
+    // Framed Art & Split AC on Party Wall above Bed
+    box(intG, [1.22, 0.80, 0.05], [bedCx, fy + 1.70, partyZ + halfZ * 0.05], darkWalnut, { castShadow: false });
+    const bedArt = new THREE.Mesh(new THREE.PlaneGeometry(1.12, 0.70), (isLeft === isFront) ? artMat1 : artMat0);
+    bedArt.rotation.y = isFront ? 0 : Math.PI;
+    bedArt.position.set(bedCx, fy + 1.70, partyZ + halfZ * 0.085);
     intG.add(bedArt);
-    box(intG, [0.96, 0.28, 0.22], [bedCx, fy + 2.74, minZ + 0.14], acUnitWhite, { castShadow: false });
-    box(intG, [0.03, 0.03, 0.03], [bedCx + 0.34, fy + 2.66, minZ + 0.26], acLedGreen, { castShadow: false });
+    box(intG, [0.94, 0.28, 0.22], [bedCx, fy + 2.74, partyZ + halfZ * 0.14], acUnitWhite, { castShadow: false });
+    box(intG, [0.03, 0.03, 0.03], [bedCx + 0.32, fy + 2.66, partyZ + halfZ * 0.26], acLedGreen, { castShadow: false });
 
-    // Dressing Table with Tall Mirror & Stool along inner bedroom partition wall
-    const drWallX = isLeft ? (bedDivX - 0.30) : (bedDivX + 0.30);
+    // Dressing Table with Tall Mirror & Stool
+    const drWallX = isLeft ? (bedDivX - 0.28) : (bedDivX + 0.28);
     const drSign = isLeft ? -1 : 1;
-    const drZ = -1.60;
-    box(intG, [0.46, 0.76, 1.08], [drWallX, fy + 0.38, drZ], warmWoodSlat);
-    box(intG, [0.05, 1.18, 0.76], [drWallX - drSign * 0.20, fy + 1.38, drZ], darkWalnut, { castShadow: false });
-    box(intG, [0.04, 1.08, 0.66], [drWallX - drSign * 0.18, fy + 1.38, drZ], m.mirrorMat || shared.thaiGlass, { castShadow: false });
-    box(intG, [0.36, 0.42, 0.36], [drWallX + drSign * 0.46, fy + 0.21, drZ], cushionGold, { castShadow: false }); // Vanity stool
-    cylinder(intG, 0.03, 0.03, 0.12, [drWallX, fy + 0.82, drZ - 0.26], clothRed, 6);
-    cylinder(intG, 0.025, 0.025, 0.10, [drWallX, fy + 0.81, drZ + 0.22], clothBlue, 6);
+    const drZ = zAt(2.85);
+    box(intG, [0.44, 0.76, 1.04], [drWallX, fy + 0.38, drZ], warmWoodSlat);
+    box(intG, [0.05, 1.14, 0.74], [drWallX - drSign * 0.19, fy + 1.36, drZ], darkWalnut, { castShadow: false });
+    box(intG, [0.04, 1.04, 0.64], [drWallX - drSign * 0.17, fy + 1.36, drZ], m.mirrorMat || shared.thaiGlass, { castShadow: false });
+    box(intG, [0.34, 0.42, 0.34], [drWallX + drSign * 0.44, fy + 0.21, drZ], cushionGold, { castShadow: false });
 
-    // Interactive Wooden Almirah (আলমারি) with Openable Double Doors & Clothes Inside!
+    // Interactive Openable Wooden Almirah (আলমারি)
     const almX = isLeft ? (minX + 0.36) : (maxX - 0.36);
-    const almZ = -1.65;
+    const almZ = zAt(2.85);
     const almSign = isLeft ? 1 : -1;
-    box(intG, [0.60, 2.15, 1.56], [almX, fy + 1.075, almZ], m.wood);
+    box(intG, [0.58, 2.15, 1.50], [almX, fy + 1.075, almZ], m.wood);
     for (const sy of [0.55, 1.10, 1.60]) {
-      box(intG, [0.52, 0.04, 1.44], [almX, fy + sy, almZ], m.roomWall);
+      box(intG, [0.50, 0.04, 1.38], [almX, fy + sy, almZ], m.roomWall);
     }
-    box(intG, [0.36, 0.15, 0.42], [almX + almSign * 0.05, fy + 0.65, almZ - 0.32], clothRed, { castShadow: false });
-    box(intG, [0.36, 0.15, 0.42], [almX + almSign * 0.05, fy + 1.20, almZ + 0.28], clothBlue, { castShadow: false });
-    box(intG, [0.36, 0.15, 0.42], [almX + almSign * 0.05, fy + 1.70, almZ - 0.18], clothGold, { castShadow: false });
+    box(intG, [0.34, 0.14, 0.40], [almX + almSign * 0.05, fy + 0.65, almZ - 0.30], clothRed, { castShadow: false });
+    box(intG, [0.34, 0.14, 0.40], [almX + almSign * 0.05, fy + 1.20, almZ + 0.26], clothBlue, { castShadow: false });
+    box(intG, [0.34, 0.14, 0.40], [almX + almSign * 0.05, fy + 1.70, almZ - 0.16], clothGold, { castShadow: false });
     const almDoorL = new THREE.Group();
-    almDoorL.position.set(almX + almSign * 0.31, fy + 0.04, almZ - 0.76);
+    almDoorL.position.set(almX + almSign * 0.30, fy + 0.04, almZ - 0.73);
     {
       const dg = new THREE.Group();
-      box(dg, [0.05, 2.04, 0.75], [0, 1.02, 0.375], m.wood);
-      box(dg, [0.03, 1.38, 0.44], [almSign * 0.03, 1.10, 0.38], m.mirrorMat || shared.thaiGlass);
+      box(dg, [0.05, 2.04, 0.72], [0, 1.02, 0.36], m.wood);
+      box(dg, [0.03, 1.34, 0.42], [almSign * 0.03, 1.10, 0.36], m.mirrorMat || shared.thaiGlass);
       mergeStaticMeshes(dg);
       almDoorL.add(dg);
-      dynamicG.add(almDoorL);
+      dynFloorG.add(almDoorL);
     }
     const almDoorR = new THREE.Group();
-    almDoorR.position.set(almX + almSign * 0.31, fy + 0.04, almZ + 0.76);
+    almDoorR.position.set(almX + almSign * 0.30, fy + 0.04, almZ + 0.73);
     {
       const dg = new THREE.Group();
-      box(dg, [0.05, 2.04, 0.75], [0, 1.02, -0.375], m.wood);
+      box(dg, [0.05, 2.04, 0.72], [0, 1.02, -0.36], m.wood);
       mergeStaticMeshes(dg);
       almDoorR.add(dg);
-      dynamicG.add(almDoorR);
+      dynFloorG.add(almDoorR);
     }
     interactiveProps.push({
       kind: 'almirah', floorIdx: k,
@@ -999,211 +999,201 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
       open: false, angle: 0, doorL: almDoorL, doorR: almDoorR, dir: almSign,
       label: `${tag} আলমারি`,
     });
-    box(intG, [0.54, 0.04, 0.54], [bedCx, ceilY, -2.5], m.lamp, { castShadow: false });
-    addCeilingFan(bedCx, ceilY, -2.5, k);
+    box(intG, [0.52, 0.04, 0.52], [bedCx, ceilY, zAt(2.15)], m.lamp, { castShadow: false });
+    addCeilingFan(dynFloorG, bedCx, ceilY, zAt(2.15), k);
 
-    // ======================================================================
-    // 3) MODERN MODULAR KITCHEN & INTERACTIVE FRIDGE (Inner Back Strip)
-    // ======================================================================
+    // 3) MODERN MODULAR KITCHEN & INTERACTIVE FRIDGE (distFromParty ∈ [2.15, 4.25], inner corridor X side)
     const kitMinX = isLeft ? bedDivX : minX;
     const kitMaxX = isLeft ? maxX : bedDivX;
     const kitCx = (kitMinX + kitMaxX) * 0.5;
     const kitWallX = isLeft ? (maxX - 0.34) : (minX + 0.34);
     const kitSign = isLeft ? -1 : 1;
 
-    // Lower Modular Counter + Granite Top + Glossy Backsplash
-    box(intG, [0.62, 0.84, 2.15], [kitWallX, fy + 0.42, -1.10], m.pillarTile);
-    box(intG, [0.66, 0.06, 2.20], [kitWallX, fy + 0.86, -1.10], m.blackTile);
-    box(intG, [0.04, 0.78, 2.18], [kitWallX - kitSign * 0.30, fy + 1.28, -1.10], shared.colorfulTile, { uvScale: 1.0, castShadow: false });
-    // Upper Modular Kitchen Wall Cabinets
-    box(intG, [0.38, 0.72, 1.25], [kitWallX - kitSign * 0.14, fy + 2.05, -0.62], warmWoodSlat, { castShadow: false });
-    // Stainless Range Hood (Kitchen Chimney) over Stove
-    box(intG, [0.48, 0.16, 0.78], [kitWallX - kitSign * 0.06, fy + 1.82, -1.62], shinyStainlessSteel, { castShadow: false });
-    box(intG, [0.24, 0.88, 0.28], [kitWallX - kitSign * 0.16, fy + 2.34, -1.62], shinyStainlessSteel, { castShadow: false });
-    // 2-Burner Gas Stove + Steel Cooking Pot + Sink + Faucet + Microwave + Red LPG Cylinder
-    box(intG, [0.42, 0.05, 0.72], [kitWallX, fy + 0.91, -1.62], shinyStainlessSteel, { castShadow: false });
-    cylinder(intG, 0.08, 0.08, 0.025, [kitWallX, fy + 0.95, -1.80], m.stoveFlame, 8);
-    cylinder(intG, 0.08, 0.08, 0.025, [kitWallX, fy + 0.95, -1.44], m.stoveFlame, 8);
-    cylinder(intG, 0.11, 0.10, 0.14, [kitWallX, fy + 1.02, -1.80], shinyStainlessSteel, 8); // Cooking pot
-    // Kitchen Sink & Gooseneck Chrome Faucet
-    box(intG, [0.42, 0.04, 0.52], [kitWallX, fy + 0.89, -0.45], m.chrome || shinyStainlessSteel, { castShadow: false });
-    cylinder(intG, 0.014, 0.014, 0.26, [kitWallX - kitSign * 0.22, fy + 1.03, -0.45], shinyStainlessSteel, 6);
-    box(intG, [0.16, 0.025, 0.025], [kitWallX - kitSign * 0.14, fy + 1.15, -0.45], shinyStainlessSteel, { castShadow: false });
-    // Microwave Oven & Red LPG Gas Cylinder
-    box(intG, [0.34, 0.26, 0.44], [kitWallX, fy + 1.02, -0.98], m.darkMetal, { castShadow: false });
-    cylinder(intG, 0.16, 0.16, 0.58, [kitWallX + kitSign * 0.58, fy + 0.29, -1.85], lpgRedMat, 10);
+    const kitMidZ = zAt(3.25);
+    box(intG, [0.62, 0.84, 1.95], [kitWallX, fy + 0.42, kitMidZ], m.pillarTile);
+    box(intG, [0.66, 0.06, 2.00], [kitWallX, fy + 0.86, kitMidZ], m.blackTile);
+    box(intG, [0.04, 0.76, 1.98], [kitWallX - kitSign * 0.30, fy + 1.28, kitMidZ], shared.colorfulTile, { uvScale: 1.0, castShadow: false });
+    box(intG, [0.36, 0.70, 1.15], [kitWallX - kitSign * 0.14, fy + 2.04, zAt(3.65)], warmWoodSlat, { castShadow: false });
+    // Range Hood (Chimney) + 2-Burner Stove + Cooking Pot + Sink + Microwave + LPG Cylinder
+    const stoveZ = zAt(2.75);
+    box(intG, [0.46, 0.15, 0.74], [kitWallX - kitSign * 0.06, fy + 1.82, stoveZ], shinyStainlessSteel, { castShadow: false });
+    box(intG, [0.22, 0.88, 0.26], [kitWallX - kitSign * 0.16, fy + 2.34, stoveZ], shinyStainlessSteel, { castShadow: false });
+    box(intG, [0.40, 0.05, 0.68], [kitWallX, fy + 0.91, stoveZ], shinyStainlessSteel, { castShadow: false });
+    cylinder(intG, 0.075, 0.075, 0.025, [kitWallX, fy + 0.95, stoveZ - 0.16], m.stoveFlame, 8);
+    cylinder(intG, 0.075, 0.075, 0.025, [kitWallX, fy + 0.95, stoveZ + 0.16], m.stoveFlame, 8);
+    cylinder(intG, 0.10, 0.09, 0.13, [kitWallX, fy + 1.02, stoveZ - 0.16], shinyStainlessSteel, 8);
+    const sinkZ = zAt(3.85);
+    box(intG, [0.40, 0.04, 0.48], [kitWallX, fy + 0.89, sinkZ], m.chrome || shinyStainlessSteel, { castShadow: false });
+    cylinder(intG, 0.014, 0.014, 0.25, [kitWallX - kitSign * 0.21, fy + 1.03, sinkZ], shinyStainlessSteel, 6);
+    box(intG, [0.32, 0.24, 0.42], [kitWallX, fy + 1.01, zAt(3.32)], m.darkMetal, { castShadow: false });
+    cylinder(intG, 0.15, 0.15, 0.56, [kitWallX + kitSign * 0.56, fy + 0.28, stoveZ], lpgRedMat, 10);
 
     // Interactive Openable Double-Door Refrigerator (ফ্রিজ)
-    const frZ = bathZ + 0.58;
-    box(intG, [0.68, 1.90, 0.80], [kitWallX, fy + 0.95, frZ], fridgeBodyMat);
-    box(intG, [0.06, 1.62, 0.66], [kitWallX + kitSign * 0.33, fy + 0.95, frZ], fridgeInnerLight, { castShadow: false });
-    cylinder(intG, 0.05, 0.05, 0.24, [kitWallX + kitSign * 0.16, fy + 1.12, frZ - 0.14], clothBlue, 8);
-    cylinder(intG, 0.05, 0.05, 0.22, [kitWallX + kitSign * 0.16, fy + 1.11, frZ + 0.04], clothRed, 8);
+    const frZ = zAt(2.60);
+    const frX = isLeft ? (kitMinX + 0.44) : (kitMaxX - 0.44);
+    const frSign = isLeft ? 1 : -1;
+    box(intG, [0.64, 1.88, 0.76], [frX, fy + 0.94, frZ], fridgeBodyMat);
+    box(intG, [0.06, 1.58, 0.62], [frX + frSign * 0.31, fy + 0.94, frZ], fridgeInnerLight, { castShadow: false });
+    cylinder(intG, 0.045, 0.045, 0.22, [frX + frSign * 0.14, fy + 1.10, frZ - 0.12], clothBlue, 8);
+    cylinder(intG, 0.045, 0.045, 0.20, [frX + frSign * 0.14, fy + 1.09, frZ + 0.06], clothRed, 8);
     const frDoor = new THREE.Group();
-    frDoor.position.set(kitWallX + kitSign * 0.35, fy + 0.04, frZ - 0.39);
+    frDoor.position.set(frX + frSign * 0.33, fy + 0.04, frZ - 0.37);
     {
       const dg = new THREE.Group();
-      box(dg, [0.06, 1.82, 0.78], [0, 0.91, 0.39], fridgeBodyMat);
-      box(dg, [0.04, 0.52, 0.04], [kitSign * 0.05, 1.18, 0.68], shinyStainlessSteel);
+      box(dg, [0.06, 1.80, 0.74], [0, 0.90, 0.37], fridgeBodyMat);
+      box(dg, [0.04, 0.50, 0.04], [frSign * 0.05, 1.16, 0.64], shinyStainlessSteel);
       mergeStaticMeshes(dg);
       frDoor.add(dg);
-      dynamicG.add(frDoor);
+      dynFloorG.add(frDoor);
     }
     interactiveProps.push({
       kind: 'fridge', floorIdx: k,
-      lx: kitWallX + kitSign * 0.72, ly: fy, lz: frZ,
-      open: false, angle: 0, door: frDoor, dir: kitSign,
+      lx: frX + frSign * 0.68, ly: fy, lz: frZ,
+      open: false, angle: 0, door: frDoor, dir: frSign,
       label: `${tag} ফ্রিজ`,
     });
 
-    // ======================================================================
-    // 4) COMPLETE ATTACHED BATHROOM (Commode, Pedestal Basin, Mirror, Rain Shower, Towel & Bucket!)
-    // ======================================================================
-    const bathCz = (minZ + bathZ) * 0.5;
+    // 4) COMPLETE ATTACHED BATHROOM (distFromParty ∈ [0.00, 2.15], inner corridor X side)
+    const bathCz = (partyZ + bathZ) * 0.5;
     const bathW = kitMaxX - kitMinX - 0.18;
-    const bathD = bathZ - minZ - 0.18;
+    const bathD = Math.abs(bathZ - partyZ) - 0.16;
     box(intG, [bathW, 0.03, bathD], [kitCx, fy + 0.02, bathCz], m.bathTile, { castShadow: false });
-    // Ceramic Dado Wall Tile along Rear & Side Bathroom Walls
-    box(intG, [bathW, 1.45, 0.03], [kitCx, fy + 0.74, minZ + 0.04], m.bathTile, { castShadow: false });
-    box(intG, [0.03, 1.45, bathD], [kitWallX - kitSign * 0.30, fy + 0.74, bathCz], m.bathTile, { castShadow: false });
-    // Western Porcelain Commode
+    box(intG, [bathW, 1.42, 0.03], [kitCx, fy + 0.73, partyZ + halfZ * 0.04], m.bathTile, { castShadow: false });
+    box(intG, [0.03, 1.42, bathD], [kitWallX - kitSign * 0.30, fy + 0.73, bathCz], m.bathTile, { castShadow: false });
+    // Commode
     const comX = kitCx;
-    const comZ = minZ + 0.58;
-    cylinder(intG, 0.18, 0.14, 0.36, [comX, fy + 0.19, comZ], m.porcelain, 10);
-    cylinder(intG, 0.22, 0.18, 0.08, [comX, fy + 0.40, comZ], m.porcelain, 10);
-    box(intG, [0.40, 0.40, 0.18], [comX, fy + 0.64, minZ + 0.24], m.porcelain);
-    // Porcelain Pedestal Wash Basin + Framed Mirror + Chrome Tap
-    const basZ = bathCz + 0.45;
-    cylinder(intG, 0.09, 0.11, 0.66, [kitWallX + kitSign * 0.04, fy + 0.34, basZ], m.porcelain, 8);
-    box(intG, [0.38, 0.13, 0.48], [kitWallX + kitSign * 0.08, fy + 0.74, basZ], m.porcelain);
-    box(intG, [0.04, 0.68, 0.52], [kitWallX - kitSign * 0.26, fy + 1.42, basZ], shinyStainlessSteel, { castShadow: false });
-    box(intG, [0.045, 0.62, 0.46], [kitWallX - kitSign * 0.24, fy + 1.42, basZ], m.mirrorMat || shared.thaiGlass, { castShadow: false });
-    // Overhead Chrome Rain Shower + Towel Rail + Blue Water Bucket & Mug
+    const comZ = zAt(0.54);
+    cylinder(intG, 0.17, 0.13, 0.36, [comX, fy + 0.19, comZ], m.porcelain, 10);
+    cylinder(intG, 0.21, 0.17, 0.08, [comX, fy + 0.40, comZ], m.porcelain, 10);
+    box(intG, [0.38, 0.38, 0.18], [comX, fy + 0.63, zAt(0.22)], m.porcelain);
+    // Pedestal Wash Basin + Framed Mirror
+    const basZ = zAt(1.38);
+    cylinder(intG, 0.085, 0.105, 0.65, [kitWallX + kitSign * 0.04, fy + 0.33, basZ], m.porcelain, 8);
+    box(intG, [0.36, 0.13, 0.46], [kitWallX + kitSign * 0.08, fy + 0.73, basZ], m.porcelain);
+    box(intG, [0.04, 0.66, 0.48], [kitWallX - kitSign * 0.26, fy + 1.40, basZ], shinyStainlessSteel, { castShadow: false });
+    box(intG, [0.045, 0.60, 0.42], [kitWallX - kitSign * 0.24, fy + 1.40, basZ], m.mirrorMat || shared.thaiGlass, { castShadow: false });
+    // Rain Shower + Towel Bar + Bucket & Mug
     const shX = isLeft ? (kitMinX + 0.28) : (kitMaxX - 0.28);
-    const shZ = minZ + 1.25;
-    rodBetween(intG, [shX, fy + 0.90, shZ], [shX, fy + 2.18, shZ], 0.015, shinyStainlessSteel, 6);
-    rodBetween(intG, [shX, fy + 2.18, shZ], [shX - kitSign * 0.28, fy + 2.12, shZ], 0.015, shinyStainlessSteel, 6);
-    cylinder(intG, 0.11, 0.09, 0.03, [shX - kitSign * 0.28, fy + 2.08, shZ], shinyStainlessSteel, 8);
-    // Towel bar with folded coral towel
-    box(intG, [0.04, 0.03, 0.55], [shX, fy + 1.32, shZ + 0.72], shinyStainlessSteel, { castShadow: false });
-    box(intG, [0.07, 0.42, 0.36], [shX - kitSign * 0.03, fy + 1.12, shZ + 0.72], cushionCoral, { castShadow: false });
-    // Blue Water Bucket & Mug
-    cylinder(intG, 0.16, 0.12, 0.34, [shX - kitSign * 0.24, fy + 0.18, shZ - 0.22], m.bucketMat || clothBlue, 8);
-    cylinder(intG, 0.055, 0.045, 0.11, [shX - kitSign * 0.44, fy + 0.08, shZ - 0.10], m.bucketMat || clothBlue, 6);
-    box(intG, [0.42, 0.04, 0.42], [kitCx, ceilY, bathCz], m.lamp, { castShadow: false });
-
-    // Spinning Ceiling Fan in Living Room
-    addCeilingFan(midX, ceilY, livCz, k);
+    const shZ = zAt(1.10);
+    rodBetween(intG, [shX, fy + 0.90, shZ], [shX, fy + 2.16, shZ], 0.015, shinyStainlessSteel, 6);
+    rodBetween(intG, [shX, fy + 2.16, shZ], [shX - kitSign * 0.26, fy + 2.10, shZ], 0.015, shinyStainlessSteel, 6);
+    cylinder(intG, 0.10, 0.08, 0.03, [shX - kitSign * 0.26, fy + 2.06, shZ], shinyStainlessSteel, 8);
+    box(intG, [0.04, 0.03, 0.50], [shX, fy + 1.30, zAt(1.65)], shinyStainlessSteel, { castShadow: false });
+    box(intG, [0.07, 0.40, 0.34], [shX - kitSign * 0.03, fy + 1.10, zAt(1.65)], cushionCoral, { castShadow: false });
+    cylinder(intG, 0.15, 0.11, 0.32, [shX - kitSign * 0.24, fy + 0.17, zAt(0.82)], m.bucketMat || clothBlue, 8);
+    box(intG, [0.40, 0.04, 0.40], [kitCx, ceilY, bathCz], m.lamp, { castShadow: false });
 
     // Sittable Furniture (World Coordinates)
     const sofaW = localToWorld(sofaX + (isLeft ? 0.10 : -0.10), livCz);
-    const bedW = localToWorld(bedCx, bedBodyZ + 0.15);
-    const comW = localToWorld(comX, comZ + 0.08);
+    const bedW = localToWorld(bedCx, bedBodyZ + halfZ * 0.14);
+    const comW = localToWorld(comX, comZ + halfZ * 0.06);
     return [
       { seatX: sofaW.x, seatZ: sofaW.z, seatY: 0.46, yaw: rotY + (isLeft ? Math.PI / 2 : -Math.PI / 2), fy, label: `${tag} সোফা` },
-      { seatX: bedW.x, seatZ: bedW.z, seatY: 0.54, yaw: rotY, fy, label: `${tag} মাস্টার বেড` },
-      { seatX: comW.x, seatZ: comW.z, seatY: 0.46, yaw: rotY, fy, label: `${tag} কমোড` },
+      { seatX: bedW.x, seatZ: bedW.z, seatY: 0.54, yaw: rotY + (isFront ? 0 : Math.PI), fy, label: `${tag} মাস্টার বেড` },
+      { seatX: comW.x, seatZ: comW.z, seatY: 0.46, yaw: rotY + (isFront ? 0 : Math.PI), fy, label: `${tag} কমোড` },
     ];
   }
 
   // ==========================================================================
-  // 3) FLOORS 2, 3, 4 & 5: 2 BIG ENCLOSED FLATS + 3 MAIN DOORS BESIDE STAIRS!
+  // 3) FLOORS 2, 3, 4 & 5: 4 BIG ENCLOSED FLATS PER FLOOR (2 LEFT + 2 RIGHT!)
   // ==========================================================================
   for (let k = 1; k < floors; k++) {
     const fy = FLOOR_Y[k];
     const h = flH;
     addFloorSlab(fy, false);
 
-    // Exterior Soft Off-White Walls (Left, Right, Back)
+    const dynFloorG = new THREE.Group();
+    dynFloorG.name = `UserHome_Dynamic_F${k}`;
+    dynamicG.add(dynFloorG);
+    floorDynamicGroups[k] = dynFloorG;
+
+    // Side Exterior Walls (-X, +X)
     box(exteriorStatic, [0.24, h, D], [-hw + 0.12, fy + h * 0.5, 0], softWhiteWall);
     box(exteriorStatic, [0.24, h, D], [hw - 0.12, fy + h * 0.5, 0], softWhiteWall);
-    box(exteriorStatic, [W, h, 0.24], [0, fy + h * 0.5, -hd + 0.12], softWhiteWall);
 
-    // Side & Rear Decorative Exterior Windows so all 4 sides look detailed in Free-Cam [C]!
-    for (const wz of [-3.6, 2.8]) {
+    // Side Decorative Exterior Windows (2 for Front Flat, 2 for Back Flat on both sides!)
+    for (const wz of [-6.4, -2.4, 2.4, 6.4]) {
       addExteriorDecorWindow(-hw, fy + 1.62, wz, 1.55, 1.35, true);
       addExteriorDecorWindow(hw, fy + 1.62, wz, 1.55, 1.35, true);
     }
-    for (const wx of [-5.2, 5.2]) {
-      addExteriorDecorWindow(wx, fy + 1.62, -hd, 1.65, 1.35, false);
+
+    // Front (+Z) & Back (-Z) Exterior Walls with Openable Thai Windows for ALL 4 Flats (A1, B1 front + A2, B2 back!)
+    const winA = -5.35;
+    const winB = 5.35;
+    const winW = 2.80;
+    for (const faceZ of [1, -1]) {
+      const zWall = faceZ * (hd - 0.12);
+      box(exteriorStatic, [W, 0.85, 0.24], [0, fy + 0.425, zWall], softWhiteWall);
+      box(exteriorStatic, [W, h - 2.40, 0.24], [0, fy + 2.40 + (h - 2.40) * 0.5, zWall], softWhiteWall);
+      box(exteriorStatic, [(winA - winW * 0.5) - (-hw), 1.55, 0.24], [(-hw + winA - winW * 0.5) * 0.5, fy + 1.625, zWall], softWhiteWall);
+      box(exteriorStatic, [(winB - winW * 0.5) - (winA + winW * 0.5), 1.55, 0.24], [0, fy + 1.625, zWall], softWhiteWall);
+      box(exteriorStatic, [hw - (winB + winW * 0.5), 1.55, 0.24], [(winB + winW * 0.5 + hw) * 0.5, fy + 1.625, zWall], softWhiteWall);
+
+      const suffix = faceZ > 0 ? '1' : '2';
+      addOpenableThaiWindow({ floorIdx: k, lx: winA, ly: fy + 1.625, lz: zWall, w: winW, h: 1.55, faceSign: faceZ, label: `ফ্ল্যাট ${k + 1}A${suffix} থাই জানালা` });
+      addOpenableThaiWindow({ floorIdx: k, lx: winB, ly: fy + 1.625, lz: zWall, w: winW, h: 1.55, faceSign: faceZ, label: `ফ্ল্যাট ${k + 1}B${suffix} থাই জানালা` });
+
+      // Twin Wide Luxury Balconies on BOTH Front (A1/B1) & Rear (A2/B2) Facades!
+      for (const bx of [winA, winB]) {
+        const balW = 5.10;
+        box(exteriorStatic, [balW, 0.16, 1.05], [bx, fy + 0.04, faceZ * (hd + 0.50)], shared.whiteBand);
+        box(exteriorStatic, [balW, 0.48, 0.10], [bx, fy + 0.34, faceZ * (hd + 0.98)], shared.colorfulTile, { uvScale: 1.5 });
+        box(exteriorStatic, [balW, 0.48, 0.06], [bx, fy + 0.80, faceZ * (hd + 0.98)], shared.thaiGlass, { castShadow: false });
+        box(exteriorStatic, [balW + 0.08, 0.07, 0.10], [bx, fy + 1.06, faceZ * (hd + 0.98)], shinyStainlessSteel);
+        box(exteriorStatic, [0.10, 1.02, 1.05], [bx - balW * 0.5, fy + 0.56, faceZ * (hd + 0.50)], shared.colorfulTile, { uvScale: 0.9 });
+        box(exteriorStatic, [0.10, 1.02, 1.05], [bx + balW * 0.5, fy + 0.56, faceZ * (hd + 0.50)], shared.colorfulTile, { uvScale: 0.9 });
+        addPottedPlant(exteriorStatic, bx - balW * 0.38, fy + 0.12, faceZ * (hd + 0.52), 0.92, k + (bx < 0 ? 0 : 2));
+        addPottedPlant(exteriorStatic, bx + balW * 0.38, fy + 0.12, faceZ * (hd + 0.52), 0.88, k + (bx < 0 ? 1 : 3));
+        const acX = bx < 0 ? (bx - balW * 0.5 + 0.24) : (bx + balW * 0.5 - 0.24);
+        box(exteriorStatic, [0.32, 0.52, 0.72], [acX, fy + 0.42, faceZ * (hd + 0.48)], acUnitWhite, { castShadow: false });
+        const acFan = cylinder(exteriorStatic, 0.18, 0.18, 0.04, [acX + (bx < 0 ? 0.16 : -0.16), fy + 0.44, faceZ * (hd + 0.48)], m.darkMetal, 10);
+        acFan.rotation.z = Math.PI / 2;
+        acFan.castShadow = false;
+      }
     }
 
-    // Front (+Z) Exterior Wall with Twin Wide Living Room Thai Windows (Flat A & Flat B)
-    const winA = -4.95;
-    const winB = 4.95;
-    const winW = 2.80;
-    box(exteriorStatic, [W, 0.85, 0.24], [0, fy + 0.425, hd - 0.12], softWhiteWall);
-    box(exteriorStatic, [W, h - 2.40, 0.24], [0, fy + 2.40 + (h - 2.40) * 0.5, hd - 0.12], softWhiteWall);
-    box(exteriorStatic, [(winA - winW * 0.5) - (-hw), 1.55, 0.24], [(-hw + winA - winW * 0.5) * 0.5, fy + 1.625, hd - 0.12], softWhiteWall);
-    box(exteriorStatic, [(winB - winW * 0.5) - (winA + winW * 0.5), 1.55, 0.24], [0, fy + 1.625, hd - 0.12], softWhiteWall);
-    box(exteriorStatic, [hw - (winB + winW * 0.5), 1.55, 0.24], [(winB + winW * 0.5 + hw) * 0.5, fy + 1.625, hd - 0.12], softWhiteWall);
-
-    addOpenableThaiWindow({ floorIdx: k, lx: winA, ly: fy + 1.625, lz: hd - 0.12, w: winW, h: 1.55, label: `ফ্ল্যাট ${k + 1}A থাই জানালা` });
-    addOpenableThaiWindow({ floorIdx: k, lx: winB, ly: fy + 1.625, lz: hd - 0.12, w: winW, h: 1.55, label: `ফ্ল্যাট ${k + 1}B থাই জানালা` });
-
-    // Colorful Glazed Mosaic Tile Vertical Feature Piers + Center Curtain Glass with Stainless Mullions
+    // Front Facade Colorful Mosaic Feature Piers, Cobalt Stair Glass & Architectural Sconces
     for (const px of [-hw + 0.55, -1.85, 1.85, hw - 0.55]) {
       box(exteriorStatic, [0.95, h, 0.08], [px, fy + h * 0.5, hd + 0.02], shared.colorfulTile, { uvScale: 1.4 });
     }
     box(exteriorStatic, [2.2, h - 0.2, 0.10], [0, fy + h * 0.5, hd + 0.03], shared.cobaltGlass);
-    // Horizontal stainless mullions across central cobalt stairwell glass
     for (const my of [0.85, 1.65, 2.45]) {
       box(exteriorStatic, [2.28, 0.055, 0.13], [0, fy + my, hd + 0.04], shinyStainlessSteel, { castShadow: false });
     }
-    // Sleek Architectural Up/Down Wall Sconce Fixtures on Outer Feature Piers
     for (const sx of [-hw + 0.55, hw - 0.55]) {
       box(exteriorStatic, [0.16, 0.34, 0.12], [sx, fy + 2.0, hd + 0.07], m.darkMetal, { castShadow: false });
       box(dynamicG, [0.12, 0.06, 0.10], [sx, fy + 2.18, hd + 0.08], shared.liftLed, { castShadow: false });
       box(dynamicG, [0.12, 0.06, 0.10], [sx, fy + 1.82, hd + 0.08], shared.liftLed, { castShadow: false });
     }
 
-    // Twin Wide Luxury Front Balconies (Flat A & Flat B) with Potted Flowers, AC Outdoor Units & Railings
-    for (const bx of [winA, winB]) {
-      const balW = 4.90;
-      box(exteriorStatic, [balW, 0.16, 1.05], [bx, fy + 0.04, hd + 0.50], shared.whiteBand);
-      box(exteriorStatic, [balW, 0.48, 0.10], [bx, fy + 0.34, hd + 0.98], shared.colorfulTile, { uvScale: 1.5 });
-      box(exteriorStatic, [balW, 0.48, 0.06], [bx, fy + 0.80, hd + 0.98], shared.thaiGlass, { castShadow: false });
-      box(exteriorStatic, [balW + 0.08, 0.07, 0.10], [bx, fy + 1.06, hd + 0.98], shinyStainlessSteel);
-      box(exteriorStatic, [0.10, 1.02, 1.05], [bx - balW * 0.5, fy + 0.56, hd + 0.50], shared.colorfulTile, { uvScale: 0.9 });
-      box(exteriorStatic, [0.10, 1.02, 1.05], [bx + balW * 0.5, fy + 0.56, hd + 0.50], shared.colorfulTile, { uvScale: 0.9 });
-      // Potted blooming plants on each balcony corner
-      addPottedPlant(exteriorStatic, bx - balW * 0.38, fy + 0.12, hd + 0.52, 0.95, k + (bx < 0 ? 0 : 2));
-      addPottedPlant(exteriorStatic, bx + balW * 0.38, fy + 0.12, hd + 0.52, 0.90, k + (bx < 0 ? 1 : 3));
-      // Split AC Outdoor Compressor Unit mounted neatly on outer balcony cheek wall
-      const acX = bx < 0 ? (bx - balW * 0.5 + 0.24) : (bx + balW * 0.5 - 0.24);
-      box(exteriorStatic, [0.32, 0.52, 0.72], [acX, fy + 0.42, hd + 0.48], acUnitWhite, { castShadow: false });
-      const acFan = cylinder(exteriorStatic, 0.18, 0.18, 0.04, [acX + (bx < 0 ? 0.16 : -0.16), fy + 0.44, hd + 0.48], m.darkMetal, 10);
-      acFan.rotation.z = Math.PI / 2;
-      acFan.castShadow = false;
+    // --- SOLID PARTY WALL AT lz = 0.0 SEPARATING FRONT FLATS (A1/B1) FROM BACK FLATS (A2/B2)! ---
+    box(exteriorStatic, [CORR_MIN_X - (-hw), h, 0.18], [(-hw + CORR_MIN_X) * 0.5, fy + h * 0.5, 0], m.roomWall);
+    box(exteriorStatic, [hw - CORR_MAX_X, h, 0.18], [(CORR_MAX_X + hw) * 0.5, fy + h * 0.5, 0], m.roomWall);
+
+    // --- CENTRAL CORRIDOR WALLS WITH 4 OPENABLE MAIN FLAT DOORS (2 ON LEFT + 2 ON RIGHT!) ---
+    for (const corrX of [CORR_MIN_X, CORR_MAX_X]) {
+      box(exteriorStatic, [0.16, h, D_REAR_MIN_Z - (-hd)], [corrX, fy + h * 0.5, (-hd + D_REAR_MIN_Z) * 0.5], m.roomWall);
+      box(exteriorStatic, [0.16, h, D_FRONT_MIN_Z - D_REAR_MAX_Z], [corrX, fy + h * 0.5, (D_REAR_MAX_Z + D_FRONT_MIN_Z) * 0.5], m.roomWall);
+      box(exteriorStatic, [0.16, h, hd - D_FRONT_MAX_Z], [corrX, fy + h * 0.5, (D_FRONT_MAX_Z + hd) * 0.5], m.roomWall);
+      box(exteriorStatic, [0.16, h - 2.26, D_FRONT_MAX_Z - D_FRONT_MIN_Z], [corrX, fy + 2.26 + (h - 2.26) * 0.5, D_FRONT_CZ], m.roomWall);
+      box(exteriorStatic, [0.16, h - 2.26, D_REAR_MAX_Z - D_REAR_MIN_Z], [corrX, fy + 2.26 + (h - 2.26) * 0.5, D_REAR_CZ], m.roomWall);
     }
 
-    // --- CENTRAL CORRIDOR WALLS DIVIDING FLAT A & FLAT B + 3 OPENABLE MAIN DOORS BESIDE STAIRS! ---
-    box(exteriorStatic, [0.16, h, D_FRONT_MIN_Z - (-hd)], [CORR_MIN_X, fy + h * 0.5, (-hd + D_FRONT_MIN_Z) * 0.5], m.roomWall);
-    box(exteriorStatic, [0.16, h, hd - D_FRONT_MAX_Z], [CORR_MIN_X, fy + h * 0.5, (D_FRONT_MAX_Z + hd) * 0.5], m.roomWall);
-    box(exteriorStatic, [0.16, h - 2.26, D_FRONT_MAX_Z - D_FRONT_MIN_Z], [CORR_MIN_X, fy + 2.26 + (h - 2.26) * 0.5, D_FRONT_CZ], m.roomWall);
-
-    box(exteriorStatic, [0.16, h, D_REAR_MIN_Z - (-hd)], [CORR_MAX_X, fy + h * 0.5, (-hd + D_REAR_MIN_Z) * 0.5], m.roomWall);
-    box(exteriorStatic, [0.16, h, D_FRONT_MIN_Z - D_REAR_MAX_Z], [CORR_MAX_X, fy + h * 0.5, (D_REAR_MAX_Z + D_FRONT_MIN_Z) * 0.5], m.roomWall);
-    box(exteriorStatic, [0.16, h, hd - D_FRONT_MAX_Z], [CORR_MAX_X, fy + h * 0.5, (D_FRONT_MAX_Z + hd) * 0.5], m.roomWall);
-    box(exteriorStatic, [0.16, h - 2.26, D_FRONT_MAX_Z - D_FRONT_MIN_Z], [CORR_MAX_X, fy + 2.26 + (h - 2.26) * 0.5, D_FRONT_CZ], m.roomWall);
-    box(exteriorStatic, [0.16, h - 2.26, D_REAR_MAX_Z - D_REAR_MIN_Z], [CORR_MAX_X, fy + 2.26 + (h - 2.26) * 0.5, D_REAR_CZ], m.roomWall);
-
     const doorSpecs = [
-      { lx: CORR_MIN_X, minZ: D_FRONT_MIN_Z, maxZ: D_FRONT_MAX_Z, cz: D_FRONT_CZ, openAngle: Math.PI * 0.54, plaque: `ফ্ল্যাট ${k + 1}A`, sub: 'উত্তর ফ্ল্যাট', faceSign: 1, label: `দরজা ১ · ফ্ল্যাট ${k + 1}A (বাম)` },
-      { lx: CORR_MAX_X, minZ: D_FRONT_MIN_Z, maxZ: D_FRONT_MAX_Z, cz: D_FRONT_CZ, openAngle: -Math.PI * 0.54, plaque: `ফ্ল্যাট ${k + 1}B`, sub: 'দক্ষিণ ফ্ল্যাট', faceSign: -1, label: `দরজা ২ · ফ্ল্যাট ${k + 1}B (ডান)` },
-      { lx: CORR_MAX_X, minZ: D_REAR_MIN_Z, maxZ: D_REAR_MAX_Z, cz: D_REAR_CZ, openAngle: -Math.PI * 0.54, plaque: `${k + 1}B · স্যুট`, sub: 'পেছনের দরজা', faceSign: -1, label: `দরজা ৩ · ফ্ল্যাট ${k + 1}B পেছনের দরজা` },
+      { lx: CORR_MIN_X, minZ: D_FRONT_MIN_Z, maxZ: D_FRONT_MAX_Z, cz: D_FRONT_CZ, openAngle: Math.PI * 0.54, plaque: `ফ্ল্যাট ${k + 1}A1`, sub: 'বাম-সামনের ফ্ল্যাট', faceSign: 1, label: `ফ্ল্যাট ${k + 1}A1 (বাম-সামনে)` },
+      { lx: CORR_MIN_X, minZ: D_REAR_MIN_Z, maxZ: D_REAR_MAX_Z, cz: D_REAR_CZ, openAngle: Math.PI * 0.54, plaque: `ফ্ল্যাট ${k + 1}A2`, sub: 'বাম-পেছনের ফ্ল্যাট', faceSign: 1, label: `ফ্ল্যাট ${k + 1}A2 (বাম-পেছনে)` },
+      { lx: CORR_MAX_X, minZ: D_FRONT_MIN_Z, maxZ: D_FRONT_MAX_Z, cz: D_FRONT_CZ, openAngle: -Math.PI * 0.54, plaque: `ফ্ল্যাট ${k + 1}B1`, sub: 'ডান-সামনের ফ্ল্যাট', faceSign: -1, label: `ফ্ল্যাট ${k + 1}B1 (ডান-সামনে)` },
+      { lx: CORR_MAX_X, minZ: D_REAR_MIN_Z, maxZ: D_REAR_MAX_Z, cz: D_REAR_CZ, openAngle: -Math.PI * 0.54, plaque: `ফ্ল্যাট ${k + 1}B2`, sub: 'ডান-পেছনের ফ্ল্যাট', faceSign: -1, label: `ফ্ল্যাট ${k + 1}B2 (ডান-পেছনে)` },
     ];
     for (const ds of doorSpecs) {
-      // Dark walnut wooden door frame (চৌকাঠ)
       box(exteriorStatic, [0.20, 2.26, 0.08], [ds.lx, fy + 1.13, ds.minZ], darkWalnut, { castShadow: false });
       box(exteriorStatic, [0.20, 2.26, 0.08], [ds.lx, fy + 1.13, ds.maxZ], darkWalnut, { castShadow: false });
       box(exteriorStatic, [0.20, 0.08, ds.maxZ - ds.minZ + 0.08], [ds.lx, fy + 2.26, ds.cz], darkWalnut, { castShadow: false });
-      // Emerald & Gold Flat Number Plaque beside door
       const pqMat = new THREE.MeshStandardMaterial({ map: makeDoorPlaqueTexture(ds.plaque, ds.sub), roughness: 0.35 });
-      const pqMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.16), pqMat);
+      const pqMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.17), pqMat);
       pqMesh.rotation.y = ds.faceSign > 0 ? (Math.PI / 2) : (-Math.PI / 2);
       pqMesh.position.set(ds.lx + ds.faceSign * 0.095, fy + 1.62, ds.maxZ + 0.32);
-      dynamicG.add(pqMesh);
+      dynFloorG.add(pqMesh);
 
       const piv = new THREE.Group();
       piv.position.set(ds.lx, fy + 0.02, ds.minZ + 0.02);
@@ -1215,7 +1205,7 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
       box(dg, [0.12, 0.22, 0.05], [0, 1.04, dw - 0.14], shinyStainlessSteel);
       mergeStaticMeshes(dg);
       piv.add(dg);
-      dynamicG.add(piv);
+      dynFloorG.add(piv);
       flatDoors.push({
         floorIdx: k, pivot: piv, lx: ds.lx, ly: fy, lz: ds.cz,
         open: false, angle: 0, openAngle: ds.openAngle, label: ds.label,
@@ -1223,77 +1213,111 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
       });
     }
 
-    // Build Both Big Luxury Furnished Flats (Flat A + Flat B)
+    // Build ALL 4 Big Luxury Furnished Flats on Floor k (A1, A2, B1, B2)
     const intG = new THREE.Group();
     intG.name = `UserHome_Interior_F${k}`;
     const ceilY = fy + h - 0.16;
-    const seatsA = buildWingFlat(intG, k, fy, h, -1, ceilY);
-    const seatsB = buildWingFlat(intG, k, fy, h, 1, ceilY);
-    // Corridor Ceiling LEDs + Landing Corner Potted Plant & Fire Extinguisher
-    box(intG, [0.52, 0.04, 0.52], [0.65, ceilY, 3.6], m.lamp, { castShadow: false });
-    box(intG, [0.52, 0.04, 0.52], [0.65, ceilY, -4.2], m.lamp, { castShadow: false });
+    const seatsA1 = buildQuadFlat(intG, dynFloorG, k, fy, h, -1, 1, ceilY);
+    const seatsA2 = buildQuadFlat(intG, dynFloorG, k, fy, h, -1, -1, ceilY);
+    const seatsB1 = buildQuadFlat(intG, dynFloorG, k, fy, h, 1, 1, ceilY);
+    const seatsB2 = buildQuadFlat(intG, dynFloorG, k, fy, h, 1, -1, ceilY);
+
+    // Corridor Ceiling LEDs + Front & Back Landing Potted Plants + Fire Extinguisher
+    box(intG, [0.52, 0.04, 0.52], [0.65, ceilY, 5.2], m.lamp, { castShadow: false });
+    box(intG, [0.52, 0.04, 0.52], [0.65, ceilY, 0.0], m.lamp, { castShadow: false });
+    box(intG, [0.52, 0.04, 0.52], [0.65, ceilY, -5.2], m.lamp, { castShadow: false });
     addPottedPlant(intG, 0.0, fy, hd - 0.55, 0.95, k + 1);
+    addPottedPlant(intG, 0.0, fy, -hd + 0.55, 0.95, k + 3);
     cylinder(intG, 0.075, 0.075, 0.42, [-1.52, fy + 1.25, -hd + 0.34], lpgRedMat, 8);
 
     mergeStaticMeshes(intG);
     root.add(intG);
     floorInteriorGroups[k] = intG;
-    floorSeats.set(k, [...seatsA, ...seatsB]);
+    floorSeats.set(k, [...seatsA1, ...seatsA2, ...seatsB1, ...seatsB2]);
   }
 
-  // Rear Exterior PVC Rainwater Downpipes running full height at back corners
+  // Rear Exterior PVC Rainwater Downpipes running full height
   for (const rpx of [-hw - 0.06, hw + 0.06]) {
     cylinder(exteriorStatic, 0.055, 0.055, roofY + 0.4, [rpx, (roofY + 0.4) * 0.5, -hd + 0.35], pvcPipeGrey, 8);
   }
 
   // ==========================================================================
-  // 4) ROOFTOP GARDEN (ফুল ও গাছের বাগান) + ENTERABLE FURNISHED ROOFTOP ROOM!
+  // 4) GRAND OPEN ROOFTOP (roofY = 17.75m) + BIG GARDEN + HALF-ROOF ROOM
+  //    + WALKABLE STAIRS TO UPPER ROOF (20.90m) + LIGHT UPPER GARDEN + 2 WATER TANKS ON VERY TOP!
   // ==========================================================================
   addFloorSlab(roofY, false);
+  // Open Rooftop Perimeter Parapet Wall (1.08m tall)
   box(exteriorStatic, [W, 1.08, 0.24], [0, roofY + 0.54, -hd + 0.12], shared.whiteBand);
   box(exteriorStatic, [W, 1.08, 0.24], [0, roofY + 0.54, hd - 0.12], shared.whiteBand);
   box(exteriorStatic, [0.24, 1.08, D], [-hw + 0.12, roofY + 0.54, 0], shared.whiteBand);
   box(exteriorStatic, [0.24, 1.08, D], [hw - 0.12, roofY + 0.54, 0], shared.whiteBand);
-  box(exteriorStatic, [W + 0.08, 0.58, 0.08], [0, roofY + 0.56, hd + 0.04], shared.colorfulTile, { uvScale: 2.2 });
+  box(exteriorStatic, [W + 0.08, 0.58, 0.08], [0, roofY + 0.56, hd + 0.04], shared.colorfulTile, { uvScale: 2.4 });
   box(exteriorStatic, [W + 0.16, 0.12, 0.30], [0, roofY + 1.10, hd - 0.08], shared.whiteBand);
 
-  // Central Stairhead Mumty Room + Overhead Water Tank + Steel Maintenance Ladder & Pipes
-  box(exteriorStatic, [3.70, 0.20, 6.4], [0, roofY + 2.95, -0.5], shared.whiteBand);
-  box(exteriorStatic, [0.20, 2.90, 6.3], [-1.80, roofY + 1.45, -0.5], softWhiteWall);
-  box(exteriorStatic, [0.20, 2.90, 6.3], [1.80, roofY + 1.45, -0.5], softWhiteWall);
-  box(exteriorStatic, [3.70, 2.90, 0.20], [0, roofY + 1.45, -3.65], softWhiteWall);
-  cylinder(exteriorStatic, 0.72, 0.74, 1.48, [0, roofY + 3.78, -1.8], shared.waterTank, 10);
-  // Steel ladder up the side of mumty to tank
-  for (const lzLad of [-2.4, -1.9]) {
-    cylinder(exteriorStatic, 0.02, 0.02, 2.95, [-1.96, roofY + 1.48, lzLad], shinyStainlessSteel, 6);
-  }
-  for (let lyRung = 0.35; lyRung <= 2.75; lyRung += 0.35) {
-    box(exteriorStatic, [0.03, 0.03, 0.52], [-1.96, roofY + lyRung, -2.15], shinyStainlessSteel, { castShadow: false });
-  }
-  cylinder(exteriorStatic, 0.035, 0.035, 3.6, [0.95, roofY + 1.80, -3.76], pvcPipeGrey, 6);
-
-  // WELL-CRAFTED ENTERABLE ROOFTOP ROOM (ছাদের রুম: lx ∈ [2.30, 7.60], lz ∈ [-6.00, -1.10])
+  // Central Stairhead Mumty Room (covers Main Stairwell: lx ∈ [-1.85, +0.20], lz ∈ [-3.20, +3.10], open front at +Z!)
   {
-    const rH = 3.05;
+    const mW = MUM_MAX_X - MUM_MIN_X;
+    const mD = MUM_MAX_Z - MUM_MIN_Z;
+    const mCx = (MUM_MIN_X + MUM_MAX_X) * 0.5;
+    const mCz = (MUM_MIN_Z + MUM_MAX_Z) * 0.5;
+    box(exteriorStatic, [mW + 0.24, 0.22, mD + 0.24], [mCx, upperRoofY - 0.11, mCz], shared.whiteBand);
+    box(exteriorStatic, [0.20, rH, mD], [MUM_MIN_X, roofY + rH * 0.5, mCz], softWhiteWall);
+    box(exteriorStatic, [0.20, rH, mD], [MUM_MAX_X, roofY + rH * 0.5, mCz], softWhiteWall);
+    box(exteriorStatic, [mW, rH, 0.20], [mCx, roofY + rH * 0.5, MUM_MIN_Z], softWhiteWall);
+  }
+
+  // WALKABLE EXTERIOR STAIRCASE FROM MAIN OPEN ROOFTOP UP TO PENTHOUSE ROOM ROOF (roofY -> upperRoofY!)
+  {
+    const upStairX = (UP_STAIR_MIN_X + UP_STAIR_MAX_X) * 0.5;
+    const upStairW = UP_STAIR_MAX_X - UP_STAIR_MIN_X;
+    const upSteps = 16;
+    const stepSpan = (UP_STAIR_START_Z - UP_STAIR_END_Z) / upSteps;
+    const stepRise = (upperRoofY - roofY) / upSteps;
+    for (let s = 0; s < upSteps; s++) {
+      const sz = UP_STAIR_START_Z - (s + 0.5) * stepSpan;
+      const sy = roofY + (s + 0.5) * stepRise;
+      box(exteriorStatic, [upStairW, stepRise + 0.18, stepSpan + 0.04], [upStairX, sy - 0.05, sz], shared.stairConcrete);
+    }
+    // Stainless steel handrails on both sides of the upper-roof staircase
+    for (const rx of [UP_STAIR_MIN_X + 0.05, UP_STAIR_MAX_X - 0.05]) {
+      rodBetween(exteriorStatic, [rx, roofY + 0.94, UP_STAIR_START_Z], [rx, upperRoofY + 0.94, UP_STAIR_END_Z], 0.025, shinyStainlessSteel, 6);
+      rodBetween(exteriorStatic, [rx, roofY + 0.52, UP_STAIR_START_Z], [rx, upperRoofY + 0.52, UP_STAIR_END_Z], 0.014, shinyStainlessSteel, 6);
+      for (let p = 0; p <= 5; p++) {
+        const f = p / 5;
+        cylinder(exteriorStatic, 0.018, 0.018, 0.94, [rx, THREE.MathUtils.lerp(roofY, upperRoofY, f) + 0.47, THREE.MathUtils.lerp(UP_STAIR_START_Z, UP_STAIR_END_Z, f)], shinyStainlessSteel, 6);
+      }
+    }
+    // Upper Landing Bridge connecting top of staircase (lz = -2.20..-4.20) to Penthouse Roof & Tank Deck!
+    box(exteriorStatic, [2.10, 0.22, 2.20], [1.15, upperRoofY - 0.11, -3.20], shared.whiteBand);
+    // Safety guardrail along back edge of upper landing bridge
+    box(exteriorStatic, [2.05, 0.95, 0.12], [1.15, upperRoofY + 0.48, -4.25], shared.whiteBand);
+  }
+
+  // HALF-ROOF ENTERABLE PENTHOUSE ROOM (ছাদের রুম: lx ∈ [2.10, 8.65], lz ∈ [-8.65, -0.40], roof top at upperRoofY = 20.90m!)
+  {
     const rW = RROOM_MAX_X - RROOM_MIN_X;
     const rD = RROOM_MAX_Z - RROOM_MIN_Z;
     const rCx = (RROOM_MIN_X + RROOM_MAX_X) * 0.5;
     const rCz = (RROOM_MIN_Z + RROOM_MAX_Z) * 0.5;
-    box(exteriorStatic, [rW + 0.36, 0.20, rD + 0.36], [rCx, roofY + rH + 0.10, rCz], shared.whiteBand);
-    box(exteriorStatic, [0.20, rH, rD], [RROOM_MIN_X, roofY + rH * 0.5, rCz], softWhiteWall);
-    box(exteriorStatic, [0.20, rH, rD], [RROOM_MAX_X, roofY + rH * 0.5, rCz], softWhiteWall);
-    box(exteriorStatic, [rW, rH, 0.20], [rCx, roofY + rH * 0.5, RROOM_MIN_Z], softWhiteWall);
-    // Front (+Z) wall with Doorway & Garden View Window
-    box(exteriorStatic, [RROOM_DOOR_MIN_X - RROOM_MIN_X, rH, 0.20], [(RROOM_MIN_X + RROOM_DOOR_MIN_X) * 0.5, roofY + rH * 0.5, RROOM_MAX_Z], softWhiteWall);
-    box(exteriorStatic, [RROOM_MAX_X - RROOM_DOOR_MAX_X, 0.90, 0.20], [(RROOM_DOOR_MAX_X + RROOM_MAX_X) * 0.5, roofY + 0.45, RROOM_MAX_Z], softWhiteWall);
-    box(exteriorStatic, [RROOM_MAX_X - RROOM_DOOR_MAX_X, 0.70, 0.20], [(RROOM_DOOR_MAX_X + RROOM_MAX_X) * 0.5, roofY + 2.70, RROOM_MAX_Z], softWhiteWall);
-    box(exteriorStatic, [RROOM_MAX_X - RROOM_DOOR_MAX_X - 0.4, 1.45, 0.06], [(RROOM_DOOR_MAX_X + RROOM_MAX_X) * 0.5, roofY + 1.62, RROOM_MAX_Z], shared.thaiGlass, { castShadow: false });
-    box(exteriorStatic, [RROOM_DOOR_MAX_X - RROOM_DOOR_MIN_X, rH - 2.25, 0.20], [RROOM_DOOR_CX, roofY + 2.25 + (rH - 2.25) * 0.5, RROOM_MAX_Z], softWhiteWall);
-    box(exteriorStatic, [rW + 0.10, 0.46, 0.08], [rCx, roofY + rH - 0.10, RROOM_MAX_Z + 0.12], shared.colorfulTile, { uvScale: 1.4 });
-    // Rooftop Room Door Plaque
+
+    // Walkable Upper Roof Slab on top of Penthouse Room!
+    box(exteriorStatic, [rW + 0.30, 0.22, rD + 0.30], [rCx, upperRoofY - 0.11, rCz], m.pillarTile || shared.whiteBand, { uvScale: 2.0 });
+    box(exteriorStatic, [0.22, rH, rD], [RROOM_MIN_X, roofY + rH * 0.5, rCz], softWhiteWall);
+    box(exteriorStatic, [0.22, rH, rD], [RROOM_MAX_X, roofY + rH * 0.5, rCz], softWhiteWall);
+    box(exteriorStatic, [rW, rH, 0.22], [rCx, roofY + rH * 0.5, RROOM_MIN_Z], softWhiteWall);
+
+    // Front (+Z) wall with Doorway & Wide Garden-View Glass Window
+    box(exteriorStatic, [RROOM_DOOR_MIN_X - RROOM_MIN_X, rH, 0.22], [(RROOM_MIN_X + RROOM_DOOR_MIN_X) * 0.5, roofY + rH * 0.5, RROOM_MAX_Z], softWhiteWall);
+    box(exteriorStatic, [RROOM_MAX_X - RROOM_DOOR_MAX_X, 0.90, 0.22], [(RROOM_DOOR_MAX_X + RROOM_MAX_X) * 0.5, roofY + 0.45, RROOM_MAX_Z], softWhiteWall);
+    box(exteriorStatic, [RROOM_MAX_X - RROOM_DOOR_MAX_X, 0.78, 0.22], [(RROOM_DOOR_MAX_X + RROOM_MAX_X) * 0.5, roofY + 2.76, RROOM_MAX_Z], softWhiteWall);
+    box(exteriorStatic, [RROOM_MAX_X - RROOM_DOOR_MAX_X - 0.45, 1.48, 0.06], [(RROOM_DOOR_MAX_X + RROOM_MAX_X) * 0.5, roofY + 1.64, RROOM_MAX_Z], shared.thaiGlass, { castShadow: false });
+    box(exteriorStatic, [RROOM_DOOR_MAX_X - RROOM_DOOR_MIN_X, rH - 2.25, 0.22], [RROOM_DOOR_CX, roofY + 2.25 + (rH - 2.25) * 0.5, RROOM_MAX_Z], softWhiteWall);
+    box(exteriorStatic, [rW + 0.14, 0.46, 0.08], [rCx, upperRoofY - 0.14, RROOM_MAX_Z + 0.14], shared.colorfulTile, { uvScale: 1.6 });
+
+    // Rooftop Room Plaque
     const rPqMat = new THREE.MeshStandardMaterial({ map: makeDoorPlaqueTexture('ছাদের রুম', 'PENTHOUSE LOUNGE'), roughness: 0.35 });
-    const rPq = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 0.20), rPqMat);
-    rPq.position.set(RROOM_DOOR_MIN_X - 0.42, roofY + 1.65, RROOM_MAX_Z + 0.12);
+    const rPq = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.21), rPqMat);
+    rPq.position.set(RROOM_DOOR_MIN_X - 0.52, roofY + 1.68, RROOM_MAX_Z + 0.13);
     dynamicG.add(rPq);
 
     // Openable Rooftop Room Wooden Door
@@ -1314,59 +1338,126 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
       collider: { minX: RROOM_DOOR_MIN_X, maxX: RROOM_DOOR_MAX_X, minZ: RROOM_MAX_Z - 0.14, maxZ: RROOM_MAX_Z + 0.14 },
     });
 
-    // Richly Furnished Rooftop Penthouse Room Interior
-    box(exteriorStatic, [3.2, 0.025, 2.6], [rCx, roofY + 0.02, rCz], m.rugMat, { castShadow: false });
-    // Bed with Headboard, Pillows & Blanket
-    box(exteriorStatic, [2.10, 0.38, 1.55], [RROOM_MAX_X - 1.25, roofY + 0.19, RROOM_MIN_Z + 1.05], darkWalnut);
-    box(exteriorStatic, [2.16, 0.96, 0.12], [RROOM_MAX_X - 1.25, roofY + 0.48, RROOM_MIN_Z + 0.24], darkWalnut);
-    box(exteriorStatic, [2.00, 0.18, 1.45], [RROOM_MAX_X - 1.25, roofY + 0.44, RROOM_MIN_Z + 1.05], m.mattressMat);
-    box(exteriorStatic, [2.02, 0.19, 0.92], [RROOM_MAX_X - 1.25, roofY + 0.45, RROOM_MIN_Z + 1.32], m.blanketMat);
-    box(exteriorStatic, [0.55, 0.12, 0.32], [RROOM_MAX_X - 1.62, roofY + 0.56, RROOM_MIN_Z + 0.52], shared.whiteBand, { castShadow: false });
-    box(exteriorStatic, [0.55, 0.12, 0.32], [RROOM_MAX_X - 0.88, roofY + 0.56, RROOM_MIN_Z + 0.52], shared.whiteBand, { castShadow: false });
-    // Study Desk with Glowing Laptop, Desk Lamp & Chair
-    const deskX = RROOM_MIN_X + 1.05;
-    const deskZ = RROOM_MIN_Z + 0.65;
-    box(exteriorStatic, [1.45, 0.06, 0.72], [deskX, roofY + 0.76, deskZ], darkWalnut);
-    for (const [dx, dz] of [[-0.65, -0.30], [0.65, -0.30], [-0.65, 0.30], [0.65, 0.30]]) {
+    // Richly Furnished Half-Roof Penthouse Room Interior
+    box(exteriorStatic, [4.2, 0.025, 3.6], [rCx, roofY + 0.02, rCz], m.rugMat, { castShadow: false });
+    // Plush King Bed + Headboard + Pillows + Nightstand Lamp
+    box(exteriorStatic, [2.20, 0.36, 2.00], [RROOM_MAX_X - 1.45, roofY + 0.18, RROOM_MIN_Z + 1.35], darkWalnut);
+    box(exteriorStatic, [2.26, 1.05, 0.14], [RROOM_MAX_X - 1.45, roofY + 0.52, RROOM_MIN_Z + 0.28], darkWalnut);
+    box(exteriorStatic, [2.10, 0.20, 1.88], [RROOM_MAX_X - 1.45, roofY + 0.45, RROOM_MIN_Z + 1.35], m.mattressMat);
+    box(exteriorStatic, [2.12, 0.21, 1.18], [RROOM_MAX_X - 1.45, roofY + 0.46, RROOM_MIN_Z + 1.65], m.blanketMat);
+    box(exteriorStatic, [0.58, 0.12, 0.34], [RROOM_MAX_X - 1.85, roofY + 0.58, RROOM_MIN_Z + 0.60], shared.whiteBand, { castShadow: false });
+    box(exteriorStatic, [0.58, 0.12, 0.34], [RROOM_MAX_X - 1.05, roofY + 0.58, RROOM_MIN_Z + 0.60], shared.whiteBand, { castShadow: false });
+    // Lounge Sofa along East interior wall
+    box(exteriorStatic, [0.85, 0.42, 2.40], [RROOM_MAX_X - 0.62, roofY + 0.21, -2.55], m.sofaFabric);
+    box(exteriorStatic, [0.18, 0.54, 2.40], [RROOM_MAX_X - 0.28, roofY + 0.58, -2.55], m.sofaFabric);
+    box(exteriorStatic, [0.16, 0.30, 0.36], [RROOM_MAX_X - 0.48, roofY + 0.55, -2.55], cushionGold, { castShadow: false });
+    // Study Desk with Glowing Laptop, Lamp & Chair
+    const deskX = RROOM_MIN_X + 1.15;
+    const deskZ = RROOM_MIN_Z + 0.72;
+    box(exteriorStatic, [1.55, 0.06, 0.76], [deskX, roofY + 0.76, deskZ], darkWalnut);
+    for (const [dx, dz] of [[-0.70, -0.32], [0.70, -0.32], [-0.70, 0.32], [0.70, 0.32]]) {
       box(exteriorStatic, [0.06, 0.74, 0.06], [deskX + dx, roofY + 0.37, deskZ + dz], darkWalnut);
     }
-    box(exteriorStatic, [0.38, 0.02, 0.26], [deskX, roofY + 0.80, deskZ], m.darkMetal, { castShadow: false }); // Laptop base
-    box(exteriorStatic, [0.38, 0.24, 0.02], [deskX, roofY + 0.92, deskZ - 0.12], laptopScreenMat, { castShadow: false }); // Glowing screen
-    cylinder(exteriorStatic, 0.07, 0.10, 0.15, [deskX + 0.48, roofY + 0.88, deskZ - 0.14], warmLampGlow, 8);
-    box(exteriorStatic, [0.46, 0.44, 0.46], [deskX, roofY + 0.22, deskZ + 0.62], warmWoodSlat);
-    box(exteriorStatic, [0.46, 0.46, 0.06], [deskX, roofY + 0.65, deskZ + 0.82], warmWoodSlat);
-    // Tall Bookshelf along West interior wall
-    box(exteriorStatic, [0.42, 2.05, 1.35], [RROOM_MIN_X + 0.34, roofY + 1.025, rCz + 0.55], warmWoodSlat);
+    box(exteriorStatic, [0.40, 0.02, 0.28], [deskX, roofY + 0.80, deskZ], m.darkMetal, { castShadow: false });
+    box(exteriorStatic, [0.40, 0.25, 0.02], [deskX, roofY + 0.93, deskZ - 0.13], laptopScreenMat, { castShadow: false });
+    cylinder(exteriorStatic, 0.075, 0.105, 0.15, [deskX + 0.52, roofY + 0.88, deskZ - 0.15], warmLampGlow, 8);
+    box(exteriorStatic, [0.46, 0.44, 0.46], [deskX, roofY + 0.22, deskZ + 0.65], warmWoodSlat);
+    box(exteriorStatic, [0.46, 0.46, 0.06], [deskX, roofY + 0.65, deskZ + 0.85], warmWoodSlat);
+    // Tall Bookshelf + Split AC + Curtains + Ceiling Light & Fan
+    box(exteriorStatic, [0.44, 2.15, 1.85], [RROOM_MIN_X + 0.34, roofY + 1.075, rCz + 0.65], warmWoodSlat);
     for (let bi = 0; bi < 3; bi++) {
       const by = roofY + 0.62 + bi * 0.52;
-      box(exteriorStatic, [0.22, 0.22, 0.24], [RROOM_MIN_X + 0.38, by, rCz + 0.25], flowerMats[bi % flowerMats.length], { castShadow: false });
-      box(exteriorStatic, [0.22, 0.20, 0.24], [RROOM_MIN_X + 0.38, by, rCz + 0.62], clothBlue, { castShadow: false });
+      box(exteriorStatic, [0.22, 0.22, 0.26], [RROOM_MIN_X + 0.38, by, rCz + 0.25], flowerMats[bi % flowerMats.length], { castShadow: false });
+      box(exteriorStatic, [0.22, 0.20, 0.26], [RROOM_MIN_X + 0.38, by, rCz + 0.72], clothBlue, { castShadow: false });
     }
-    // Window Curtains + Ceiling Light + Spinning Fan in Rooftop Room
-    box(exteriorStatic, [0.36, 2.35, 0.08], [RROOM_DOOR_MAX_X + 0.35, roofY + 1.32, RROOM_MAX_Z - 0.16], curtainTeal, { castShadow: false });
-    box(exteriorStatic, [0.36, 2.35, 0.08], [RROOM_MAX_X - 0.35, roofY + 1.32, RROOM_MAX_Z - 0.16], curtainTeal, { castShadow: false });
-    box(exteriorStatic, [0.56, 0.04, 0.56], [rCx, roofY + rH - 0.12, rCz], m.lamp, { castShadow: false });
-    addCeilingFan(rCx, roofY + rH - 0.12, rCz, floors);
+    box(exteriorStatic, [0.98, 0.28, 0.22], [rCx, roofY + 2.74, RROOM_MIN_Z + 0.20], acUnitWhite, { castShadow: false });
+    box(exteriorStatic, [0.38, 2.40, 0.08], [RROOM_DOOR_MAX_X + 0.38, roofY + 1.32, RROOM_MAX_Z - 0.16], curtainTeal, { castShadow: false });
+    box(exteriorStatic, [0.38, 2.40, 0.08], [RROOM_MAX_X - 0.38, roofY + 1.32, RROOM_MAX_Z - 0.16], curtainTeal, { castShadow: false });
+    box(exteriorStatic, [0.60, 0.04, 0.60], [rCx, upperRoofY - 0.24, rCz], m.lamp, { castShadow: false });
+    addCeilingFan(dynamicG, rCx, upperRoofY - 0.24, rCz, floors);
+
+    // --- ON TOP OF THE PENTHOUSE ROOM (upperRoofY = 20.90m): WALKABLE UPPER TERRACE + LIGHT GARDEN! ---
+    // Protective Parapet + Stainless Steel Top Rail around Upper Roof (leaving opening at lx = 2.10, lz ∈ [-4.20, -2.10]!)
+    box(exteriorStatic, [rW, 0.88, 0.18], [rCx, upperRoofY + 0.44, RROOM_MIN_Z + 0.09], shared.whiteBand);
+    box(exteriorStatic, [rW, 0.88, 0.18], [rCx, upperRoofY + 0.44, RROOM_MAX_Z - 0.09], shared.whiteBand);
+    box(exteriorStatic, [0.18, 0.88, rD], [RROOM_MAX_X - 0.09, upperRoofY + 0.44, rCz], shared.whiteBand);
+    box(exteriorStatic, [0.18, 0.88, (-4.20) - RROOM_MIN_Z], [RROOM_MIN_X + 0.09, upperRoofY + 0.44, (RROOM_MIN_Z - 4.20) * 0.5], shared.whiteBand);
+    box(exteriorStatic, [0.18, 0.88, RROOM_MAX_Z - (-2.10)], [RROOM_MIN_X + 0.09, upperRoofY + 0.44, (-2.10 + RROOM_MAX_Z) * 0.5], shared.whiteBand);
+    // Stainless steel top cap rails
+    box(exteriorStatic, [rW + 0.06, 0.06, 0.08], [rCx, upperRoofY + 0.92, RROOM_MAX_Z - 0.09], shinyStainlessSteel, { castShadow: false });
+    box(exteriorStatic, [rW + 0.06, 0.06, 0.08], [rCx, upperRoofY + 0.92, RROOM_MIN_Z + 0.09], shinyStainlessSteel, { castShadow: false });
+
+    // Light Rooftop Garden on Top of Penthouse Room (হালকা বাগান: neat flower strip + corner pots + sky-view bench!)
+    box(exteriorStatic, [4.8, 0.36, 0.82], [5.45, upperRoofY + 0.18, RROOM_MAX_Z - 0.72], shared.colorfulTile, { uvScale: 1.1 });
+    box(exteriorStatic, [4.64, 0.30, 0.68], [5.45, upperRoofY + 0.21, RROOM_MAX_Z - 0.72], soilMat);
+    for (let i = 0; i < 6; i++) {
+      const px = 3.55 + i * 0.76;
+      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22, 1), i % 2 === 0 ? leafBright : leafDark);
+      bush.position.set(px, upperRoofY + 0.48, RROOM_MAX_Z - 0.72);
+      exteriorStatic.add(bush);
+      const fl = new THREE.Mesh(new THREE.SphereGeometry(0.065, 6, 5), flowerMats[i % flowerMats.length]);
+      fl.position.set(px, upperRoofY + 0.66, RROOM_MAX_Z - 0.72);
+      fl.castShadow = false;
+      exteriorStatic.add(fl);
+    }
+    // 4 Corner Potted Ornamental Plants on Upper Roof
+    addPottedPlant(exteriorStatic, RROOM_MAX_X - 0.65, upperRoofY, RROOM_MIN_Z + 0.65, 1.35, 0);
+    addPottedPlant(exteriorStatic, RROOM_MIN_X + 0.65, upperRoofY, RROOM_MIN_Z + 0.65, 1.35, 2);
+    addPottedPlant(exteriorStatic, RROOM_MAX_X - 0.65, upperRoofY, RROOM_MAX_Z - 1.65, 1.20, 4);
+    addPottedPlant(exteriorStatic, RROOM_MIN_X + 0.65, upperRoofY, RROOM_MAX_Z - 0.72, 1.20, 1);
+
+    // Sky-View Garden Bench & Tea Table on Upper Roof
+    box(exteriorStatic, [2.05, 0.08, 0.56], [5.55, upperRoofY + 0.46, -5.65], m.wood);
+    box(exteriorStatic, [2.05, 0.44, 0.08], [5.55, upperRoofY + 0.70, -5.90], m.wood);
+    box(exteriorStatic, [1.92, 0.06, 0.48], [5.55, upperRoofY + 0.52, -5.63], curtainTeal, { castShadow: false });
+    cylinder(exteriorStatic, 0.42, 0.42, 0.05, [5.55, upperRoofY + 0.52, -4.70], darkWalnut, 10);
+    cylinder(exteriorStatic, 0.05, 0.08, 0.50, [5.55, upperRoofY + 0.25, -4.70], darkWalnut, 8);
   }
 
-  // LUSH ROOFTOP FLOWER & FRUIT-TREE GARDEN (ছাদ বাগান — বিভিন্ন ফুল ও গাছ চাষ!)
+  // --- 2 LARGE OVERHEAD WATER TANKS ON THE VERY TOP PLATFORM (y = 21.35m, ABOVE CENTRAL MUMTY!) ---
+  {
+    const mCx = (MUM_MIN_X + MUM_MAX_X) * 0.5; // -0.825
+    // Raised concrete tank stand on top of mumty roof
+    box(exteriorStatic, [1.95, 0.45, 4.10], [mCx, upperRoofY + 0.225, -0.80], shared.stairConcrete);
+    // Tank 1 & Tank 2 side-by-side (large ribbed black Gazi 2000L water tanks!)
+    for (const tz of [-1.85, 0.25]) {
+      cylinder(exteriorStatic, 0.76, 0.78, 1.62, [mCx, tankStandY + 0.81, tz], shared.waterTank, 14);
+      // Ribbed reinforcement rings & top lid on each tank
+      for (const ry of [0.35, 0.82, 1.28]) {
+        cylinder(exteriorStatic, 0.79, 0.79, 0.07, [mCx, tankStandY + ry, tz], tankRibMat, 14);
+      }
+      cylinder(exteriorStatic, 0.28, 0.30, 0.14, [mCx, tankStandY + 1.68, tz], tankRibMat, 10);
+    }
+    // Interconnecting PVC manifold pipe between the 2 tanks + main downpipe
+    rodBetween(exteriorStatic, [mCx + 0.65, tankStandY + 0.25, -1.85], [mCx + 0.65, tankStandY + 0.25, 0.25], 0.04, pvcPipeGrey, 8);
+    cylinder(exteriorStatic, 0.04, 0.04, 4.2, [mCx + 0.65, tankStandY - 1.85, -3.28], pvcPipeGrey, 8);
+    // Steel inspection ladder on West side of mumty leading up to the 2 tanks
+    for (const lzLad of [-2.2, -1.65]) {
+      cylinder(exteriorStatic, 0.022, 0.022, rH + 0.45, [MUM_MIN_X - 0.14, roofY + (rH + 0.45) * 0.5, lzLad], shinyStainlessSteel, 6);
+    }
+    for (let lyRung = 0.35; lyRung <= rH + 0.25; lyRung += 0.36) {
+      box(exteriorStatic, [0.03, 0.03, 0.56], [MUM_MIN_X - 0.14, roofY + lyRung, -1.925], shinyStainlessSteel, { castShadow: false });
+    }
+  }
+
+  // --- BIG LUSH OPEN ROOFTOP GARDEN (বড় ছাদ বাগান — বিভিন্ন ফুল ও ফলের গাছ!) ---
   {
     const addFlowerBed = (bx, bz, bw, bd, flowerIdxOffset = 0) => {
-      box(exteriorStatic, [bw, 0.42, bd], [bx, roofY + 0.21, bz], shared.colorfulTile, { uvScale: 1.0 });
-      box(exteriorStatic, [bw - 0.14, 0.36, bd - 0.14], [bx, roofY + 0.24, bz], soilMat);
-      const nx = Math.max(2, Math.floor(bw / 0.72));
-      const nz = Math.max(1, Math.floor(bd / 0.72));
+      box(exteriorStatic, [bw, 0.44, bd], [bx, roofY + 0.22, bz], shared.colorfulTile, { uvScale: 1.0 });
+      box(exteriorStatic, [bw - 0.14, 0.38, bd - 0.14], [bx, roofY + 0.25, bz], soilMat);
+      const nx = Math.max(2, Math.floor(bw / 0.78));
+      const nz = Math.max(1, Math.floor(bd / 0.78));
       for (let ix = 0; ix < nx; ix++) {
         for (let iz = 0; iz < nz; iz++) {
-          const px = bx - (bw - 0.55) * 0.5 + (nx > 1 ? (ix / (nx - 1)) * (bw - 0.55) : 0);
-          const pz = bz - (bd - 0.55) * 0.5 + (nz > 1 ? (iz / (nz - 1)) * (bd - 0.55) : 0);
-          const foliage = new THREE.Mesh(new THREE.DodecahedronGeometry(0.24, 1), (ix + iz) % 2 === 0 ? leafBright : leafDark);
-          foliage.position.set(px, roofY + 0.54, pz);
+          const px = bx - (bw - 0.60) * 0.5 + (nx > 1 ? (ix / (nx - 1)) * (bw - 0.60) : 0);
+          const pz = bz - (bd - 0.60) * 0.5 + (nz > 1 ? (iz / (nz - 1)) * (bd - 0.60) : 0);
+          const foliage = new THREE.Mesh(new THREE.DodecahedronGeometry(0.25, 1), (ix + iz) % 2 === 0 ? leafBright : leafDark);
+          foliage.position.set(px, roofY + 0.56, pz);
           exteriorStatic.add(foliage);
           const fMat = flowerMats[(ix + iz + flowerIdxOffset) % flowerMats.length];
-          for (const [fx, fyOff, fz] of [[0, 0.18, 0], [0.11, 0.12, 0.09], [-0.10, 0.13, -0.08]]) {
-            const fl = new THREE.Mesh(new THREE.SphereGeometry(0.068, 6, 5), fMat);
-            fl.position.set(px + fx, roofY + 0.54 + fyOff, pz + fz);
+          for (const [fx, fyOff, fz] of [[0, 0.19, 0], [0.11, 0.13, 0.09], [-0.10, 0.13, -0.08]]) {
+            const fl = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 5), fMat);
+            fl.position.set(px + fx, roofY + 0.56 + fyOff, pz + fz);
             fl.castShadow = false;
             exteriorStatic.add(fl);
           }
@@ -1374,94 +1465,102 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
       }
     };
 
-    const addPottedFruitTree = (tx, tz, height = 2.1, flowerIdx = 0) => {
-      cylinder(exteriorStatic, 0.30, 0.22, 0.48, [tx, roofY + 0.24, tz], potMat, 8);
-      cylinder(exteriorStatic, 0.055, 0.075, height * 0.58, [tx, roofY + 0.45 + height * 0.29, tz], trunkMat, 6);
-      const canopy = new THREE.Mesh(new THREE.DodecahedronGeometry(0.68, 1), leafDark);
-      canopy.position.set(tx, roofY + 0.45 + height * 0.68, tz);
+    const addPottedFruitTree = (tx, tz, height = 2.25, flowerIdx = 0) => {
+      cylinder(exteriorStatic, 0.32, 0.23, 0.50, [tx, roofY + 0.25, tz], potMat, 8);
+      cylinder(exteriorStatic, 0.06, 0.08, height * 0.58, [tx, roofY + 0.46 + height * 0.29, tz], trunkMat, 6);
+      const canopy = new THREE.Mesh(new THREE.DodecahedronGeometry(0.72, 1), leafDark);
+      canopy.position.set(tx, roofY + 0.46 + height * 0.68, tz);
       exteriorStatic.add(canopy);
-      const canopy2 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.50, 1), leafBright);
-      canopy2.position.set(tx + 0.28, roofY + 0.45 + height * 0.80, tz - 0.18);
+      const canopy2 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.54, 1), leafBright);
+      canopy2.position.set(tx + 0.28, roofY + 0.46 + height * 0.80, tz - 0.18);
       exteriorStatic.add(canopy2);
       const fMat = flowerMats[flowerIdx % flowerMats.length];
-      for (const [ox, oy, oz] of [[0.42, 0.05, 0.25], [-0.38, 0.18, -0.22], [0.12, 0.35, -0.35], [-0.20, -0.10, 0.42]]) {
-        const bl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), fMat);
-        bl.position.set(tx + ox, roofY + 0.45 + height * 0.68 + oy, tz + oz);
+      for (const [ox, oy, oz] of [[0.44, 0.05, 0.26], [-0.40, 0.18, -0.22], [0.12, 0.36, -0.36], [-0.22, -0.10, 0.44]]) {
+        const bl = new THREE.Mesh(new THREE.SphereGeometry(0.085, 6, 5), fMat);
+        bl.position.set(tx + ox, roofY + 0.46 + height * 0.68 + oy, tz + oz);
         bl.castShadow = false;
         exteriorStatic.add(bl);
       }
     };
 
-    // Raised Flower Farming Beds across Left Garden & Front Terrace!
-    addFlowerBed(-5.1, 4.9, 4.8, 1.35, 0);
-    addFlowerBed(4.9, 4.9, 4.8, 1.35, 2);
-    addFlowerBed(-6.6, -0.8, 1.45, 7.2, 4);
-    addFlowerBed(-4.1, -4.6, 3.2, 1.45, 1);
+    // Big Raised Flower Farming Beds across the Open Rooftop!
+    addFlowerBed(-5.4, 7.2, 6.2, 1.55, 0);   // Front-Left Grand Flower Bed
+    addFlowerBed(5.4, 7.2, 6.2, 1.55, 2);    // Front-Right Grand Flower Bed
+    addFlowerBed(-7.4, -0.6, 1.55, 11.2, 4); // Long West Garden Bed
+    addFlowerBed(-4.5, -7.2, 4.4, 1.55, 1);  // Back-Left Flower Bed
+    addFlowerBed(5.6, 2.8, 4.4, 1.35, 3);    // Front-Right Mid Flower Bed (in front of Penthouse Room!)
 
-    // Potted Fruit & Ornamental Trees around the Rooftop Garden
-    addPottedFruitTree(-7.2, 5.4, 2.35, 1);
-    addPottedFruitTree(-2.4, 5.4, 1.95, 2);
-    addPottedFruitTree(2.4, 5.4, 2.05, 0);
-    addPottedFruitTree(7.2, 5.4, 2.40, 5);
-    addPottedFruitTree(-7.2, -5.4, 2.25, 3);
-    addPottedFruitTree(7.2, 1.2, 2.15, 4);
+    // 10 Potted Fruit & Flowering Trees around the Open Rooftop!
+    addPottedFruitTree(-8.1, 7.8, 2.55, 1);
+    addPottedFruitTree(-2.2, 7.8, 2.10, 2);
+    addPottedFruitTree(2.2, 7.8, 2.20, 0);
+    addPottedFruitTree(8.1, 7.8, 2.60, 5);
+    addPottedFruitTree(-8.1, -7.8, 2.45, 3);
+    addPottedFruitTree(-2.0, -7.8, 2.15, 4);
+    addPottedFruitTree(8.1, 4.8, 2.30, 0);
+    addPottedFruitTree(8.1, 0.8, 2.25, 1);
+    addPottedFruitTree(-5.2, 4.6, 2.05, 5);
+    addPottedFruitTree(-2.4, -5.0, 2.10, 2);
 
-    // Natural Stepping-Stone Garden Pathway leading from Stair Mumty to Pergola & Rooftop Room
+    // Stepping-Stone Garden Pathways connecting Mumty -> Pergola -> Penthouse Door -> Upper Stairs
     for (const [sx, sz] of [
-      [-1.0, 2.8], [-2.0, 2.4], [-3.0, 2.0], [-4.0, 1.6],
-      [1.2, 2.8], [2.4, 2.2], [3.4, 1.3], [3.8, 0.2],
+      [-1.0, 4.0], [-2.1, 3.4], [-3.2, 2.8], [-4.2, 2.2],
+      [0.2, 4.2], [1.4, 4.2], [2.8, 3.6], [3.9, 1.6], [4.0, 0.5],
+      [-0.6, 3.4], [0.4, 3.0],
     ]) {
-      box(exteriorStatic, [0.68, 0.03, 0.48], [sx, roofY + 0.015, sz], stonePaverMat, { castShadow: false });
+      box(exteriorStatic, [0.72, 0.03, 0.50], [sx, roofY + 0.015, sz], stonePaverMat, { castShadow: false });
     }
 
-    // Decorative Wooden Garden Pergola Arch + Warm Glowing Fairy String Lights + Cushioned Bench & Tea Table!
-    for (const [px, pz] of [[-5.6, 1.6], [-2.8, 1.6], [-5.6, -1.6], [-2.8, -1.6]]) {
-      box(exteriorStatic, [0.12, 2.55, 0.12], [px, roofY + 1.275, pz], m.wood);
+    // Grand Wooden Garden Pergola + Warm Fairy Lights + Cushioned Bench & Tea Table!
+    for (const [px, pz] of [[-6.0, 2.0], [-2.8, 2.0], [-6.0, -2.0], [-2.8, -2.0]]) {
+      box(exteriorStatic, [0.13, 2.65, 0.13], [px, roofY + 1.325, pz], m.wood);
     }
-    for (let rz = -1.6; rz <= 1.65; rz += 0.64) {
-      box(exteriorStatic, [3.1, 0.08, 0.10], [-4.2, roofY + 2.55, rz], m.wood);
-      // Warm fairy light bulbs hanging along pergola beams
-      for (const lxBulb of [-5.2, -4.2, -3.2]) {
+    for (let rz = -2.0; rz <= 2.05; rz += 0.66) {
+      box(exteriorStatic, [3.5, 0.08, 0.10], [-4.4, roofY + 2.65, rz], m.wood);
+      for (const lxBulb of [-5.5, -4.4, -3.3]) {
         const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 5), warmLampGlow);
-        bulb.position.set(lxBulb, roofY + 2.44, rz);
+        bulb.position.set(lxBulb, roofY + 2.54, rz);
         bulb.castShadow = false;
         exteriorStatic.add(bulb);
       }
     }
-    // Cushioned Garden Bench with Throw Pillows + Rooftop Tea Table with Teacups!
-    box(exteriorStatic, [2.1, 0.08, 0.56], [-4.2, roofY + 0.46, 0.0], m.wood);
-    box(exteriorStatic, [2.1, 0.46, 0.08], [-4.2, roofY + 0.72, -0.25], m.wood);
-    box(exteriorStatic, [1.96, 0.07, 0.48], [-4.2, roofY + 0.53, 0.02], curtainTeal, { castShadow: false });
-    box(exteriorStatic, [0.30, 0.26, 0.14], [-4.95, roofY + 0.68, -0.14], cushionGold, { castShadow: false });
-    box(exteriorStatic, [0.30, 0.26, 0.14], [-3.45, roofY + 0.68, -0.14], cushionCoral, { castShadow: false });
-    // Small Garden Tea Table in front of bench
-    cylinder(exteriorStatic, 0.46, 0.46, 0.05, [-4.2, roofY + 0.54, 0.92], darkWalnut, 12);
-    cylinder(exteriorStatic, 0.05, 0.08, 0.52, [-4.2, roofY + 0.26, 0.92], darkWalnut, 8);
-    cylinder(exteriorStatic, 0.06, 0.08, 0.12, [-4.2, roofY + 0.62, 0.92], shinyStainlessSteel, 8);
-    cylinder(exteriorStatic, 0.035, 0.03, 0.06, [-4.38, roofY + 0.59, 0.86], curtainCream, 6);
-    cylinder(exteriorStatic, 0.035, 0.03, 0.06, [-4.02, roofY + 0.59, 0.98], curtainCream, 6);
+    box(exteriorStatic, [2.25, 0.08, 0.58], [-4.4, roofY + 0.46, -0.35], m.wood);
+    box(exteriorStatic, [2.25, 0.46, 0.08], [-4.4, roofY + 0.72, -0.60], m.wood);
+    box(exteriorStatic, [2.10, 0.07, 0.50], [-4.4, roofY + 0.53, -0.33], curtainTeal, { castShadow: false });
+    box(exteriorStatic, [0.30, 0.26, 0.14], [-5.20, roofY + 0.68, -0.49], cushionGold, { castShadow: false });
+    box(exteriorStatic, [0.30, 0.26, 0.14], [-3.60, roofY + 0.68, -0.49], cushionCoral, { castShadow: false });
+    cylinder(exteriorStatic, 0.48, 0.48, 0.05, [-4.4, roofY + 0.54, 0.68], darkWalnut, 12);
+    cylinder(exteriorStatic, 0.05, 0.08, 0.52, [-4.4, roofY + 0.26, 0.68], darkWalnut, 8);
+    cylinder(exteriorStatic, 0.06, 0.08, 0.12, [-4.4, roofY + 0.62, 0.68], shinyStainlessSteel, 8);
+    cylinder(exteriorStatic, 0.035, 0.03, 0.06, [-4.60, roofY + 0.59, 0.62], curtainCream, 6);
+    cylinder(exteriorStatic, 0.035, 0.03, 0.06, [-4.20, roofY + 0.59, 0.74], curtainCream, 6);
 
-    // Rooftop Garden Water Tap & Coiled Green Hose beside flower beds
-    cylinder(exteriorStatic, 0.025, 0.025, 0.68, [-5.75, roofY + 0.34, -3.55], pvcPipeGrey, 6);
-    box(exteriorStatic, [0.16, 0.04, 0.04], [-5.66, roofY + 0.64, -3.55], shinyStainlessSteel, { castShadow: false });
-    const hose = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 6, 14), greenEnamelSteel);
+    // Garden Water Tap & Coiled Green Hose
+    cylinder(exteriorStatic, 0.025, 0.025, 0.68, [-6.35, roofY + 0.34, -5.25], pvcPipeGrey, 6);
+    box(exteriorStatic, [0.16, 0.04, 0.04], [-6.26, roofY + 0.64, -5.25], shinyStainlessSteel, { castShadow: false });
+    const hose = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.035, 6, 14), greenEnamelSteel);
     hose.rotation.x = Math.PI / 2;
-    hose.position.set(-5.45, roofY + 0.04, -3.55);
+    hose.position.set(-6.05, roofY + 0.04, -5.25);
     hose.castShadow = false;
     exteriorStatic.add(hose);
   }
 
-  const roofBenchW = localToWorld(-4.2, 0.06);
-  const roofBedW = localToWorld(RROOM_MAX_X - 1.25, RROOM_MIN_Z + 1.15);
+  // Rooftop & Upper-Roof Seats
+  const roofBenchW = localToWorld(-4.4, -0.28);
+  const roofBedW = localToWorld(RROOM_MAX_X - 1.45, RROOM_MIN_Z + 1.45);
+  const roofSofaW = localToWorld(RROOM_MAX_X - 0.72, -2.55);
+  const upperBenchW = localToWorld(5.55, -5.58);
   floorSeats.set(floors, [
     { seatX: roofBenchW.x, seatZ: roofBenchW.z, seatY: 0.48, yaw: rotY, fy: roofY, label: 'ছাদ বাগানের বেঞ্চ' },
     { seatX: roofBedW.x, seatZ: roofBedW.z, seatY: 0.54, yaw: rotY, fy: roofY, label: 'ছাদের রুমের বিছানা' },
+    { seatX: roofSofaW.x, seatZ: roofSofaW.z, seatY: 0.46, yaw: rotY - Math.PI / 2, fy: roofY, label: 'ছাদের রুমের সোফা' },
+    { seatX: upperBenchW.x, seatZ: upperBenchW.z, seatY: 0.48, yaw: rotY, fy: upperRoofY, label: 'উপরের ছাদ বাগানের বেঞ্চ' },
   ]);
 
   mergeStaticMeshes(exteriorStatic);
 
   // ==========================================================================
-  // 5) RUNTIME API (HILL-CLIMB GARAGE, COLLISIONS, INTERACTIONS, 60 FPS CULLING)
+  // 5) RUNTIME API (HILL-CLIMB GARAGE, 4-FLAT COLLISIONS, UPPER ROOF STAIRS, 60 FPS CULLING)
   // ==========================================================================
   function isInFootprint(pos, pad = 0) {
     if (!pos) return false;
@@ -1470,6 +1569,7 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   }
 
   function nearestFloorIndex(footY) {
+    if (footY >= roofY - 0.8) return floors;
     let best = 0;
     let bestD = Infinity;
     for (let i = 0; i < FLOOR_Y.length; i++) {
@@ -1565,12 +1665,10 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     if (isInFootprint(pos, RAMP_LEN + 0.4)) {
       const lpR = worldToLocal(pos.x, pos.z);
       const footY = pos.y - 1.68;
-      // Hill-Climb Car/Bike Ramp (y = 0.0 -> 0.85m)
       if (footY < 2.0 && lpR.z >= hd && lpR.z <= hd + RAMP_LEN + 0.12 && lpR.x >= -1.95 && lpR.x <= 1.95) {
         const t = THREE.MathUtils.clamp((lpR.z - hd) / RAMP_LEN, 0, 1);
         return THREE.MathUtils.lerp(FLOOR_Y[0], 0.02, t);
       }
-      // 6-Step Pedestrian Stairs beside Ramp
       if (footY < 2.0 && lpR.z >= hd && lpR.z <= hd + 2.38 && lpR.x >= 1.98 && lpR.x <= 3.85) {
         const t = THREE.MathUtils.clamp((lpR.z - hd) / 2.28, 0, 1);
         return THREE.MathUtils.lerp(FLOOR_Y[0], 0.02, t);
@@ -1579,9 +1677,10 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     if (!isInFootprint(pos, 0.25)) return null;
     const lp = worldToLocal(pos.x, pos.z);
     const footY = pos.y - 1.68;
-    const maxStepUp = grounded ? 0.62 : (verticalVelocity > 0 ? 0.08 : 0.42);
+    const maxStepUp = grounded ? 0.65 : (verticalVelocity > 0 ? 0.08 : 0.45);
 
     let bestY = FLOOR_Y[0];
+    // 1) Main Interior Staircase (GF -> 5F -> Open Rooftop)
     const inStairs = lp.x >= STAIR_MIN_X && lp.x <= STAIR_MAX_X && lp.z >= STAIR_END_Z && lp.z <= STAIR_START_Z;
     const inStairHole = lp.x >= STAIR_MIN_X + 0.06 && lp.x <= STAIR_MAX_X - 0.06 && lp.z > STAIR_END_Z + 0.16 && lp.z < STAIR_START_Z - 0.16;
     if (inStairs) {
@@ -1591,12 +1690,32 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
         if (rampY <= footY + maxStepUp) bestY = Math.max(bestY, rampY);
       }
     }
+    // 2) Exterior Upper-Roof Staircase (Main Open Rooftop roofY -> Penthouse Room Roof upperRoofY!)
+    const inUpStairs = lp.x >= UP_STAIR_MIN_X - 0.05 && lp.x <= UP_STAIR_MAX_X + 0.05
+      && lp.z >= UP_STAIR_END_Z - 0.10 && lp.z <= UP_STAIR_START_Z + 0.10;
+    if (inUpStairs && footY >= roofY - 0.5) {
+      const t = THREE.MathUtils.clamp((UP_STAIR_START_Z - lp.z) / (UP_STAIR_START_Z - UP_STAIR_END_Z), 0, 1);
+      const rampY = roofY + t * (upperRoofY - roofY);
+      if (rampY <= footY + maxStepUp) bestY = Math.max(bestY, rampY);
+    }
+
+    // 3) Main Floors & Open Rooftop Slabs
     for (let k = 0; k <= floors; k++) {
       const fy = FLOOR_Y[k];
       if (fy > footY + maxStepUp) continue;
       if (k >= 1 && inStairHole) continue;
       bestY = Math.max(bestY, fy);
     }
+
+    // 4) Walkable Upper Roof Slab (Penthouse Room Roof + Upper Landing Bridge + Mumty Roof at upperRoofY = 20.90m!)
+    const onPenthouseRoof = lp.x >= RROOM_MIN_X - 0.10 && lp.x <= RROOM_MAX_X + 0.10
+      && lp.z >= RROOM_MIN_Z - 0.10 && lp.z <= RROOM_MAX_Z + 0.10;
+    const onUpperBridge = lp.x >= 0.10 && lp.x <= 2.20 && lp.z >= -4.30 && lp.z <= -2.10;
+    const onMumtyRoof = lp.x >= MUM_MIN_X && lp.x <= MUM_MAX_X && lp.z >= MUM_MIN_Z && lp.z <= MUM_MAX_Z;
+    if ((onPenthouseRoof || onUpperBridge || onMumtyRoof) && upperRoofY <= footY + maxStepUp) {
+      bestY = Math.max(bestY, upperRoofY);
+    }
+
     return bestY;
   }
 
@@ -1620,10 +1739,14 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
       } else {
         resolveCircleAABB(lp, radius, -hw, hw, hd - 0.28, hd);
         if (!inStairs) {
-          // Left corridor wall (Door 1)
-          resolveCircleAABB(lp, radius, CORR_MIN_X - 0.10, CORR_MIN_X + 0.10, -hd, D_FRONT_MIN_Z);
+          // Solid Party Wall at lz = 0.0 separating Front Flats (A1/B1) from Back Flats (A2/B2)
+          resolveCircleAABB(lp, radius, -hw, CORR_MIN_X, -0.10, 0.10);
+          resolveCircleAABB(lp, radius, CORR_MAX_X, hw, -0.10, 0.10);
+          // Left corridor wall (2 doors: A2 back & A1 front)
+          resolveCircleAABB(lp, radius, CORR_MIN_X - 0.10, CORR_MIN_X + 0.10, -hd, D_REAR_MIN_Z);
+          resolveCircleAABB(lp, radius, CORR_MIN_X - 0.10, CORR_MIN_X + 0.10, D_REAR_MAX_Z, D_FRONT_MIN_Z);
           resolveCircleAABB(lp, radius, CORR_MIN_X - 0.10, CORR_MIN_X + 0.10, D_FRONT_MAX_Z, hd);
-          // Right corridor wall (Door 2 & Door 3)
+          // Right corridor wall (2 doors: B2 back & B1 front)
           resolveCircleAABB(lp, radius, CORR_MAX_X - 0.10, CORR_MAX_X + 0.10, -hd, D_REAR_MIN_Z);
           resolveCircleAABB(lp, radius, CORR_MAX_X - 0.10, CORR_MAX_X + 0.10, D_REAR_MAX_Z, D_FRONT_MIN_Z);
           resolveCircleAABB(lp, radius, CORR_MAX_X - 0.10, CORR_MAX_X + 0.10, D_FRONT_MAX_Z, hd);
@@ -1636,22 +1759,36 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
         }
       }
       resolveCircleAABB(lp, 0.12, STAIR_MAX_X - 0.08, STAIR_MAX_X + 0.04, STAIR_END_Z + 0.12, STAIR_START_Z - 0.12);
-    } else {
-      // Rooftop Parapet & Rooftop Room Walls
+    } else if (footY < upperRoofY - 0.65) {
+      // Main Open Rooftop Parapet, Mumty Walls & Half-Roof Penthouse Room Walls
       if (footY - roofY < 0.72) {
         resolveCircleAABB(lp, radius, -hw, -hw + 0.26, -hd, hd);
         resolveCircleAABB(lp, radius, hw - 0.26, hw, -hd, hd);
         resolveCircleAABB(lp, radius, -hw, hw, -hd, -hd + 0.26);
         resolveCircleAABB(lp, radius, -hw, hw, hd - 0.26, hd);
       }
-      resolveCircleAABB(lp, radius, RROOM_MIN_X - 0.10, RROOM_MIN_X + 0.10, RROOM_MIN_Z, RROOM_MAX_Z);
-      resolveCircleAABB(lp, radius, RROOM_MAX_X - 0.10, RROOM_MAX_X + 0.10, RROOM_MIN_Z, RROOM_MAX_Z);
-      resolveCircleAABB(lp, radius, RROOM_MIN_X, RROOM_MAX_X, RROOM_MIN_Z - 0.10, RROOM_MIN_Z + 0.10);
-      resolveCircleAABB(lp, radius, RROOM_MIN_X, RROOM_DOOR_MIN_X, RROOM_MAX_Z - 0.10, RROOM_MAX_Z + 0.10);
-      resolveCircleAABB(lp, radius, RROOM_DOOR_MAX_X, RROOM_MAX_X, RROOM_MAX_Z - 0.10, RROOM_MAX_Z + 0.10);
+      // Mumty walls (open on +Z front)
+      resolveCircleAABB(lp, radius, MUM_MIN_X - 0.10, MUM_MIN_X + 0.10, MUM_MIN_Z, MUM_MAX_Z);
+      resolveCircleAABB(lp, radius, MUM_MAX_X - 0.10, MUM_MAX_X + 0.10, MUM_MIN_Z, MUM_MAX_Z);
+      resolveCircleAABB(lp, radius, MUM_MIN_X, MUM_MAX_X, MUM_MIN_Z - 0.10, MUM_MIN_Z + 0.10);
+      // Half-Roof Penthouse Room Walls
+      resolveCircleAABB(lp, radius, RROOM_MIN_X - 0.12, RROOM_MIN_X + 0.12, RROOM_MIN_Z, RROOM_MAX_Z);
+      resolveCircleAABB(lp, radius, RROOM_MAX_X - 0.12, RROOM_MAX_X + 0.12, RROOM_MIN_Z, RROOM_MAX_Z);
+      resolveCircleAABB(lp, radius, RROOM_MIN_X, RROOM_MAX_X, RROOM_MIN_Z - 0.12, RROOM_MIN_Z + 0.12);
+      resolveCircleAABB(lp, radius, RROOM_MIN_X, RROOM_DOOR_MIN_X, RROOM_MAX_Z - 0.12, RROOM_MAX_Z + 0.12);
+      resolveCircleAABB(lp, radius, RROOM_DOOR_MAX_X, RROOM_MAX_X, RROOM_MAX_Z - 0.12, RROOM_MAX_Z + 0.12);
       const rDoor = flatDoors.find((d) => d.floorIdx === floors);
       if (rDoor && !rDoor.open) {
         resolveCircleAABB(lp, radius, rDoor.collider.minX, rDoor.collider.maxX, rDoor.collider.minZ, rDoor.collider.maxZ);
+      }
+    } else {
+      // Upper Roof Safety Parapets on top of Penthouse Room (leaving entrance gap at lx = 2.10, lz ∈ [-4.20, -2.10] open!)
+      if (lp.x >= RROOM_MIN_X - 0.3 && lp.x <= RROOM_MAX_X + 0.3 && lp.z >= RROOM_MIN_Z - 0.3 && lp.z <= RROOM_MAX_Z + 0.3) {
+        resolveCircleAABB(lp, radius, RROOM_MIN_X, RROOM_MAX_X, RROOM_MIN_Z, RROOM_MIN_Z + 0.20);
+        resolveCircleAABB(lp, radius, RROOM_MIN_X, RROOM_MAX_X, RROOM_MAX_Z - 0.20, RROOM_MAX_Z);
+        resolveCircleAABB(lp, radius, RROOM_MAX_X - 0.20, RROOM_MAX_X, RROOM_MIN_Z, RROOM_MAX_Z);
+        resolveCircleAABB(lp, radius, RROOM_MIN_X, RROOM_MIN_X + 0.20, RROOM_MIN_Z, -4.20);
+        resolveCircleAABB(lp, radius, RROOM_MIN_X, RROOM_MIN_X + 0.20, -2.10, RROOM_MAX_Z);
       }
     }
 
@@ -1677,7 +1814,6 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
       inGarage = true;
     }
 
-    // Protect central staircase column while leaving wide left & right parking bays open!
     resolveCircleAABB(lp, r, STAIR_MIN_X - 0.12, STAIR_MAX_X + 0.12, STAIR_END_Z - 0.12, STAIR_START_Z + 0.12);
     resolveCircleAABB(lp, r, -hw, -hw + 0.30, -hd, hd);
     resolveCircleAABB(lp, r, hw - 0.30, hw, -hd, hd);
@@ -1700,19 +1836,22 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   function getZoneName(x, z, footY = 0) {
     const lp = worldToLocal(x, z);
     if (lp.x < -hw || lp.x > hw || lp.z < -hd || lp.z > hd) return null;
+    if (footY >= upperRoofY - 0.6) {
+      return `${zonePrefix} · UPPER ROOF GARDEN & DUAL WATER TANKS`;
+    }
     if (footY >= roofY - 0.6) {
       if (lp.x >= RROOM_MIN_X && lp.x <= RROOM_MAX_X && lp.z >= RROOM_MIN_Z && lp.z <= RROOM_MAX_Z) {
-        return `${zonePrefix} · ROOFTOP PENTHOUSE ROOM`;
+        return `${zonePrefix} · HALF-ROOF PENTHOUSE ROOM`;
       }
-      return `${zonePrefix} · ROOFTOP FLOWER & FRUIT GARDEN`;
+      return `${zonePrefix} · OPEN ROOFTOP GARDEN`;
     }
     const fl = nearestFloorIndex(footY);
     if (fl === 0) return `${zonePrefix} · ELEVATED CAR & BIKE GARAGE`;
     const flTag = ` (FLOOR ${fl + 1})`;
-    if (lp.x >= CORR_MIN_X && lp.x <= CORR_MAX_X) return `${zonePrefix}${flTag} · CENTRAL STAIR HALL (3 DOORS)`;
-    return lp.x < CORR_MIN_X
-      ? `${zonePrefix}${flTag} · FLAT ${fl + 1}A (NORTH BIG FLAT)`
-      : `${zonePrefix}${flTag} · FLAT ${fl + 1}B (SOUTH BIG FLAT)`;
+    if (lp.x >= CORR_MIN_X && lp.x <= CORR_MAX_X) return `${zonePrefix}${flTag} · CENTRAL STAIR HALL (4 FLATS)`;
+    const sideCode = lp.x < CORR_MIN_X ? 'A' : 'B';
+    const halfCode = lp.z >= 0 ? '1' : '2';
+    return `${zonePrefix}${flTag} · FLAT ${fl + 1}${sideCode}${halfCode}`;
   }
 
   function update(dt, playerPos, isLow) {
@@ -1754,15 +1893,16 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     }
 
     const distSq = playerPos ? ((playerPos.x - cx) ** 2 + (playerPos.z - cz) ** 2) : 0;
-    const nearInt = distSq < 52 * 52;
+    const nearInt = distSq < 54 * 54;
     const pFootY = playerPos ? (playerPos.y - 1.68) : 0;
     const curFl = nearestFloorIndex(pFootY);
-    if (gateGlowLight) gateGlowLight.visible = !isLow && distSq < 58 * 58;
+    if (gateGlowLight) gateGlowLight.visible = !isLow && distSq < 60 * 60;
     for (let k = 0; k < floors; k++) {
       const grp = floorInteriorGroups[k];
-      if (!grp) continue;
-      const want = nearInt && (k === 0 || Math.abs(curFl - k) <= 1 || distSq < 24 * 24);
-      if (grp.visible !== want) grp.visible = want;
+      const dGrp = floorDynamicGroups[k];
+      const want = nearInt && (k === 0 || Math.abs(curFl - k) <= 1 || distSq < 22 * 22);
+      if (grp && grp.visible !== want) grp.visible = want;
+      if (dGrp && dGrp.visible !== want) dGrp.visible = want;
     }
     if (!isLow && nearInt) {
       const rotD = dt * 5.8;
