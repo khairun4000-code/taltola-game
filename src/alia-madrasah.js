@@ -15,6 +15,7 @@ import {
   isInModelMosqueZone,
   findNearestModelMosqueSeat,
 } from './khulna-model-mosque.js';
+import { buildAliaCampusBlockoutAndRoads } from './alia-campus-blockout.js';
 
 /**
  * KHULNA ALIA KAMIL MADRASAH & KHULNA DISTRICT MODEL MOSQUE CAMPUS
@@ -1553,77 +1554,15 @@ function buildAcademicBuildings(staticG, dynamicG, bank) {
  * ========================================================================== */
 
 function buildMainGateAndPondGhat(staticG, dynamicG, bank) {
-  const gx = 231.5;
-  const gz = 108.0;
-  for (const dz of [-3.8, 3.8]) {
-    box(staticG, [1.25, 5.5, 1.25], [gx, 2.75, gz + dz], bank.colonialCream);
-    box(staticG, [1.42, 0.36, 1.42], [gx, 5.55, gz + dz], bank.terracotta);
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), bank.bulbGlow);
-    lamp.position.set(gx, 5.96, gz + dz);
-    dynamicG.add(lamp);
-  }
-  box(staticG, [1.0, 1.55, 9.2], [gx, 5.65, gz], bank.emeraldDark);
-  box(staticG, [1.14, 0.24, 9.5], [gx, 6.52, gz], bank.goldMat);
-  addSignBox(
-    dynamicG,
-    bank,
-    {
-      title: 'খুলনা আলিয়া কামিল মাদ্রাসা (অনার্স)',
-      subtitle: '৮৮ খানজাহান আলী রোড, খুলনা · স্থাপিত: ২ এপ্রিল ১৯৫২ · ইআইআইএন: ১১৭১৬২',
-      bg: '#064e3b',
-      fg: '#ffffff',
-      accent: '#fde047',
-      border: '#fde047',
-      width: 720,
-      height: 176,
-    },
-    [gx + 0.58, 5.68, gz],
-    Math.PI * 0.5,
-    8.2,
-    1.34,
-    true
-  );
-
-  const leftLeaf = new THREE.Group();
-  leftLeaf.position.set(gx, 0, gz - 3.25);
-  const rightLeaf = new THREE.Group();
-  rightLeaf.position.set(gx, 0, gz + 3.25);
-  const buildGateLeaf = (leaf, sign) => {
-    box(leaf, [0.09, 2.55, 3.15], [0, 1.35, sign * 1.58], bank.emeraldDark);
-    for (let i = 0; i < 7; i++) {
-      box(leaf, [0.12, 2.78, 0.05], [0, 1.45, sign * (0.24 + i * 0.45)], bank.goldMat);
-    }
-    box(leaf, [0.12, 0.74, 3.08], [0, 0.46, sign * 1.58], bank.emeraldMat);
-  };
-  buildGateLeaf(leftLeaf, 1);
-  buildGateLeaf(rightLeaf, -1);
-  dynamicG.add(leftLeaf, rightLeaf);
-
-  for (const [z0, z1] of [[72.0, 104.0], [112.0, 144.0]]) {
-    const len = z1 - z0;
-    const midZ = (z0 + z1) * 0.5;
-    box(staticG, [0.38, 1.65, len], [gx, 0.825, midZ], bank.colonialCream);
-    box(staticG, [0.48, 0.18, len + 0.1], [gx, 1.72, midZ], bank.terracotta);
-    box(staticG, [0.08, 0.08, len], [gx, 2.32, midZ], bank.steelDark);
-    const posts = Math.max(4, Math.floor(len / 5.0));
-    for (let i = 0; i <= posts; i++) {
-      const pz = z0 + (i / posts) * len;
-      box(staticG, [0.56, 2.48, 0.56], [gx, 1.24, pz], bank.colonialCream);
-      box(staticG, [0.64, 0.18, 0.64], [gx, 2.52, pz], bank.terracotta);
-    }
-  }
-
-  // CENTRAL POND BRICK GHAT (পুকুরঘাট)
-  box(staticG, [12.5, 0.24, 3.2], [214.0, 0.12, 154.8], bank.brick, { uvScale: 2.5 });
+  // CENTRAL POND BRICK GHAT (পুকুরঘাট — North bank of the real OSM Central Pond)
+  box(staticG, [12.5, 0.24, 3.2], [214.0, 0.12, 150.2], bank.brick, { uvScale: 2.5 });
   for (let s = 0; s < 4; s++) {
-    box(staticG, [10.8, 0.20, 0.55], [214.0, 0.10 - s * 0.14, 156.6 + s * 0.55], bank.stonePlinth);
+    box(staticG, [10.8, 0.20, 0.55], [214.0, 0.10 - s * 0.14, 152.0 + s * 0.55], bank.stonePlinth);
   }
-  addRailingSpan(staticG, bank, 207.8, 153.4, 207.8, 156.2, 3, 0.90, 0.22);
-  addRailingSpan(staticG, bank, 220.2, 153.4, 220.2, 156.2, 3, 0.90, 0.22);
-  addCampusLamp(staticG, dynamicG, bank, 207.8, 154.2, 3.8, 0.20);
-  addCampusLamp(staticG, dynamicG, bank, 220.2, 154.2, 3.8, 0.20);
-
-  return { leftLeaf, rightLeaf };
+  addRailingSpan(staticG, bank, 207.8, 148.8, 207.8, 151.6, 3, 0.90, 0.22);
+  addRailingSpan(staticG, bank, 220.2, 148.8, 220.2, 151.6, 3, 0.90, 0.22);
+  addCampusLamp(staticG, dynamicG, bank, 207.8, 149.6, 3.8, 0.20);
+  addCampusLamp(staticG, dynamicG, bank, 220.2, 149.6, 3.8, 0.20);
 }
 
 /* ============================================================================
@@ -1666,18 +1605,10 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
   const bank = createAliaMaterialBank(m);
 
-  // 1) Interlocking Red-and-Grey Herringbone Paver Entrance Driveway + Red-Green Fencing
-  box(staticG, [52.0, 0.08, 7.2], [217.5, 0.03, 108.0], bank.paverDriveway, { castShadow: false, uvScale: 6.0 });
-  box(staticG, [39.0, 0.24, 0.40], [211.0, 0.12, 104.4], bank.marbleWhite);
-  box(staticG, [39.0, 0.24, 0.40], [211.0, 0.12, 111.6], bank.marbleWhite);
-  addRedGreenFenceSpan(staticG, bank, 195.5, 104.4, 228.5, 104.4, 16);
-  addRedGreenFenceSpan(staticG, bank, 195.5, 111.6, 228.5, 111.6, 16);
+  // 1) High-Graphics Central Play Ground (Real OSM Location: x = 197.5..234.5, z = 82.0..130.0 — 37m x 48m!)
+  box(staticG, [37.6, 0.04, 48.6], [216.0, 0.012, 106.0], bank.grassTurf, { castShadow: false, uvScale: 18.0 });
 
-  // Lush green turf beds under the 3D Durba Grass Clumps (expanded for the 64m campus!)
-  box(staticG, [37.0, 0.04, 32.0], [211.5, 0.012, 87.8], bank.grassTurf, { castShadow: false, uvScale: 16.0 });
-  box(staticG, [37.0, 0.04, 32.0], [211.5, 0.012, 128.2], bank.grassTurf, { castShadow: false, uvScale: 16.0 });
-
-  // GPU-Instanced Real 3D Durba Grass Clumps (ultra-fast 240 instances for zero mouse lag on any PC!)
+  // GPU-Instanced Real 3D Durba Grass Clumps (ultra-fast 260 instances over the real Central Play Ground!)
   const grassLoader = new GLTFLoader();
   grassLoader.load('./assets/alia_grass_clumps.glb', (gltf) => {
     const clumpTemplates = [];
@@ -1705,11 +1636,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
     if (!clumpTemplates.length) return;
 
     const rand = seeded(195201);
-    const fieldRects = [
-      { x0: 193.0, x1: 229.5, z0: 71.5, z1: 103.8 },
-      { x0: 193.0, x1: 229.5, z0: 112.2, z1: 142.5 },
-    ];
-    const perClumpCount = 240;
+    const perClumpCount = 260;
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
 
@@ -1719,14 +1646,9 @@ export function buildAliaMadrasahDistrict(parent, m) {
       inst.castShadow = false;
       inst.receiveShadow = false;
       for (let i = 0; i < perClumpCount; i++) {
-        const rect = fieldRects[i % 2];
-        const gx = rect.x0 + rand() * (rect.x1 - rect.x0);
-        const gz = rect.z0 + rand() * (rect.z1 - rect.z0);
-        if (gx > 200.2 && gx < 204.5 && gz > 101.5 && gz < 104.2) {
-          dummy.position.set(gx + 6.5, 0.02, gz - 4.5);
-        } else {
-          dummy.position.set(gx, 0.02, gz);
-        }
+        const gx = 197.8 + rand() * 36.4;
+        const gz = 82.4 + rand() * 47.2;
+        dummy.position.set(gx, 0.02, gz);
         dummy.rotation.set((rand() - 0.5) * 0.06, rand() * Math.PI * 2, (rand() - 0.5) * 0.06);
         const sx = 1.15 + rand() * 0.55;
         const sy = 0.09 + rand() * 0.045;
@@ -1747,16 +1669,8 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
   // Tall Coconut Palms flanking the main building & courtyard (real photo!)
   addCoconutPalm(staticG, bank, 196.8, 100.5, 11.8, 0.8, -0.5);
-  addCoconutPalm(staticG, bank, 206.0, 100.2, 11.0, 0.5, 0.4);
   addCoconutPalm(staticG, bank, 196.5, 115.5, 12.2, 0.7, 0.6);
-  addCoconutPalm(staticG, bank, 206.5, 116.5, 10.2, -0.4, 0.5);
   addCoconutPalm(staticG, bank, 191.0, 148.0, 11.5, -0.5, -0.4);
-
-  // Concrete Utility Pole with Overhead Wires on right side of portico (just like the real photo!)
-  cylinder(staticG, 0.11, 0.16, 10.2, [196.6, 5.1, 103.6], bank.stonePlinth, 10);
-  box(staticG, [0.16, 0.14, 1.9], [196.6, 9.4, 103.6], bank.steelDark);
-  rodBetween(staticG, [196.6, 9.35, 103.6], [230.5, 8.85, 103.6], 0.016, bank.wire, 6);
-  rodBetween(staticG, [196.6, 9.05, 103.6], [230.5, 8.55, 103.6], 0.016, bank.wire, 6);
 
   // 2) Grand 64m Main Walkable Portico Building (All 3 Floors Walkable!)
   const { principalMicPos, isNearPrincipalMic, setPrincipalMicActive } = buildMainPorticoBuilding(staticG, dynamicG, bank);
@@ -1767,8 +1681,10 @@ export function buildAliaMadrasahDistrict(parent, m) {
   // 4) High-Graphics 3D Khulna District Model Mosque & Islamic Cultural Center (8K/4K PBR)
   buildKhulnaModelMosque3D(staticG, dynamicG, bank);
 
-  // 5) Grand Interactive East Main Gate, Boundary Wall & Central Pond Brick Ghat
-  const mainGate = buildMainGateAndPondGhat(staticG, dynamicG, bank);
+  // 5) Central Pond Brick Ghat + High-Graphics Campus Roads + SW Main Gate + Krishnochura Trees + Labeled Demo Buildings
+  buildMainGateAndPondGhat(staticG, dynamicG, bank);
+  const blockout = buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank);
+  const mainGate = blockout.swMainGate;
   let gateTarget = 1;
   let gateRatio = 1;
   mainGate.leftLeaf.rotation.y = gateRatio * (Math.PI * 0.46);
@@ -1869,14 +1785,22 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
       const baseH = Math.max(0.1, size.y);
       const placements = [
-        // 1) Main South Courtyard Lawn (between Main Portico Building, Driveway & Model Mosque)
-        { x: 204.5, z: 121.5, targetH: 8.8, rotY: Math.PI * 0.45 },
-        // 2) Main North Courtyard Lawn (between Main Portico Building, Driveway & 6-Story Building)
-        { x: 205.0, z: 88.5, targetH: 8.4, rotY: Math.PI * 0.52 },
-        // 3) Near Khulna District Model Mosque & Pond Ghat Plaza
-        { x: 196.2, z: 151.5, targetH: 8.2, rotY: Math.PI * 0.35 },
-        // 4) Inside East Gate South Courtyard Corner
-        { x: 223.5, z: 127.0, targetH: 7.8, rotY: Math.PI * 0.60 },
+        // 1) West of Khan Jahan Ali Road SW Main Gate
+        { x: 182.0, z: 198.0, targetH: 8.6, rotY: Math.PI * 0.20 },
+        // 2) East of Khan Jahan Ali Road SW Main Gate
+        { x: 198.5, z: 197.5, targetH: 8.8, rotY: Math.PI * 0.72 },
+        // 3) South-West Edge of Central Play Ground
+        { x: 196.5, z: 128.0, targetH: 8.5, rotY: Math.PI * 0.45 },
+        // 4) North-West Edge of Central Play Ground
+        { x: 196.5, z: 86.0, targetH: 8.4, rotY: Math.PI * 0.52 },
+        // 5) Near Khulna District Model Mosque & Pond Ghat Plaza
+        { x: 196.2, z: 151.5, targetH: 8.3, rotY: Math.PI * 0.35 },
+        // 6) East Bank of Central Pond
+        { x: 233.0, z: 156.0, targetH: 8.2, rotY: Math.PI * 0.60 },
+        // 7) South Bank of Central Pond
+        { x: 216.0, z: 179.0, targetH: 8.0, rotY: Math.PI * 0.15 },
+        // 8) North-East Courtyard Corner near 6-Story Building
+        { x: 236.5, z: 82.0, targetH: 8.1, rotY: Math.PI * 0.85 },
       ];
 
       for (const p of placements) {
@@ -1908,7 +1832,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
   mergeStaticMeshes(staticG);
 
-  const maxDistSq = 300 * 300;
+  const maxDistSq = 340 * 340;
 
   function getGroundHeight(pos, grounded = true, verticalVelocity = 0) {
     if (!pos) return 0.0;
@@ -1993,25 +1917,28 @@ export function buildAliaMadrasahDistrict(parent, m) {
     if (footY < 14.5) {
       resolveCircleAABB(pos, radius, 197.2, 229.8, 142.8, 153.2);
     }
-    // 3) East Campus Boundary Wall & Closed Main Gate (x = 231.5)
-    if (footY < 2.7) {
-      resolveCircleAABB(pos, radius, 231.1, 231.9, 72.0, 104.0);
-      resolveCircleAABB(pos, radius, 231.1, 231.9, 112.0, 144.0);
-      if (gateRatio < 0.55) {
-        resolveCircleAABB(pos, radius, 231.2, 231.8, 104.3, 111.7);
-      }
+    // 3) South-West Khan Jahan Ali Rd Main Gate & Demo Blockout Building Collisions
+    if (footY < 2.8 && gateRatio < 0.55) {
+      resolveCircleAABB(pos, radius, mainGate.gx - 3.8, mainGate.gx + 3.8, mainGate.gz - 0.35, mainGate.gz + 0.35);
     }
-    if (footY < 5.8) {
-      resolveCircleAABB(pos, radius, 230.7, 232.3, 103.5, 104.9);
-      resolveCircleAABB(pos, radius, 230.7, 232.3, 111.1, 112.5);
+    if (footY < 6.0) {
+      resolveCircleAABB(pos, radius, mainGate.gx - 5.1, mainGate.gx - 3.7, mainGate.gz - 0.7, mainGate.gz + 0.7);
+      resolveCircleAABB(pos, radius, mainGate.gx + 3.7, mainGate.gx + 5.1, mainGate.gz - 0.7, mainGate.gz + 0.7);
+    }
+    for (let i = 0; i < blockout.demoColliders.length; i++) {
+      const c = blockout.demoColliders[i];
+      if (footY < c.maxY) resolveCircleAABB(pos, radius, c.minX, c.maxX, c.minZ, c.maxZ);
     }
 
     // 4) Khulna District Model Mosque 3D Collisions (delegated to khulna-model-mosque.js)
     applyModelMosqueCollisions(pos, radius, footY);
 
-    // 5) Krishnachura Tree Trunks inside Campus
+    // 5) Krishnachura Tree Trunks inside Campus (8 authentic campus spots)
     if (footY < 6.0) {
-      for (const [tx, tz] of [[204.5, 121.5], [205.0, 88.5], [196.2, 151.5], [223.5, 127.0]]) {
+      for (const [tx, tz] of [
+        [182.0, 198.0], [198.5, 197.5], [196.5, 128.0], [196.5, 86.0],
+        [196.2, 151.5], [233.0, 156.0], [216.0, 179.0], [236.5, 82.0],
+      ]) {
         resolveCircleAABB(pos, radius, tx - 0.42, tx + 0.42, tz - 0.42, tz + 0.42);
       }
     }
@@ -2021,8 +1948,8 @@ export function buildAliaMadrasahDistrict(parent, m) {
     if (!pos) return null;
     const mosquePrompt = getModelMosquePrompt(pos);
     if (mosquePrompt) return mosquePrompt;
-    if (pos.y <= 3.2 && Math.hypot(pos.x - 231.5, pos.z - 108.0) < 5.5) {
-      return gateTarget > 0.5 ? '[E] Close Alia Madrasah Gate' : '[E] Open Alia Madrasah Gate';
+    if (pos.y <= 3.2 && Math.hypot(pos.x - mainGate.gx, pos.z - mainGate.gz) < 6.0) {
+      return gateTarget > 0.5 ? '[E] Close Alia Madrasah Main Gate' : '[E] Open Alia Madrasah Main Gate';
     }
     return null;
   }
@@ -2030,7 +1957,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
   function toggleGate(pos) {
     if (!pos) return false;
     if (toggleModelMosqueDoor(pos)) return true;
-    if (pos.y <= 3.2 && Math.hypot(pos.x - 231.5, pos.z - 108.0) < 6.0) {
+    if (pos.y <= 3.2 && Math.hypot(pos.x - mainGate.gx, pos.z - mainGate.gz) < 6.5) {
       gateTarget = gateTarget > 0.5 ? 0 : 1;
       return true;
     }
