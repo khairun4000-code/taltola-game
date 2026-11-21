@@ -698,7 +698,11 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
 
     skyDome.visible = true;
     rebakePMREM(preset);
-    scene.environment = quality === 'ultra' ? (currentEnvRT?.texture || null) : null;
+    const useGlobalEnv = quality === 'ultra' || quality === 'high';
+    scene.environment = useGlobalEnv ? (currentEnvRT?.texture || null) : null;
+    if ('environmentIntensity' in scene) {
+      scene.environmentIntensity = quality === 'ultra' ? 0.92 : (quality === 'high' ? 0.72 : 0.55);
+    }
     return preset;
   }
 
