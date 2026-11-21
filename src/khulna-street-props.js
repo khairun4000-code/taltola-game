@@ -487,8 +487,9 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
   function refreshActiveChunks(px, pz, quality = 'high') {
     const cx = Math.floor(px / chunkSize);
     const cz = Math.floor(pz / chunkSize);
-    const rad = quality === 'low' ? 1 : (quality === 'medium' ? 1 : 2);
-    const key = `${cx},${cz},${rad}`;
+    const rad = 1;
+    const maxR = (quality === 'low' || quality === 'medium') ? 240 : 290;
+    const key = `${cx},${cz},${maxR}`;
     if (key === lastChunkKey) return;
     lastChunkKey = key;
 
@@ -501,7 +502,6 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
           for (let i = 0; i < plist.length; i++) {
             const p = plist[i];
             const distSq = (p.x - px) ** 2 + (p.z - pz) ** 2;
-            const maxR = rad === 1 ? 260 : 380;
             if (distSq <= maxR * maxR) activePoles.push(p);
           }
         }
@@ -621,8 +621,8 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
     // Build SUPER MESSY Bangladeshi Khulna pole-to-pole tangled overhead wires + house service drops!
     const wireVerts = [];
     const wirePins = [];
-    const wireStrands = quality === 'low' ? 8 : 14;
-    const dropCount = quality === 'low' ? 4 : 6;
+    const wireStrands = quality === 'low' ? 8 : 11;
+    const dropCount = quality === 'low' ? 4 : 5;
 
     for (let i = 0; i < activePoles.length && i < MAX_POLES; i++) {
       const p = activePoles[i];

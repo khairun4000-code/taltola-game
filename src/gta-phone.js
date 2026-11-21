@@ -51,6 +51,11 @@ export function createGTAPhoneUI({
   const funnyScreen = document.querySelector('#phone-funny');
   const funnyListEl = document.querySelector('#phone-funny-list');
   const funnyStatusEl = document.querySelector('#phone-funny-status');
+  const socialScreen = document.querySelector('#phone-social');
+  const socialStoriesEl = document.querySelector('#phone-social-stories');
+  const socialFeedEl = document.querySelector('#phone-social-feed');
+  const socialComposerForm = document.querySelector('#phone-social-composer');
+  const socialInputEl = document.querySelector('#phone-social-input');
   const dialDisplay = document.querySelector('#phone-dial-display');
   const dialStatus = document.querySelector('#phone-dial-status');
   const cheatListEl = document.querySelector('#phone-cheat-list');
@@ -60,8 +65,177 @@ export function createGTAPhoneUI({
   const selfieShutterBtn = document.querySelector('#phone-selfie-shutter');
 
   let isOpen = false;
-  let activeApp = 'home'; // 'home' | 'dial' | 'teleport' | 'selfie' | 'funny'
+  let activeApp = 'home'; // 'home' | 'dial' | 'teleport' | 'selfie' | 'funny' | 'social'
   let dialValue = '';
+
+  const SOCIAL_STORIES = [
+    { id: 'sabit', name: 'সাবিদ', emoji: '⚡', bg: 'linear-gradient(135deg,#10b981,#06b6d4)', status: '⚡ সাবিদ স্টোরি: রয়্যাল মোড়ে নতুন BMW নিয়ে ঘুরছি!' },
+    { id: 'huzza', name: 'হুজ্জাতুল্লাহ', emoji: '🔥', bg: 'linear-gradient(135deg,#3b82f6,#f97316)', status: '🔥 হুজ্জাতুল্লাহ স্টোরি: SK Arshan Tower-এর ছাদে বাতাস খাচ্ছি।' },
+    { id: 'royal', name: 'রয়্যাল মোড়', emoji: '🦐', bg: 'linear-gradient(135deg,#f59e0b,#ef4444)', status: '🦐 চিংড়ি চত্বর লাইভ: বিকেলে দারুণ ভিড় জমেছে!' },
+    { id: 'taltola', name: 'তালতলা', emoji: '🏠', bg: 'linear-gradient(135deg,#8b5cf6,#ec4899)', status: '🏠 টুটপাড়া তালতলা: ৫ তলার ছাদ থেকে সূর্যাস্ত দেখা যাচ্ছে।' },
+    { id: 'hadis', name: 'হাদিস পার্ক', emoji: '🦆', bg: 'linear-gradient(135deg,#22c55e,#15803d)', status: '🦆 হাদিস পার্ক: পুকুরে হাঁসগুলো আরাম করছে!' },
+    { id: 'rupsha', name: 'রূপসা ঘাট', emoji: '🌊', bg: 'linear-gradient(135deg,#0284c7,#1e3a8a)', status: '🌊 রূপসা ফেরি ঘাট: গরম চা আর পেঁয়াজু রেডি!' },
+  ];
+
+  const socialPosts = [
+    {
+      id: 'p1',
+      handle: '@khulna_vibes',
+      avatar: '🦐',
+      avatarBg: 'linear-gradient(135deg,#f97316,#ef4444)',
+      location: 'রয়্যাল মোড় · চিংড়ি চত্বর',
+      time: '২ মিনিট আগে',
+      mediaBg: 'linear-gradient(135deg,#7c2d12 0%,#ea580c 48%,#facc15 100%)',
+      mediaTag: '🌇 GOLDEN HOUR · ROYAL MORE',
+      mediaEmoji: '🦐🚗',
+      caption: 'বিকেলের রয়্যাল মোড় আর চিংড়ি চত্বরের বাতাসটা আজকে অসাধারণ! কে কে আছো এখানে?',
+      likes: 248,
+      liked: false,
+      saved: false,
+      showComments: false,
+      comments: [
+        { user: 'taltola_boy', text: 'ভাই ৫ মিনিটে রিকশা নিয়ে আসতেছি!' },
+        { user: 'sabit_khulna', text: 'চিংড়ি চত্বরে ফটোসেশন হবে নাকি? 📸' },
+      ],
+    },
+    {
+      id: 'p2',
+      handle: '@taltola_adda',
+      avatar: '🚗',
+      avatarBg: 'linear-gradient(135deg,#0ea5e9,#2563eb)',
+      location: 'টুটপাড়া তালতলা ক্রস রোড',
+      time: '৯ মিনিট আগে',
+      mediaBg: 'linear-gradient(135deg,#0f172a 0%,#1d4ed8 55%,#38bdf8 100%)',
+      mediaTag: '🔥 SPOTTED AT TALTOLA HOUSE',
+      mediaEmoji: '🏎️💨',
+      caption: 'তালতলার ৫ তলা বাড়ির সামনে আবার কে যেন BMW M3 পার্ক করে রাখছে! ভাই চিট কোড 1111 মারছো নাকি? 😂',
+      likes: 412,
+      liked: false,
+      saved: false,
+      showComments: false,
+      comments: [
+        { user: 'huzzatullah_hd', text: 'আমি তো শুধু ফরচুনার 4444 চালাই 😎' },
+        { user: 'khulna_rider', text: 'একটা রাউন্ড দাও ভাই হাজী মহসিন রোডে!' },
+      ],
+    },
+    {
+      id: 'p3',
+      handle: '@sabit_official',
+      avatar: '⚡',
+      avatarBg: 'linear-gradient(135deg,#10b981,#059669)',
+      location: 'খুলনা জেলা স্টেডিয়াম',
+      time: '১৮ মিনিট আগে',
+      mediaBg: 'linear-gradient(135deg,#064e3b 0%,#10b981 60%,#22d3ee 100%)',
+      mediaTag: '⚡ REFLEX MODE ACTIVATED',
+      mediaEmoji: '🥊⚡',
+      caption: 'আজকে হুজ্জাতুল্লাহর সাথে আবার মারামারি লেগে গেছিল, রিফ্লেক্স মোড অন করে কোনোরকমে পালাইছি! 😅',
+      likes: 539,
+      liked: false,
+      saved: false,
+      showComments: false,
+      comments: [
+        { user: 'huzzatullah_hd', text: 'দাঁড়া তোরে আজকে সাতরাস্তায় ধরতেছি 😤' },
+        { user: 'altapole_crew', text: 'ভিডিও কই ভাই? 😂🔥' },
+      ],
+    },
+    {
+      id: 'p4',
+      handle: '@rupsha_ghat_diaries',
+      avatar: '🌊',
+      avatarBg: 'linear-gradient(135deg,#0284c7,#0f766e)',
+      location: 'রূপসা ফেরি ও লঞ্চ ঘাট',
+      time: '৩৫ মিনিট আগে',
+      mediaBg: 'linear-gradient(135deg,#0c4a6e 0%,#0284c7 55%,#38bdf8 100%)',
+      mediaTag: '☕ RUPSHA RIVER BREEZE',
+      mediaEmoji: '⛴️☕',
+      caption: 'রূপসা নদীর পাড়ে দাঁড়িয়ে গরম চা আর পেঁয়াজু—খুলনার আসল শান্তি এখানেই! 🌊',
+      likes: 319,
+      liked: false,
+      saved: false,
+      showComments: false,
+      comments: [
+        { user: 'khulna_foodies', text: 'সাথে দুইটা সিঙ্গারা হইলে জমে যেত!' },
+      ],
+    },
+    {
+      id: 'p5',
+      handle: '@huzzatullah_khulna',
+      avatar: '🏙️',
+      avatarBg: 'linear-gradient(135deg,#6366f1,#3b82f6)',
+      location: 'হাজী মহসিন রোড · SK Arshan Tower',
+      time: '১ ঘণ্টা আগে',
+      mediaBg: 'linear-gradient(135deg,#1e1b4b 0%,#4338ca 55%,#818cf8 100%)',
+      mediaTag: '🛗 10TH FLOOR ROOFTOP VIEW',
+      mediaEmoji: '🏙️✨',
+      caption: 'SK Arshan Alif Tower-এর লিফটে উঠে ছাদ থেকে পুরো খুলনা দেখা যায়! কেউ লাফ দিও না আবার 😂',
+      likes: 287,
+      liked: false,
+      saved: false,
+      showComments: false,
+      comments: [
+        { user: 'dev_khulna', text: 'Unlimited Health অন থাকলে সমস্যা নাই 😎' },
+        { user: 'taltola_boy', text: 'লিফটটা অনেক স্মুথ!' },
+      ],
+    },
+    {
+      id: 'p6',
+      handle: '@hadis_park_clicks',
+      avatar: '🦆',
+      avatarBg: 'linear-gradient(135deg,#22c55e,#65a30d)',
+      location: 'শহীদ হাদিস পার্ক',
+      time: '২ ঘণ্টা আগে',
+      mediaBg: 'linear-gradient(135deg,#14532d 0%,#16a34a 55%,#86efac 100%)',
+      mediaTag: '🌿 SHAHEED HADIS PARK',
+      mediaEmoji: '🦆🌳',
+      caption: 'হাদিস পার্কের পুকুরে হাঁসগুলো আজকে একদম চিল মুডে সাঁতার কাটছে 🦆🌿',
+      likes: 194,
+      liked: false,
+      saved: false,
+      showComments: false,
+      comments: [
+        { user: 'nature_bd', text: 'খুলনার সবচেয়ে সুন্দর পার্ক ❤️' },
+      ],
+    },
+    {
+      id: 'p7',
+      handle: '@altapole_boys',
+      avatar: '🚲',
+      avatarBg: 'linear-gradient(135deg,#ec4899,#f43f5e)',
+      location: 'আলতাপোল লেন · ওয়ার্ড ২৩',
+      time: '৩ ঘণ্টা আগে',
+      mediaBg: 'linear-gradient(135deg,#4c0519 0%,#be123c 55%,#fb7185 100%)',
+      mediaTag: '🚲 ALTAPOLE LANE VIBES',
+      mediaEmoji: '🚲🏠',
+      caption: 'আলতাপোল গলিতে বড় গাড়ি নিয়ে ঢোকার চেষ্টা করবেন না ভাই, সাইকেল বা রিকশাই সেরা! 😆',
+      likes: 163,
+      liked: false,
+      saved: false,
+      showComments: false,
+      comments: [
+        { user: 'rickshaw_mama', text: '৬৬৬৬ ডায়াল করে রিকশা নামাও মামা!' },
+      ],
+    },
+    {
+      id: 'p8',
+      handle: '@khulna_traffic_live',
+      avatar: '🛺',
+      avatarBg: 'linear-gradient(135deg,#eab308,#ca8a04)',
+      location: 'সাতরাস্তা মোড় · KDA Avenue',
+      time: '৪ ঘণ্টা আগে',
+      mediaBg: 'linear-gradient(135deg,#422006 0%,#ca8a04 55%,#fde047 100%)',
+      mediaTag: '🚨 BREAKING KHULNA DRIFT',
+      mediaEmoji: '🛺💨',
+      caption: 'ব্রেকিং: সাতরাস্তা মোড়ে এক পাগলা ড্রাইভার CNG নিয়ে ড্রিফ্ট মারতেছে! কেউ ভিডিও করছো? 🛺🔥',
+      likes: 621,
+      liked: false,
+      saved: false,
+      showComments: false,
+      comments: [
+        { user: 'khulna_vibes', text: 'নিশ্চয়ই সাবিদ নাইলে হুজ্জাতুল্লাহ 😂' },
+        { user: 'cng_boss', text: '০০০০ কোডের সিএনজি আলাদা লেভেল!' },
+      ],
+    },
+  ];
   let toastTimer = null;
   let audioCtx = null;
   let currentCharId = 'sabit';
@@ -149,7 +323,7 @@ export function createGTAPhoneUI({
 
   function populateCheatList() {
     if (!cheatListEl) return;
-    const info = getSpawnLimitInfo?.() || { count: 0, max: 2, vehicles: [] };
+    const info = getSpawnLimitInfo?.() || { count: 0, max: 4, vehicles: [] };
     cheatListEl.innerHTML = '';
 
     const headerRow = document.createElement('div');
@@ -166,8 +340,8 @@ export function createGTAPhoneUI({
         const res = onClearSpawnedVehicles();
         playTone(440, 330, 0.1, 0.07);
         populateCheatList();
-        if (dialStatus) dialStatus.textContent = `✓ All vehicles despawned (0/${res?.max ?? 2})`;
-        showToast('🗑️ ALL SPAWNED VEHICLES DESPAWNED (0/2)');
+        if (dialStatus) dialStatus.textContent = `✓ All vehicles despawned (0/${res?.max ?? 4})`;
+        showToast(`🗑️ ALL SPAWNED VEHICLES DESPAWNED (0/${res?.max ?? 4})`);
       });
       headerRow.appendChild(clearBtn);
     }
@@ -268,6 +442,165 @@ export function createGTAPhoneUI({
     }
   }
 
+  function renderSocialStories() {
+    if (!socialStoriesEl) return;
+    socialStoriesEl.innerHTML = '';
+    for (const st of SOCIAL_STORIES) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'social-story-chip';
+      btn.innerHTML = `<span class="story-ring" style="background:${st.bg}">${st.emoji}</span><small>${st.name}</small>`;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPhoneInteract?.();
+        playTone(760, 960, 0.06, 0.05);
+        showToast(st.status);
+      });
+      socialStoriesEl.appendChild(btn);
+    }
+  }
+
+  function renderSocialFeed() {
+    if (!socialFeedEl) return;
+    socialFeedEl.innerHTML = '';
+    for (const post of socialPosts) {
+      const card = document.createElement('article');
+      card.className = 'social-post-card';
+
+      const head = document.createElement('div');
+      head.className = 'social-post-head';
+      head.innerHTML = `
+        <span class="social-avatar" style="background:${post.avatarBg}">${post.avatar}</span>
+        <div class="social-post-meta">
+          <strong>${post.handle}</strong>
+          <small>${post.location} · ${post.time}</small>
+        </div>
+      `;
+      card.appendChild(head);
+
+      const media = document.createElement('div');
+      media.className = 'social-post-media';
+      media.style.background = post.mediaBg;
+      media.innerHTML = `<span class="social-media-emoji">${post.mediaEmoji}</span><span class="social-media-tag">${post.mediaTag}</span>`;
+      media.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        if (!post.liked) {
+          post.liked = true;
+          post.likes += 1;
+          onPhoneInteract?.();
+          playTone(880, 1180, 0.07, 0.06);
+          renderSocialFeed();
+        }
+      });
+      card.appendChild(media);
+
+      const actions = document.createElement('div');
+      actions.className = 'social-post-actions';
+
+      const likeBtn = document.createElement('button');
+      likeBtn.type = 'button';
+      likeBtn.className = `social-act-btn${post.liked ? ' liked' : ''}`;
+      likeBtn.textContent = `${post.liked ? '❤️' : '🤍'} ${post.likes}`;
+      likeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPhoneInteract?.();
+        post.liked = !post.liked;
+        post.likes += post.liked ? 1 : -1;
+        playTone(post.liked ? 880 : 520, null, 0.05, 0.05);
+        renderSocialFeed();
+      });
+
+      const cmtBtn = document.createElement('button');
+      cmtBtn.type = 'button';
+      cmtBtn.className = 'social-act-btn';
+      cmtBtn.textContent = `💬 ${post.comments.length}`;
+      cmtBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPhoneInteract?.();
+        post.showComments = !post.showComments;
+        playTone(640, null, 0.04, 0.04);
+        renderSocialFeed();
+      });
+
+      const saveBtn = document.createElement('button');
+      saveBtn.type = 'button';
+      saveBtn.className = `social-act-btn social-save-btn${post.saved ? ' saved' : ''}`;
+      saveBtn.textContent = post.saved ? '🔖 Saved' : '🔖';
+      saveBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPhoneInteract?.();
+        post.saved = !post.saved;
+        playTone(720, null, 0.04, 0.04);
+        renderSocialFeed();
+      });
+
+      actions.append(likeBtn, cmtBtn, saveBtn);
+      card.appendChild(actions);
+
+      const cap = document.createElement('p');
+      cap.className = 'social-post-caption';
+      const userStrong = document.createElement('strong');
+      userStrong.textContent = `${post.handle} `;
+      cap.appendChild(userStrong);
+      cap.appendChild(document.createTextNode(post.caption));
+      card.appendChild(cap);
+
+      if (post.showComments && post.comments.length) {
+        const cList = document.createElement('div');
+        cList.className = 'social-comments-box';
+        for (const c of post.comments) {
+          const row = document.createElement('div');
+          row.className = 'social-comment-row';
+          const u = document.createElement('strong');
+          u.textContent = `@${c.user}: `;
+          row.appendChild(u);
+          row.appendChild(document.createTextNode(c.text));
+          cList.appendChild(row);
+        }
+        card.appendChild(cList);
+      }
+
+      socialFeedEl.appendChild(card);
+    }
+  }
+
+  socialInputEl?.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+  });
+
+  socialComposerForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = (socialInputEl?.value || '').trim();
+    if (!text) return;
+    const isBlue = currentCharId === 'kurta_blue';
+    socialPosts.unshift({
+      id: `user_${Date.now()}`,
+      handle: isBlue ? '@huzzatullah_live' : '@sabit_live',
+      avatar: isBlue ? '🔥' : '⚡',
+      avatarBg: isBlue ? 'linear-gradient(135deg,#38bdf8,#2563eb)' : 'linear-gradient(135deg,#22c55e,#10b981)',
+      location: 'খুলনা সিটি · এখন',
+      time: 'এইমাত্র',
+      mediaBg: isBlue ? 'linear-gradient(135deg,#0c4a6e 0%,#2563eb 55%,#38bdf8 100%)' : 'linear-gradient(135deg,#064e3b 0%,#16a34a 55%,#4ade80 100%)',
+      mediaTag: isBlue ? '🔥 HUZZATULLAH LIVE UPDATE' : '⚡ SABIT LIVE UPDATE',
+      mediaEmoji: isBlue ? '😎🏙️' : '⚡🚗',
+      caption: text,
+      likes: 1,
+      liked: true,
+      saved: false,
+      showComments: false,
+      comments: [
+        { user: isBlue ? 'sabit_official' : 'huzzatullah_hd', text: 'জোস পোস্ট ভাই! 🔥' },
+      ],
+    });
+    if (socialInputEl) socialInputEl.value = '';
+    onPhoneInteract?.();
+    playTone(880, 1320, 0.1, 0.08);
+    renderSocialFeed();
+    if (socialFeedEl) socialFeedEl.scrollTop = 0;
+    showToast('🌐 KhulnaGram-এ তোমার পোস্ট শেয়ার হয়েছে!');
+  });
+
   function showApp(appName) {
     if (activeApp === 'selfie' && appName !== 'selfie') {
       onExitSelfieMode?.();
@@ -278,17 +611,21 @@ export function createGTAPhoneUI({
     teleportScreen?.classList.toggle('hidden', appName !== 'teleport');
     selfieScreen?.classList.toggle('hidden', appName !== 'selfie');
     funnyScreen?.classList.toggle('hidden', appName !== 'funny');
+    socialScreen?.classList.toggle('hidden', appName !== 'social');
     backBtn?.classList.toggle('hidden', appName === 'home');
 
     if (appName === 'teleport') {
       populateTeleportList();
     } else if (appName === 'funny') {
       populateFunnyList();
+    } else if (appName === 'social') {
+      renderSocialStories();
+      renderSocialFeed();
     } else if (appName === 'selfie') {
       onEnterSelfieMode?.();
     } else if (appName === 'dial') {
       populateCheatList();
-      const info = getSpawnLimitInfo?.() || { count: 0, max: 2 };
+      const info = getSpawnLimitInfo?.() || { count: 0, max: 4 };
       if (dialStatus) {
         dialStatus.textContent = info.count >= info.max
           ? `Max ${info.max} active · New spawn replaces oldest (${info.count}/${info.max})`
@@ -303,7 +640,7 @@ export function createGTAPhoneUI({
     const match = PHONE_CHEAT_CODES.find((c) => c.code === code);
     if (match) {
       const raw = onSpawnCheatVehicle?.(match.carId, match.label);
-      const res = typeof raw === 'object' && raw !== null ? raw : { ok: Boolean(raw), count: 1, max: 2 };
+      const res = typeof raw === 'object' && raw !== null ? raw : { ok: Boolean(raw), count: 1, max: 4 };
       if (res.ok) {
         playTone(880, 1320, 0.16, 0.10);
         populateCheatList();

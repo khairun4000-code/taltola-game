@@ -264,20 +264,6 @@ function buildRoad(parent, m) {
   for (const z of [-31, -18, 12, 27]) {
     box(parent, [0.56, 0.09, 1.1], [-2.36, -0.02, z], m.concrete);
   }
-  const random = seededRandom(8182);
-  const leafGeometry = new THREE.PlaneGeometry(0.09, 0.18);
-  const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x776a37, roughness: 0.85, side: THREE.DoubleSide });
-  const debris = new THREE.InstancedMesh(leafGeometry, leafMaterial, 95);
-  const dummy = new THREE.Object3D();
-  for (let i = 0; i < 95; i++) {
-    dummy.position.set((random() - 0.5) * 3.9, 0.018, (random() - 0.5) * 78);
-    dummy.rotation.set(-Math.PI / 2 + (random() - 0.5) * 0.15, 0, random() * Math.PI * 2);
-    dummy.scale.setScalar(0.5 + random());
-    dummy.updateMatrix();
-    debris.setMatrixAt(i, dummy.matrix);
-  }
-  debris.receiveShadow = true;
-  parent.add(debris);
 }
 
 function buildNeighbourhood(parent, m) {

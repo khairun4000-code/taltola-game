@@ -1413,23 +1413,6 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   addBox(staticG, [1.05, 0.10, 35.5], [ox + 3.22, 0.01, oz + 21.25], m.brick, { uvScale: 2.2 });
   addBox(staticG, [1.35, 0.10, 74.0], [ox - 3.35, 0.01, oz], m.brick, { uvScale: 2.2 });
 
-  // Scattered fallen dry leaves along Kawsar's Taltola street (instanced in dynamicG so zero draw-call overhead)
-  const leafRand = seeded(8182);
-  const leafGeo = new THREE.PlaneGeometry(0.09, 0.18);
-  const leafMat = new THREE.MeshStandardMaterial({ color: 0x776a37, roughness: 0.85, side: THREE.DoubleSide });
-  const leavesMesh = new THREE.InstancedMesh(leafGeo, leafMat, 95);
-  const leafDummy = new THREE.Object3D();
-  for (let i = 0; i < 95; i++) {
-    leafDummy.position.set(ox + (leafRand() - 0.5) * 3.9, 0.014, oz + (leafRand() - 0.5) * 78);
-    leafDummy.rotation.set(-Math.PI / 2, leafRand() * Math.PI * 2, 0);
-    const sc = 0.7 + leafRand() * 0.8;
-    leafDummy.scale.set(sc, sc, 1);
-    leafDummy.updateMatrix();
-    leavesMesh.setMatrixAt(i, leafDummy.matrix);
-  }
-  leavesMesh.instanceMatrix.needsUpdate = true;
-  dynamicG.add(leavesMesh);
-
   // Green tropical roadside verges, tea-garden lawn & shaded compound plots
   addBox(staticG, [9.2, 0.08, 22.5], [ox - 9.0, 0.015, oz + 4.2], m.grass, { castShadow: false, uvScale: 2.6 });
   addBox(staticG, [4.0, 0.08, 12.0], [ox + 4.8, 0.015, oz - 9.5], m.grass, { castShadow: false, uvScale: 2.2 });

@@ -2409,8 +2409,9 @@ export function createDrivableCar(scene, manager, config) {
 
           const isGlass = glassSet.has(firstName);
           const isBody = bodySet.has(firstName);
-          const shouldCast = Boolean(config.isRickshaw) && !isGlass && (
-            !config.shadowOnlyExterior || isBody || /hood|frame|wheel|spoke|seat/i.test(firstName)
+          const isTinyDetail = /spoke|chain|bolt|nut|rivet|nipple/i.test(`${child.name || ''} ${firstName}`);
+          const shouldCast = Boolean(config.isRickshaw) && !isGlass && !isTinyDetail && (
+            !config.shadowOnlyExterior || isBody || /hood|frame|wheel|tire|wood|bed|seat/i.test(firstName)
           );
 
           child.castShadow = shouldCast && shadowInRange;
@@ -2728,6 +2729,23 @@ export function createDrivableCar(scene, manager, config) {
         });
       }
       if (rickshawParts) {
+        // Batch static child meshes inside each rigid spinning/steering sub-assembly (cuts 450+ spoke/fork/crank draw calls down to ~15!)
+        const emptySkip = new Set();
+        for (const wheelNode of [rickshawParts.wheelFront, rickshawParts.wheelRear, rickshawParts.wheelRearL, rickshawParts.wheelRearR, rickshawParts.rearSprocket, rickshawParts.pedalL, rickshawParts.pedalR]) {
+          if (wheelNode?.isObject3D) batchStaticCarMeshes(wheelNode, emptySkip);
+        }
+        if (rickshawParts.crank?.isObject3D) {
+          const pedalSkip = new Set();
+          for (const pNode of [rickshawParts.pedalL, rickshawParts.pedalR]) {
+            pNode?.traverse?.((o) => { if (o.isMesh) pedalSkip.add(o); });
+          }
+          batchStaticCarMeshes(rickshawParts.crank, pedalSkip);
+        }
+        if (rickshawParts.steering?.isObject3D) {
+          const wheelSkip = new Set();
+          rickshawParts.wheelFront?.traverse?.((o) => { if (o.isMesh) wheelSkip.add(o); });
+          batchStaticCarMeshes(rickshawParts.steering, wheelSkip);
+        }
         for (const v of Object.values(rickshawParts)) {
           if (v?.isObject3D) {
             v.traverse((o) => {

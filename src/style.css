@@ -1662,11 +1662,388 @@ body.freecam-active #gta-cheat-toast {
   opacity: 0.72;
 }
 body.freecam-active #ability-hud-bar,
-body.freecam-active #ability-fx-overlay {
+body.freecam-active #ability-fx-overlay,
+body.freecam-active #health-hud-bar,
+body.freecam-active #damage-fx-overlay {
   opacity: 0 !important;
   visibility: hidden !important;
 }
+
+/* GTA V PLAYER HEALTH BAR, DAMAGE VIGNETTE & WASTED OVERLAY */
+.health-hud-bar {
+  position: absolute;
+  bottom: 248px;
+  left: 20px;
+  z-index: 4;
+  width: 160px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(74, 222, 128, 0.36);
+  background: rgba(12, 20, 17, 0.88);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.health-hud-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #f8fafc;
+}
+#health-hud-val {
+  font-family: 'Manrope', monospace;
+  font-size: 9.5px;
+  color: #86efac;
+}
+.health-hud-track {
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+.health-hud-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #16a34a 0%, #4ade80 100%);
+  transition: width 0.12s ease-out, background 0.2s ease;
+}
+.health-hud-bar.is-unlimited {
+  border-color: rgba(250, 204, 21, 0.52);
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.22);
+}
+.health-hud-bar.is-unlimited #health-hud-val {
+  color: #fde047;
+}
+.health-hud-bar.is-unlimited .health-hud-fill {
+  background: linear-gradient(90deg, #22c55e 0%, #facc15 100%);
+}
+.health-hud-bar.is-regenerating {
+  border-color: rgba(52, 211, 153, 0.72);
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.35);
+}
+.health-hud-bar.is-mid {
+  border-color: rgba(250, 204, 21, 0.55);
+}
+.health-hud-bar.is-mid .health-hud-fill {
+  background: linear-gradient(90deg, #f59e0b 0%, #facc15 100%);
+}
+.health-hud-bar.is-mid #health-hud-val {
+  color: #fde047;
+}
+.health-hud-bar.is-critical {
+  border-color: rgba(239, 68, 68, 0.85);
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.52);
+}
+.health-hud-bar.is-critical .health-hud-fill {
+  background: linear-gradient(90deg, #dc2626 0%, #f87171 100%);
+}
+.health-hud-bar.is-critical #health-hud-val {
+  color: #fca5a5;
+}
+.health-hud-bar.hit-shake {
+  animation: hpShake 0.24s ease;
+}
+@keyframes hpShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+}
+
+.damage-fx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 45%, rgba(185, 28, 28, 0.38) 80%, rgba(127, 29, 29, 0.78) 100%);
+  box-shadow: inset 0 0 110px rgba(220, 38, 38, 0.6);
+  transition: opacity 0.08s linear;
+}
+.wasted-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9995;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 5, 5, 0.62);
+  backdrop-filter: grayscale(75%) blur(3px);
+  pointer-events: none;
+}
+.wasted-banner {
+  width: 100%;
+  padding: 26px 20px;
+  text-align: center;
+  background: linear-gradient(90deg, transparent 0%, rgba(10, 10, 12, 0.88) 20%, rgba(10, 10, 12, 0.88) 80%, transparent 100%);
+  border-top: 1px solid rgba(239, 68, 68, 0.55);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.55);
+}
+.wasted-banner strong {
+  display: block;
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(40px, 7vw, 68px);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: #ef4444;
+  text-shadow: 0 4px 28px rgba(239, 68, 68, 0.65);
+}
+.wasted-banner small {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+/* KHULNAGRAM SOCIAL MEDIA APP INSIDE iFRUIT PHONE */
+.tile-wide {
+  grid-column: span 2;
+  flex-direction: row;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  gap: 10px;
+  text-align: left;
+}
+.tile-wide-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tile-social .tile-icon {
+  background: linear-gradient(135deg, #f97316 0%, #ec4899 52%, #8b5cf6 100%);
+  flex-shrink: 0;
+}
+.social-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  margin-bottom: 6px;
+}
+.social-brand {
+  font-family: 'Manrope', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  background: linear-gradient(90deg, #fb923c, #f472b6, #a78bfa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.social-live-pill {
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #4ade80;
+  letter-spacing: 0.08em;
+}
+.social-stories {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 2px 2px 7px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.social-stories::-webkit-scrollbar { display: none; }
+.social-story-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: #e2e8f0;
+}
+.story-ring {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  border: 2px solid #f472b6;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+.social-story-chip small {
+  font-size: 8.5px;
+  max-width: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.social-composer {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 7px;
+  flex-shrink: 0;
+}
+.social-composer input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 23, 42, 0.85);
+  color: #f8fafc;
+  font-size: 10px;
+  outline: none;
+}
+.social-composer input:focus {
+  border-color: #f472b6;
+}
+.social-composer button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.social-feed {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding-right: 2px;
+}
+.social-post-card {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.72);
+  padding: 8px;
+}
+.social-post-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+.social-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.social-post-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.social-post-meta strong {
+  font-size: 10.5px;
+  color: #f8fafc;
+  line-height: 1.2;
+}
+.social-post-meta small {
+  font-size: 8.5px;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.social-post-media {
+  height: 76px;
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  user-select: none;
+  cursor: pointer;
+}
+.social-media-emoji {
+  font-size: 24px;
+  line-height: 1;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45));
+}
+.social-media-tag {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.32);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+.social-post-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.social-act-btn {
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(30, 41, 59, 0.72);
+  color: #e2e8f0;
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.social-act-btn.liked {
+  border-color: rgba(244, 63, 94, 0.65);
+  background: rgba(244, 63, 94, 0.22);
+  color: #fda4af;
+}
+.social-save-btn {
+  margin-left: auto;
+}
+.social-save-btn.saved {
+  border-color: rgba(250, 204, 21, 0.6);
+  color: #fde047;
+}
+.social-post-caption {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #e2e8f0;
+}
+.social-post-caption strong {
+  color: #ffffff;
+}
+.social-comments-box {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.social-comment-row {
+  font-size: 9.5px;
+  line-height: 1.35;
+  color: #cbd5e1;
+}
+.social-comment-row strong {
+  color: #93c5fd;
+}
+
 @media (max-width: 760px) {
+  .health-hud-bar { bottom: 194px; left: 10px; width: 120px; padding: 4px 6px; }
+  .health-hud-top { font-size: 8px; }
   .ability-hud-bar { bottom: 156px; left: 10px; width: 120px; padding: 4px 6px; }
   .ability-hud-top { font-size: 8px; }
 }

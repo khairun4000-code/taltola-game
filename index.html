@@ -17,6 +17,13 @@
     <div id="freecam-bokeh" class="freecam-bokeh" aria-hidden="true"></div>
     <div id="selfie-flash" class="selfie-flash" aria-hidden="true"></div>
     <div id="ability-fx-overlay" class="ability-fx-overlay" aria-hidden="true"></div>
+    <div id="damage-fx-overlay" class="damage-fx-overlay" aria-hidden="true"></div>
+    <div id="wasted-overlay" class="wasted-overlay hidden" role="alert">
+      <div class="wasted-banner">
+        <strong>WASTED</strong>
+        <small>তালতলা হাসপাতালে নেওয়া হচ্ছে...</small>
+      </div>
+    </div>
     <div id="gta-cheat-toast" class="gta-cheat-toast hidden" role="status"></div>
 
     <section id="loading" class="loading-screen">
@@ -303,6 +310,17 @@
 
             <div class="gta-setting-card">
               <div class="gta-setting-head">
+                <strong>Unlimited Health (Dev)</strong>
+                <small>Developer mode · Keep 100 HP locked ON, or turn OFF for GTA V fall &amp; fight damage + auto-recovery</small>
+              </div>
+              <div class="gta-pill-group" id="gta-unlimited-hp-group">
+                <button type="button" class="gta-pill active" data-gta-unlimited-hp="on">ON</button>
+                <button type="button" class="gta-pill" data-gta-unlimited-hp="off">OFF</button>
+              </div>
+            </div>
+
+            <div class="gta-setting-card">
+              <div class="gta-setting-head">
                 <strong>Restore Defaults</strong>
                 <small>Reset graphics, FOV, and sensitivity to default values</small>
               </div>
@@ -426,6 +444,13 @@
       </div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
       <div id="partner-status-pill" class="partner-status-pill hidden"><span class="partner-dot"></span> <span id="partner-status-text">Partner spawning...</span></div>
+      <div id="health-hud-bar" class="health-hud-bar is-unlimited" role="status" title="Player Health (Toggle Unlimited Health in [ESC] Settings)">
+        <div class="health-hud-top">
+          <span id="health-hud-tag">❤️ HEALTH · GOD</span>
+          <span id="health-hud-val">∞ 100</span>
+        </div>
+        <div class="health-hud-track"><div id="health-hud-fill" class="health-hud-fill"></div></div>
+      </div>
       <div id="ability-hud-bar" class="ability-hud-bar theme-sabit" role="status" title="Press CapsLock or Z to toggle Special Ability">
         <div class="ability-hud-top">
           <span id="ability-hud-label">⚡ সাবিদ রিফ্লেক্স [CAPS]</span>
@@ -559,6 +584,13 @@
               <b>ফানি ভয়েস</b>
               <small>Huzzatullah</small>
             </button>
+            <button type="button" class="phone-app-tile tile-social tile-wide" data-phone-app="social">
+              <span class="tile-icon">🌐</span>
+              <div class="tile-wide-copy">
+                <b>KHULNAGRAM</b>
+                <small>খুলনা সোশ্যাল ফিড · Scroll &amp; Like</small>
+              </div>
+            </button>
           </div>
           <p class="phone-footer-tip">Press <kbd>P</kbd> to toggle iFruit Phone</p>
         </div>
@@ -606,6 +638,19 @@
           <div class="phone-section-title">😂 হুজ্জাতুল্লাহর ফানি ভয়েস</div>
           <p id="phone-funny-status" class="phone-dial-status">ট্যাপ করলেই হুজ্জাতুল্লাহ মুখ খুলে বলবে</p>
           <div id="phone-funny-list" class="phone-funny-list"></div>
+        </div>
+
+        <div id="phone-social" class="phone-screen hidden">
+          <div class="social-header-bar">
+            <span class="social-brand">KhulnaGram</span>
+            <span class="social-live-pill">● LIVE</span>
+          </div>
+          <div id="phone-social-stories" class="social-stories"></div>
+          <form id="phone-social-composer" class="social-composer">
+            <input id="phone-social-input" type="text" maxlength="110" placeholder="খুলনায় কী হচ্ছে পোস্ট করো..." autocomplete="off" />
+            <button type="submit">পোস্ট</button>
+          </form>
+          <div id="phone-social-feed" class="social-feed"></div>
         </div>
       </div>
     </aside>

@@ -16,6 +16,7 @@ import { VOICE_CLIPS, VOICE_BUS } from './voice-clips.js';
 import { createAliaPrincipalMic } from './alia-pa-mic.js';
 import { createGTACharacterSwitch } from './gta-character-switch.js';
 import { createSpecialAbilitySystem } from './special-abilities.js';
+import { createHealthSystem } from './health-system.js';
 import { createAtmosphericSkyAndPMREM, TIME_OF_DAY_PRESETS } from './aaa-shaders.js';
 import { CAR_FLEET_CONFIGS, createDrivableCar, createDrivableCarFleet } from './car.js';
 import './style.css';
@@ -323,7 +324,7 @@ let studioPadRings = {};
 let currentStudioCamPreset = 'full';
 let lastPartnerHudText = '';
 let cars = [];
-const MAX_CHEAT_SPAWNED_VEHICLES = 2;
+const MAX_CHEAT_SPAWNED_VEHICLES = 4;
 const cheatSpawnedCars = [];
 let bmwCar;
 function getDrivingCar() {
@@ -462,6 +463,11 @@ function notifyMosqueSilence(msg = '🕌 মডেল মসজিদে ফা�
 function triggerPlayerCombatVoice() {
   if (!playerCharacter || isPosInModelMosque(playerPos)) return;
   specialAbility?.onCombatHit?.(playerPos);
+  const distToPartner = Math.hypot(
+    playerPos.x - (autonomousPartner.position?.x ?? 9999),
+    playerPos.z - (autonomousPartner.position?.z ?? 9999),
+  );
+  healthSystem?.onCombatAction?.(distToPartner < 5.5);
   const startedPartnerExchange = autonomousPartner.triggerAnnoyedReaction(playerPos, true, playerCharacter);
   if (!startedPartnerExchange) {
     playerCharacter.playCombatVoice?.();
@@ -500,6 +506,7 @@ let gtaPhoneUI = null;
 let aliaPrincipalMic = null;
 let gtaCharacterSwitch = null;
 let specialAbility = null;
+let healthSystem = null;
 let selfiePrevCamMode = null;
 let lastMinimapUpdate = 0;
 let lastSunAnchorX = 0;
@@ -1286,7 +1293,7 @@ function setUltraFastPerf(enabled) {
 
 function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynamic = false) {
   if (!sun || inStudio) return;
-  const radius = quality === 'ultra' ? 40 : (quality === 'high' ? 32 : (quality === 'medium' ? 26 : 20));
+  const radius = quality === 'ultra' ? 34 : (quality === 'high' ? 30 : (quality === 'medium' ? 25 : 20));
   const mapSize = sun.shadow.mapSize.x || 1024;
   const worldUnitsPerTexel = (radius * 2) / mapSize;
 
@@ -1295,15 +1302,19 @@ function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynam
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
   const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 1e-4 || Math.abs(snapZ - lastSunAnchorZ) > 1e-4;
-  if (anchorMoved) {
+  const shadowCadenceMs = quality === 'low' ? 140 : (quality === 'medium' ? 85 : 45);
+  const elapsedSinceShadow = nowPerf - lastShadowUpdateAt;
+  if (anchorMoved && (lastShadowUpdateAt === 0 || elapsedSinceShadow >= shadowCadenceMs)) {
     lastSunAnchorX = snapX;
     lastSunAnchorZ = snapZ;
     updateSunPositionFromAnchor(snapX, snapZ);
     sun.target.updateMatrixWorld();
+    renderer.shadowMap.needsUpdate = true;
+    lastShadowUpdateAt = nowPerf;
+    return;
   }
 
-  const shadowCadenceMs = quality === 'low' ? 140 : (quality === 'medium' ? 85 : (quality === 'high' ? 45 : 16));
-  if (anchorMoved || lastShadowUpdateAt === 0 || (forceDynamic && nowPerf - lastShadowUpdateAt >= shadowCadenceMs)) {
+  if (lastShadowUpdateAt === 0 || (forceDynamic && elapsedSinceShadow >= shadowCadenceMs)) {
     renderer.shadowMap.needsUpdate = true;
     lastShadowUpdateAt = nowPerf;
   }
@@ -1345,7 +1356,7 @@ function applyQuality(nextQuality) {
     );
   }
   renderer.shadowMap.enabled = useShadows;
-  renderer.shadowMap.type = (isHigh || isUltra) ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
   if (useShadows) {
     renderer.shadowMap.needsUpdate = true;
@@ -1355,9 +1366,9 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = (ultraFastMode && softwareRendererDetected) ? 140 : (isLow ? 160 : (quality === 'medium' ? 180 : (isUltra ? 240 : 195)));
-    scene.fog.far = (ultraFastMode && softwareRendererDetected) ? 330 : (isLow ? 390 : (quality === 'medium' ? 460 : (isUltra ? 760 : 560)));
-    camera.far = (ultraFastMode && softwareRendererDetected) ? 390 : (isLow ? 460 : (quality === 'medium' ? 520 : (isUltra ? 880 : 640)));
+    scene.fog.near = (ultraFastMode && softwareRendererDetected) ? 140 : (isLow ? 160 : (quality === 'medium' ? 180 : (isUltra ? 220 : 195)));
+    scene.fog.far = (ultraFastMode && softwareRendererDetected) ? 330 : (isLow ? 390 : (quality === 'medium' ? 460 : (isUltra ? 580 : 540)));
+    camera.far = (ultraFastMode && softwareRendererDetected) ? 390 : (isLow ? 460 : (quality === 'medium' ? 520 : (isUltra ? 680 : 620)));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
@@ -1385,7 +1396,7 @@ function applyQuality(nextQuality) {
     sun.castShadow = useShadows;
     if (useShadows) {
       const size = shadowSizes[quality] || 1536;
-      const radius = isUltra ? 40 : (isHigh ? 32 : (quality === 'medium' ? 26 : 20));
+      const radius = isUltra ? 34 : (isHigh ? 30 : (quality === 'medium' ? 25 : 20));
       sun.shadow.camera.left = -radius;
       sun.shadow.camera.right = radius;
       sun.shadow.camera.top = radius;
@@ -2352,7 +2363,7 @@ function toggleCarDriving(targetCar = null, seatMode = 'driver') {
   if (inStudio || vehicleTransition.active) return;
   if (!cars.length) {
     gtaPhoneUI?.open('dial');
-    gtaPhoneUI?.showToast?.('📞 Spawn a vehicle first via iFruit Phone [P] (max 2)!');
+    gtaPhoneUI?.showToast?.('📞 Spawn a vehicle first via iFruit Phone [P] (max 4)!');
     return;
   }
   const activeCar = getDrivingCar();
@@ -2510,6 +2521,10 @@ function syncGtaPauseSettingsUI() {
   document.querySelectorAll('[data-gta-run]').forEach((btn) => {
     btn.classList.toggle('active', (btn.dataset.gtaRun === 'on') === Boolean(runModeToggle));
   });
+  const isUnlimitedHp = healthSystem ? healthSystem.unlimitedHealth : true;
+  document.querySelectorAll('[data-gta-unlimited-hp]').forEach((btn) => {
+    btn.classList.toggle('active', (btn.dataset.gtaUnlimitedHp === 'on') === isUnlimitedHp);
+  });
   const fovSlider = document.querySelector('#gta-fov-slider');
   const fovVal = document.querySelector('#gta-fov-value');
   if (fovSlider) fovSlider.value = String(Math.round(baseWalkFov));
@@ -2575,6 +2590,14 @@ function bindGtaPauseSettingsUI() {
       e.stopPropagation();
       runModeToggle = btn.dataset.gtaRun === 'on';
       syncHUDButtons(runModeToggle, true);
+      syncGtaPauseSettingsUI();
+    });
+  });
+
+  document.querySelectorAll('[data-gta-unlimited-hp]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      healthSystem?.setUnlimitedHealth?.(btn.dataset.gtaUnlimitedHp === 'on');
       syncGtaPauseSettingsUI();
     });
   });
@@ -2677,7 +2700,9 @@ function bindGtaPauseSettingsUI() {
       localStorage.removeItem('taltola_fov');
       localStorage.removeItem('taltola_mouse_sens');
       localStorage.removeItem('taltola_shadows');
+      localStorage.removeItem('taltola_unlimited_health');
     } catch {}
+    healthSystem?.setUnlimitedHealth?.(true, { silent: true });
     toggleHudVisibility(false);
     if (playerCharacter) playerCharacter.state.cameraMode = 'back';
     applyQuality('medium');
@@ -2802,7 +2827,7 @@ async function initialize() {
       if (!baseCfg) {
         return { ok: false, reason: 'not_found', count: cheatSpawnedCars.length, max: MAX_CHEAT_SPAWNED_VEHICLES };
       }
-      // FIFO Auto-Despawn: if 2 vehicles are already spawned, despawn the oldest (first-spawned) vehicle automatically!
+      // FIFO Auto-Despawn: if 4 vehicles are already spawned, despawn the oldest (first-spawned) vehicle automatically!
       let replacedName = null;
       while (cheatSpawnedCars.length >= MAX_CHEAT_SPAWNED_VEHICLES) {
         const oldest = cheatSpawnedCars.shift();
@@ -2816,12 +2841,17 @@ async function initialize() {
       }
       controls.getHorizontalVectors(forwardVec, rightVec);
       const dist = baseCfg.isRickshaw ? 3.8 : 5.6;
+      const sideStep = baseCfg.isRickshaw ? 2.2 : 3.4;
       let sx = playerPos.x + forwardVec.x * dist;
       let sz = playerPos.z + forwardVec.z * dist;
-      if (cheatSpawnedCars.some((c) => Math.hypot(c.state.pos.x - sx, c.state.pos.z - sz) < 3.4)) {
-        const sideStep = baseCfg.isRickshaw ? 2.2 : 3.4;
-        sx += rightVec.x * sideStep;
-        sz += rightVec.z * sideStep;
+      for (const slot of [0, 1, -1, 2, -2]) {
+        const candX = playerPos.x + forwardVec.x * dist + rightVec.x * sideStep * slot;
+        const candZ = playerPos.z + forwardVec.z * dist + rightVec.z * sideStep * slot;
+        if (!cheatSpawnedCars.some((c) => Math.hypot(c.state.pos.x - candX, c.state.pos.z - candZ) < 3.2)) {
+          sx = candX;
+          sz = candZ;
+          break;
+        }
       }
       const heading = Math.atan2(forwardVec.x, forwardVec.z) + Math.PI * 0.5;
       const spawnedCar = createDrivableCar(scene, undefined, {
@@ -2897,6 +2927,20 @@ async function initialize() {
     onToast: (msg) => gtaPhoneUI?.showToast?.(msg),
   });
   specialAbility.setCharacter(selectedCharacterId);
+  healthSystem = createHealthSystem({
+    onToast: (msg) => gtaPhoneUI?.showToast?.(msg),
+    onWastedRespawn: () => {
+      const activeCar = getDrivingCar();
+      if (activeCar) {
+        activeCar.exitCar(playerPos);
+        syncCarHUD();
+      }
+      const hospitalLm = khulnaMapUI?.landmarks?.find((l) => l.id === 'taltola_house') || { id: 'taltola_house' };
+      warpToLandmark(hospitalLm, true);
+      gtaPhoneUI?.showToast?.('🏥 তালতলা হাসপাতাল থেকে সুস্থ হয়ে ফিরেছ (100/100 HP)');
+    },
+  });
+  syncGtaPauseSettingsUI();
   document.querySelector('#ability-hud-bar')?.addEventListener('click', (e) => {
     e.stopPropagation();
     if (!started || inStudio) return;
@@ -3104,6 +3148,7 @@ async function initialize() {
     characterActors,
     autonomousPartner,
     gtaCharacterSwitch,
+    healthSystem,
     selectActiveCharacter,
     get selectedCharacterId() { return selectedCharacterId; },
     bmwCar,
@@ -5448,6 +5493,7 @@ function updateMovement(delta) {
             const jolt = st.lastImpactIntensity * 0.14;
             camera.position.x += (Math.random() - 0.5) * jolt;
             camera.position.y += (Math.random() - 0.5) * jolt;
+            healthSystem?.onVehicleImpact?.(st.lastImpactIntensity);
           }
           camera.lookAt(carCamLookTarget);
         }
@@ -5837,6 +5883,7 @@ function updateMovement(delta) {
       if (dropH > 0.35) {
         landingCamDipVel -= THREE.MathUtils.clamp(dropH * 0.92, 0.35, 2.35);
       }
+      healthSystem?.onFallLanding?.(dropH, inWater);
       if (dropH > 5.2) {
         landRecoveryClip = 'HitBody';
         landRecoveryTimer = 0.72;
@@ -6023,6 +6070,10 @@ function animate() {
     inStudio,
     inMosque: isPosInModelMosque(playerPos),
     playerCharacter,
+  });
+  healthSystem?.update?.(rawDelta, {
+    inStudio,
+    paused: Boolean(pause && !pause.classList.contains('hidden')) || Boolean(khulnaMapUI?.isOpen),
   });
   const delta = rawDelta * (gtaCharacterSwitch?.timeScale ?? 1.0) * (specialAbility?.timeScale ?? 1.0);
   const elapsed = clock.elapsedTime;
