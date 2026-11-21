@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { box, cylinder, rodBetween } from './scene-utils.js';
 import { attachDerivedPBRMaps } from './aaa-shaders.js';
 
@@ -752,6 +753,61 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
   mosqueState.fans.length = 0;
   mosqueState.pointLights.length = 0;
 
+  // Load the user's new repaired & textured Tripo 3D Khulna District Model Mosque exterior
+  // Positioned at the exact Khulna District Model Mosque plaza (cx = 175.0, cz = 166.0) facing East (+X) toward the courtyard!
+  const mosqueLoader = new GLTFLoader();
+  mosqueLoader.load(
+    './assets/khulna_model_mosque_tripo.glb',
+    (gltf) => {
+      const mScene = gltf.scene;
+      mScene.updateMatrixWorld(true);
+      const box3 = new THREE.Box3().setFromObject(mScene);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box3.getSize(size);
+      box3.getCenter(center);
+
+      mScene.traverse((child) => {
+        if (!child.isMesh) return;
+        child.castShadow = false;
+        child.receiveShadow = true;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        for (const mat of mats) {
+          if (!mat) continue;
+          mat.roughness = 0.62;
+          mat.metalness = 0.04;
+          mat.side = THREE.DoubleSide;
+          mat.needsUpdate = true;
+        }
+      });
+
+      // Scale so the mosque spans ~32m wide/deep (~26m tall to minaret dome) matching real Khulna District Model Mosque scale
+      const targetSpan = 34.0;
+      const scale = targetSpan / Math.max(0.1, size.x);
+      const wrapper = new THREE.Group();
+      wrapper.name = 'Khulna_Model_Mosque_Tripo_3D';
+
+      mScene.position.set(-center.x * scale, -box3.min.y * scale, -center.z * scale);
+      mScene.scale.setScalar(scale);
+      wrapper.add(mScene);
+
+      // In Blender, Front faced -Y -> in glTF (+Y up), Front faces +Z.
+      // Rotate +90 deg around Y (Math.PI * 0.5) so Front stairs face +X (East courtyard, toward the player!)
+      wrapper.rotation.y = Math.PI * 0.5;
+      wrapper.position.set(175.0, 0.04, 166.0);
+      dynamicG.add(wrapper);
+    },
+    undefined,
+    (err) => {
+      console.warn('Khulna Model Mosque Tripo GLB load warning:', err);
+    }
+  );
+
+  // Solid raised concrete courtyard apron so the front stairs sit cleanly above the pond water plane (fixes Swim bug!)
+  const plazaMat = new THREE.MeshStandardMaterial({ color: 0xded9cf, roughness: 0.85, metalness: 0.02 });
+  box(staticG, [38.0, 0.34, 38.0], [176.5, 0.17, 166.0], plazaMat, { castShadow: false });
+  return;
+
   const whiteWallTex = makeWhiteMarbleWallTexture('#f7f5ef', '#ddd5c5', 20261);
   whiteWallTex.repeat.set(3, 2);
   const pureWhiteWallMat = new THREE.MeshPhysicalMaterial({
@@ -1475,7 +1531,7 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
 
 export function getModelMosqueGroundHeight(pos, grounded = true, verticalVelocity = 0) {
   if (!pos) return 0.0;
-  if (pos.x < X_WEST - 1.5 || pos.x > FRONT_STAIR_X1 + 1.5 || pos.z < Z_NORTH - 1.5 || pos.z > Z_SOUTH + 1.5) {
+  if (pos.x < 156.0 || pos.x > 199.0 || pos.z < 146.0 || pos.z > 186.0) {
     return 0.0;
   }
 
@@ -1485,51 +1541,13 @@ export function getModelMosqueGroundHeight(pos, grounded = true, verticalVelocit
   // 1) Grand Front White Marble Staircase (x = 186.5..193.0, z = 161.0..171.0)
   if (pos.x >= FRONT_STAIR_X0 && pos.x <= FRONT_STAIR_X1 && pos.z >= FRONT_STAIR_Z0 && pos.z <= FRONT_STAIR_Z1) {
     const t = THREE.MathUtils.clamp((FRONT_STAIR_X1 - pos.x) / (FRONT_STAIR_X1 - FRONT_STAIR_X0), 0, 1);
-    const stairY = 0.08 + t * (Y1 - 0.08);
+    const stairY = 0.34 + t * (Y1 - 0.34);
     if (stairY <= footY + maxStepUp) return stairY;
-    return 0.08;
+    return 0.34;
   }
 
-  // 2) Inside Main Mosque & East Veranda Footprint (x = 160.0..186.5, z = 154.0..178.0)
-  if (pos.x >= X_WEST && pos.x <= X_VERANDA && pos.z >= Z_NORTH && pos.z <= Z_SOUTH) {
-    let bestY = Y0;
-
-    // A) Interior Switchback Marble Stairwell (x = 160.4..169.2, z = 173.4..177.6)
-    const inStairwell = pos.x >= X_WEST + 0.2 && pos.x <= STAIR_X1 + 0.2 && pos.z >= STAIR_Z0 && pos.z <= STAIR_Z1 + 0.2;
-    if (inStairwell) {
-      for (const [yBot, yTop] of [[Y0, Y1], [Y1, Y2]]) {
-        const yMid = (yBot + yTop) * 0.5;
-        if (pos.x <= STAIR_X_LAND) {
-          if (yMid <= footY + maxStepUp) bestY = Math.max(bestY, yMid);
-        } else if (pos.z < STAIR_Z_MID) {
-          const t = THREE.MathUtils.clamp((STAIR_X1 - pos.x) / (STAIR_X1 - STAIR_X_LAND), 0, 1);
-          const sy = yBot + t * (yMid - yBot);
-          if (sy <= footY + maxStepUp) bestY = Math.max(bestY, sy);
-        } else {
-          const t = THREE.MathUtils.clamp((pos.x - STAIR_X_LAND) / (STAIR_X1 - STAIR_X_LAND), 0, 1);
-          const sy = yMid + t * (yTop - yMid);
-          if (sy <= footY + maxStepUp) bestY = Math.max(bestY, sy);
-        }
-      }
-      return bestY;
-    }
-
-    // B) 2nd Floor Main Prayer Hall & Veranda Slab (y = 3.80m)
-    if (Y1 <= footY + maxStepUp) {
-      bestY = Math.max(bestY, Y1);
-    }
-
-    // C) 3rd Floor Upper Prayer Gallery Slab (y = 8.40m — respects Central Atrium Opening!)
-    const inAtrium = pos.x > 166.1 && pos.x < 175.9 && pos.z > 161.1 && pos.z < 170.9;
-    const onGallery = pos.x <= X_EAST && !inAtrium;
-    if (onGallery && Y2 <= footY + maxStepUp) {
-      bestY = Math.max(bestY, Y2);
-    }
-
-    return bestY;
-  }
-
-  return 0.08;
+  // 2) Raised Mosque Courtyard Apron (keeps feet dry at y = 0.34m > 0.22m water threshold!)
+  return 0.34;
 }
 
 function resolveCircleAABB(pos, radius, minX, maxX, minZ, maxZ) {
@@ -1560,88 +1578,12 @@ function resolveCircleAABB(pos, radius, minX, maxX, minZ, maxZ) {
 
 export function applyModelMosqueCollisions(pos, radius = 0.34, footY = 0) {
   if (!pos) return;
-  if (pos.x < X_WEST - 2.0 || pos.x > FRONT_STAIR_X1 + 2.0 || pos.z < Z_NORTH - 6.0 || pos.z > Z_SOUTH + 2.0) {
+  if (pos.x < 156.0 || pos.x > 199.0 || pos.z < 146.0 || pos.z > 186.0) {
     return;
   }
-
-  // Minaret Base (NE Plaza x = 185.0, z = 150.2 — never blocks any entrance!)
-  if (footY < 33.0) {
-    resolveCircleAABB(pos, radius, 182.9, 187.1, 148.1, 152.3);
-  }
-
-  // Grand Front Staircase Side Railings
-  if (footY < Y1 + 1.2 && pos.x >= FRONT_STAIR_X0 && pos.x <= FRONT_STAIR_X1) {
-    resolveCircleAABB(pos, radius, FRONT_STAIR_X0, FRONT_STAIR_X1, FRONT_STAIR_Z0 - 0.40, FRONT_STAIR_Z0);
-    resolveCircleAABB(pos, radius, FRONT_STAIR_X0, FRONT_STAIR_X1, FRONT_STAIR_Z1, FRONT_STAIR_Z1 + 0.40);
-  }
-
-  if (footY >= Y_ROOF - 0.4) return;
-
-  // West Solid Perimeter Wall
-  resolveCircleAABB(pos, radius, X_WEST - 0.1, X_WEST + 0.45, Z_NORTH, Z_SOUTH);
-
-  if (footY < Y1 - 0.6) {
-    // --- GROUND FLOOR COLLISIONS (WIDE OPEN ENTRANCES) ---
-    resolveCircleAABB(pos, radius, X_WEST, 170.0, Z_NORTH - 0.1, Z_NORTH + 0.42);
-    resolveCircleAABB(pos, radius, 173.5, X_EAST, Z_NORTH - 0.1, Z_NORTH + 0.42);
-    resolveCircleAABB(pos, radius, X_WEST, 170.0, Z_SOUTH - 0.42, Z_SOUTH + 0.1);
-    resolveCircleAABB(pos, radius, 173.5, X_EAST, Z_SOUTH - 0.42, Z_SOUTH + 0.1);
-    resolveCircleAABB(pos, radius, X_EAST - 0.42, X_EAST + 0.08, Z_NORTH, 156.5);
-    resolveCircleAABB(pos, radius, X_EAST - 0.42, X_EAST + 0.08, 160.0, 172.0);
-    resolveCircleAABB(pos, radius, X_EAST - 0.42, X_EAST + 0.08, 175.5, Z_SOUTH);
-
-    // Quran & Hifz Room Divider Wall (wide open doorway at x = 174.5, z = 157.5..161.2)
-    resolveCircleAABB(pos, radius, X_WEST, 174.5, 163.68, 163.94);
-    resolveCircleAABB(pos, radius, 174.38, 174.64, Z_NORTH, 157.5);
-    resolveCircleAABB(pos, radius, 174.38, 174.64, 161.2, 163.9);
-
-    // Ozu Khana Privacy Divider & Central Tap Wall
-    resolveCircleAABB(pos, radius, 169.28, 169.54, 169.8, Z_SOUTH);
-    resolveCircleAABB(pos, radius, 174.66, 174.98, 168.4, 176.6);
-  } else if (footY < Y2 - 0.6) {
-    // --- 2ND FLOOR MAIN PRAYER HALL COLLISIONS ---
-    resolveCircleAABB(pos, radius, X_WEST, X_EAST, Z_NORTH - 0.1, Z_NORTH + 0.42);
-    resolveCircleAABB(pos, radius, X_WEST, X_EAST, Z_SOUTH - 0.42, Z_SOUTH + 0.1);
-
-    resolveCircleAABB(pos, radius, X_EAST - 0.44, X_EAST + 0.08, Z_NORTH, 157.5);
-    resolveCircleAABB(pos, radius, X_EAST - 0.44, X_EAST + 0.08, 160.5, 163.8);
-    resolveCircleAABB(pos, radius, X_EAST - 0.44, X_EAST + 0.08, 168.2, 171.5);
-    resolveCircleAABB(pos, radius, X_EAST - 0.44, X_EAST + 0.08, 174.5, Z_SOUTH);
-    if (!mosqueState.mainHallOpen) {
-      resolveCircleAABB(pos, radius, X_EAST - 0.36, X_EAST - 0.06, 163.8, 168.2);
-    }
-
-    // 2nd Floor Veranda Railings (leave top of Front Staircase z = 161.0..171.0 100% OPEN!)
-    resolveCircleAABB(pos, radius, X_VERANDA - 0.28, X_VERANDA + 0.10, Z_NORTH, FRONT_STAIR_Z0);
-    resolveCircleAABB(pos, radius, X_VERANDA - 0.28, X_VERANDA + 0.10, FRONT_STAIR_Z1, Z_SOUTH);
-    resolveCircleAABB(pos, radius, X_EAST, X_VERANDA, Z_NORTH - 0.1, Z_NORTH + 0.28);
-    resolveCircleAABB(pos, radius, X_EAST, X_VERANDA, Z_SOUTH - 0.28, Z_SOUTH + 0.1);
-
-    // Mihrab & Mimbar solid bases
-    resolveCircleAABB(pos, radius, X_WEST, X_WEST + 1.20, MZ - 1.75, MZ + 1.75);
-    resolveCircleAABB(pos, radius, X_WEST + 0.65, X_WEST + 3.25, MZ - 4.3, MZ - 2.9);
-
-    // 8 Fluted Marble Columns
-    for (const [cx, cz] of [
-      [MX - 5.2, MZ - 5.2], [MX - 5.2, MZ + 5.2],
-      [MX + 4.8, MZ - 5.2], [MX + 4.8, MZ + 5.2],
-      [MX - 5.2, MZ - 10.2], [MX - 5.2, MZ + 10.2],
-      [MX + 4.8, MZ - 10.2], [MX + 4.8, MZ + 10.2],
-    ]) {
-      resolveCircleAABB(pos, radius, cx - 0.34, cx + 0.34, cz - 0.34, cz + 0.34);
-    }
-  } else {
-    // --- 3RD FLOOR UPPER PRAYER GALLERY COLLISIONS ---
-    resolveCircleAABB(pos, radius, X_WEST, X_EAST, Z_NORTH - 0.1, Z_NORTH + 0.42);
-    resolveCircleAABB(pos, radius, X_WEST, X_EAST, Z_SOUTH - 0.42, Z_SOUTH + 0.1);
-    resolveCircleAABB(pos, radius, X_EAST - 0.44, X_EAST + 0.12, Z_NORTH, Z_SOUTH);
-
-    if (footY - Y2 < 0.72) {
-      resolveCircleAABB(pos, radius, 165.85, 176.15, 160.88, 161.14);
-      resolveCircleAABB(pos, radius, 165.85, 176.15, 170.86, 171.14);
-      resolveCircleAABB(pos, radius, 165.88, 166.14, 160.88, 171.14);
-      resolveCircleAABB(pos, radius, 175.86, 176.14, 160.88, 171.14);
-    }
+  // Solid outer collision for the Tripo 3D Model Mosque exterior shell (until interior rooms are carved out)
+  if (footY < 18.0) {
+    resolveCircleAABB(pos, radius, 159.0, 185.0, 151.0, 181.0);
   }
 }
 
