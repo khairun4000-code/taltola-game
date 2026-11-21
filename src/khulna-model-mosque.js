@@ -798,20 +798,20 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
         }
       });
 
-      // Scale so the mosque spans ~34m wide matching real Khulna District Model Mosque scale
-      const targetSpan = 34.0;
-      const scale = targetSpan / Math.max(0.1, size.x);
+      // Exact millimeter-accurate alignment matching build_aaa_mosque.py & getModelMosqueGroundHeight!
+      // (Avoids box3.min.y lift caused by tilted stair stringer extending below Z=0!)
+      const scale = MOSQUE_AAA_SCALE;
       const wrapper = new THREE.Group();
       wrapper.name = 'Khulna_Model_Mosque_Tripo_3D';
 
-      mScene.position.set(-center.x * scale, -box3.min.y * scale, -center.z * scale);
+      mScene.position.set(0, 0, -0.5 * scale);
       mScene.scale.setScalar(scale);
       wrapper.add(mScene);
 
       // In Blender, Front faced -Y -> in glTF (+Y up), Front faces +Z.
       // Rotate +90 deg around Y (Math.PI * 0.5) so Front stairs face +X (East courtyard, toward the player!)
       wrapper.rotation.y = Math.PI * 0.5;
-      wrapper.position.set(175.0, 0.04, 166.0);
+      wrapper.position.set(175.0, MOSQUE_BASE_Y, 166.0);
       dynamicG.add(wrapper);
 
       // Permanent warm interior lighting for the Grand Prayer Hall & Mihrab (never toggled visible/invisible -> zero lag!)
@@ -1555,6 +1555,7 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
  * ========================================================================== */
 
 const MOSQUE_AAA_SCALE = 34.0 / 34.5;
+const MOSQUE_BASE_Y = 0.16;
 
 function worldToMosqueLocal(wx, wz) {
   return {
@@ -1580,10 +1581,11 @@ export function getModelMosqueGroundHeight(pos, grounded = true, verticalVelocit
   const footY = pos.y - 1.68;
   const maxStepUp = grounded ? 0.72 : (verticalVelocity > 0 ? 0.08 : 0.45);
   const S = MOSQUE_AAA_SCALE;
-  const Y_GROUND = 0.34;
-  const Y_MID_LANDING = 0.04 + 2.28 * S;    // ~2.29m
-  const Y_FLOOR2 = 0.04 + 4.22 * S;         // ~4.20m (Terrace & Main Prayer Hall!)
-  const Y_FLOOR3 = 0.04 + 9.65 * S;         // ~9.55m (3rd Floor Mezzanine Gallery!)
+  const Y_GROUND = MOSQUE_BASE_Y + 0.20 * S;       // ~0.36m (dry above water, flush with paver & ground marble!)
+  const Y_MID_LANDING = MOSQUE_BASE_Y + 2.28 * S;  // ~2.41m
+  const Y_TERRACE = MOSQUE_BASE_Y + 4.18 * S;      // ~4.28m (White Marble Terrace!)
+  const Y_FLOOR2 = MOSQUE_BASE_Y + 4.22 * S;       // ~4.32m (2nd Floor Prayer Saf Carpet!)
+  const Y_FLOOR3 = MOSQUE_BASE_Y + 9.65 * S;       // ~9.67m (3rd Floor Mezzanine Carpet!)
 
   let bestH = Y_GROUND;
   const tryFloor = (h) => {
@@ -1602,14 +1604,14 @@ export function getModelMosqueGroundHeight(pos, grounded = true, verticalVelocit
   // 2) Front Upper Twin Stair Flights flanking central green grass planter (bx = -5.5..-1.65 & +1.65..+5.5, by = -9.4..-4.8)
   if (((bx >= -5.6 && bx <= -1.6) || (bx >= 1.6 && bx <= 5.6)) && by >= -9.4 && by <= -4.7) {
     const t = THREE.MathUtils.clamp((by - (-9.4)) / (-4.8 - (-9.4)), 0, 1);
-    tryFloor(Y_MID_LANDING + t * (Y_FLOOR2 - Y_MID_LANDING));
+    tryFloor(Y_MID_LANDING + t * (Y_TERRACE - Y_MID_LANDING));
   }
 
   // 3) Elevated White Marble Terrace Deck (bx = -15.5..+15.5, by = -13.1..-1.2, excluding central stair cutout)
   const inTerrace = bx >= -15.6 && bx <= 15.6 && by >= -13.1 && by <= -1.2;
   const inStairCutout = bx >= -5.6 && bx <= 5.6 && by >= -13.1 && by <= -5.0;
   if (inTerrace && !inStairCutout) {
-    tryFloor(Y_FLOOR2);
+    tryFloor(Y_TERRACE);
   }
 
   // 4) Inside Main Mosque Building (bx = -11.4..+11.4, by = -1.5..+13.4)
