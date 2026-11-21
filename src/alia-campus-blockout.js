@@ -303,26 +303,81 @@ function addRedGreenRoadRailing(staticG, bank, x, z0, z1) {
   }
 }
 
-function addPondBankTree(staticG, bank, x, z, scale = 1.0) {
-  cylinder(staticG, 0.18 * scale, 0.28 * scale, 3.2 * scale, [x, 1.6 * scale, z], bank.teakWood, 7);
-  const crown = new THREE.Mesh(new THREE.DodecahedronGeometry(2.2 * scale, 1), bank.emeraldMat);
-  crown.scale.set(1.15, 0.82, 1.15);
-  crown.position.set(x, 3.8 * scale, z);
-  staticG.add(crown);
+function makeDirtPathTex(seedVal = 6612) {
+  const S = 512;
+  const c = document.createElement('canvas');
+  c.width = S;
+  c.height = S;
+  const ctx = c.getContext('2d');
+  const rnd = seeded(seedVal);
+  ctx.fillStyle = '#8b7355';
+  ctx.fillRect(0, 0, S, S);
+  const tones = ['#7d664a', '#9c8364', '#6d583e', '#a89172', '#5f4d37'];
+  for (let i = 0; i < 600; i++) {
+    ctx.fillStyle = tones[Math.floor(rnd() * tones.length)];
+    ctx.globalAlpha = 0.25 + rnd() * 0.35;
+    ctx.beginPath();
+    ctx.arc(rnd() * S, rnd() * S, 6 + rnd() * 24, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 0.65;
+  for (let i = 0; i < 6500; i++) {
+    ctx.fillStyle = tones[Math.floor(rnd() * tones.length)];
+    const r = 1 + rnd() * 2.5;
+    ctx.fillRect(rnd() * S, rnd() * S, r, r);
+  }
+  ctx.globalAlpha = 1.0;
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  return tex;
 }
 
-/**
- * REAL-VIDEO COVERED GREEN-AND-RED TIN-SHED PUKUR GHAT (video 01:52-02:16) + TWIN PONDS:
- *  - North Clean Bathing Pond (পরিষ্কার পুকুর) with gabled green/red tin-shed pavilion right off the main road,
- *    red-green pillars, red seating walls, wide stepped concrete bathing ghat & 4-sided brick Pukurpar!
- *  - South Old Green Algae Pond (সবুজ শ্যাওলা ও কচুরিপানা ভরা পুরনো পুকুর) right south of it!
- */
-function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats) {
-  /* ---- A) NORTH CLEAN BATHING POND (পরিষ্কার পুকুর) ---- */
-  const cX0 = 201.0;
-  const cX1 = 232.0;
-  const cZ0 = 144.0;
-  const cZ1 = 170.0;
+function makeDustyBrickPathTex(seedVal = 5519) {
+  const S = 512;
+  const c = document.createElement('canvas');
+  c.width = S;
+  c.height = S;
+  const ctx = c.getContext('2d');
+  const rnd = seeded(seedVal);
+  // Dusty weathered mortar base
+  ctx.fillStyle = '#7c7568';
+  ctx.fillRect(0, 0, S, S);
+  const bw = 32;
+  const bh = 16;
+  const brickCols = ['#945444', '#864a3d', '#9f6150', '#7c483d', '#8c5a4c', '#a36b58'];
+  for (let row = 0; row < S / bh; row++) {
+    const off = (row % 2) * (bw * 0.5);
+    for (let col = -1; col <= S / bw; col++) {
+      ctx.fillStyle = brickCols[Math.floor(rnd() * brickCols.length)];
+      ctx.fillRect(col * bw + off + 2, row * bh + 2, bw - 4, bh - 4);
+    }
+  }
+  // Natural Bangladeshi dust, sand & monsoon moss smudges across the bricks
+  for (let i = 0; i < 420; i++) {
+    ctx.fillStyle = rnd() > 0.28 ? 'rgba(155,144,122,0.22)' : 'rgba(62,74,48,0.18)';
+    ctx.beginPath();
+    ctx.arc(rnd() * S, rnd() * S, 8 + rnd() * 26, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (let i = 0; i < 5200; i++) {
+    ctx.fillStyle = rnd() > 0.5 ? 'rgba(176,165,144,0.26)' : 'rgba(48,42,35,0.24)';
+    ctx.fillRect(rnd() * S, rnd() * S, 1.5 + rnd() * 2, 1.5 + rnd() * 2);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, colliders) {
+  /* ---- A) NORTH CLEAN BATHING POND (পরিষ্কার পুকুর — wider West & East!) ---- */
+  const cX0 = 199.5;
+  const cX1 = 236.0;
+  const cZ0 = 141.5;
+  const cZ1 = 169.5;
   const cCx = (cX0 + cX1) * 0.5;
   const cCz = (cZ0 + cZ1) * 0.5;
   const cW = cX1 - cX0;
@@ -342,7 +397,7 @@ function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats) {
   cleanWater.receiveShadow = true;
   dynamicG.add(cleanWater);
 
-  // Brick retaining embankments & Pukurpar walkway around Clean Pond
+  // Brick retaining embankments & dusty weathered Pukurpar walkway around Clean Pond
   const edges = [
     { x0: cX0, z0: cZ0, x1: cX1, z1: cZ0, nx: 0, nz: -1 },
     { x0: cX1, z0: cZ0, x1: cX1, z1: cZ1, nx: 1, nz: 0 },
@@ -361,56 +416,83 @@ function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats) {
     wall.rotation.y = yaw;
     const cap = box(staticG, [0.82, 0.10, len + 0.7], [mx + e.nx * 0.34, 0.55, mz + e.nz * 0.34], bank.stonePlinth);
     cap.rotation.y = yaw;
-    const walk = box(staticG, [2.6, 0.12, len + 2.4], [mx + e.nx * 1.9, 0.06, mz + e.nz * 1.9], bank.paverDriveway, { uvScale: 3.0, castShadow: false });
+    const walk = box(staticG, [2.6, 0.12, len + 2.4], [mx + e.nx * 1.9, 0.06, mz + e.nz * 1.9], mats.dustyBrick, { uvScale: 3.0, castShadow: false });
     walk.rotation.y = yaw;
   }
 
   // ICONIC REAL-VIDEO COVERED TIN-SHED PUKUR GHAT PAVILION (01:52-02:15) on the West Bank right off the Main Road!
-  const pgX = 198.2;
-  const pgZ = cCz; // 157.0
-  // Concrete pavilion floor extending from Main Road (x=194.5) to Water Edge (x=201.5)
-  box(staticG, [7.2, 0.22, 11.4], [pgX, 0.11, pgZ], bank.stonePlinth);
-  // Wide stepped concrete bathing ghat descending into the Clean Pond (x=201.0..205.5)
+  const pgX = 197.2;
+  const pgZ = cCz; // 155.5
+  box(staticG, [6.4, 0.22, 11.4], [pgX, 0.11, pgZ], bank.stonePlinth);
   for (let s = 0; s < 6; s++) {
-    box(staticG, [0.64, 0.18, 9.6], [201.2 + s * 0.62, 0.20 - s * 0.11, pgZ], bank.stonePlinth);
+    box(staticG, [0.64, 0.18, 9.6], [199.8 + s * 0.62, 0.20 - s * 0.11, pgZ], bank.stonePlinth);
   }
-  // Low concrete side ledges framing the stepped ghat
-  box(staticG, [4.2, 0.44, 0.42], [202.8, 0.22, pgZ - 4.9], bank.stonePlinth);
-  box(staticG, [4.2, 0.44, 0.42], [202.8, 0.22, pgZ + 4.9], bank.stonePlinth);
-  // Iconic Red-Painted Low Brick Seating Walls (রক) on North & South sides inside the tin-shed pavilion!
-  box(staticG, [5.6, 0.68, 0.55], [pgX - 0.3, 0.44, pgZ - 5.2], bank.terracotta);
-  box(staticG, [5.6, 0.68, 0.55], [pgX - 0.3, 0.44, pgZ + 5.2], bank.terracotta);
-  // Red-and-Green Painted Steel Pipe Pillars supporting the gabled tin roof (video 01:53-02:02)
-  for (const px of [pgX - 2.8, pgX, pgX + 2.8]) {
+  box(staticG, [4.2, 0.44, 0.42], [201.4, 0.22, pgZ - 4.9], bank.stonePlinth);
+  box(staticG, [4.2, 0.44, 0.42], [201.4, 0.22, pgZ + 4.9], bank.stonePlinth);
+  box(staticG, [5.2, 0.68, 0.55], [pgX - 0.2, 0.44, pgZ - 5.2], bank.terracotta);
+  box(staticG, [5.2, 0.68, 0.55], [pgX - 0.2, 0.44, pgZ + 5.2], bank.terracotta);
+  for (const px of [pgX - 2.4, pgX, pgX + 2.4]) {
     for (const pz of [pgZ - 5.1, pgZ, pgZ + 5.1]) {
-      if (pz === pgZ && px === pgX + 2.8) continue; // Keep center water view wide open!
+      if (pz === pgZ && px === pgX + 2.4) continue;
       cylinder(staticG, 0.055, 0.055, 1.55, [px, 0.92, pz], bank.flowerRed, 8);
       cylinder(staticG, 0.055, 0.055, 1.55, [px, 2.45, pz], bank.emeraldMat, 8);
     }
   }
-  // Gabled Green Corrugated Tin Roof with Red-Trimmed Fascia (video 01:52-01:56)
-  const leftSlope = box(staticG, [6.6, 0.10, 6.2], [pgX, 3.45, pgZ - 2.9], bank.emeraldMat);
+  const leftSlope = box(staticG, [6.2, 0.10, 6.2], [pgX, 3.45, pgZ - 2.9], bank.emeraldMat);
   leftSlope.rotation.x = 0.22;
-  const rightSlope = box(staticG, [6.6, 0.10, 6.2], [pgX, 3.45, pgZ + 2.9], bank.emeraldMat);
+  const rightSlope = box(staticG, [6.2, 0.10, 6.2], [pgX, 3.45, pgZ + 2.9], bank.emeraldMat);
   rightSlope.rotation.x = -0.22;
-  box(staticG, [6.8, 0.18, 0.22], [pgX, 4.12, pgZ], bank.flowerRed); // Ridge beam
-  box(staticG, [0.14, 0.24, 11.8], [pgX - 3.3, 3.10, pgZ], bank.emeraldDark); // Road-facing fascia
+  box(staticG, [6.4, 0.18, 0.22], [pgX, 4.12, pgZ], bank.flowerRed);
+  box(staticG, [0.14, 0.24, 11.8], [pgX - 3.0, 3.10, pgZ], bank.emeraldDark);
 
-  // Pukur Ghat Signboard facing the Main Road
-  const cleanSignTex = makeDemoLabelTex('পরিষ্কার পুকুর ও পুকুরঘাট', 'CLEAN BATHING POND & COVERED GHAT', '৩১মি × ২৬মি · গোসলের পুকুর', '#0c4a6e');
+  const cleanSignTex = makeDemoLabelTex('পরিষ্কার পুকুর ও পুকুরঘাট', 'CLEAN BATHING POND & COVERED GHAT', '৩৬মি × ২৮মি · গোসলের পুকুর', '#0c4a6e');
   const cleanBoard = new THREE.Mesh(
     new THREE.PlaneGeometry(5.6, 1.75),
     new THREE.MeshBasicMaterial({ map: cleanSignTex, side: THREE.DoubleSide }),
   );
-  cleanBoard.position.set(pgX - 3.45, 3.65, pgZ);
+  cleanBoard.position.set(pgX - 3.15, 3.65, pgZ);
   cleanBoard.rotation.y = -Math.PI * 0.5;
   dynamicG.add(cleanBoard);
 
-  /* ---- B) SOUTH OLD GREEN ALGAE / DUCKWEED POND (সবুজ শ্যাওলা ও কচুরিপানা ভরা পুরনো পুকুর) ---- */
-  const gX0 = 197.5;
-  const gX1 = 227.5;
-  const gZ0 = 175.5;
-  const gZ1 = 197.5;
+  /* ---- B) DIRT ROAD (মাটির রাস্তা) BETWEEN CLEAN POND & OLD GREEN POND -> TEACHERS' QUARTERS! ---- */
+  addRoadRibbon(staticG, [
+    [194.2, 173.8],
+    [216.0, 173.8],
+    [244.5, 173.8],
+  ], 3.4, mats.dirtPath, 0.048, null, 0);
+
+  /* ---- C) POND-FRONT MADRASAH VEHICLE & BIKE GARAGE (আলিয়া মাদ্রাসা পুকুরের সামনের গ্যারেজ!) ---- */
+  const garX = 197.6;
+  const garZ = 179.0;
+  box(staticG, [6.4, 0.18, 7.6], [garX, 0.09, garZ], bank.stonePlinth);
+  box(staticG, [0.24, 2.85, 7.4], [garX + 3.05, 1.52, garZ], bank.colonialCream); // Back wall
+  box(staticG, [6.2, 2.85, 0.24], [garX, 1.52, garZ + 3.65], bank.colonialCream); // South wall
+  box(staticG, [6.2, 2.85, 0.24], [garX, 1.52, garZ - 3.65], bank.colonialCream); // North wall
+  for (const gzP of [garZ - 3.5, garZ, garZ + 3.5]) {
+    cylinder(staticG, 0.08, 0.08, 2.95, [garX - 3.0, 1.56, gzP], bank.steelDark, 8);
+  }
+  const garRoof = box(staticG, [6.9, 0.12, 8.0], [garX, 3.10, garZ], bank.emeraldDark);
+  garRoof.rotation.z = -0.07;
+  // Parked bicycles/motorbikes inside the Pond-Front Garage
+  for (let i = 0; i < 4; i++) {
+    const bz = garZ - 2.3 + i * 1.5;
+    box(staticG, [1.65, 0.72, 0.42], [garX + 0.6, 0.52, bz], i % 2 === 0 ? bank.steelDark : bank.flowerRed);
+    box(staticG, [0.16, 0.55, 0.62], [garX - 0.15, 0.92, bz], bank.chromeMat);
+  }
+  const garSignTex = makeDemoLabelTex('আলিয়া মাদ্রাসা গ্যারেজ', 'ALIA MADRASAH GARAGE (PARKING)', 'পুকুরের সামনের গ্যারেজ', '#1e3a5f');
+  const garBoard = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.25), new THREE.MeshBasicMaterial({ map: garSignTex, side: THREE.DoubleSide }));
+  garBoard.position.set(garX - 3.15, 2.75, garZ);
+  garBoard.rotation.y = -Math.PI * 0.5;
+  dynamicG.add(garBoard);
+  colliders.push({ minX: garX + 2.8, maxX: garX + 3.3, minZ: garZ - 3.8, maxZ: garZ + 3.8, maxY: 3.4 });
+  colliders.push({ minX: garX - 3.1, maxX: garX + 3.3, minZ: garZ + 3.4, maxZ: garZ + 3.9, maxY: 3.4 });
+  colliders.push({ minX: garX - 3.1, maxX: garX + 3.3, minZ: garZ - 3.9, maxZ: garZ - 3.4, maxY: 3.4 });
+
+  /* ---- D) SOUTH OLD GREEN ALGAE / DUCKWEED POND (finishes earlier on West, stretches further East!) ---- */
+  const gX0 = 203.0;
+  const gX1 = 238.0;
+  const gZ0 = 178.0;
+  const gZ1 = 198.5;
   const gCx = (gX0 + gX1) * 0.5;
   const gCz = (gZ0 + gZ1) * 0.5;
   const gW = gX1 - gX0;
@@ -427,7 +509,7 @@ function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats) {
   box(staticG, [1.2, 0.42, gD + 1.2], [gX0 - 0.6, 0.21, gCz], bank.moss);
   box(staticG, [1.2, 0.42, gD + 1.2], [gX1 + 0.6, 0.21, gCz], bank.moss);
 
-  const greenSignTex = makeDemoLabelTex('পুরনো সবুজ পুকুর (শ্যাওলা/কচুরিপানা)', 'OLD GREEN ALGAE POND · 30m × 22m', 'শ্যাওলা ও কচুরিপানা ভরা পুকুর', '#14532d');
+  const greenSignTex = makeDemoLabelTex('পুরনো সবুজ পুকুর (শ্যাওলা/কচুরিপানা)', 'OLD GREEN ALGAE POND · 35m × 20m', 'শ্যাওলা ও কচুরিপানা ভরা পুকুর', '#14532d');
   const greenBoard = new THREE.Mesh(
     new THREE.PlaneGeometry(5.8, 1.80),
     new THREE.MeshBasicMaterial({ map: greenSignTex, side: THREE.DoubleSide }),
@@ -435,17 +517,7 @@ function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats) {
   greenBoard.position.set(gX0 - 1.5, 2.3, gCz);
   greenBoard.rotation.y = -Math.PI * 0.5;
   dynamicG.add(greenBoard);
-
-  // Dense lush shade trees surrounding BOTH ponds (matching video & satellite photo)
-  const pondTrees = [
-    [203, 141.5, 1.05], [216, 141.0, 1.15], [229, 141.5, 1.0],
-    [235.0, 150, 1.1], [235.0, 164, 1.05], [233.5, 178, 1.15], [232.0, 192, 1.0],
-    [205, 173.0, 0.95], [220, 173.0, 0.95],
-    [202, 200.0, 1.05], [216, 200.5, 1.1], [226, 199.5, 1.0],
-  ];
-  for (const [tx, tz, sc] of pondTrees) {
-    addPondBankTree(staticG, bank, tx, tz, sc);
-  }
+  // Plastic round pond-bank ball trees removed — ready for user's Tripo tree models!
 }
 
 function addDemoBlockoutBuilding(staticG, dynamicG, mats, colliders, {
@@ -559,8 +631,32 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   });
   attachDerivedPBRMaps(greenAlgaeMat, greenAlgaeTex, { strength: 1.6, roughBase: 0.90, normalScale: 0.55 });
 
+  const dirtPathTex = makeDirtPathTex(6612);
+  const dirtPathMat = new THREE.MeshStandardMaterial({
+    map: dirtPathTex,
+    roughness: 0.94,
+    metalness: 0.0,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  });
+  attachDerivedPBRMaps(dirtPathMat, dirtPathTex, { strength: 1.8, roughBase: 0.94, normalScale: 0.60 });
+
+  const dustyBrickTex = makeDustyBrickPathTex(5519);
+  const dustyBrickMat = new THREE.MeshStandardMaterial({
+    map: dustyBrickTex,
+    roughness: 0.88,
+    metalness: 0.02,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  });
+  attachDerivedPBRMaps(dustyBrickMat, dustyBrickTex, { strength: 2.1, roughBase: 0.88, normalScale: 0.65 });
+
   const mats = {
     concreteRoad: concreteRoadMat,
+    dirtPath: dirtPathMat,
+    dustyBrick: dustyBrickMat,
     curb: bank.darkConcrete,
     greenAlgaePond: greenAlgaeMat,
     demoBody: new THREE.MeshStandardMaterial({ color: 0xd8dee6, roughness: 0.86, metalness: 0.04 }),
@@ -595,30 +691,30 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   addRedGreenRoadRailing(staticG, bank, 197.4, 134.0, 114.0);
   addRedGreenRoadRailing(staticG, bank, 197.4, 102.0, 82.0);
 
-  // Clean connector path along North edge of Playground -> NE Campus & East Academic Campus
+  // Dusty weathered herringbone brick connector path along North/East edge of Playground -> NE & East Academic Campuses
   addRoadRibbon(staticG, [
-    [193.5, 75.5],
-    [216.0, 75.5],
-    [239.5, 76.5],
-    [239.5, 106.0],
-    [238.5, 136.0],
-  ], 2.6, bank.paverDriveway, 0.056, mats.curb, 0.35);
+    [193.5, 74.0],
+    [216.0, 74.0],
+    [240.0, 75.0],
+    [240.0, 106.0],
+    [239.0, 136.0],
+  ], 2.6, mats.dustyBrick, 0.056, mats.curb, 0.35);
 
-  // Clean connector path between Big Playground & Clean Pond -> Student Hostel & Teachers' Quarters
+  // Dusty weathered brick connector path between Big Playground & Clean Pond -> Student Hostel & Teachers' Quarters
   addRoadRibbon(staticG, [
     [193.0, 136.5],
     [216.0, 136.5],
-    [238.5, 136.0],
-  ], 2.6, bank.paverDriveway, 0.056, mats.curb, 0.35);
+    [239.0, 136.0],
+  ], 2.6, mats.dustyBrick, 0.056, mats.curb, 0.35);
 
-  // Red-and-Grey Interlocking Paver Forecourt in front of Model Mosque (matching video 00:42-01:28!)
-  box(staticG, [11.0, 0.05, 20.0], [185.0, 0.025, 166.0], bank.paverDriveway, { castShadow: false, uvScale: 4.0 });
+  // Dusty weathered interlocking paver forecourt in front of Model Mosque (matches concrete road cleanly!)
+  box(staticG, [10.0, 0.05, 20.0], [186.0, 0.025, 166.0], mats.dustyBrick, { castShadow: false, uvScale: 4.0 });
 
-  // Central Play Ground (আলিয়া মাদ্রাসা বড় মাঠ) White Chalk Markings + Football Goalposts
-  const fx = 216.0;
-  const fz = 106.0;
-  const fw = 32.0;
-  const fl = 44.0;
+  // Bigger Clean Central Play Ground (আলিয়া মাদ্রাসা বড় মাঠ — 100% open & free of benches!)
+  const fx = 216.5;
+  const fz = 105.5;
+  const fw = 35.0;
+  const fl = 48.0;
   box(staticG, [fw, 0.02, 0.24], [fx, 0.032, fz - fl * 0.5], mats.chalkLine, { castShadow: false });
   box(staticG, [fw, 0.02, 0.24], [fx, 0.032, fz + fl * 0.5], mats.chalkLine, { castShadow: false });
   box(staticG, [fw, 0.02, 0.24], [fx, 0.032, fz], mats.chalkLine, { castShadow: false });
@@ -628,9 +724,9 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   buildFootballGoalpost(staticG, bank, fx, fz + fl * 0.5 - 1.0, 1);
 
   /* ==========================================================================
-   * 2. TWIN PONDS + REAL-VIDEO COVERED GREEN-AND-RED TIN-SHED PUKUR GHAT!
+   * 2. TWIN PONDS + DIRT ROAD + POND-FRONT GARAGE + COVERED TIN-SHED PUKUR GHAT!
    * ======================================================================== */
-  buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats);
+  buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, demoColliders);
 
   /* ==========================================================================
    * 3. REAL-VIDEO MAIN GATE ON KHAN JAHAN ALI ROAD (gx = 184.0, gz = 207.5)
@@ -697,26 +793,90 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   addWallSpan(staticG, demoColliders, 128.0, 52.0, 258.0, 52.0, bank, 1.95);
   addWallSpan(staticG, demoColliders, 258.0, 52.0, 258.0, 236.0, bank, 1.95);
 
+  /* ---- DARWAN GUARD ROOM / SECURITY POST RIGHT INSIDE RIGHT SIDE OF MAIN GATE (user video 02:40-03:20!) ---- */
+  const drGroup = new THREE.Group();
+  drGroup.position.set(gx + 6.4 * cosA - 2.6 * sinA, 0, gz - 6.4 * sinA - 2.6 * cosA);
+  drGroup.rotation.y = KJA_ANGLE;
+  staticG.add(drGroup);
+  // Concrete plinth + white plastered guard cabin (3.4m × 3.0m) with open doorway & grilled observation window
+  box(drGroup, [3.6, 0.24, 3.2], [0, 0.12, 0], bank.stonePlinth);
+  box(drGroup, [3.4, 2.75, 0.22], [0, 1.60, -1.40], bank.whitePlaster);   // Back wall
+  box(drGroup, [0.22, 2.75, 3.0], [1.60, 1.60, 0], bank.whitePlaster);    // Right wall
+  box(drGroup, [0.22, 2.75, 1.0], [-1.60, 1.60, -1.0], bank.whitePlaster); // Left wall (leaves open entry facing road!)
+  box(drGroup, [0.22, 0.80, 1.15], [-1.60, 2.58, 0.10], bank.whitePlaster);
+  box(drGroup, [1.2, 2.75, 0.22], [1.0, 1.60, 1.40], bank.whitePlaster);  // Front right wall
+  box(drGroup, [1.1, 1.10, 0.22], [-0.45, 0.78, 1.40], bank.whitePlaster); // Window sill wall facing gate
+  box(drGroup, [1.1, 0.65, 0.22], [-0.45, 2.65, 1.40], bank.whitePlaster); // Window header
+  box(drGroup, [1.05, 0.95, 0.08], [-0.45, 1.80, 1.40], bank.glassCurtain, { castShadow: false });
+  box(drGroup, [3.9, 0.22, 3.5], [0, 3.05, 0], bank.emeraldMat);           // Green tin/slab overhang roof
+  // Darwan's wooden desk & chair right inside + outside chair!
+  box(drGroup, [1.15, 0.74, 0.58], [0.2, 0.61, 0.72], bank.teakWood);     // Guard desk
+  box(drGroup, [0.48, 0.45, 0.48], [0.2, 0.46, 0.05], bank.teakWood);     // Darwan chair seat
+  box(drGroup, [0.48, 0.48, 0.08], [0.2, 0.90, -0.18], bank.teakWood);    // Darwan chair backrest
+  // Extra outdoor guard chair right beside the doorway!
+  box(drGroup, [0.50, 0.45, 0.50], [-2.15, 0.35, 0.55], bank.teakWood);
+  box(drGroup, [0.50, 0.46, 0.08], [-2.15, 0.78, 0.32], bank.teakWood);
+  const drSignTex = makeDemoLabelTex('দারোয়ান কক্ষ (গার্ড পোস্ট)', 'SECURITY / DARWAN ROOM', 'খুলনা আলিয়া মাদ্রাসা গেট', '#065f46');
+  const drSign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.72), new THREE.MeshBasicMaterial({ map: drSignTex, side: THREE.DoubleSide }));
+  drSign.position.set(0, 2.85, 1.56);
+  drGroup.add(drSign);
+
+  /* ---- WALKABLE 3-STORY OCHRE ETIMKHANA BUILDING (ভেতরে ঢোকা যাবে — user video 03:20-03:45!) ---- */
+  const etX = 164.5;
+  const etZ = 192.5;
+  const etW = 28.0;
+  const etD = 13.0;
+  const etGroup = new THREE.Group();
+  etGroup.position.set(etX, 0, etZ);
+  etGroup.rotation.y = KJA_ANGLE;
+  staticG.add(etGroup);
+  // Plinth + tiled walkable ground-floor hall (hollow ground story with wide open East doorway facing the road!)
+  box(etGroup, [etW + 0.6, 0.30, etD + 0.6], [0, 0.15, 0], bank.marbleWhite);
+  box(etGroup, [etW, 3.2, 0.36], [0, 1.90, -etD * 0.5 + 0.18], mats.demoOchre); // North wall
+  box(etGroup, [etW, 3.2, 0.36], [0, 1.90,  etD * 0.5 - 0.18], mats.demoOchre); // South wall
+  box(etGroup, [0.36, 3.2, etD], [-etW * 0.5 + 0.18, 1.90, 0], mats.demoOchre); // West wall
+  // East wall facing main campus road: WIDE OPEN CENTER ENTRANCE (3.4m wide!)
+  box(etGroup, [0.36, 3.2, 4.6], [etW * 0.5 - 0.18, 1.90, -4.1], mats.demoOchre);
+  box(etGroup, [0.36, 3.2, 4.6], [etW * 0.5 - 0.18, 1.90,  4.1], mats.demoOchre);
+  box(etGroup, [0.36, 0.7, 3.8], [etW * 0.5 - 0.18, 3.15,  0.0], mats.demoOchre);
+  // Interior pillars & student beds/desks inside the walkable ground hall
+  for (const ix of [-8.0, 0.0, 8.0]) {
+    box(etGroup, [0.42, 3.2, 0.42], [ix, 1.90, -2.5], bank.whitePlaster);
+    box(etGroup, [0.42, 3.2, 0.42], [ix, 1.90,  2.5], bank.whitePlaster);
+    box(etGroup, [2.1, 0.55, 1.0], [ix - 2.4, 0.58, -4.6], bank.teakWood);
+    box(etGroup, [2.1, 0.55, 1.0], [ix - 2.4, 0.58,  4.6], bank.teakWood);
+  }
+  // 2nd & 3rd floors above with balconies, terracotta trims & windows
+  box(etGroup, [etW + 0.2, 0.26, etD + 0.2], [0, 3.55, 0], mats.demoBand);
+  box(etGroup, [etW, 6.4, etD], [0, 6.85, 0], mats.demoOchre);
+  box(etGroup, [etW + 0.35, 0.28, etD + 0.35], [0, 10.18, 0], mats.demoRedRoof);
+  box(etGroup, [etW + 0.2, 0.14, etD + 0.2], [0, 6.85, 0], mats.demoBand);
+  for (let wx = -11.0; wx <= 11.0; wx += 4.4) {
+    for (const wy of [5.2, 8.4]) {
+      box(etGroup, [1.8, 1.5, 0.16], [wx, wy,  etD * 0.5 + 0.04], bank.glassCurtain, { castShadow: false });
+      box(etGroup, [1.8, 1.5, 0.16], [wx, wy, -etD * 0.5 - 0.04], bank.glassCurtain, { castShadow: false });
+    }
+  }
+  const etSignTex = makeDemoLabelTex('খুলনা আলিয়া মাদ্রাসা এতিমখানা', 'ETIMKHANA (SALIMA BHABAN · WALKABLE)', '২৮মি × ১৩মি · ৩ তলা', '#78350f');
+  const etSign = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 2.2), new THREE.MeshBasicMaterial({ map: etSignTex, side: THREE.DoubleSide }));
+  etSign.position.set(etW * 0.5 + 0.22, 5.2, 0);
+  etSign.rotation.y = Math.PI * 0.5;
+  etGroup.add(etSign);
+
   /* ==========================================================================
-   * 4. ALL REAL-LIFE BUILDINGS FROM SATELLITE SCREENSHOT + VIDEO (LABELED DEMO!)
+   * 4. ALL REAL-LIFE BUILDINGS FROM SATELLITE SCREENSHOT + VIDEO
    * ======================================================================== */
   const demoBuildings = [
     {
-      // Ochre-yellow 3-story Etimkhana immediately LEFT of Main Gate on Khan Jahan Ali Rd (video 00:00-00:30!)
-      cx: 164.5, cz: 192.5, w: 28.0, d: 13.0, floors: 3,
-      titleBn: 'খুলনা আলিয়া মাদ্রাসা এতিমখানা', titleEn: 'ETIMKHANA (SALIMA BHABAN)',
-      labelFaces: ['east', 'south', 'north'], rotY: KJA_ANGLE, tint: 'ochre',
-    },
-    {
-      // Long vertical Teachers' Quarters east of BOTH ponds (user's tall red box)
-      cx: 245.5, cz: 176.0, w: 11.0, d: 56.0, floors: 2,
+      // Long vertical Teachers' Quarters pushed further East behind expanded ponds (reachable via Dirt Road!)
+      cx: 250.5, cz: 176.0, w: 10.5, d: 56.0, floors: 2,
       titleBn: 'শিক্ষকদের কোয়ার্টারস', titleEn: 'TEACHERS QUARTERS',
       labelFaces: ['west', 'north'], tint: 'hostel',
     },
     {
-      // Student Hostel with rooftop stair/water-tank tower (SE of Playground — video 03:14-03:19!)
-      cx: 246.5, cz: 129.0, w: 13.0, d: 18.0, floors: 3,
-      titleBn: 'স্টুডেন্ট হোস্টেল (ছাত্রাবাস)', titleEn: 'STUDENT HOSTEL',
+      // Real-life large 4-Story Student Hostel with rooftop stair/water-tank tower (SE of Playground!)
+      cx: 247.5, cz: 129.0, w: 14.5, d: 21.0, floors: 4,
+      titleBn: 'স্টুডেন্ট হোস্টেল (ছাত্রাবাস)', titleEn: 'STUDENT HOSTEL (4-STORY)',
       labelFaces: ['west', 'south', 'north'], tint: 'hostel', rooftopTower: true,
     },
     {

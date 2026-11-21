@@ -1335,10 +1335,10 @@ function applyQuality(nextQuality) {
   const isHigh = quality === 'high';
   // Crisp full native PC pixel ratios (ZERO resolution drop — GTA V/VI sharpness with smooth 60-120 FPS!)
   const ratios = {
-    low: Math.min(dpr, 1.0),
-    medium: Math.min(dpr, 1.25),
-    high: Math.min(dpr, 1.5),
-    ultra: Math.min(dpr, 2.0),
+    low: Math.min(dpr, 0.85),
+    medium: Math.min(dpr, 1.0),
+    high: Math.min(dpr, 1.35),
+    ultra: Math.min(dpr, 1.65),
   };
   const shadowSizes = { low: 1024, medium: 1024, high: 2048, ultra: 2048 };
   const useShadows = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : !isLow);
@@ -1366,9 +1366,9 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = (ultraFastMode && softwareRendererDetected) ? 140 : (isLow ? 160 : (quality === 'medium' ? 180 : (isUltra ? 220 : 195)));
-    scene.fog.far = (ultraFastMode && softwareRendererDetected) ? 330 : (isLow ? 390 : (quality === 'medium' ? 460 : (isUltra ? 580 : 540)));
-    camera.far = (ultraFastMode && softwareRendererDetected) ? 390 : (isLow ? 460 : (quality === 'medium' ? 520 : (isUltra ? 680 : 620)));
+    scene.fog.near = isLow ? 115 : (quality === 'medium' ? 160 : (isUltra ? 220 : 195));
+    scene.fog.far = isLow ? 280 : (quality === 'medium' ? 410 : (isUltra ? 580 : 520));
+    camera.far = isLow ? 330 : (quality === 'medium' ? 470 : (isUltra ? 680 : 590));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
@@ -4063,7 +4063,7 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  // GTA-style [ESC]: opens & closes the Khulna City Map directly (no [M] key needed!)
+  // GTA-style [ESC]: opens & closes the Khulna City Map directly on the very first press!
   if (event.code === 'Escape' && !event.repeat) {
     event.preventDefault();
     if (khulnaMapUI?.isOpen) {
@@ -4071,6 +4071,7 @@ window.addEventListener('keydown', (event) => {
       if (!inStudio && started) controls.lock();
     } else if (!liftKeypadOpen) {
       khulnaMapUI?.openMap(getLiveMapPos(), getLiveMapHeadingYaw());
+      if (controls.isLocked) controls.unlock();
     }
     return;
   }
@@ -6143,6 +6144,9 @@ function animate() {
     );
     if (sun?.castShadow) {
       updateSunShadowTarget(activeCar ? activeCar.state.pos : playerPos, nowPerf, isShadowSceneDynamic);
+    }
+    if (started && !khulnaMapUI?.isOpen && !freeCursorMode && !carDoorCursorMode) {
+      controls.updateEdgeTurn?.(delta);
     }
     if (house && nearTaltolaVis && !deepInTowerUpper) house.update(delta, playerPos, isLow);
     if (environment?.altapole && !deepInTowerUpper) environment.altapole.update(delta, playerPos, isLow);

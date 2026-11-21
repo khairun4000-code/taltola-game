@@ -1657,21 +1657,16 @@ export function buildAliaMadrasahDistrict(parent, m) {
     console.warn('Alia Madrasah grass_field GLB load warning:', err);
   });
 
-  // Tall Coconut Palms flanking the main building & courtyard (real photo!)
-  addCoconutPalm(staticG, bank, 196.8, 100.5, 11.8, 0.8, -0.5);
-  addCoconutPalm(staticG, bank, 196.5, 115.5, 12.2, 0.7, 0.6);
-  addCoconutPalm(staticG, bank, 191.0, 148.0, 11.5, -0.5, -0.4);
-
   // 2) Grand 64m Main Walkable Portico Building (All 3 Floors Walkable!)
   const { principalMicPos, isNearPrincipalMic, setPrincipalMicActive } = buildMainPorticoBuilding(staticG, dynamicG, bank);
 
-  // 3) 4-Story Arched Academic Building (South) & 6-Story Modern Academic Building (North)
+  // 3) 4-Story Arched Academic Building (North-West) & 6-Story Modern Academic Building (North)
   buildAcademicBuildings(staticG, dynamicG, bank);
 
   // 4) High-Graphics 3D Khulna District Model Mosque & Islamic Cultural Center (8K/4K PBR)
   buildKhulnaModelMosque3D(staticG, dynamicG, bank);
 
-  // 5) Central Pond Brick Ghat + High-Graphics Campus Roads + SW Main Gate + Krishnochura Trees + Labeled Demo Buildings
+  // 5) Central Pond Brick Ghat + High-Graphics Campus Roads + SW Main Gate + Darwan Post + Walkable Etimkhana
   buildMainGateAndPondGhat(staticG, dynamicG, bank);
   const blockout = buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank);
   const mainGate = blockout.swMainGate;
@@ -1680,23 +1675,23 @@ export function buildAliaMadrasahDistrict(parent, m) {
   mainGate.leftLeaf.rotation.y = gateRatio * (Math.PI * 0.46);
   mainGate.rightLeaf.rotation.y = -gateRatio * (Math.PI * 0.46);
 
-  // 6) Stone Foundation Plaque + Flagpole + Bicycle Shed + Flowerbeds + Benches + Lamps
-  box(staticG, [2.4, 1.05, 1.2], [202.5, 0.52, 102.5], bank.stonePlinth);
+  // 6) Stone Foundation Plaque & Flagpole placed neatly on the Main Portico front apron (Big Playground 100% clear of benches/clutter!)
+  box(staticG, [2.2, 1.05, 1.0], [191.2, 0.52, 102.0], bank.stonePlinth);
   addSignBox(
     dynamicG,
     bank,
     { title: 'খুলনা আলিয়া কামিল মাদ্রাসা', subtitle: 'স্থাপিত: ২ এপ্রিল ১৯৫২ · খুলনা', bg: '#e5e7eb', fg: '#111827', accent: '#b94a38', border: '#475569' },
-    [202.5, 1.08, 103.16],
-    0,
-    2.1,
-    0.72,
+    [191.85, 1.08, 102.0],
+    Math.PI * 0.5,
+    2.0,
+    0.70,
     false
   );
 
-  const flX = 211.0;
-  const flZ = 101.8;
-  box(staticG, [3.2, 0.26, 3.2], [flX, 0.13, flZ], bank.marbleWhite);
-  box(staticG, [2.2, 0.24, 2.2], [flX, 0.38, flZ], bank.terracotta);
+  const flX = 191.2;
+  const flZ = 114.2;
+  box(staticG, [2.6, 0.26, 2.6], [flX, 0.13, flZ], bank.marbleWhite);
+  box(staticG, [1.8, 0.24, 1.8], [flX, 0.38, flZ], bank.terracotta);
   cylinder(staticG, 0.06, 0.085, 9.6, [flX, 5.2, flZ], bank.chromeMat, 10);
   const flagPivot = new THREE.Group();
   flagPivot.position.set(flX, 9.35, flZ);
@@ -1707,38 +1702,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
   flagPivot.add(flagSun);
   dynamicG.add(flagPivot);
 
-  const shX = 221.0;
-  const shZ = 93.0;
-  box(staticG, [9.6, 0.12, 3.8], [shX, 0.06, shZ], bank.stonePlinth);
-  for (const sx of [-4.4, 0, 4.4]) {
-    for (const sz of [-1.6, 1.6]) {
-      cylinder(staticG, 0.055, 0.065, 2.55, [shX + sx, 1.32, shZ + sz], bank.steelDark, 6);
-    }
-  }
-  addRotBox(staticG, [10.0, 0.12, 4.2], [shX, 2.65, shZ], bank.emeraldMat, 0);
-  for (let bi = 0; bi < 6; bi++) {
-    const bx = shX - 3.5 + bi * 1.4;
-    const fWheel = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.035, 6, 12), bank.steelDark);
-    fWheel.rotation.y = Math.PI * 0.5;
-    fWheel.position.set(bx, 0.44, shZ + 0.58);
-    const rWheel = fWheel.clone();
-    rWheel.position.set(bx, 0.44, shZ - 0.58);
-    staticG.add(fWheel, rWheel);
-    rodBetween(staticG, [bx, 0.44, shZ - 0.58], [bx, 0.92, shZ + 0.35], 0.025, bi % 2 === 0 ? bank.awningBlue : bank.flowerRed, 5);
-    rodBetween(staticG, [bx, 0.44, shZ + 0.58], [bx, 1.05, shZ + 0.38], 0.025, bank.chromeMat, 5);
-    box(staticG, [0.52, 0.03, 0.04], [bx, 1.05, shZ + 0.38], bank.steelDark);
-  }
-
-  for (const [fx, fz, isGold] of [
-    [200.5, 102.8, false], [204.0, 102.8, true], [198.0, 103.6, false], [209.0, 103.6, true],
-    [198.0, 112.4, true], [209.0, 112.4, false], [234.5, 103.0, false], [234.5, 113.0, true],
-  ]) {
-    box(staticG, [1.25, 0.24, 1.25], [fx, 0.12, fz], bank.brick);
-    box(staticG, [0.95, 0.52, 0.95], [fx, 0.36, fz], bank.moss);
-    box(staticG, [0.62, 0.36, 0.62], [fx, 0.68, fz], isGold ? bank.flowerGold : bank.flowerRed);
-  }
-
-  // Real 3D Upgraded Krishnachura (Royal Poinciana / Delonix regia) Trees inside Khulna Alia Kamil Madrasah Campus
+  // Real 3D Upgraded Krishnachura (Royal Poinciana / Delonix regia) Trees (cleanly off the main road & gate corner!)
   const krishnaLoader = new GLTFLoader();
   krishnaLoader.load(
     './assets/krishnachura_tree.glb',
@@ -1775,22 +1739,14 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
       const baseH = Math.max(0.1, size.y);
       const placements = [
-        // 1) West of Khan Jahan Ali Road SW Main Gate
-        { x: 182.0, z: 198.0, targetH: 8.6, rotY: Math.PI * 0.20 },
-        // 2) East of Khan Jahan Ali Road SW Main Gate
-        { x: 198.5, z: 197.5, targetH: 8.8, rotY: Math.PI * 0.72 },
-        // 3) South-West Edge of Central Play Ground
-        { x: 196.5, z: 128.0, targetH: 8.5, rotY: Math.PI * 0.45 },
-        // 4) North-West Edge of Central Play Ground
-        { x: 196.5, z: 86.0, targetH: 8.4, rotY: Math.PI * 0.52 },
-        // 5) Near Khulna District Model Mosque & Pond Ghat Plaza
-        { x: 196.2, z: 151.5, targetH: 8.3, rotY: Math.PI * 0.35 },
-        // 6) East Bank of Central Pond
-        { x: 233.0, z: 156.0, targetH: 8.2, rotY: Math.PI * 0.60 },
-        // 7) South Bank of Central Pond
-        { x: 216.0, z: 179.0, targetH: 8.0, rotY: Math.PI * 0.15 },
-        // 8) North-East Courtyard Corner near 6-Story Building
-        { x: 236.5, z: 82.0, targetH: 8.1, rotY: Math.PI * 0.85 },
+        // 1) Right roadside beside entrance road past the Darwan Guard Room (matching user video!)
+        { x: 198.2, z: 184.0, targetH: 8.6, rotY: Math.PI * 0.25 },
+        // 2) South-West Corner outside Big Playground (clear of road)
+        { x: 198.2, z: 132.5, targetH: 8.5, rotY: Math.PI * 0.45 },
+        // 3) North-West Corner outside Big Playground (clear of road)
+        { x: 198.2, z: 80.5, targetH: 8.4, rotY: Math.PI * 0.52 },
+        // 4) North-East Courtyard Corner near 6-Story Building
+        { x: 237.5, z: 78.0, targetH: 8.2, rotY: Math.PI * 0.85 },
       ];
 
       for (const p of placements) {
@@ -1808,14 +1764,9 @@ export function buildAliaMadrasahDistrict(parent, m) {
     }
   );
 
-  for (const [bx, bz, ry] of [
-    [204.0, 103.0, 0], [216.0, 103.0, 0], [204.0, 113.0, Math.PI], [216.0, 113.0, Math.PI],
-  ]) {
-    addParkBench(staticG, bank, bx, bz, ry);
-  }
+  // Subtle perimeter lamps only along the west road edge (ZERO benches or lamps inside the open football field!)
   for (const [lx, lz] of [
-    [196.5, 103.6], [212.5, 103.6], [226.5, 103.6],
-    [196.5, 112.4], [212.5, 112.4], [226.5, 112.4],
+    [196.2, 82.0], [196.2, 106.0], [196.2, 130.0],
   ]) {
     addCampusLamp(staticG, dynamicG, bank, lx, lz, 4.4, 0.02);
   }
@@ -1923,11 +1874,10 @@ export function buildAliaMadrasahDistrict(parent, m) {
     // 4) Khulna District Model Mosque 3D Collisions (delegated to khulna-model-mosque.js)
     applyModelMosqueCollisions(pos, radius, footY);
 
-    // 5) Krishnachura Tree Trunks inside Campus (8 authentic campus spots)
+    // 5) Krishnachura Tree Trunks inside Campus (4 clean spots off road & gate corner)
     if (footY < 6.0) {
       for (const [tx, tz] of [
-        [182.0, 198.0], [198.5, 197.5], [196.5, 128.0], [196.5, 86.0],
-        [196.2, 151.5], [233.0, 156.0], [216.0, 179.0], [236.5, 82.0],
+        [198.2, 184.0], [198.2, 132.5], [198.2, 80.5], [237.5, 78.0],
       ]) {
         resolveCircleAABB(pos, radius, tx - 0.42, tx + 0.42, tz - 0.42, tz + 0.42);
       }

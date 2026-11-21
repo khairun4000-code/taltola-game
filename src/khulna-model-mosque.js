@@ -828,9 +828,9 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
     }
   );
 
-  // Solid raised concrete courtyard apron so the front stairs sit cleanly above the pond water plane (fixes Swim bug!)
-  const plazaMat = new THREE.MeshStandardMaterial({ color: 0xded9cf, roughness: 0.85, metalness: 0.02 });
-  box(staticG, [38.0, 0.34, 38.0], [176.5, 0.17, 166.0], plazaMat, { castShadow: false });
+  // Weathered concrete base apron strictly under the mosque footprint (never spills flat-white onto the campus main road!)
+  const plazaMat = new THREE.MeshStandardMaterial({ color: 0xb6b1a6, roughness: 0.92, metalness: 0.02 });
+  box(staticG, [32.6, 0.24, 34.0], [174.4, 0.12, 166.0], plazaMat, { castShadow: false });
 
   // Lush 3D Durba Grass planted inside the Central Marble Staircase Planter Box (X=180.95..183.42, Z=164.88..167.12, Y=2.66m!)
   const planterGrassLoader = new GLTFLoader();

@@ -126,8 +126,26 @@ export class FirstPersonControls extends EventTarget {
     this.dragging = false;
   }
 
-  onKeyDown(event) {
-    if (event.code === 'Escape' && this.isLocked && this.fallback) this.unlock();
+  onKeyDown() {
+    // Escape is handled cleanly in one place by main.js so pressing [ESC] opens the map on the very first press
+    // without an unlock->open->window-keydown->close double-toggle race!
+  }
+
+  updateEdgeTurn(delta) {
+    if (!this.isLocked || !this.fallback || !this.freeMoveHover || !this.hasLastPos) return;
+    const vw = window.innerWidth || 1280;
+    const margin = 52;
+    let turnRate = 0;
+    if (this.lastX <= margin) {
+      turnRate = ((margin - this.lastX) / margin) * 1.85;
+    } else if (this.lastX >= vw - margin) {
+      turnRate = -((this.lastX - (vw - margin)) / margin) * 1.85;
+    }
+    if (Math.abs(turnRate) > 0.001) {
+      this.euler.setFromQuaternion(this.camera.quaternion, 'YXZ');
+      this.euler.y += turnRate * this.sensitivity * delta;
+      this.camera.quaternion.setFromEuler(this.euler);
+    }
   }
 
   setSensitivity(val) {
