@@ -1375,11 +1375,19 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   const oz = 975.0;
 
   // Restored Kawsar Bhai's original realistic Taltola House street (4.2m asphalt road, open concrete side drains with water, curbs, gate bridge slab & fallen leaves)
+  const crossLanePts = [
+    [414.2, 922.0],
+    [416.8, 931.0],
+    [ox, oz - 40.5],
+    [ox, oz + 40.5],
+    [419.2, 1024.5],
+    [418.2, 1034.0],
+  ];
   addBox(staticG, [4.2, 0.14, 82.0], [ox, -0.067, oz], m.road, { castShadow: false, uvScale: 5.5 });
 
   // Seamless north, south & west lane connectors joining Kawsar's Taltola street to the Khulna road network
-  buildPavedSegmentRoad(staticG, [[414.2, 922.0], [416.8, 931.0], [ox, oz - 40.5]], 4.6, -0.025, m.road, 5.5);
-  buildPavedSegmentRoad(staticG, [[ox, oz + 40.5], [419.2, 1024.5], [418.2, 1034.0]], 4.6, -0.025, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, crossLanePts.slice(0, 3), 4.6, -0.025, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, crossLanePts.slice(3), 4.6, -0.025, m.road, 5.5);
   buildPavedSegmentRoad(staticG, [[ox, 1013.2], [396.0, 1011.8]], 4.5, -0.026, m.road, 5.5);
 
   // Open concrete drains on BOTH sides with standing drain water & raised road-edge curbs (exact Kawsar Taltola street spec)

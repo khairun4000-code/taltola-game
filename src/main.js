@@ -2667,13 +2667,16 @@ function bindGtaPauseSettingsUI() {
   syncGtaPauseSettingsUI();
 }
 
+let initFailed = false;
 async function initialize() {
   const manager = new THREE.LoadingManager();
   manager.onProgress = (url, loaded, total) => {
+    if (initFailed) return;
     loadingBar.style.width = `${Math.max(4, (loaded / total) * 100)}%`;
     loadingStatus.textContent = `${loaded} / ${total} assets loaded`;
   };
   manager.onError = (url) => {
+    if (initFailed) return;
     loadingStatus.textContent = `Could not load ${url}`;
   };
   const allLoaded = new Promise((resolve) => { manager.onLoad = resolve; });
@@ -6098,6 +6101,7 @@ function animate() {
 
 renderer.setAnimationLoop(animate);
 initialize().catch((error) => {
+  initFailed = true;
   console.error(error);
   loadingStatus.textContent = `The scene could not be initialized: ${error?.message || error}`;
 });
