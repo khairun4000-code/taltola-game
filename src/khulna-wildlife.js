@@ -14,34 +14,34 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
  */
 
 const CROW_SPOTS = [
-  // Taltola House & Hospital Cross Rd (2 intermittent crow flocks)
+  // Taltola House & Hospital Cross Rd (right over the street & roof in natural eye-level view!)
   {
     name: 'TaltolaHouseA',
-    center: [420, 975],
-    radius: 34,
-    cruiseY: 18.5,
+    center: [422, 975],
+    radius: 17,
+    cruiseY: 10.5,
     isCrow: true,
-    perches: [[428.0, 16.4, 975.0], [422.3, 2.55, 970.5], [415.0, 9.6, 965.0]],
+    perches: [[428.0, 15.6, 975.0], [422.3, 2.65, 970.5], [416.0, 8.8, 968.0]],
     phase: 0.0,
     initState: 'FLYING',
   },
   {
     name: 'TaltolaHouseB',
-    center: [418, 968],
-    radius: 44,
-    cruiseY: 22.0,
+    center: [418, 970],
+    radius: 24,
+    cruiseY: 13.5,
     isCrow: true,
-    perches: [[425.0, 16.4, 982.0], [412.0, 11.2, 978.0]],
+    perches: [[425.0, 15.6, 980.0], [412.0, 10.2, 978.0]],
     phase: 3.1,
-    initState: 'AWAY',
+    initState: 'FLYING',
   },
 
   // Haji Mohsin Rd & SK Arshan Alif Tower (2 flocks: 1 crow, 1 city birds)
   {
     name: 'HajiMohsinA',
-    center: [0, 0],
-    radius: 40,
-    cruiseY: 19.5,
+    center: [0, 4],
+    radius: 18,
+    cruiseY: 10.5,
     isCrow: true,
     perches: [[8.2, 12.6, -18.0], [-8.0, 11.4, 22.0], [7.2, 13.0, 56.0]],
     phase: 1.4,
@@ -49,9 +49,9 @@ const CROW_SPOTS = [
   },
   {
     name: 'HajiMohsinB',
-    center: [-6, 18],
-    radius: 48,
-    cruiseY: 24.5,
+    center: [-4, 18],
+    radius: 26,
+    cruiseY: 14.5,
     isCrow: false,
     perches: [[-10.5, 29.8, 22.0], [9.0, 12.8, 4.0]],
     phase: 4.5,
@@ -61,9 +61,9 @@ const CROW_SPOTS = [
   // PTI More & Ahsan Ahmed Rd (2 crow flocks)
   {
     name: 'PtiMoreA',
-    center: [-304, -75],
-    radius: 46,
-    cruiseY: 20.0,
+    center: [-304, -68],
+    radius: 22,
+    cruiseY: 11.0,
     isCrow: true,
     perches: [[-258.0, 11.6, -68.0], [-312.0, 14.8, -110.5], [-292.6, 6.1, -130.0]],
     phase: 2.7,
@@ -72,20 +72,20 @@ const CROW_SPOTS = [
   {
     name: 'PtiMoreB',
     center: [-298, -56],
-    radius: 38,
-    cruiseY: 17.5,
+    radius: 19,
+    cruiseY: 9.8,
     isCrow: true,
     perches: [[-283.2, 4.2, -52.5], [-312.2, 4.2, -63.2], [-304.3, 7.1, -56.7]],
     phase: 5.8,
-    initState: 'AWAY',
+    initState: 'FLYING',
   },
 
   // Royal More, Chingri Chattar & Hotel Royal (2 flocks)
   {
     name: 'RoyalMoreA',
     center: [-535, -365],
-    radius: 48,
-    cruiseY: 21.0,
+    radius: 24,
+    cruiseY: 12.0,
     isCrow: true,
     perches: [[-515.0, 14.6, -355.0], [-555.0, 13.2, -378.0]],
     phase: 3.9,
@@ -94,8 +94,8 @@ const CROW_SPOTS = [
   {
     name: 'RoyalMoreB',
     center: [-545, -350],
-    radius: 56,
-    cruiseY: 24.0,
+    radius: 28,
+    cruiseY: 14.5,
     isCrow: false,
     perches: [[-522.0, 18.2, -360.0], [-562.0, 14.0, -342.0]],
     phase: 0.9,
@@ -180,12 +180,12 @@ const CROW_SPOTS = [
     initState: 'FLYING',
   },
 
-  // Shaheed Hadis Park (2 crow flocks perching on gates & nearby roofs)
+  // Shaheed Hadis Park (2 crow flocks right over the lake & Shaheed Minar!)
   {
     name: 'ShaheedHadisParkA',
-    center: [-324, -895],
-    radius: 48,
-    cruiseY: 19.0,
+    center: [-322, -886],
+    radius: 24,
+    cruiseY: 10.8,
     isCrow: true,
     perches: [[-295.0, 4.8, -840.0], [-332.0, 4.8, -958.0], [-284.0, 8.6, -892.0]],
     phase: 9.2,
@@ -193,21 +193,21 @@ const CROW_SPOTS = [
   },
   {
     name: 'ShaheedHadisParkB',
-    center: [-332, -912],
-    radius: 42,
-    cruiseY: 21.5,
+    center: [-332, -910],
+    radius: 22,
+    cruiseY: 13.5,
     isCrow: true,
     perches: [[-295.0, 4.8, -840.0], [-326.0, 14.5, -916.0]],
     phase: 0.4,
-    initState: 'AWAY',
+    initState: 'FLYING',
   },
 
   // Altapole Lane & Rupsha Ghat (2 crow flocks)
   {
     name: 'AltapoleLane',
     center: [166, -410],
-    radius: 38,
-    cruiseY: 18.0,
+    radius: 20,
+    cruiseY: 11.2,
     isCrow: true,
     perches: [[175.0, 12.5, -442.0], [158.0, 9.6, -401.0]],
     phase: 10.5,
@@ -216,8 +216,8 @@ const CROW_SPOTS = [
   {
     name: 'RupshaGhat',
     center: [1155, 72],
-    radius: 56,
-    cruiseY: 20.5,
+    radius: 28,
+    cruiseY: 12.5,
     isCrow: false,
     perches: [[1132.0, 9.5, 64.0], [1144.0, 8.8, 86.0]],
     phase: 6.9,
@@ -226,32 +226,33 @@ const CROW_SPOTS = [
 ];
 
 // Snow Goose / Duck swimming & roaming zones:
-// Primary: Shaheed Hadis Park Lake right beside Shaheed Minar (9 geese strictly inside open water basins!)
+// Primary: Shaheed Hadis Park Lake right beside Shaheed Minar (10 geese floating clearly on top of open water!)
 // Secondary: Alia Madrasah Pond, Rupsha Waterfront cove, plus occasional intermittent visits elsewhere!
 const GOOSE_SPOTS = [
   // Shaheed Hadis Park Lake — South-West open water basin right in front/left of Shaheed Minar (x: -350..-323, z: -898..-862)
-  { cx: -338.0, cz: -876.0, rx: 9.5, rz: 8.0, y: -0.025, speed: 0.22, phase: 0.2, scale: 0.68, zone: 'hadis' },
-  { cx: -341.0, cz: -886.0, rx: 8.0, rz: 7.2, y: -0.025, speed: 0.19, phase: 1.5, scale: 0.62, zone: 'hadis' },
-  { cx: -334.0, cz: -869.0, rx: 7.5, rz: 6.0, y: -0.025, speed: 0.24, phase: 2.8, scale: 0.65, zone: 'hadis' },
-  { cx: -344.0, cz: -892.0, rx: 6.5, rz: 5.5, y: -0.025, speed: 0.20, phase: 4.1, scale: 0.60, zone: 'hadis' },
-  { cx: -330.0, cz: -884.0, rx: 6.0, rz: 6.5, y: -0.025, speed: 0.23, phase: 5.2, scale: 0.64, zone: 'hadis' },
-  { cx: -346.0, cz: -872.0, rx: 5.2, rz: 6.8, y: -0.025, speed: 0.21, phase: 0.9, scale: 0.58, zone: 'hadis' },
+  { cx: -336.0, cz: -876.0, rx: 9.0, rz: 7.5, y: 0.01, speed: 0.22, phase: 0.2, scale: 1.18, zone: 'hadis' },
+  { cx: -340.0, cz: -885.0, rx: 7.8, rz: 6.8, y: 0.01, speed: 0.19, phase: 1.5, scale: 1.10, zone: 'hadis' },
+  { cx: -332.0, cz: -869.0, rx: 7.2, rz: 5.8, y: 0.01, speed: 0.24, phase: 2.8, scale: 1.15, zone: 'hadis' },
+  { cx: -343.0, cz: -891.0, rx: 6.2, rz: 5.2, y: 0.01, speed: 0.20, phase: 4.1, scale: 1.06, zone: 'hadis' },
+  { cx: -328.0, cz: -882.0, rx: 5.8, rz: 6.2, y: 0.01, speed: 0.23, phase: 5.2, scale: 1.14, zone: 'hadis' },
+  { cx: -345.0, cz: -872.0, rx: 5.0, rz: 6.5, y: 0.01, speed: 0.21, phase: 0.9, scale: 1.08, zone: 'hadis' },
 
-  // Shaheed Hadis Park Lake — South-East open water basin right of the Causeway Bridge (x: -310..-300, z: -896..-866)
-  { cx: -304.5, cz: -882.0, rx: 3.8, rz: 9.0, y: -0.025, speed: 0.20, phase: 1.9, scale: 0.64, zone: 'hadis' },
-  { cx: -305.5, cz: -872.0, rx: 3.4, rz: 6.5, y: -0.025, speed: 0.23, phase: 3.6, scale: 0.59, zone: 'hadis' },
-  { cx: -304.0, cz: -890.0, rx: 3.2, rz: 5.8, y: -0.025, speed: 0.18, phase: 5.0, scale: 0.61, zone: 'hadis' },
+  // Shaheed Hadis Park Lake — South-East open water basin right beside the Causeway Bridge (x: -310..-300, z: -896..-864)
+  { cx: -304.5, cz: -879.0, rx: 3.6, rz: 8.5, y: 0.01, speed: 0.20, phase: 1.9, scale: 1.16, zone: 'hadis' },
+  { cx: -305.5, cz: -870.0, rx: 3.2, rz: 6.2, y: 0.01, speed: 0.23, phase: 3.6, scale: 1.08, zone: 'hadis' },
+  { cx: -304.0, cz: -888.0, rx: 3.0, rz: 5.5, y: 0.01, speed: 0.18, phase: 5.0, scale: 1.12, zone: 'hadis' },
+  { cx: -316.0, cz: -872.0, rx: 4.5, rz: 5.5, y: 0.01, speed: 0.22, phase: 2.4, scale: 1.14, zone: 'hadis' },
 
-  // Occasional swimming geese at Alia Madrasah Pond (4 geese)
-  { cx: 256.0, cz: 128.0, rx: 8.0, rz: 9.5, y: -0.025, speed: 0.21, phase: 0.7, scale: 0.64, zone: 'alia', intermittent: true, cycleOffset: 0 },
-  { cx: 260.0, cz: 136.0, rx: 7.5, rz: 8.0, y: -0.025, speed: 0.18, phase: 2.5, scale: 0.60, zone: 'alia', intermittent: true, cycleOffset: 0 },
-  { cx: 252.0, cz: 140.0, rx: 6.5, rz: 7.0, y: -0.025, speed: 0.24, phase: 4.4, scale: 0.62, zone: 'alia', intermittent: true, cycleOffset: 12 },
-  { cx: 258.0, cz: 120.0, rx: 6.0, rz: 6.5, y: -0.025, speed: 0.20, phase: 5.8, scale: 0.58, zone: 'alia', intermittent: true, cycleOffset: 12 },
+  // Swimming geese at Alia Madrasah Pond (4 geese)
+  { cx: 256.0, cz: 128.0, rx: 8.0, rz: 9.5, y: 0.01, speed: 0.21, phase: 0.7, scale: 1.15, zone: 'alia', intermittent: false, cycleOffset: 0 },
+  { cx: 260.0, cz: 136.0, rx: 7.5, rz: 8.0, y: 0.01, speed: 0.18, phase: 2.5, scale: 1.08, zone: 'alia', intermittent: false, cycleOffset: 0 },
+  { cx: 252.0, cz: 140.0, rx: 6.5, rz: 7.0, y: 0.01, speed: 0.24, phase: 4.4, scale: 1.12, zone: 'alia', intermittent: true, cycleOffset: 12 },
+  { cx: 258.0, cz: 120.0, rx: 6.0, rz: 6.5, y: 0.01, speed: 0.20, phase: 5.8, scale: 1.05, zone: 'alia', intermittent: true, cycleOffset: 12 },
 
-  // Occasional swimming geese at Rupsha Waterfront calm edge (3 geese)
-  { cx: 1184.0, cz: 66.0, rx: 6.5, rz: 9.0, y: -0.35, speed: 0.20, phase: 1.1, scale: 0.66, zone: 'rupsha', intermittent: true, cycleOffset: 24 },
-  { cx: 1188.0, cz: 78.0, rx: 6.0, rz: 8.5, y: -0.35, speed: 0.22, phase: 3.3, scale: 0.62, zone: 'rupsha', intermittent: true, cycleOffset: 24 },
-  { cx: 1180.0, cz: 56.0, rx: 5.5, rz: 7.0, y: -0.35, speed: 0.19, phase: 4.9, scale: 0.60, zone: 'rupsha', intermittent: true, cycleOffset: 24 },
+  // Swimming geese at Rupsha Waterfront calm edge (3 geese)
+  { cx: 1184.0, cz: 66.0, rx: 6.5, rz: 9.0, y: -0.32, speed: 0.20, phase: 1.1, scale: 1.18, zone: 'rupsha', intermittent: false, cycleOffset: 24 },
+  { cx: 1188.0, cz: 78.0, rx: 6.0, rz: 8.5, y: -0.32, speed: 0.22, phase: 3.3, scale: 1.12, zone: 'rupsha', intermittent: false, cycleOffset: 24 },
+  { cx: 1180.0, cz: 56.0, rx: 5.5, rz: 7.0, y: -0.32, speed: 0.19, phase: 4.9, scale: 1.08, zone: 'rupsha', intermittent: true, cycleOffset: 24 },
 
   // Occasional visiting geese gliding/roaming near Boro Maath lawn & Hadis Park garden shore
   { cx: 22.0, cz: -560.0, rx: 7.0, rz: 6.0, y: 0.02, speed: 0.16, phase: 0.4, scale: 0.60, zone: 'boro_lawn', intermittent: true, cycleOffset: 32 },
@@ -268,16 +269,16 @@ export function buildKhulnaWildlife(parent) {
   const geese = [];
   const mixers = [];
 
-  // Shared glossy charcoal-black crow materials (reused across all crow flocks -> minimal GPU overhead!)
+  // Shared glossy charcoal-black crow materials with subtle wing-tip contrast so birds read clearly against sky & trees
   const crowBlackMat = new THREE.MeshStandardMaterial({
-    color: 0x14171e,
-    roughness: 0.52,
-    metalness: 0.16,
+    color: 0x1d2330,
+    roughness: 0.48,
+    metalness: 0.18,
   });
   const crowAccentMat = new THREE.MeshStandardMaterial({
-    color: 0x2a303a,
-    roughness: 0.60,
-    metalness: 0.10,
+    color: 0x475266,
+    roughness: 0.55,
+    metalness: 0.12,
   });
 
   // 1) Load animated wing-flapping birds/crows GLB (`./assets/birds.glb`)
@@ -290,8 +291,8 @@ export function buildKhulnaWildlife(parent) {
     rawBox.getSize(rawSize);
     rawBox.getCenter(rawCenter);
     const maxDim = Math.max(rawSize.x, rawSize.y, rawSize.z, 0.001);
-    // Normalize the 5-bird flock to a realistic ~4.8m flock span (~0.55m per crow)
-    const baseScale = 4.8 / maxDim;
+    // Normalize the 5-bird flock to a clearly visible ~10.2m flock span (~1.05m wingspan per crow!)
+    const baseScale = 10.2 / maxDim;
     const clip = gltf.animations && gltf.animations[0] ? gltf.animations[0] : null;
 
     for (let i = 0; i < CROW_SPOTS.length; i++) {
@@ -363,8 +364,7 @@ export function buildKhulnaWildlife(parent) {
   // 2) Load Snow Goose / Duck GLB (`./assets/snow_goose.glb`) for Hadis Park Lake & other ponds
   loader.load('./assets/snow_goose.glb', (gltf) => {
     const template = gltf.scene;
-    // Raw snow_goose.glb beak points along +X and wings spread along +/-Z -> rotate -90 deg Y so beak faces +Z (swimming direction!)
-    template.rotation.y = -Math.PI * 0.5;
+    // Raw snow_goose.glb is already oriented lengthwise along Z (width X=0.56, length Z=1.0) — no 90° sideways rotation!
     template.updateMatrixWorld(true);
     const rawBox = new THREE.Box3().setFromObject(template);
     const rawSize = new THREE.Vector3();
