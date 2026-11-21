@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { attachDerivedPBRMaps, upgradeWetAsphaltMaterial } from './aaa-shaders.js';
 import { buildBanglaTruck, buildCNGAuto } from './khulna-vehicles.js';
@@ -1418,6 +1419,74 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   addBox(staticG, [4.0, 0.08, 12.0], [ox + 4.8, 0.015, oz - 9.5], m.grass, { castShadow: false, uvScale: 2.2 });
   addBox(staticG, [4.6, 0.08, 7.6], [ox + 5.2, 0.015, oz + 10.6], m.grass, { castShadow: false, uvScale: 2.2 });
   addBox(staticG, [7.2, 0.08, 10.5], [ox - 7.8, 0.015, oz + 38.5], m.grass, { castShadow: false, uvScale: 2.5 });
+
+  // Populate Taltola House lawns & roadside verges with the new 3D Durba Grass Model (durba_grass_3d.glb)
+  const durbaLoader = new GLTFLoader();
+  durbaLoader.load(
+    './assets/durba_grass_3d.glb',
+    (gltf) => {
+      const clumpTemplates = [];
+      gltf.scene.updateMatrixWorld(true);
+      gltf.scene.traverse((child) => {
+        if (!child.isMesh || !child.geometry) return;
+        const geom = child.geometry.clone();
+        geom.computeBoundingBox();
+        const bb = geom.boundingBox;
+        if (bb) {
+          const cx = (bb.min.x + bb.max.x) * 0.5;
+          const cz = (bb.min.z + bb.max.z) * 0.5;
+          geom.translate(-cx, -bb.min.y, -cz);
+        }
+        const srcMat = Array.isArray(child.material) ? child.material[0] : child.material;
+        const mat = new THREE.MeshStandardMaterial({
+          map: srcMat?.map || null,
+          color: srcMat?.map ? new THREE.Color(0xffffff) : new THREE.Color(0x3f7d24),
+          roughness: 0.85,
+          metalness: 0.0,
+          side: THREE.DoubleSide,
+        });
+        clumpTemplates.push({ geom, mat });
+      });
+      if (!clumpTemplates.length) return;
+
+      const rand = seeded(197504);
+      const taltolaLawnRects = [
+        { x0: ox - 13.4, x1: ox - 4.6, z0: oz - 6.8, z1: oz + 15.2 },
+        { x0: ox + 3.0,  x1: ox + 6.6, z0: oz - 15.2, z1: oz - 3.8 },
+        { x0: ox + 3.1,  x1: ox + 7.3, z0: oz + 7.0,  z1: oz + 14.2 },
+        { x0: ox - 11.2, x1: ox - 4.4, z0: oz + 33.4, z1: oz + 43.5 },
+      ];
+      const count = 900;
+      const dummy = new THREE.Object3D();
+      const col = new THREE.Color();
+
+      for (const { geom, mat } of clumpTemplates) {
+        const inst = new THREE.InstancedMesh(geom, mat, count);
+        inst.castShadow = false;
+        inst.receiveShadow = true;
+        for (let i = 0; i < count; i++) {
+          const rect = taltolaLawnRects[i % taltolaLawnRects.length];
+          const gx = rect.x0 + rand() * (rect.x1 - rect.x0);
+          const gz = rect.z0 + rand() * (rect.z1 - rect.z0);
+          dummy.position.set(gx, 0.03, gz);
+          dummy.rotation.set((rand() - 0.5) * 0.12, rand() * Math.PI * 2, (rand() - 0.5) * 0.12);
+          const sx = 0.26 + rand() * 0.16;
+          const sy = 0.22 + rand() * 0.14;
+          const sz = 0.26 + rand() * 0.16;
+          dummy.scale.set(sx, sy, sz);
+          dummy.updateMatrix();
+          inst.setMatrixAt(i, dummy.matrix);
+          col.setHSL(0.27 + (rand() - 0.5) * 0.04, 0.25 + rand() * 0.15, 0.78 + rand() * 0.18);
+          inst.setColorAt(i, col);
+        }
+        inst.instanceMatrix.needsUpdate = true;
+        if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
+        dynamicG.add(inst);
+      }
+    },
+    undefined,
+    () => {}
+  );
 
   // Clean open Taltola Street frontage around our 5-Story Taltola House (filler roadside buildings removed)
   // Street Signpole outside Taltola House gate

@@ -1662,8 +1662,9 @@ export function buildAliaMadrasahDistrict(parent, m) {
       }
       const srcMat = Array.isArray(child.material) ? child.material[0] : child.material;
       const mat = new THREE.MeshStandardMaterial({
-        color: srcMat?.color ? srcMat.color.clone() : new THREE.Color(0x3f7d24),
-        roughness: 0.92,
+        map: srcMat?.map || null,
+        color: srcMat?.map ? new THREE.Color(0xffffff) : (srcMat?.color ? srcMat.color.clone() : new THREE.Color(0x3f7d24)),
+        roughness: 0.85,
         metalness: 0.0,
         side: THREE.DoubleSide,
       });
@@ -1676,7 +1677,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
       { x0: 193.0, x1: 229.5, z0: 71.5, z1: 103.8 },
       { x0: 193.0, x1: 229.5, z0: 112.2, z1: 142.5 },
     ];
-    const perClumpCount = 1800;
+    const perClumpCount = 2400;
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
 
@@ -1690,18 +1691,18 @@ export function buildAliaMadrasahDistrict(parent, m) {
         const gx = rect.x0 + rand() * (rect.x1 - rect.x0);
         const gz = rect.z0 + rand() * (rect.z1 - rect.z0);
         if (gx > 200.2 && gx < 204.5 && gz > 101.5 && gz < 104.2) {
-          dummy.position.set(gx + 6.5, 0.025, gz - 4.5);
+          dummy.position.set(gx + 6.5, 0.02, gz - 4.5);
         } else {
-          dummy.position.set(gx, 0.025, gz);
+          dummy.position.set(gx, 0.02, gz);
         }
-        dummy.rotation.set((rand() - 0.5) * 0.14, rand() * Math.PI * 2, (rand() - 0.5) * 0.14);
-        const sx = 0.14 + rand() * 0.09;
-        const sy = 0.06 + rand() * 0.05;
-        const sz = 0.14 + rand() * 0.09;
+        dummy.rotation.set((rand() - 0.5) * 0.12, rand() * Math.PI * 2, (rand() - 0.5) * 0.12);
+        const sx = 0.28 + rand() * 0.18;
+        const sy = 0.24 + rand() * 0.16;
+        const sz = 0.28 + rand() * 0.18;
         dummy.scale.set(sx, sy, sz);
         dummy.updateMatrix();
         inst.setMatrixAt(i, dummy.matrix);
-        col.setHSL(0.26 + (rand() - 0.5) * 0.05, 0.54 + rand() * 0.18, 0.30 + rand() * 0.15);
+        col.setHSL(0.27 + (rand() - 0.5) * 0.04, 0.25 + rand() * 0.15, 0.78 + rand() * 0.18);
         inst.setColorAt(i, col);
       }
       inst.instanceMatrix.needsUpdate = true;
