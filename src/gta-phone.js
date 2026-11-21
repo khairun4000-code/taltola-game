@@ -35,6 +35,7 @@ export function createGTAPhoneUI({
   onPlayFunnyVoice,
 }) {
   const phoneEl = document.querySelector('#gta-phone');
+  const phoneTitleEl = document.querySelector('.phone-title');
   const toastEl = document.querySelector('#gta-cheat-toast');
   const flashEl = document.querySelector('#selfie-flash');
   const clockEl = document.querySelector('#phone-clock');
@@ -56,10 +57,28 @@ export function createGTAPhoneUI({
   const selfieShutterBtn = document.querySelector('#phone-selfie-shutter');
 
   let isOpen = false;
-  let activeApp = 'home'; // 'home' | 'dial' | 'teleport' | 'selfie'
+  let activeApp = 'home'; // 'home' | 'dial' | 'teleport' | 'selfie' | 'funny'
   let dialValue = '';
   let toastTimer = null;
   let audioCtx = null;
+  let currentCharId = 'sabit';
+
+  function setCharacterTheme(charId = 'sabit') {
+    currentCharId = charId === 'kurta_blue' ? 'kurta_blue' : 'sabit';
+    const isBlue = currentCharId === 'kurta_blue';
+    phoneEl?.classList.toggle('theme-blue', isBlue);
+    phoneEl?.classList.toggle('theme-green', !isBlue);
+    if (phoneTitleEl) {
+      phoneTitleEl.textContent = isBlue ? 'iFruit · হুজ্জাতুল্লাহ' : 'iFruit · সাবিদ';
+    }
+    if (funnyStatusEl) {
+      funnyStatusEl.textContent = isBlue
+        ? 'ট্যাপ করলেই হুজ্জাতুল্লাহ ফানি ভয়েস বলবে'
+        : 'ট্যাপ করলেই সাবিদ পাখির ভয়েস বলবে';
+    }
+    if (activeApp === 'funny') populateFunnyList();
+  }
+  setCharacterTheme('sabit');
 
   function ensureAudio() {
     if (!audioCtx) {
@@ -211,20 +230,26 @@ export function createGTAPhoneUI({
     const clips = getFunnyVoices?.() || [];
     funnyListEl.innerHTML = '';
     for (const clip of clips) {
+      const speakerLabel = clip.speakerName || (currentCharId === 'kurta_blue' ? 'হুজ্জাতুল্লাহ' : 'সাবিদ');
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'phone-funny-row';
-      btn.innerHTML = `<strong>${clip.title}</strong><small>${clip.subtitle || 'Huzzatullah Voice'}</small>`;
+      btn.innerHTML = `<strong>${clip.title}</strong><small>${clip.subtitle || speakerLabel}</small>`;
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         onPhoneInteract?.();
         if (funnyStatusEl) funnyStatusEl.textContent = `🔊 বাজছে: ${clip.title}`;
-        const ok = await onPlayFunnyVoice?.(clip);
-        if (ok) {
-          showToast(`😂 হুজ্জাতুল্লাহ: ${clip.title}`);
+        const res = await onPlayFunnyVoice?.(clip);
+        if (res === true) {
+          showToast(`😂 ${speakerLabel}: ${clip.title}`);
+        } else if (res === 'busy') {
+          if (funnyStatusEl) funnyStatusEl.textContent = '⏳ আরেকজন কথা বলছে — শেষ হলেই ট্যাপ করো';
+          showToast('⏳ একজন কথা বলছে — শেষ হলেই আরেকজন বলবে!');
+        } else if (res === 'mosque') {
+          if (funnyStatusEl) funnyStatusEl.textContent = '🕌 মডেল মসজিদে ভয়েস বন্ধ আছে';
         } else {
-          if (funnyStatusEl) funnyStatusEl.textContent = '⚠️ public/assets/audio/ ফোল্ডারে MP3 ফাইল রাখুন';
-          showToast('⚠️ public/assets/audio/ ফোল্ডারে MP3 ফাইল পাওয়া যায়নি');
+          if (funnyStatusEl) funnyStatusEl.textContent = '⚠️ অডিও ফাইল পাওয়া যায়নি';
+          showToast('⚠️ অডিও ফাইল পাওয়া যায়নি');
         }
       });
       funnyListEl.appendChild(btn);
@@ -440,6 +465,7 @@ export function createGTAPhoneUI({
     close,
     toggle,
     showToast,
+    setCharacterTheme,
     handleKeyDown,
   };
 }

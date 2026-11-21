@@ -1,23 +1,76 @@
 /**
- * Central registry for Huzzatullah's ElevenLabs MP3 voice lines with real-time ARKit lip-sync.
- * All audio files are stored in `/public/assets/audio/` with clean URL-safe filenames.
+ * Central registry for Huzzatullah & Sabit ElevenLabs MP3 voice lines,
+ * plus a global one-by-one turn coordinator (VOICE_BUS) so both characters
+ * NEVER talk over each other at the same time.
  */
+
+const voiceBusState = {
+  activeSpeaker: null,
+  activeStopFn: null,
+  cooldownUntil: 0,
+};
+
+export const VOICE_BUS = {
+  get activeSpeaker() {
+    return voiceBusState.activeSpeaker;
+  },
+  isAnySpeaking() {
+    return Boolean(voiceBusState.activeSpeaker) || performance.now() < voiceBusState.cooldownUntil;
+  },
+  canSpeak(speakerId, { interruptSelf = false } = {}) {
+    if (!voiceBusState.activeSpeaker) {
+      return performance.now() >= voiceBusState.cooldownUntil || interruptSelf;
+    }
+    if (interruptSelf && voiceBusState.activeSpeaker === speakerId) {
+      return true;
+    }
+    return false;
+  },
+  claim(speakerId, stopFn) {
+    if (voiceBusState.activeSpeaker && voiceBusState.activeSpeaker !== speakerId) {
+      return false;
+    }
+    voiceBusState.activeSpeaker = speakerId || 'unknown';
+    voiceBusState.activeStopFn = stopFn || null;
+    return true;
+  },
+  release(speakerId, stopFn = null, gapMs = 240) {
+    if (
+      voiceBusState.activeSpeaker === (speakerId || 'unknown')
+      && (!stopFn || !voiceBusState.activeStopFn || voiceBusState.activeStopFn === stopFn)
+    ) {
+      voiceBusState.activeSpeaker = null;
+      voiceBusState.activeStopFn = null;
+      voiceBusState.cooldownUntil = performance.now() + gapMs;
+    }
+  },
+  stopAll() {
+    const fn = voiceBusState.activeStopFn;
+    voiceBusState.activeSpeaker = null;
+    voiceBusState.activeStopFn = null;
+    voiceBusState.cooldownUntil = 0;
+    try { fn?.(); } catch {}
+  },
+};
+
 export const VOICE_CLIPS = {
   // 1) Huzzatullah angry reaction when Sabit punches or bothers him while standing calmly
   huzzatullahAnnoyed: [
     './assets/audio/huzzatullah_angry_01.mp3',
   ],
 
-  // 2) Huzzatullah angry fighting voices (plays with angry mouth lip-sync when Huzzatullah punches/kicks)
+  // 2) Huzzatullah angry fighting voices (plays when Huzzatullah punches/kicks)
   huzzatullahFight: [
     ['./assets/audio/huzzatullah_fight_01.mp3'],
     ['./assets/audio/huzzatullah_fight_02.mp3'],
   ],
 
-  // 3) Huzzatullah Funny Voices inside the in-game iFruit Phone "ফানি ভয়েস" App ([P])
+  // 3) Huzzatullah Funny Voices inside Huzzatullah's Blue iFruit Phone ([P])
   huzzatullahFunny: [
     {
       id: 'huzzatullah_funny_pacha',
+      speakerId: 'kurta_blue',
+      speakerName: 'হুজ্জাতুল্লাহ',
       title: '😂 একি রে, তোর পাছা দেখা যায় তো!',
       subtitle: 'হুজ্জাতুল্লাহ · ফানি ভয়েস ১',
       expression: 'happy',
@@ -25,10 +78,33 @@ export const VOICE_CLIPS = {
     },
     {
       id: 'huzzatullah_funny_pakhi',
+      speakerId: 'kurta_blue',
+      speakerName: 'হুজ্জাতুল্লাহ',
       title: '🐦 এ তোর পাখি কই? উড়ে গিয়েছে নাকি?',
       subtitle: 'হুজ্জাতুল্লাহ · ফানি ভয়েস ২',
       expression: 'happy',
       urls: ['./assets/audio/huzzatullah_funny_02.mp3'],
+    },
+  ],
+
+  // 4) Sabit scared/panic fighting & Huzzatullah-proximity voices
+  sabitPanicFight: [
+    ['./assets/audio/sabit_voice_01.mp3'],
+    ['./assets/audio/sabit_voice_02.mp3'],
+    ['./assets/audio/sabit_voice_03.mp3'],
+    ['./assets/audio/sabit_voice_04.mp3'],
+  ],
+
+  // 5) Sabit Funny Voice inside Sabit's Green iFruit Phone ([P])
+  sabitFunny: [
+    {
+      id: 'sabit_funny_pakhi',
+      speakerId: 'sabit',
+      speakerName: 'সাবিদ',
+      title: '🐦 পাখি উড়ে গেছে!',
+      subtitle: 'সাবিদ · ফানি ভয়েস',
+      expression: 'happy',
+      urls: ['./assets/audio/sabit_voice_05.mp3'],
     },
   ],
 

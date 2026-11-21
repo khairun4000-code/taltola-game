@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-import { VOICE_CLIPS } from './voice-clips.js';
+import { VOICE_CLIPS, VOICE_BUS } from './voice-clips.js';
 
 const MODEL_URL = './assets/player-bangladeshi.glb?v=v8clean';
 const DRACO_PATH = './draco/gltf/';
@@ -389,6 +389,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     state.voicePlaying = false;
     state.voiceExpression = null;
     state.speechLevel = 0;
+    VOICE_BUS.release(options.id, stopVoiceClip);
     const cb = voiceOnEndCb;
     voiceOnEndCb = null;
     cb?.();
@@ -415,6 +416,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     state.voiceExpression = null;
     state.speechLevel = 0;
     voiceOnEndCb = null;
+    VOICE_BUS.release(options.id, stopVoiceClip, 80);
   }
 
   async function loadDecodedAudioBuffer(url) {
@@ -430,8 +432,12 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     return decoded;
   }
 
-  async function playVoiceClip(urls, { expression = null, volume = 1.0, onEnd = null } = {}) {
+  async function playVoiceClip(urls, { expression = null, volume = 1.0, onEnd = null, interruptSelf = false } = {}) {
     if (state.sacredSilence) {
+      onEnd?.();
+      return false;
+    }
+    if (!VOICE_BUS.canSpeak(options.id, { interruptSelf })) {
       onEnd?.();
       return false;
     }
@@ -441,6 +447,10 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       return false;
     }
     stopVoiceClip();
+    if (!VOICE_BUS.claim(options.id, stopVoiceClip)) {
+      onEnd?.();
+      return false;
+    }
     const token = ++voicePlayToken;
     voiceOnEndCb = onEnd || null;
     const clampedVol = THREE.MathUtils.clamp(volume, 0, 1);
@@ -832,13 +842,8 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       const clipName = nextKind === 3 ? 'Kick2' : nextKind === 2 ? 'Kick' : nextKind === 1 ? 'PunchR' : 'PunchL';
       playClip(clipName, { fade: 0.08, loopOnce: true, restart: true });
     }
-    const nowMs = performance.now();
-    if (options.id === 'kurta_blue' && !state.voicePlaying && nowMs >= fightVoiceCooldownUntil && VOICE_CLIPS.huzzatullahFight?.length) {
-      fightVoiceCooldownUntil = nowMs + 1100;
-      const pick = VOICE_CLIPS.huzzatullahFight[fightVoiceIdx % VOICE_CLIPS.huzzatullahFight.length];
-      fightVoiceIdx++;
-      playVoiceClip(pick, { expression: 'angry', volume: 1.0 });
-    }
+    // Fight voices are NOT played blindly in empty air — they trigger strictly in synced
+    // back-and-forth turns via autonomous-partner.js when Sabit & Huzzatullah fight nearby!
     return nextKind;
   }
 
@@ -863,15 +868,12 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       const oneShot = ONCE_CLIPS.has(clipName) && emoteName !== 'combo';
       playClip(clipName, { fade: 0.14, loopOnce: oneShot, restart: true });
     }
-    if (options.id === 'kurta_blue' && (emoteName === 'kick' || emoteName === 'kick2' || emoteName === 'combo') && !state.voicePlaying && VOICE_CLIPS.huzzatullahFight?.length) {
-      const pick = VOICE_CLIPS.huzzatullahFight[fightVoiceIdx % VOICE_CLIPS.huzzatullahFight.length];
-      fightVoiceIdx++;
-      playVoiceClip(pick, { expression: 'angry', volume: 1.0 });
-    } else {
+    const isFightMove = emoteName === 'kick' || emoteName === 'kick2' || emoteName === 'combo' || emoteName === 'angry1' || emoteName === 'angry2';
+    if (!isFightMove) {
       const emoteVoices = VOICE_CLIPS.emotes?.[emoteName];
-      if (emoteVoices?.length && !state.voicePlaying) {
+      if (emoteVoices?.length && !state.voicePlaying && !VOICE_BUS.isAnySpeaking()) {
         const expr = emoteName === 'laugh' || emoteName === 'wave' ? 'happy' : 'normal';
-        playVoiceClip(emoteVoices, { expression: expr, volume: 0.95 });
+        playVoiceClip(emoteVoices, { expression: expr, volume: 0.90 });
       }
     }
     return state.emote;

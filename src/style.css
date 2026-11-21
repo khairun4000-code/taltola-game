@@ -1231,6 +1231,54 @@ body.freecam-active #gta-cheat-toast {
   letter-spacing: 0.08em;
   color: var(--lime);
 }
+/* Sabit's Green Smartphone Theme */
+.gta-phone.theme-green .phone-bezel {
+  border-color: #22c55e;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(74, 222, 128, 0.28), transparent 48%),
+    radial-gradient(circle at 82% 88%, rgba(16, 185, 129, 0.26), transparent 52%),
+    linear-gradient(168deg, #062114 0%, #0a291a 52%, #04120b 100%);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.84),
+    0 0 0 1px rgba(74, 222, 128, 0.34),
+    0 0 26px rgba(34, 197, 94, 0.22),
+    inset 0 0 0 2px #02140a,
+    inset 0 1px 0 rgba(134, 239, 172, 0.34);
+}
+.gta-phone.theme-green .phone-notch::after {
+  background: radial-gradient(circle at 35% 35%, #4ade80, #052e16 65%);
+}
+.gta-phone.theme-green .phone-title {
+  color: #4ade80;
+}
+.gta-phone.theme-green .phone-funny-row {
+  border-color: rgba(74, 222, 128, 0.36);
+  background: rgba(22, 163, 74, 0.16);
+}
+/* Huzzatullah's Blue Smartphone Theme */
+.gta-phone.theme-blue .phone-bezel {
+  border-color: #38bdf8;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(56, 189, 248, 0.30), transparent 48%),
+    radial-gradient(circle at 82% 88%, rgba(37, 99, 235, 0.28), transparent 52%),
+    linear-gradient(168deg, #071930 0%, #0c2340 52%, #050f1f 100%);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.84),
+    0 0 0 1px rgba(56, 189, 248, 0.36),
+    0 0 26px rgba(56, 189, 248, 0.24),
+    inset 0 0 0 2px #030d1c,
+    inset 0 1px 0 rgba(125, 211, 252, 0.36);
+}
+.gta-phone.theme-blue .phone-notch::after {
+  background: radial-gradient(circle at 35% 35%, #38bdf8, #0c1f3a 65%);
+}
+.gta-phone.theme-blue .phone-title {
+  color: #38bdf8;
+}
+.gta-phone.theme-blue .phone-funny-row {
+  border-color: rgba(56, 189, 248, 0.38);
+  background: rgba(37, 99, 235, 0.18);
+}
 .phone-nav-btn {
   padding: 3px 9px;
   border: 1px solid rgba(255, 255, 255, 0.22);

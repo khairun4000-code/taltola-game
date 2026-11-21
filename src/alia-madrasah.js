@@ -1256,6 +1256,63 @@ function buildMainPorticoBuilding(staticG, dynamicG, bank) {
 
   // Furnished Rooms across Ground, 2nd & 3rd Floors!
   addAliaOfficeFurniture(staticG, dynamicG, bank, 181.9, roomCentersSouth[0], y0, 'অধ্যক্ষের কার্যালয় (PRINCIPAL OFFICE)', 9.2);
+
+  // Principal's Office Campus PA Announcement Microphone + Ahuja Amplifier + Glowing ON-AIR LED
+  const principalMicPos = new THREE.Vector3(181.25, y0 + 0.96, roomCentersSouth[0] + 0.24);
+  const principalMicLedMat = new THREE.MeshStandardMaterial({
+    color: 0x22c55e,
+    emissive: 0x22c55e,
+    emissiveIntensity: 0.75,
+    roughness: 0.25,
+  });
+  {
+    const mx = principalMicPos.x;
+    const deskY = y0 + 0.82;
+    const mz = principalMicPos.z;
+    // Heavy desktop PA mic base + push-to-talk switch
+    box(staticG, [0.16, 0.042, 0.20], [mx, deskY + 0.021, mz], bank.steelDark);
+    box(staticG, [0.055, 0.018, 0.045], [mx + 0.035, deskY + 0.046, mz], bank.chromeMat);
+    // Curved gooseneck stem + foam windscreen head facing the Principal's chair
+    rodBetween(staticG, [mx - 0.02, deskY + 0.04, mz], [mx - 0.05, deskY + 0.24, mz], 0.008, bank.steelDark);
+    rodBetween(staticG, [mx - 0.05, deskY + 0.24, mz], [mx - 0.13, deskY + 0.30, mz], 0.007, bank.steelDark);
+    const micHead = new THREE.Mesh(new THREE.SphereGeometry(0.024, 12, 10), bank.steelDark);
+    micHead.position.set(mx - 0.145, deskY + 0.305, mz);
+    staticG.add(micHead);
+    // Glowing status LED ring on mic base (pulses bright red when LIVE ON AIR)
+    const ledMesh = new THREE.Mesh(new THREE.SphereGeometry(0.012, 10, 8), principalMicLedMat);
+    ledMesh.position.set(mx + 0.055, deskY + 0.052, mz + 0.055);
+    dynamicG.add(ledMesh);
+    // Classic Ahuja-style PA Amplifier box right beside the mic on Principal's desk
+    box(staticG, [0.28, 0.12, 0.36], [mx - 0.12, deskY + 0.06, mz + 0.34], bank.steelDark);
+    box(staticG, [0.015, 0.08, 0.30], [mx + 0.025, deskY + 0.065, mz + 0.34], bank.chromeMat);
+    for (let ki = 0; ki < 4; ki++) {
+      cylinder(staticG, 0.012, 0.012, 0.02, [mx + 0.035, deskY + 0.065, mz + 0.23 + ki * 0.07], bank.goldMat, 8);
+    }
+    // Twin Campus PA Horn Loudspeakers high on the main veranda facing the Alia Madrasah courtyard & field
+    for (const hz of [mainZ - 5.2, mainZ + 5.2]) {
+      box(staticG, [0.16, 0.14, 0.14], [190.45, 9.15, hz], bank.steelDark);
+      const horn = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.44, 14, 1, true), bank.whitePlaster);
+      horn.rotation.z = -Math.PI * 0.44;
+      horn.position.set(190.72, 9.08, hz);
+      staticG.add(horn);
+    }
+  }
+  function isNearPrincipalMic(pos, maxDist = 3.8) {
+    if (!pos) return false;
+    if (pos.y > y0 + 2.8) return false;
+    return Math.hypot(pos.x - principalMicPos.x, pos.z - principalMicPos.z) <= maxDist;
+  }
+  function setPrincipalMicActive(isOn, level = 0) {
+    if (isOn) {
+      principalMicLedMat.color.setHex(0xff2a2a);
+      principalMicLedMat.emissive.setHex(0xff1a1a);
+      principalMicLedMat.emissiveIntensity = 1.6 + Math.min(1, level) * 2.6;
+    } else {
+      principalMicLedMat.color.setHex(0x22c55e);
+      principalMicLedMat.emissive.setHex(0x22c55e);
+      principalMicLedMat.emissiveIntensity = 0.65;
+    }
+  }
   addAliaOfficeFurniture(staticG, dynamicG, bank, 181.9, roomCentersSouth[1], y0, 'উপাধ্যক্ষের কার্যালয় (VICE PRINCIPAL)', 9.2);
   addAliaOfficeFurniture(staticG, dynamicG, bank, 181.9, roomCentersSouth[2], y0, 'একাডেমিক ও পরীক্ষা নিয়ন্ত্রক অফিস', 9.2);
   addAliaOfficeFurniture(staticG, dynamicG, bank, 181.9, roomCentersNorth[0], y0, 'শিক্ষক মিলনায়তন (TEACHERS COMMON ROOM)', 9.2);
@@ -1897,6 +1954,9 @@ export function buildAliaMadrasahDistrict(parent, m) {
     isInsideModelMosque,
     isInModelMosqueZone,
     findNearestModelMosqueSeat,
+    principalMicPos,
+    isNearPrincipalMic,
+    setPrincipalMicActive,
     setNightFactor(nightFactor = 0) {
       const nf = THREE.MathUtils.clamp(nightFactor, 0, 1);
       for (let i = 0; i < bank.emissiveList.length; i++) {

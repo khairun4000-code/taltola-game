@@ -12,7 +12,8 @@ import { createAutonomousPartner } from './autonomous-partner.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { createKhulnaMapUI } from './khulna-map-ui.js';
 import { createGTAPhoneUI } from './gta-phone.js';
-import { VOICE_CLIPS } from './voice-clips.js';
+import { VOICE_CLIPS, VOICE_BUS } from './voice-clips.js';
+import { createAliaPrincipalMic } from './alia-pa-mic.js';
 import { createGTACharacterSwitch } from './gta-character-switch.js';
 import { createAtmosphericSkyAndPMREM, TIME_OF_DAY_PRESETS } from './aaa-shaders.js';
 import { CAR_FLEET_CONFIGS, createDrivableCar, createDrivableCarFleet } from './car.js';
@@ -1133,6 +1134,8 @@ function selectActiveCharacter(charId, { triggerGreeting = true, refreshCam = tr
       autonomousPartner.setActor(partnerActor, partnerProfile);
     }
   }
+
+  gtaPhoneUI?.setCharacterTheme?.(targetProfile.id);
 
   for (const card of charSelectCards) {
     card.classList.toggle('active', card.dataset.charSelect === targetProfile.id);
@@ -2812,23 +2815,32 @@ async function initialize() {
       return canvas.toDataURL('image/png');
     },
     getLandmarks: () => khulnaMapUI?.landmarks || [],
-    getFunnyVoices: () => VOICE_CLIPS.huzzatullahFunny || [],
+    getFunnyVoices: () => (selectedCharacterId === 'kurta_blue' ? VOICE_CLIPS.huzzatullahFunny : VOICE_CLIPS.sabitFunny) || [],
     onPlayFunnyVoice: async (clip) => {
-      const huzzatullah = characterActors.kurta_blue || playerCharacter;
-      if (!huzzatullah || !clip?.urls) return false;
+      const speakerId = clip?.speakerId || selectedCharacterId || 'sabit';
+      const speakerActor = characterActors[speakerId] || playerCharacter;
+      if (!speakerActor || !clip?.urls) return false;
       const inMosque = isPosInModelMosque(playerPos)
-        || (huzzatullah !== playerCharacter && isPosInModelMosque(autonomousPartner.position));
-      if (inMosque || huzzatullah.state?.sacredSilence) {
+        || (speakerActor !== playerCharacter && isPosInModelMosque(autonomousPartner.position));
+      if (inMosque || speakerActor.state?.sacredSilence) {
         notifyMosqueSilence('🕌 মডেল মসজিদে ভয়েস বন্ধ আছে — বাইরে বের হলে আবার বলবে।');
-        return false;
+        return 'mosque';
       }
-      huzzatullah.setExpression?.(clip.expression || 'happy');
-      return await huzzatullah.playVoiceClip?.(clip.urls, {
+      if (!VOICE_BUS.canSpeak(speakerId, { interruptSelf: true })) {
+        return 'busy';
+      }
+      speakerActor.setExpression?.(clip.expression || 'happy');
+      return await speakerActor.playVoiceClip?.(clip.urls, {
         expression: clip.expression || 'happy',
         volume: 1.0,
-        onEnd: () => huzzatullah.setExpression?.('normal'),
+        interruptSelf: true,
+        onEnd: () => speakerActor.setExpression?.('normal'),
       });
     },
+  });
+  gtaPhoneUI?.setCharacterTheme?.(selectedCharacterId);
+  const aliaPrincipalMic = createAliaPrincipalMic({
+    onStatusToast: (msg) => gtaPhoneUI?.showToast?.(msg),
   });
   gtaCharacterSwitch = createGTACharacterSwitch({
     camera,
@@ -3697,6 +3709,10 @@ liftFloorButtons.forEach((btn) => {
   });
 });
 interactPrompt?.addEventListener('click', () => {
+  if (aliaPrincipalMic?.active || environment?.landmarks?.aliaMadrasah?.isNearPrincipalMic?.(playerPos)) {
+    aliaPrincipalMic.toggle();
+    return;
+  }
   handleDoorInteraction();
 });
 
@@ -4096,6 +4112,14 @@ window.addEventListener('keydown', (event) => {
      event.code === 'ArrowUp' || event.code === 'ArrowDown' || event.code === 'ArrowLeft' || event.code === 'ArrowRight')
   ) {
     closeLiftKeypad(true);
+  }
+
+  if (event.code === 'KeyM' && !inStudio && started && !getDrivingCar() && !khulnaMapUI?.isOpen && !gtaPhoneUI?.isOpen) {
+    if (aliaPrincipalMic?.active || environment?.landmarks?.aliaMadrasah?.isNearPrincipalMic?.(playerPos)) {
+      event.preventDefault();
+      aliaPrincipalMic.toggle();
+      return;
+    }
   }
 
   if (mappedEmote && playerCharacter) {
@@ -4999,8 +5023,16 @@ function updateHUDPrompt() {
       const nearSeat = findNearestSeat(playerPos);
       const nearCar = findNearestEnterableCar(playerPos);
       const carPrompt = nearCar ? nearCar.getPrompt(playerPos) : null;
-      const doorOrLiftPrompt = environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
-      if (carPrompt && !doorOrLiftPrompt && !nearSeat) {
+      const nearPrincipalMic = Boolean(environment?.landmarks?.aliaMadrasah?.isNearPrincipalMic?.(playerPos));
+      const micPrompt = nearPrincipalMic
+        ? (aliaPrincipalMic?.active
+          ? '🔴 ON AIR · কথা বলুন (ইকো চালু) — [M] মাইক বন্ধ করুন'
+          : '🎙️ [M] প্রিন্সিপালের মাইক অন করুন (পুরো আলিয়া মাদ্রাসায় ইকো শোনা যাবে)')
+        : null;
+      const doorOrLiftPrompt = micPrompt || environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
+      if (micPrompt) {
+        promptText = micPrompt;
+      } else if (carPrompt && !doorOrLiftPrompt && !nearSeat) {
         promptText = carPrompt;
       } else if (nearSeat && (!doorOrLiftPrompt || nearSeat.dist < 1.25)) {
         promptText = `[E / F] Sit on ${nearSeat.label}`;
@@ -5733,6 +5765,15 @@ function updateMovement(delta) {
   const playerInMosque = isPosInModelMosque(playerPos);
   if (playerCharacter) {
     playerCharacter.setSacredSilence?.(playerInMosque);
+  }
+  if (aliaPrincipalMic?.active) {
+    if (inStudio || !environment?.landmarks?.aliaMadrasah?.isNearPrincipalMic?.(playerPos, 5.5)) {
+      aliaPrincipalMic.stop(false);
+    } else {
+      environment?.landmarks?.aliaMadrasah?.setPrincipalMicActive?.(true, aliaPrincipalMic.getLevel());
+    }
+  } else {
+    environment?.landmarks?.aliaMadrasah?.setPrincipalMicActive?.(false, 0);
   }
   if (playerInMosque !== wasPlayerInModelMosque) {
     wasPlayerInModelMosque = playerInMosque;
