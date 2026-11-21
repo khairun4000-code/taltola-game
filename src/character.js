@@ -589,8 +589,8 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     ];
     const arrays = Object.fromEntries(morphNames.map((n) => [n, new Float32Array(count * 3)]));
 
-    // Subtle, natural jaw hinge (~4.5 deg) + clean lip-seam parting — never distorts face, nose, or beard
-    const jawAngle = 0.08;
+    // 100% natural face preservation: only a very gentle chin/lower-jaw movement when talking (zero face distortion, zero shader overlay)
+    const jawAngle = 0.055;
     const cosJ = Math.cos(jawAngle);
     const sinJ = Math.sin(jawAngle);
 
@@ -602,77 +602,20 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       const adx = Math.abs(dx);
       const i3 = i * 3;
 
-      const leftSide = sStep(-0.005, 0.010, dx);
-      const rightSide = sStep(-0.005, 0.010, -dx);
-
-      // 1) jawOpen: gentle chin drop + subtle lower-lip parting strictly below the lip seam
-      if (y < mouthY + 0.001 && y > noseY - 0.095 && z > jawPivotZ + 0.015) {
-        const seamMask = sStep(mouthY + 0.001, mouthY - 0.005, y);
-        const neckMask = sStep(noseY - 0.095, noseY - 0.068, y);
-        const sideMask = 1.0 - sStep(0.028, 0.062, adx);
-        const frontMask = sStep(jawPivotZ + 0.015, mouthZ - 0.020, z);
+      // Gentle TMJ hinge movement on chin & lower jaw only — keeps original face, lips, nose & beard 100% natural
+      if (y < mouthY - 0.002 && y > noseY - 0.092 && z > jawPivotZ + 0.020) {
+        const seamMask = sStep(mouthY - 0.002, mouthY - 0.014, y);
+        const neckMask = sStep(noseY - 0.092, noseY - 0.068, y);
+        const sideMask = 1.0 - sStep(0.026, 0.058, adx);
+        const frontMask = sStep(jawPivotZ + 0.020, mouthZ - 0.018, z);
         const wJaw = seamMask * neckMask * sideMask * frontMask;
         if (wJaw > 0.001) {
           const ry = y - jawPivotY;
           const rz = z - jawPivotZ;
           const ny = ry * cosJ - rz * sinJ;
           const nz = ry * sinJ + rz * cosJ;
-          const lipBoost = (1.0 - sStep(0.014, 0.026, adx)) * sStep(mouthY - 0.016, mouthY - 0.003, y);
-          arrays.jawOpen[i3 + 1] = (ny - ry) * wJaw - 0.0042 * lipBoost * seamMask;
-          arrays.jawOpen[i3 + 2] = (nz - rz) * wJaw - 0.0008 * lipBoost * seamMask;
-        }
-      }
-
-      // 2) Subtle lip articulation targets (keeps natural face & mustache intact)
-      if (y > mouthY - 0.020 && y < mouthY + 0.014 && adx < 0.038 && z > mouthZ - 0.026) {
-        const zMask = sStep(mouthZ - 0.026, mouthZ - 0.006, z);
-        const wX = 1.0 - sStep(0.016, 0.030, adx);
-        const wUp = Math.exp(-(((y - (mouthY + 0.0040)) / 0.0048) ** 2)) * sStep(mouthY - 0.001, mouthY + 0.002, y) * wX * zMask;
-        const wLo = Math.exp(-(((y - (mouthY - 0.0052)) / 0.0056) ** 2)) * sStep(mouthY + 0.001, mouthY - 0.002, y) * wX * zMask;
-        const wLipBoth = Math.exp(-(((y - mouthY) / 0.009) ** 2)) * wX * zMask;
-        const wCorner = Math.exp(-(((adx - 0.022) / 0.010) ** 2)) * Math.exp(-(((y - mouthY) / 0.009) ** 2)) * zMask;
-        const signX = dx >= 0 ? 1 : -1;
-
-        if (wUp > 0.001) {
-          arrays.mouthUpperUpLeft[i3 + 1] = 0.0018 * wUp * leftSide;
-          arrays.mouthUpperUpLeft[i3 + 2] = 0.0008 * wUp * leftSide;
-          arrays.mouthUpperUpRight[i3 + 1] = 0.0018 * wUp * rightSide;
-          arrays.mouthUpperUpRight[i3 + 2] = 0.0008 * wUp * rightSide;
-        }
-        if (wLo > 0.001) {
-          arrays.mouthLowerDownLeft[i3 + 1] = -0.0038 * wLo * leftSide;
-          arrays.mouthLowerDownLeft[i3 + 2] = 0.0008 * wLo * leftSide;
-          arrays.mouthLowerDownRight[i3 + 1] = -0.0038 * wLo * rightSide;
-          arrays.mouthLowerDownRight[i3 + 2] = 0.0008 * wLo * rightSide;
-        }
-        if (wLipBoth > 0.001) {
-          arrays.mouthFunnel[i3] = -dx * 0.08 * wLipBoth;
-          arrays.mouthFunnel[i3 + 2] = 0.0030 * wLipBoth;
-        }
-        if (wCorner > 0.001) {
-          arrays.mouthSmileLeft[i3] = signX * 0.0025 * wCorner * leftSide;
-          arrays.mouthSmileLeft[i3 + 1] = 0.0035 * wCorner * leftSide;
-          arrays.mouthSmileLeft[i3 + 2] = -0.0012 * wCorner * leftSide;
-          arrays.mouthSmileRight[i3] = signX * 0.0025 * wCorner * rightSide;
-          arrays.mouthSmileRight[i3 + 1] = 0.0035 * wCorner * rightSide;
-          arrays.mouthSmileRight[i3 + 2] = -0.0012 * wCorner * rightSide;
-
-          arrays.mouthFrownLeft[i3 + 1] = -0.0032 * wCorner * leftSide;
-          arrays.mouthFrownRight[i3 + 1] = -0.0032 * wCorner * rightSide;
-        }
-      }
-
-      // 3) Subtle eyebrow expression targets (angry furrow)
-      if (y > browY - 0.014 && y < browY + 0.016 && adx < 0.050 && z > noseZ - 0.042) {
-        const bZ = sStep(noseZ - 0.042, noseZ - 0.020, z);
-        const bY = Math.exp(-(((y - browY) / 0.010) ** 2));
-        const bX = (1.0 - sStep(0.034, 0.050, adx)) * sStep(0.006, 0.016, adx);
-        const wBrow = bZ * bY * bX;
-        if (wBrow > 0.001) {
-          arrays.browDownLeft[i3 + 1] = -0.0038 * wBrow * leftSide;
-          arrays.browDownLeft[i3 + 2] = 0.0012 * wBrow * leftSide;
-          arrays.browDownRight[i3 + 1] = -0.0038 * wBrow * rightSide;
-          arrays.browDownRight[i3 + 2] = 0.0012 * wBrow * rightSide;
+          arrays.jawOpen[i3 + 1] = (ny - ry) * wJaw;
+          arrays.jawOpen[i3 + 2] = (nz - rz) * wJaw;
         }
       }
     }
@@ -692,62 +635,6 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     }
     if (!mesh.morphTargetInfluences || mesh.morphTargetInfluences.length !== morphNames.length) {
       mesh.morphTargetInfluences = new Array(morphNames.length).fill(0);
-    }
-
-    // Clean lip-seam parting slit with upper teeth & pink tongue strictly inside the lip line
-    if (srcMat && !srcMat.userData?.hasOralCavityShader) {
-      const jawUniform = { value: 0.0 };
-      oralCavityUniforms.push(jawUniform);
-      srcMat.userData = { ...(srcMat.userData || {}), hasOralCavityShader: true };
-      const prevCompile = srcMat.onBeforeCompile;
-      srcMat.onBeforeCompile = (shader, rendererRef) => {
-        if (prevCompile) prevCompile(shader, rendererRef);
-        shader.uniforms.uJawOpen = jawUniform;
-        shader.uniforms.uMouthCenter = { value: new THREE.Vector3(cx, mouthY - 0.0012, mouthZ) };
-        shader.vertexShader = shader.vertexShader
-          .replace('#include <common>', '#include <common>\nvarying vec3 vHeadBindPos;')
-          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHeadBindPos = position;');
-        shader.fragmentShader = shader.fragmentShader
-          .replace(
-            '#include <common>',
-            '#include <common>\nvarying vec3 vHeadBindPos;\nuniform float uJawOpen;\nuniform vec3 uMouthCenter;'
-          )
-          .replace(
-            '#include <map_fragment>',
-            `#include <map_fragment>
-            if (uJawOpen > 0.03 && vHeadBindPos.z > uMouthCenter.z - 0.022) {
-              float openAmt = clamp((uJawOpen - 0.03) * 1.15, 0.0, 1.0);
-              float rx = (vHeadBindPos.x - uMouthCenter.x) / 0.0205;
-              if (abs(rx) < 1.05) {
-                float arch = max(0.0, 1.0 - rx * rx);
-                float halfH = (0.0007 + openAmt * 0.0064) * pow(arch, 0.72);
-                float dy = vHeadBindPos.y - (uMouthCenter.y - openAmt * 0.0014);
-                float normY = dy / max(halfH, 0.0005);
-                float slitDist = abs(normY);
-                float cornerFade = smoothstep(1.02, 0.86, abs(rx));
-                float insideMask = (1.0 - smoothstep(0.76, 1.02, slitDist)) * cornerFade * smoothstep(0.0, 0.14, openAmt);
-                float lipEdgeShadow = (1.0 - smoothstep(0.95, 1.32, slitDist)) * (1.0 - insideMask) * cornerFade * smoothstep(0.0, 0.18, openAmt);
-                if (lipEdgeShadow > 0.001) {
-                  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.72, lipEdgeShadow * 0.42);
-                }
-                if (insideMask > 0.001) {
-                  vec3 oralCol = vec3(0.050, 0.011, 0.015);
-                  // Upper teeth along top inner edge of lip parting
-                  float toothSep = 0.92 + 0.08 * cos(rx * 28.0);
-                  float teethMask = smoothstep(0.24, 0.48, normY) * (1.0 - smoothstep(0.78, 0.98, normY)) * (1.0 - smoothstep(0.60, 0.86, abs(rx)));
-                  // Natural pink tongue along lower center
-                  float tongueArch = -0.14 - 0.28 * (rx * rx);
-                  float tongueMask = (1.0 - smoothstep(0.0, 0.68, abs(rx))) * smoothstep(-0.96, -0.50, normY) * (1.0 - smoothstep(tongueArch - 0.18, tongueArch + 0.12, normY));
-                  oralCol = mix(oralCol, vec3(0.52, 0.18, 0.20), tongueMask * 0.82);
-                  oralCol = mix(oralCol, vec3(0.91, 0.88, 0.82) * toothSep, teethMask * 0.92 * smoothstep(0.08, 0.30, openAmt));
-                  diffuseColor.rgb = mix(diffuseColor.rgb, oralCol, insideMask * 0.96);
-                }
-              }
-            }`
-          );
-      };
-      srcMat.customProgramCacheKey = () => `hd_head_lipsync_v3_${options.id || 'default'}`;
-      srcMat.needsUpdate = true;
     }
 
     return true;
