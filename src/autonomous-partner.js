@@ -662,13 +662,44 @@ export function createAutonomousPartner() {
     };
   }
 
+  function placeAt(x, y, z, nextYaw = 0, nextMode = 'chill') {
+    releaseCarCleanly();
+    pos.set(x, Math.max(AI_EYE_HEIGHT, y), z);
+    yaw = nextYaw;
+    speed = 0;
+    mode = nextMode;
+    stateTimer = 7.0 + Math.random() * 5.0;
+    if (nextMode === 'chill') {
+      const chillClips = ['PhoneCall', 'MobileGame', 'StandingRelax', 'Pocket', 'WarmUp', 'Laugh'];
+      actionClip = chillClips[Math.floor(Math.random() * chillClips.length)];
+      actionTimer = stateTimer;
+      statusText = actionClip === 'PhoneCall'
+        ? 'On a phone call'
+        : actionClip === 'MobileGame'
+          ? 'Playing mobile game'
+          : 'Hanging out nearby';
+    } else {
+      actionClip = null;
+      actionTimer = 0;
+      targetSpot.set(x, AI_EYE_HEIGHT, z);
+      statusText = 'Roaming Khulna streets';
+    }
+    if (actor) {
+      actor.state.facingYaw = yaw;
+      actor.root.position.set(pos.x, pos.y - AI_EYE_HEIGHT, pos.z);
+      actor.root.rotation.y = yaw;
+    }
+  }
+
   return {
     setActor,
     relocateNearPlayer,
+    placeAt,
     onPlayerEnterCar,
     update,
     getHUDStatus,
     get position() { return pos; },
+    get yaw() { return yaw; },
     get mode() { return mode; },
     get activeCar() { return activeCar; },
   };
