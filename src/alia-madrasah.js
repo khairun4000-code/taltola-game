@@ -1798,14 +1798,68 @@ export function buildAliaMadrasahDistrict(parent, m) {
     box(staticG, [0.95, 0.52, 0.95], [fx, 0.36, fz], bank.moss);
     box(staticG, [0.62, 0.36, 0.62], [fx, 0.68, fz], isGold ? bank.flowerGold : bank.flowerRed);
   }
-  for (const [tx, tz, h] of [[234.5, 92.0, 6.6], [234.5, 124.0, 6.8], [192.8, 134.0, 6.2], [195.5, 152.0, 6.6]]) {
-    cylinder(staticG, 0.26, 0.38, h * 0.52, [tx, h * 0.26, tz], bank.teakWood, 8);
-    const crown1 = new THREE.Mesh(new THREE.DodecahedronGeometry(2.5, 1), bank.emeraldMat);
-    crown1.position.set(tx, h * 0.68, tz);
-    const crown2 = new THREE.Mesh(new THREE.DodecahedronGeometry(2.0, 1), bank.moss);
-    crown2.position.set(tx + 1.1, h * 0.60, tz - 0.8);
-    staticG.add(crown1, crown2);
-  }
+
+  // Real 3D Upgraded Krishnachura (Royal Poinciana / Delonix regia) Trees inside Khulna Alia Kamil Madrasah Campus
+  const krishnaLoader = new GLTFLoader();
+  krishnaLoader.load(
+    './assets/krishnachura_tree.glb',
+    (gltf) => {
+      const template = gltf.scene;
+      template.updateMatrixWorld(true);
+      const box3 = new THREE.Box3().setFromObject(template);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box3.getSize(size);
+      box3.getCenter(center);
+
+      template.traverse((child) => {
+        if (!child.isMesh) return;
+        child.castShadow = true;
+        child.receiveShadow = true;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        for (const mat of mats) {
+          if (!mat) continue;
+          if (child.name.includes('Foliage') || mat.transparent || mat.alphaMap || (mat.name && mat.name.includes('Canopy')) || (mat.name && mat.name.includes('Atlas'))) {
+            mat.transparent = false;
+            mat.alphaTest = 0.32;
+            mat.side = THREE.DoubleSide;
+            mat.depthWrite = true;
+            mat.roughness = 0.68;
+            mat.metalness = 0.0;
+          } else {
+            mat.roughness = 0.88;
+            mat.metalness = 0.0;
+          }
+          mat.needsUpdate = true;
+        }
+      });
+
+      const baseH = Math.max(0.1, size.y);
+      const placements = [
+        // 1) Main South Courtyard Lawn (between Main Portico Building, Driveway & Model Mosque)
+        { x: 204.5, z: 121.5, targetH: 8.8, rotY: Math.PI * 0.45 },
+        // 2) Main North Courtyard Lawn (between Main Portico Building, Driveway & 6-Story Building)
+        { x: 205.0, z: 88.5, targetH: 8.4, rotY: Math.PI * 0.52 },
+        // 3) Near Khulna District Model Mosque & Pond Ghat Plaza
+        { x: 196.2, z: 151.5, targetH: 8.2, rotY: Math.PI * 0.35 },
+        // 4) Inside East Gate South Courtyard Corner
+        { x: 223.5, z: 127.0, targetH: 7.8, rotY: Math.PI * 0.60 },
+      ];
+
+      for (const p of placements) {
+        const tree = template.clone(true);
+        const s = p.targetH / baseH;
+        tree.scale.setScalar(s);
+        tree.rotation.y = p.rotY;
+        tree.position.set(p.x, -box3.min.y * s, p.z);
+        dynamicG.add(tree);
+      }
+    },
+    undefined,
+    (err) => {
+      console.warn('Krishnachura tree GLB load warning:', err);
+    }
+  );
 
   for (const [bx, bz, ry] of [
     [204.0, 103.0, 0], [216.0, 103.0, 0], [204.0, 113.0, Math.PI], [216.0, 113.0, Math.PI],
@@ -1921,6 +1975,13 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
     // 4) Khulna District Model Mosque 3D Collisions (delegated to khulna-model-mosque.js)
     applyModelMosqueCollisions(pos, radius, footY);
+
+    // 5) Krishnachura Tree Trunks inside Campus
+    if (footY < 6.0) {
+      for (const [tx, tz] of [[204.5, 121.5], [205.0, 88.5], [196.2, 151.5], [223.5, 127.0]]) {
+        resolveCircleAABB(pos, radius, tx - 0.42, tx + 0.42, tz - 0.42, tz + 0.42);
+      }
+    }
   }
 
   function getNearbyPrompt(pos) {
