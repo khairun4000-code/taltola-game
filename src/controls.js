@@ -9,6 +9,8 @@ export class FirstPersonControls extends EventTarget {
     this.pointerLocked = false;
     this.fallback = false;
     this.dragging = false;
+    this.freeMoveHover = false;
+    this.hasLastPos = false;
     this.lastX = 0;
     this.lastY = 0;
     this.sensitivity = 1.0;
@@ -27,6 +29,13 @@ export class FirstPersonControls extends EventTarget {
     document.addEventListener('keydown', this.onKeyDown);
     domElement.addEventListener('pointerdown', this.onPointerDown);
     domElement.addEventListener('contextmenu', (event) => event.preventDefault());
+  }
+
+  setFreeMoveHover(enabled) {
+    this.freeMoveHover = Boolean(enabled);
+    if (!this.freeMoveHover) {
+      this.hasLastPos = false;
+    }
   }
 
   syncRotationFromCamera() {
@@ -59,6 +68,7 @@ export class FirstPersonControls extends EventTarget {
         await request;
         if (document.pointerLockElement === this.domElement) {
           this.fallback = false;
+          this.hasLastPos = false;
           this.activate(true);
         }
       }
@@ -76,6 +86,7 @@ export class FirstPersonControls extends EventTarget {
   enableFallback() {
     this.fallback = true;
     this.pointerLocked = false;
+    this.hasLastPos = false;
     this.activate(false);
     this.dispatchEvent(new Event('fallback'));
   }
@@ -85,11 +96,13 @@ export class FirstPersonControls extends EventTarget {
     this.isLocked = false;
     this.pointerLocked = false;
     this.dragging = false;
+    this.hasLastPos = false;
     if (document.pointerLockElement === this.domElement) document.exitPointerLock();
     this.dispatchEvent(new Event('unlock'));
   }
 
   onPointerLockChange() {
+    this.hasLastPos = false;
     if (document.pointerLockElement === this.domElement) {
       this.fallback = false;
       this.activate(true);
@@ -105,6 +118,7 @@ export class FirstPersonControls extends EventTarget {
     this.dragging = true;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
+    this.hasLastPos = true;
     this.domElement.setPointerCapture?.(event.pointerId);
   }
 
@@ -121,13 +135,28 @@ export class FirstPersonControls extends EventTarget {
   }
 
   onMouseMove(event) {
-    if (!this.isLocked || (this.fallback && !this.dragging)) return;
+    const hoverLook = this.fallback && this.freeMoveHover;
+    if (!this.isLocked || (this.fallback && !this.dragging && !hoverLook)) return;
     if (event.type === 'pointermove' && !this.fallback) return;
     if (event.type === 'mousemove' && this.fallback) return;
-    const movementX = this.fallback ? event.clientX - this.lastX : event.movementX;
-    const movementY = this.fallback ? event.clientY - this.lastY : event.movementY;
-    this.lastX = event.clientX;
-    this.lastY = event.clientY;
+    let movementX;
+    let movementY;
+    if (this.fallback) {
+      if (!this.hasLastPos && !this.dragging) {
+        this.lastX = event.clientX;
+        this.lastY = event.clientY;
+        this.hasLastPos = true;
+        return;
+      }
+      movementX = event.clientX - this.lastX;
+      movementY = event.clientY - this.lastY;
+      this.lastX = event.clientX;
+      this.lastY = event.clientY;
+      this.hasLastPos = true;
+    } else {
+      movementX = event.movementX;
+      movementY = event.movementY;
+    }
     if (Math.abs(movementX) > 260 || Math.abs(movementY) > 260) return;
     const scale = 0.0022 * this.sensitivity;
     this.euler.setFromQuaternion(this.camera.quaternion, 'YXZ');

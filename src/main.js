@@ -365,6 +365,40 @@ function syncFreeCamBokeh() {
   freeCamBokehEl.classList.toggle('active', zoomFrac > 0.05);
 }
 
+function syncCursorVisibility() {
+  const hasModalOpen = Boolean(
+    inStudio
+    || !started
+    || freeCursorMode
+    || carDoorCursorMode
+    || liftKeypadOpen
+    || khulnaMapUI?.isOpen
+    || gtaPhoneUI?.isOpen
+    || referenceModal?.open
+    || (pause && !pause.classList.contains('hidden'))
+  );
+  const hideCursor = !hasModalOpen;
+  document.body.classList.toggle('gta-cursor-hidden', hideCursor);
+  controls.setFreeMoveHover?.(hideCursor);
+}
+
+function toggleFreeCursorMode() {
+  if (inStudio || !started || khulnaMapUI?.isOpen || liftKeypadOpen || referenceModal?.open) return;
+  if (gtaPhoneUI?.isOpen) return;
+  if (freeCursorMode || carDoorCursorMode) {
+    freeCursorMode = false;
+    carDoorCursorMode = false;
+    controls.lock();
+    syncCursorVisibility();
+    gtaPhoneUI?.showToast?.('🎮 Free Move — Mouse Hidden ([?] to show cursor)');
+  } else {
+    freeCursorMode = true;
+    controls.unlock();
+    syncCursorVisibility();
+    gtaPhoneUI?.showToast?.('🖱️ Mouse Cursor ON — Press [?] to hide');
+  }
+}
+
 function toggleFreeCam() {
   if (inStudio || !started) return;
   freeCam.active = !freeCam.active;
@@ -382,6 +416,7 @@ function toggleFreeCam() {
     camera.updateProjectionMatrix();
     syncFreeCamBokeh();
   }
+  syncCursorVisibility();
 }
 
 function getLiveMapHeadingYaw() {
@@ -1146,6 +1181,7 @@ function setMode(studioMode) {
     setStudioCameraPreset('full');
     selectActiveCharacter(selectedCharacterId, { triggerGreeting: false, refreshCam: true });
     applyQuality(quality);
+    syncCursorVisibility();
   } else {
     scene.background.setHex(0xdccbb6);
     camera.fov = 60;
@@ -1177,6 +1213,7 @@ function setMode(studioMode) {
     isThirdPersonEyeFallback = false;
     smoothedCamDist = 1.95;
     beginWalking();
+    syncCursorVisibility();
     if (wasInStudio || Math.hypot(autonomousPartner.position.x, autonomousPartner.position.z) < 2.0) {
       autonomousPartner.relocateNearPlayer(playerPos, cars, environment, true);
     }
@@ -1523,16 +1560,19 @@ function openLiftKeypad() {
     controls.unlock();
   }
   syncLiftKeypadUI();
+  syncCursorVisibility();
 }
 
 function closeLiftKeypad(relock = true) {
   liftKeypadOpen = false;
   liftKeypad?.classList.add('hidden');
   if (relock && started && !inStudio && !referenceModal?.open) {
+    freeCursorMode = false;
     pause?.classList.add('hidden');
     walkHud?.classList.remove('hidden');
     controls.lock();
   }
+  syncCursorVisibility();
 }
 
 function selectLiftFloor(floorIndex) {
@@ -2227,9 +2267,7 @@ function updateVehicleTransition(delta) {
     car.setDriverDoorOpen?.(0);
     if (doneType === 'bike_mount' || doneType === 'rickshaw_mount_driver' || doneType === 'rickshaw_mount_passenger' || doneType === 'car_enter') {
       car.enterCar(doneSeat);
-      if (!car.state.isRickshaw && !car.state.isBike && controls.isLocked) {
-        controls.unlock();
-      }
+      syncCursorVisibility();
       syncCarHUD();
       updateHUDPrompt();
     } else {
@@ -2601,9 +2639,12 @@ async function initialize() {
     onSyncSettings: () => syncGtaPauseSettingsUI(),
     onResumeGame: () => {
       if (started && !inStudio) {
+        freeCursorMode = false;
+        carDoorCursorMode = false;
         pause?.classList.add('hidden');
         walkHud?.classList.remove('hidden');
         controls.lock();
+        syncCursorVisibility();
       }
     },
     onOpenChange: (isOpen) => {
@@ -2612,11 +2653,14 @@ async function initialize() {
         pause?.classList.add('hidden');
         syncGtaPauseSettingsUI();
       } else {
+        freeCursorMode = false;
+        carDoorCursorMode = false;
         pause?.classList.add('hidden');
         if (started && !inStudio) {
           walkHud?.classList.remove('hidden');
         }
       }
+      syncCursorVisibility();
     },
   });
   bindGtaPauseSettingsUI();
@@ -2627,7 +2671,13 @@ async function initialize() {
         freeCursorMode = true;
         if (controls.isLocked) controls.unlock();
         pause?.classList.add('hidden');
+      } else {
+        freeCursorMode = false;
+        if (started && !inStudio && !khulnaMapUI?.isOpen && !liftKeypadOpen && !referenceModal?.open) {
+          controls.lock();
+        }
       }
+      syncCursorVisibility();
     },
     onPhoneInteract: () => playerCharacter?.triggerPhoneTap?.(),
     getSpawnLimitInfo: () => ({
@@ -3087,31 +3137,32 @@ canvas.addEventListener('pointerdown', (event) => {
     closeLiftKeypad(true);
     return;
   }
-  if (event.button === 0) {
-    const now = performance.now();
-    const isDoubleClick = (now - lastCanvasClickTime) < 340;
-    lastCanvasClickTime = isDoubleClick ? 0 : now;
-
-    if (isDoubleClick) {
-      if (controls.pointerLocked) {
-        // Double-click while locked: free the mouse cursor without opening map/pause
-        freeCursorMode = true;
-        controls.unlock();
-      } else {
-        // Double-click while free: hide mouse cursor & unlock 360-deg free-look!
+  if (freeCursorMode || carDoorCursorMode) {
+    // Cursor is intentionally shown ([?] mode) so clicking UI buttons stays safe; double-click canvas or press [?] to hide cursor again
+    if (event.button === 0) {
+      const now = performance.now();
+      const isDoubleClick = (now - lastCanvasClickTime) < 340;
+      lastCanvasClickTime = isDoubleClick ? 0 : now;
+      if (isDoubleClick) {
         freeCursorMode = false;
         carDoorCursorMode = false;
         if (!started) beginWalking();
         else controls.lock();
+        syncCursorVisibility();
       }
-      return;
     }
-  }
-  if (freeCursorMode || !controls.pointerLocked) {
-    // Keep cursor free on single clicks until user double-clicks to lock into free-look
     return;
   }
-  if (event.button === 0 && controls.pointerLocked) {
+  // GTA V Free Move mode (mouse cursor hidden): single click engages full 360° pointer lock seamlessly
+  if (event.button === 0) {
+    if (!started) {
+      beginWalking();
+      return;
+    }
+    if (!controls.pointerLocked) {
+      controls.lock();
+      syncCursorVisibility();
+    }
     const activeCar = getDrivingCar();
     if (activeCar) {
       activeCar.playHorn();
@@ -3126,7 +3177,8 @@ canvas.addEventListener('pointerdown', (event) => {
 window.addEventListener('mousemove', (event) => {
   if (inStudio || !started) return;
   if (gtaCharacterSwitch?.handleMouseMove(event)) return;
-  if (!controls.pointerLocked) return;
+  const canFreeLook = controls.pointerLocked || (controls.isLocked && !freeCursorMode && !carDoorCursorMode);
+  if (!canFreeLook) return;
   if (Math.abs(event.movementX) > 260 || Math.abs(event.movementY) > 260) return;
   if (freeCam.active) {
     freeCam.euler.y -= event.movementX * 0.0024 * mouseSensitivity;
@@ -3442,10 +3494,13 @@ function warpToLandmark(lm, lockControls = false) {
 }
 
 function beginWalking() {
+  freeCursorMode = false;
+  carDoorCursorMode = false;
   if (!started) {
     const spawnId = spawnSelect?.value || 'taltola_house';
     const lm = khulnaMapUI?.landmarks?.find((l) => l.id === spawnId) || { id: 'taltola_house' };
     warpToLandmark(lm, true);
+    syncCursorVisibility();
     return;
   }
   liftKeypadOpen = false;
@@ -3454,6 +3509,7 @@ function beginWalking() {
   pause?.classList.add('hidden');
   walkHud?.classList.remove('hidden');
   controls.lock();
+  syncCursorVisibility();
 }
 
 enterStreetButton?.addEventListener('click', () => setMode(false));
@@ -3605,10 +3661,11 @@ controls.addEventListener('lock', () => {
   if (controls.pointerLocked) freeCursorMode = false;
   started = true;
   const lookKbd = document.querySelector('#look-control kbd');
-  if (lookKbd) lookKbd.textContent = '2x CLICK';
+  if (lookKbd) lookKbd.textContent = '?';
   intro.classList.add('hidden');
   pause.classList.add('hidden');
   walkHud.classList.remove('hidden');
+  syncCursorVisibility();
 });
 
 controls.addEventListener('unlock', () => {
@@ -3616,21 +3673,25 @@ controls.addEventListener('unlock', () => {
   if (liftKeypadOpen || khulnaMapUI?.isOpen || gtaPhoneUI?.isOpen || getDrivingCar() || vehicleTransition.active || carDoorCursorMode || freeCursorMode) {
     pause.classList.add('hidden');
     walkHud.classList.remove('hidden');
+    syncCursorVisibility();
     return;
   }
   if (!inStudio && started && !referenceModal.open) {
     // GTA-style [ESC]: unlocking pointer opens the Khulna City Map directly instead of a pause screen!
     pause.classList.add('hidden');
     khulnaMapUI?.openMap(getLiveMapPos(), getLiveMapHeadingYaw());
+    syncCursorVisibility();
     return;
   }
   walkHud.classList.add('hidden');
+  syncCursorVisibility();
 });
 
 document.querySelector('#reference-button')?.addEventListener('click', () => {
   if (controls.isLocked) controls.unlock();
   pause.classList.add('hidden');
   referenceModal.showModal();
+  syncCursorVisibility();
 });
 document.querySelector('#close-reference').addEventListener('click', () => referenceModal.close());
 referenceModal.addEventListener('click', (event) => {
@@ -3638,6 +3699,7 @@ referenceModal.addEventListener('click', (event) => {
 });
 referenceModal.addEventListener('close', () => {
   if (!inStudio && started) pause.classList.remove('hidden');
+  syncCursorVisibility();
 });
 
 const EMOTE_KEY_MAP = {
@@ -3730,6 +3792,15 @@ window.addEventListener('keydown', (event) => {
   }
 
   if (!started) return;
+
+  // [?] / [/] GTA V-style Mouse Cursor Toggle (hidden by default in Free Move)
+  const activeTag = document.activeElement?.tagName;
+  const isTypingField = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
+  if (!isTypingField && !event.repeat && (event.code === 'Slash' || event.key === '?' || event.key === '/')) {
+    event.preventDefault();
+    toggleFreeCursorMode();
+    return;
+  }
 
   // GTA V-style Character Switch Wheel ([Hold Ctrl] + Mouse / Arrows / 1-2)
   if (!freeCam.active && gtaCharacterSwitch?.handleKeyDown(event)) {
@@ -3927,6 +3998,7 @@ window.addEventListener('keydown', (event) => {
         controls.lock();
       }
       syncCarDoorUI();
+      syncCursorVisibility();
       return;
     }
   }
