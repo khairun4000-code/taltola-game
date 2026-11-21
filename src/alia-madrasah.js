@@ -9,6 +9,7 @@ import {
   getModelMosquePrompt,
   toggleModelMosqueDoor,
   updateModelMosque,
+  setModelMosqueNightFactor,
   getModelMosqueZoneName,
   isInsideModelMosque,
   findNearestModelMosqueSeat,
@@ -1883,6 +1884,8 @@ export function buildAliaMadrasahDistrict(parent, m) {
     return false;
   }
 
+  let lastUpdateTime = 0;
+
   return {
     root,
     getGroundHeight,
@@ -1898,6 +1901,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
         const item = bank.emissiveList[i];
         item.mat.emissiveIntensity = item.day + (item.night - item.day) * nf;
       }
+      setModelMosqueNightFactor(nf);
     },
     syncVisibility(playerPos) {
       if (!playerPos) return;
@@ -1906,16 +1910,20 @@ export function buildAliaMadrasahDistrict(parent, m) {
       const want = dx * dx + dz * dz <= maxDistSq;
       if (root.visible !== want) root.visible = want;
     },
-    update(time, playerPos = null, dt = 0.016) {
+    update(time, playerPos = null, dt = null) {
       if (playerPos) this.syncVisibility(playerPos);
       if (!root.visible) return;
+      const stepDt = typeof dt === 'number'
+        ? dt
+        : (lastUpdateTime > 0 ? Math.min(0.05, Math.max(0.001, time - lastUpdateTime)) : 0.016);
+      lastUpdateTime = time;
       flagPivot.rotation.y = Math.sin(time * 2.2) * 0.18 + Math.cos(time * 1.1) * 0.08;
       if (Math.abs(gateRatio - gateTarget) > 0.002) {
-        gateRatio += (gateTarget - gateRatio) * Math.min(1, dt * 4.5);
+        gateRatio += (gateTarget - gateRatio) * Math.min(1, stepDt * 4.5);
         mainGate.leftLeaf.rotation.y = gateRatio * (Math.PI * 0.46);
         mainGate.rightLeaf.rotation.y = -gateRatio * (Math.PI * 0.46);
       }
-      updateModelMosque(dt);
+      updateModelMosque(stepDt, playerPos);
     },
   };
 }
