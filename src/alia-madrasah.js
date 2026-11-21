@@ -260,8 +260,8 @@ function makeChalkboardTexture() {
 
   ctx.fillStyle = '#fef08a';
   ctx.textAlign = 'center';
-  ctx.font = 'bold 40px "Noto Sans Bengali", "Segoe UI", sans-serif';
-  ctx.fillText('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ', W * 0.5, 62);
+  ctx.font = 'bold 34px "Noto Sans Bengali", "Segoe UI", sans-serif';
+  ctx.fillText('বিসমিল্লাহির রাহমানির রাহিম', W * 0.5, 62);
 
   ctx.fillStyle = '#f8fafc';
   ctx.font = 'bold 30px "Noto Sans Bengali", "Segoe UI", sans-serif';
@@ -1337,7 +1337,7 @@ function buildMainPorticoBuilding(staticG, dynamicG, bank) {
   dynamicG.add(fascia1Mesh);
 
   const fascia2Tex = makeCurvedFasciaTexture({
-    line1: 'المدرسة العالية كامل خولنا · খুলনা আলিয়া কামিল মাদ্রাসা',
+    line1: 'খুলনা আলিয়া কামিল মাদ্রাসা (অনার্স)',
     line2: 'KHULNA ALIA KAMIL MADRASAH · ৮৮ খানজাহান আলী রোড, খুলনা',
   });
   const fascia2Mat = new THREE.MeshStandardMaterial({ map: fascia2Tex, emissive: 0xffffff, emissiveMap: fascia2Tex, emissiveIntensity: 0.22, roughness: 0.42, metalness: 0.08 });
@@ -1345,18 +1345,6 @@ function buildMainPorticoBuilding(staticG, dynamicG, bank) {
   const fascia2Mesh = new THREE.Mesh(new THREE.CylinderGeometry(5.42, 5.42, 1.28, 32, 1, true, arcStart, arcSpan), fascia2Mat);
   fascia2Mesh.position.set(portX, 8.05, mainZ);
   dynamicG.add(fascia2Mesh);
-
-  // Foyer Arabic Plaque
-  addSignBox(
-    dynamicG,
-    bank,
-    { title: 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ', subtitle: 'স্বাগতম · খুলনা আলিয়া কামিল মাদ্রাসা, খুলনা', bg: '#064e3b', fg: '#fde047', accent: '#ffffff', border: '#fde047' },
-    [186.85, 3.05, mainZ],
-    Math.PI * 0.5,
-    3.4,
-    0.88,
-    true
-  );
 }
 
 /* ============================================================================
@@ -1961,8 +1949,8 @@ export function buildAliaMadrasahDistrict(parent, m) {
       }
     }
 
-    // 2) Khulna District Model Mosque 3D Grand Staircase & Plaza (delegated to khulna-model-mosque.js)
-    const mosqueY = getModelMosqueGroundHeight(pos);
+    // 2) Khulna District Model Mosque 3-Level Walkable Interior & Grand Staircase
+    const mosqueY = getModelMosqueGroundHeight(pos, grounded, verticalVelocity);
     if (mosqueY > 0) return mosqueY;
     return 0.0;
   }

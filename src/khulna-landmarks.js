@@ -691,7 +691,7 @@ function buildAliaMadrasahCampus(staticG, dynamicG, lm, m) {
   addSignBoard(
     dynamicG,
     {
-      title: 'المدرسة العالية خولنا · খুলনা আলিয়া মাদ্রাসা',
+      title: 'খুলনা আলিয়া কামিল মাদ্রাসা',
       subtitle: 'KHULNA ALIA MADRASAH · MAIN ACADEMIC BHABAN',
       bg: '#efe3cd',
       fg: '#1e293b',
