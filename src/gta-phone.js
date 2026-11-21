@@ -31,6 +31,8 @@ export function createGTAPhoneUI({
   onSetExpression,
   onCaptureSelfieDataUrl,
   getLandmarks,
+  getFunnyVoices,
+  onPlayFunnyVoice,
 }) {
   const phoneEl = document.querySelector('#gta-phone');
   const toastEl = document.querySelector('#gta-cheat-toast');
@@ -42,6 +44,9 @@ export function createGTAPhoneUI({
   const dialScreen = document.querySelector('#phone-dial');
   const teleportScreen = document.querySelector('#phone-teleport');
   const selfieScreen = document.querySelector('#phone-selfie');
+  const funnyScreen = document.querySelector('#phone-funny');
+  const funnyListEl = document.querySelector('#phone-funny-list');
+  const funnyStatusEl = document.querySelector('#phone-funny-status');
   const dialDisplay = document.querySelector('#phone-dial-display');
   const dialStatus = document.querySelector('#phone-dial-status');
   const cheatListEl = document.querySelector('#phone-cheat-list');
@@ -201,6 +206,31 @@ export function createGTAPhoneUI({
     }
   }
 
+  function populateFunnyList() {
+    if (!funnyListEl) return;
+    const clips = getFunnyVoices?.() || [];
+    funnyListEl.innerHTML = '';
+    for (const clip of clips) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'phone-funny-row';
+      btn.innerHTML = `<strong>${clip.title}</strong><small>${clip.subtitle || 'Huzzatullah Voice'}</small>`;
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        onPhoneInteract?.();
+        if (funnyStatusEl) funnyStatusEl.textContent = `🔊 বাজছে: ${clip.title}`;
+        const ok = await onPlayFunnyVoice?.(clip);
+        if (ok) {
+          showToast(`😂 হুজ্জাতুল্লাহ: ${clip.title}`);
+        } else {
+          if (funnyStatusEl) funnyStatusEl.textContent = '⚠️ public/assets/audio/ ফোল্ডারে MP3 ফাইল রাখুন';
+          showToast('⚠️ public/assets/audio/ ফোল্ডারে MP3 ফাইল পাওয়া যায়নি');
+        }
+      });
+      funnyListEl.appendChild(btn);
+    }
+  }
+
   function showApp(appName) {
     if (activeApp === 'selfie' && appName !== 'selfie') {
       onExitSelfieMode?.();
@@ -210,10 +240,13 @@ export function createGTAPhoneUI({
     dialScreen?.classList.toggle('hidden', appName !== 'dial');
     teleportScreen?.classList.toggle('hidden', appName !== 'teleport');
     selfieScreen?.classList.toggle('hidden', appName !== 'selfie');
+    funnyScreen?.classList.toggle('hidden', appName !== 'funny');
     backBtn?.classList.toggle('hidden', appName === 'home');
 
     if (appName === 'teleport') {
       populateTeleportList();
+    } else if (appName === 'funny') {
+      populateFunnyList();
     } else if (appName === 'selfie') {
       onEnterSelfieMode?.();
     } else if (appName === 'dial') {

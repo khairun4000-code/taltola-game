@@ -14,6 +14,12 @@ button, select { font: inherit; }
 button { color: inherit; }
 button:focus-visible, select:focus-visible { outline: 2px solid var(--lime); outline-offset: 4px; }
 #scene { position: fixed; inset: 0; display: block; width: 100%; height: 100%; }
+body.gta-cursor-hidden,
+body.gta-cursor-hidden #scene,
+body.gta-cursor-hidden #walk-hud,
+body.gta-cursor-hidden #walk-hud * {
+  cursor: none !important;
+}
 .hidden { display: none !important; }
 .vignette { position: fixed; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(9, 17, 14, .7) 0%, rgba(9, 17, 14, .2) 42%, transparent 70%), linear-gradient(0deg, rgba(8, 14, 12, .32), transparent 35%); }
 
@@ -1310,6 +1316,42 @@ body.freecam-active #gta-cheat-toast {
 .tile-dial .tile-icon { background: linear-gradient(145deg, #22c55e, #15803d); }
 .tile-tp .tile-icon { background: linear-gradient(145deg, #38bdf8, #1d4ed8); }
 .tile-selfie .tile-icon { background: linear-gradient(145deg, #f472b6, #9333ea); }
+.tile-funny .tile-icon { background: linear-gradient(145deg, #f59e0b, #ef4444); }
+.phone-funny-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.phone-funny-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(251, 191, 36, 0.34);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(239, 68, 68, 0.12));
+  color: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+.phone-funny-row:hover {
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.72);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.26), rgba(239, 68, 68, 0.20));
+}
+.phone-funny-row strong {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #fef3c7;
+}
+.phone-funny-row small {
+  font-size: 10.5px;
+  color: #cbd5e1;
+}
 .phone-app-tile b { font-size: 10.5px; }
 .phone-app-tile small { font-size: 8.5px; color: #94a3b8; }
 .phone-footer-tip {

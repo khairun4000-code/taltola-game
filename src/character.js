@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { VOICE_CLIPS } from './voice-clips.js';
 
 const MODEL_URL = './assets/player-bangladeshi.glb?v=v8clean';
 const DRACO_PATH = './draco/gltf/';
@@ -205,6 +206,8 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     expression: 'normal',
     talking: false,
     micActive: false,
+    voicePlaying: false,
+    voiceExpression: null,
     speechLevel: 0,
     attackTimer: 0,
     attackType: 0,
@@ -358,6 +361,112 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     } catch {
       return false;
     }
+  }
+
+  let voiceAudioEl = null;
+  let voiceAudioConnected = false;
+  let voiceOnEndCb = null;
+  let voicePlayToken = 0;
+  const missingVoiceUrls = new Set();
+  let fightVoiceCooldownUntil = 0;
+
+  function ensureVoiceAudioElement() {
+    if (!voiceAudioEl) {
+      voiceAudioEl = new Audio();
+      voiceAudioEl.crossOrigin = 'anonymous';
+      voiceAudioEl.preload = 'auto';
+      voiceAudioEl.addEventListener('ended', () => {
+        state.voicePlaying = false;
+        state.voiceExpression = null;
+        state.speechLevel = 0;
+        const cb = voiceOnEndCb;
+        voiceOnEndCb = null;
+        cb?.();
+      });
+      voiceAudioEl.addEventListener('pause', () => {
+        if (voiceAudioEl && (voiceAudioEl.ended || voiceAudioEl.currentTime === 0)) {
+          state.voicePlaying = false;
+          state.voiceExpression = null;
+        }
+      });
+    }
+    if (!voiceAudioConnected) {
+      const analyser = ensureAudioAnalyser();
+      if (analyser) {
+        try {
+          externalAudioSource = audioCtx.createMediaElementSource(voiceAudioEl);
+          externalAudioSource.connect(analyser);
+          analyser.connect(audioCtx.destination);
+          voiceAudioConnected = true;
+        } catch {}
+      }
+    }
+    return voiceAudioEl;
+  }
+
+  function stopVoiceClip() {
+    voicePlayToken++;
+    if (voiceAudioEl) {
+      try {
+        voiceAudioEl.pause();
+        voiceAudioEl.currentTime = 0;
+      } catch {}
+    }
+    state.voicePlaying = false;
+    state.voiceExpression = null;
+    state.speechLevel = 0;
+    voiceOnEndCb = null;
+  }
+
+  async function playVoiceClip(urls, { expression = null, volume = 1.0, onEnd = null } = {}) {
+    const candidates = (Array.isArray(urls) ? urls : [urls]).filter((u) => u && !missingVoiceUrls.has(u));
+    if (!candidates.length) {
+      onEnd?.();
+      return false;
+    }
+    const token = ++voicePlayToken;
+    const el = ensureVoiceAudioElement();
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume().catch(() => {});
+    }
+    el.volume = THREE.MathUtils.clamp(volume, 0, 1);
+    voiceOnEndCb = onEnd || null;
+
+    for (const url of candidates) {
+      if (token !== voicePlayToken) return false;
+      try {
+        const headRes = await fetch(url, { method: 'HEAD' });
+        if (!headRes.ok) {
+          missingVoiceUrls.add(url);
+          continue;
+        }
+      } catch {
+        continue;
+      }
+      if (token !== voicePlayToken) return false;
+      try {
+        el.pause();
+        el.src = url;
+        el.currentTime = 0;
+        state.voicePlaying = true;
+        state.voiceExpression = expression || null;
+        await el.play();
+        return true;
+      } catch {
+        state.voicePlaying = false;
+        state.voiceExpression = null;
+      }
+    }
+    state.voicePlaying = false;
+    state.voiceExpression = null;
+    const cb = voiceOnEndCb;
+    voiceOnEndCb = null;
+    cb?.();
+    return false;
+  }
+
+  function isVoicePlaying() {
+    return Boolean(state.voicePlaying);
   }
 
   function setTalking(enabled) {
@@ -664,6 +773,12 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       const clipName = nextKind === 3 ? 'Kick2' : nextKind === 2 ? 'Kick' : nextKind === 1 ? 'PunchR' : 'PunchL';
       playClip(clipName, { fade: 0.08, loopOnce: true, restart: true });
     }
+    const nowMs = performance.now();
+    if (options.id === 'kurta_blue' && !state.voicePlaying && nowMs >= fightVoiceCooldownUntil && VOICE_CLIPS.huzzatullahFight?.length) {
+      fightVoiceCooldownUntil = nowMs + 2800;
+      const pick = VOICE_CLIPS.huzzatullahFight[nextKind % VOICE_CLIPS.huzzatullahFight.length];
+      playVoiceClip(pick, { expression: 'angry', volume: 1.0 });
+    }
     return nextKind;
   }
 
@@ -684,6 +799,11 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       const clipName = EMOTE_CLIP_MAP[emoteName];
       const oneShot = ONCE_CLIPS.has(clipName) && emoteName !== 'combo';
       playClip(clipName, { fade: 0.14, loopOnce: oneShot, restart: true });
+    }
+    const emoteVoices = VOICE_CLIPS.emotes?.[emoteName];
+    if (emoteVoices?.length && !state.voicePlaying) {
+      const expr = emoteName === 'laugh' || emoteName === 'wave' ? 'happy' : 'normal';
+      playVoiceClip(emoteVoices, { expression: expr, volume: 0.95 });
     }
     return state.emote;
   }
@@ -737,9 +857,9 @@ export function createPlayerCharacter(scene, manager, options = {}) {
 
     let speechStress = 0;
 
-    // 4-Band Formant FFT Live Mic / Audio Lip-Sync -> Full Apple ARKit Visemes!
+    // 4-Band Formant FFT Live Mic / ElevenLabs Voice Audio Lip-Sync -> Full Apple ARKit Visemes!
     let audioDriven = false;
-    if ((state.micActive || externalAudioSource) && audioAnalyser && audioFreqData) {
+    if ((state.micActive || state.voicePlaying || externalAudioSource) && audioAnalyser && audioFreqData) {
       audioAnalyser.getByteFrequencyData(audioFreqData);
       let bLow = 0, bMid1 = 0, bMid2 = 0, bHigh = 0;
       for (let i = 1; i < 6; i++) bLow += audioFreqData[i];       // ~170-900 Hz (O/U + fundamental)
@@ -776,18 +896,50 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         m.mouthShrugLower = (roundO * 0.25 + fric * 0.22) * norm;
         m.mouthSmileLeft = 0.08 + wideE * norm * 0.22;
         m.mouthSmileRight = 0.06 + wideE * norm * 0.20;
-        m.browInnerUp = THREE.MathUtils.clamp((norm - 0.32) * 0.65, 0, 0.44);
-        m.browOuterUpLeft = m.browInnerUp * 0.45;
-        m.browOuterUpRight = m.browInnerUp * 0.45;
-        m.cheekSquintLeft = norm * 0.16;
-        m.cheekSquintRight = norm * 0.16;
+        const activeVoiceExpr = state.voiceExpression || state.expression;
+        if (activeVoiceExpr === 'angry') {
+          m.jawOpen = Math.min(0.76, (m.jawOpen || 0) * 1.28);
+          m.browDownLeft = 0.78;
+          m.browDownRight = 0.78;
+          m.noseSneerLeft = 0.42;
+          m.noseSneerRight = 0.42;
+          m.mouthFrownLeft = 0.34;
+          m.mouthFrownRight = 0.34;
+          m.eyeSquintLeft = 0.28;
+          m.eyeSquintRight = 0.28;
+          m.mouthSmileLeft = 0;
+          m.mouthSmileRight = 0;
+        } else if (activeVoiceExpr === 'happy') {
+          m.jawOpen = Math.min(0.72, (m.jawOpen || 0) * 1.22);
+          m.mouthSmileLeft = 0.80;
+          m.mouthSmileRight = 0.78;
+          m.cheekSquintLeft = 0.52;
+          m.cheekSquintRight = 0.50;
+          m.eyeSquintLeft = 0.30;
+          m.eyeSquintRight = 0.28;
+          m.browInnerUp = THREE.MathUtils.clamp(norm * 0.45, 0, 0.36);
+        } else {
+          m.browInnerUp = THREE.MathUtils.clamp((norm - 0.32) * 0.65, 0, 0.44);
+          m.browOuterUpLeft = m.browInnerUp * 0.45;
+          m.browOuterUpRight = m.browInnerUp * 0.45;
+          m.cheekSquintLeft = norm * 0.16;
+          m.cheekSquintRight = norm * 0.16;
+        }
         speechStress = norm;
-      } else if (state.micActive) {
+      } else if (state.micActive || state.voicePlaying) {
         audioDriven = true;
         if (prevAudioEnergy > 0.07) {
           m.mouthClose = 0.48;
           m.mouthPressLeft = 0.56;
           m.mouthPressRight = 0.56;
+        }
+        if ((state.voiceExpression || state.expression) === 'angry') {
+          m.browDownLeft = 0.72;
+          m.browDownRight = 0.72;
+          m.noseSneerLeft = 0.32;
+          m.noseSneerRight = 0.32;
+          m.mouthFrownLeft = 0.28;
+          m.mouthFrownRight = 0.28;
         }
       }
       prevAudioEnergy = energy;
@@ -863,6 +1015,15 @@ export function createPlayerCharacter(scene, manager, options = {}) {
           m.mouthUpperUpLeft = 0.14;
           m.mouthUpperUpRight = 0.14;
         }
+      } else if ((state.voiceExpression || state.expression) === 'angry') {
+        m.browDownLeft = 0.76;
+        m.browDownRight = 0.76;
+        m.noseSneerLeft = 0.38;
+        m.noseSneerRight = 0.38;
+        m.mouthFrownLeft = 0.36;
+        m.mouthFrownRight = 0.36;
+        m.eyeSquintLeft = 0.26;
+        m.eyeSquintRight = 0.26;
       } else if (state.expression === 'happy') {
         m.mouthSmileLeft = 0.74;
         m.mouthSmileRight = 0.70;
@@ -1746,6 +1907,9 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     setExpression,
     setTalking,
     toggleTalking,
+    playVoiceClip,
+    stopVoiceClip,
+    isVoicePlaying,
     startMicLipSync,
     stopMicLipSync,
     toggleMicLipSync,

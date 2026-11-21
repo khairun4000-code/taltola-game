@@ -12,6 +12,7 @@ import { createAutonomousPartner } from './autonomous-partner.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { createKhulnaMapUI } from './khulna-map-ui.js';
 import { createGTAPhoneUI } from './gta-phone.js';
+import { VOICE_CLIPS } from './voice-clips.js';
 import { createGTACharacterSwitch } from './gta-character-switch.js';
 import { createAtmosphericSkyAndPMREM, TIME_OF_DAY_PRESETS } from './aaa-shaders.js';
 import { CAR_FLEET_CONFIGS, createDrivableCar, createDrivableCarFleet } from './car.js';
@@ -2731,6 +2732,17 @@ async function initialize() {
       return canvas.toDataURL('image/png');
     },
     getLandmarks: () => khulnaMapUI?.landmarks || [],
+    getFunnyVoices: () => VOICE_CLIPS.huzzatullahFunny || [],
+    onPlayFunnyVoice: async (clip) => {
+      const huzzatullah = characterActors.kurta_blue || playerCharacter;
+      if (!huzzatullah || !clip?.urls) return false;
+      huzzatullah.setExpression?.(clip.expression || 'happy');
+      return await huzzatullah.playVoiceClip?.(clip.urls, {
+        expression: clip.expression || 'happy',
+        volume: 1.0,
+        onEnd: () => huzzatullah.setExpression?.('normal'),
+      });
+    },
   });
   gtaCharacterSwitch = createGTACharacterSwitch({
     camera,

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
+import { VOICE_CLIPS } from './voice-clips.js';
 
 const AI_EYE_HEIGHT = 1.68;
 const STATIONARY_CLIPS = ['StandingRelax', 'PhoneCall', 'MobileGame', 'Pocket', 'WarmUp', 'Laugh'];
@@ -7,8 +8,9 @@ const STATIONARY_CLIPS = ['StandingRelax', 'PhoneCall', 'MobileGame', 'Pocket', 
 /**
  * Keeps the inactive character (e.g. Huzzatullah or Sabit) calmly stationed in ONE place
  * with natural stationary idle/phone/relax animations (NO random wandering or car stealing).
- * When the player triggers GTA V Character Switch, the inactive character stays right at their
- * spot performing a live activity animation during the sky-zoom-in transition!
+ * When Sabit punches, kicks, or crowds/bothers Huzzatullah while he is standing calmly,
+ * Huzzatullah turns to face Sabit, puts on an angry expression, and speaks his ElevenLabs
+ * voice line with real-time ARKit mouth lip-sync!
  */
 export function createAutonomousPartner() {
   let actor = null;
@@ -19,10 +21,17 @@ export function createAutonomousPartner() {
   let yaw = Math.PI * 0.15;
   let actionClip = 'StandingRelax';
   let actionTimer = 9.0;
-  let statusText = 'Standing nearby';
+  let statusText = 'এক জায়গায় দাঁড়িয়ে আছে';
+
+  // Annoyance & Angry Voice Reaction state
+  let annoyCooldown = 0;
+  let crowdTimer = 0;
+  let angryReactTimer = 0;
+  let angryClipName = 'Angry1';
 
   function updateStatusLabel(clip) {
-    if (clip === 'PhoneCall') statusText = 'ফোনে কথা বলছে';
+    if (angryReactTimer > 0) statusText = 'রেগে বকা দিচ্ছে!';
+    else if (clip === 'PhoneCall') statusText = 'ফোনে কথা বলছে';
     else if (clip === 'MobileGame') statusText = 'মোবাইলে ব্যস্ত';
     else if (clip === 'WarmUp') statusText = 'ওয়ার্ম-আপ করছে';
     else if (clip === 'Pocket') statusText = 'দাঁড়িয়ে আশপাশ দেখছে';
@@ -34,6 +43,8 @@ export function createAutonomousPartner() {
   function setActor(nextActor, nextProfile) {
     actor = nextActor;
     profile = nextProfile || profile;
+    angryReactTimer = 0;
+    crowdTimer = 0;
     if (actor) {
       actor.state.cameraMode = 'back';
       actor.state.thirdPerson = true;
@@ -47,13 +58,14 @@ export function createAutonomousPartner() {
   }
 
   function relocateNearPlayer(playerPos, _cars, _envRef, _preferCar = false) {
-    // Only position cleanly once on initial game start — never wanders afterwards!
     const sx = (playerPos?.x ?? TALTOLA_HOUSE_OFFSET.x) - 2.6;
     const sz = (playerPos?.z ?? TALTOLA_HOUSE_OFFSET.z) + 5.8;
     pos.set(sx, playerPos?.y ?? AI_EYE_HEIGHT, sz);
     yaw = playerPos ? Math.atan2(playerPos.x - sx, playerPos.z - sz) : 0;
     actionClip = 'StandingRelax';
     actionTimer = 10.0;
+    angryReactTimer = 0;
+    crowdTimer = 0;
     updateStatusLabel(actionClip);
     if (actor?.root) {
       actor.state.facingYaw = yaw;
@@ -67,6 +79,8 @@ export function createAutonomousPartner() {
     yaw = nextYaw;
     actionClip = STATIONARY_CLIPS[Math.floor(Math.random() * STATIONARY_CLIPS.length)];
     actionTimer = 10.0 + Math.random() * 6.0;
+    angryReactTimer = 0;
+    crowdTimer = 0;
     updateStatusLabel(actionClip);
     if (actor?.root) {
       actor.state.facingYaw = yaw;
@@ -79,23 +93,86 @@ export function createAutonomousPartner() {
     // Partner stays stationary at their spot; does not react or chase cars
   }
 
+  function triggerAnnoyedReaction(playerPos) {
+    if (!actor || annoyCooldown > 0 || actor.isVoicePlaying?.()) return;
+    // Only Huzzatullah (kurta_blue) plays this specific angry reaction voice line when bothered by Sabit
+    const isHuzzatullah = profile?.id === 'kurta_blue';
+    if (!isHuzzatullah) return;
+
+    annoyCooldown = 6.5;
+    angryReactTimer = 5.0;
+    crowdTimer = 0;
+    angryClipName = Math.random() < 0.5 ? 'Angry1' : 'Angry2';
+    if (playerPos) {
+      yaw = Math.atan2(playerPos.x - pos.x, playerPos.z - pos.z);
+    }
+    actor.setPhoneInHand?.(false);
+    actor.setExpression?.('angry');
+    updateStatusLabel(angryClipName);
+
+    actor.playVoiceClip?.(VOICE_CLIPS.huzzatullahAnnoyed, {
+      expression: 'angry',
+      volume: 1.0,
+      onEnd: () => {
+        angryReactTimer = Math.min(angryReactTimer, 0.35);
+        actor?.setExpression?.('normal');
+      },
+    });
+  }
+
   function update(delta, ctx) {
     if (!actor || !actor.state.loaded) return;
-    const { playerPos, inStudio, quality } = ctx;
+    const { playerPos, playerCharacter, inStudio, quality } = ctx;
     if (inStudio) return;
 
     const dt = Math.min(delta, 0.09);
-    actionTimer -= dt;
-    if (actionTimer <= 0) {
-      actionClip = STATIONARY_CLIPS[Math.floor(Math.random() * STATIONARY_CLIPS.length)];
-      actionTimer = 9.0 + Math.random() * 7.0;
-      updateStatusLabel(actionClip);
-    }
+    if (annoyCooldown > 0) annoyCooldown = Math.max(0, annoyCooldown - dt);
 
     const distToPlayer = Math.hypot((playerPos?.x ?? 0) - pos.x, (playerPos?.z ?? 0) - pos.z);
+
+    // Detect if Sabit is punching/kicking nearby OR persistently crowding/bothering Huzzatullah
+    const playerAttacking = Boolean(
+      playerCharacter?.state?.attackTimer > 0
+      || playerCharacter?.state?.emote === 'kick'
+      || playerCharacter?.state?.emote === 'kick2'
+      || playerCharacter?.state?.emote === 'combo'
+    );
+    if (playerAttacking && distToPlayer < 3.6) {
+      triggerAnnoyedReaction(playerPos);
+    } else if (distToPlayer < 1.18) {
+      crowdTimer += dt;
+      if (crowdTimer >= 0.75) {
+        triggerAnnoyedReaction(playerPos);
+      }
+    } else {
+      crowdTimer = Math.max(0, crowdTimer - dt * 1.5);
+    }
+
+    if (angryReactTimer > 0) {
+      angryReactTimer = Math.max(0, angryReactTimer - dt);
+      if (playerPos) {
+        const targetYaw = Math.atan2(playerPos.x - pos.x, playerPos.z - pos.z);
+        const diff = Math.atan2(Math.sin(targetYaw - yaw), Math.cos(targetYaw - yaw));
+        yaw += diff * Math.min(1, dt * 8.0);
+      }
+      if (angryReactTimer <= 0 && !actor.isVoicePlaying?.()) {
+        actor.setExpression?.('normal');
+        updateStatusLabel(actionClip);
+      }
+    } else {
+      actionTimer -= dt;
+      if (actionTimer <= 0) {
+        actionClip = STATIONARY_CLIPS[Math.floor(Math.random() * STATIONARY_CLIPS.length)];
+        actionTimer = 9.0 + Math.random() * 7.0;
+        updateStatusLabel(actionClip);
+      }
+    }
+
     if (distToPlayer < 120 || quality !== 'low') {
+      const isReacting = angryReactTimer > 0 || actor.isVoicePlaying?.();
+      const activeClipNow = isReacting ? angryClipName : actionClip;
       actor.state.facingYaw = yaw;
-      actor.setPhoneInHand?.(actionClip === 'PhoneCall' || actionClip === 'MobileGame');
+      actor.setPhoneInHand?.(!isReacting && (actionClip === 'PhoneCall' || actionClip === 'MobileGame'));
       actor.update(dt, {
         position: pos,
         yaw: yaw + Math.PI,
@@ -107,7 +184,7 @@ export function createAutonomousPartner() {
         moveDirZ: 0,
         inStudio: false,
         hideMesh: false,
-        customClip: { name: actionClip, loopOnce: false, timeScale: 1.0 },
+        customClip: { name: activeClipNow, loopOnce: false, timeScale: 1.0 },
       });
     } else if (actor.root) {
       actor.root.position.set(pos.x, pos.y - AI_EYE_HEIGHT, pos.z);
@@ -133,6 +210,7 @@ export function createAutonomousPartner() {
     relocateNearPlayer,
     placeAt,
     onPlayerEnterCar,
+    triggerAnnoyedReaction,
     update,
     getHUDStatus,
     get position() { return pos; },
