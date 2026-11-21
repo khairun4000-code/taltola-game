@@ -62,9 +62,7 @@ export function createHealthSystem({ onToast, onWastedRespawn } = {}) {
       hudValEl.textContent = unlimitedHealth ? '∞ 100' : `${roundedHp}/100`;
     }
     if (hudTagEl) {
-      hudTagEl.textContent = unlimitedHealth
-        ? '❤️ HEALTH · GOD'
-        : (isRegening ? '❤️ RECOVERING+' : '❤️ HEALTH');
+      hudTagEl.textContent = isRegening ? '❤️ RECOVERING+' : '❤️ HEALTH';
     }
     if (hudBarEl) {
       hudBarEl.classList.toggle('is-unlimited', unlimitedHealth);
