@@ -607,7 +607,7 @@ function pointInFlatPoly(x, z, flat) {
   return inside;
 }
 
-export function buildKhulnaCity(parent, renderer, skySystem = null) {
+export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUniforms = null) {
   const group = new THREE.Group();
   group.name = 'KhulnaCityWorld';
   parent.add(group);
@@ -820,7 +820,7 @@ export function buildKhulnaCity(parent, renderer, skySystem = null) {
 
   // 4. Khulna Citywide Utility Poles, Tangled Overhead Wires, Posters & Election Banners!
   // (Auto-generated OSM city box buildings removed so only clean roads, parks, fields & high-detail landmarks remain.)
-  const streetProps = createKhulnaStreetPropsSystem(group, worldData);
+  const streetProps = createKhulnaStreetPropsSystem(group, worldData, shaderUniforms);
 
   function refreshActiveChunks(playerX, playerZ, qualityMode = 'high') {
     streetProps.refreshActiveChunks(playerX, playerZ, qualityMode);

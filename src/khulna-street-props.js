@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { applyWireWindShader } from './aaa-shaders.js';
 
 function createPolePosterTexture(kind) {
   const c = document.createElement('canvas');
@@ -352,8 +353,11 @@ export function decorateCorridorPole(parent, x, z, facingYaw = 0, seed = 0, pole
  * - Sparse, varied Bengali pole stickers (half the poles stay clean — never repetitive!)
  * - Crisp high-res 4-corner leader posters at the LOWER BASE of select poles (NO overhead text banners!)
  */
-export function createKhulnaStreetPropsSystem(scene, worldData) {
+export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms = null) {
   const assets = getSharedPropsAssets();
+  if (shaderUniforms && !assets.wireMat.userData.wireWindUniforms) {
+    applyWireWindShader(assets.wireMat, shaderUniforms, { usePinAttr: true });
+  }
   const group = new THREE.Group();
   group.name = 'KhulnaStreetPropsAndWires';
   scene.add(group);
@@ -463,7 +467,7 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
   const dummy = new THREE.Object3D();
   let lastChunkKey = '';
 
-  function addCatenaryWire(buf, x0, y0, z0, x1, y1, z1, sag, segs = 4, swayX = 0, swayZ = 0) {
+  function addCatenaryWire(buf, pinBuf, x0, y0, z0, x1, y1, z1, sag, segs = 4, swayX = 0, swayZ = 0) {
     for (let s = 0; s < segs; s++) {
       const t0 = s / segs;
       const t1 = (s + 1) / segs;
@@ -475,6 +479,8 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
         x0 + (x1 - x0) * t0 + swayX * sw0, y0 + (y1 - y0) * t0 - sag0, z0 + (z1 - z0) * t0 + swayZ * sw0,
         x0 + (x1 - x0) * t1 + swayX * sw1, y0 + (y1 - y0) * t1 - sag1, z0 + (z1 - z0) * t1 + swayZ * sw1,
       );
+      // 0.0 at pole attachment points, 1.0 at mid-span sag so wind sway stays anchored to poles!
+      pinBuf.push(sw0, sw1);
     }
   }
 
@@ -614,6 +620,7 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
 
     // Build SUPER MESSY Bangladeshi Khulna pole-to-pole tangled overhead wires + house service drops!
     const wireVerts = [];
+    const wirePins = [];
     const wireStrands = quality === 'low' ? 8 : 14;
     const dropCount = quality === 'low' ? 4 : 6;
 
@@ -638,10 +645,11 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
               const swayZ = (r2 - 0.5) * 0.52;
               addCatenaryWire(
                 wireVerts,
+                wirePins,
                 prev.x + prev.nx * latA, yA, prev.z + prev.nz * latA,
                 p.x + p.nx * latB, yB, p.z + p.nz * latB,
                 sag,
-                3,
+                4,
                 swayX,
                 swayZ,
               );
@@ -666,15 +674,17 @@ export function createKhulnaStreetPropsSystem(scene, worldData) {
         const dropSag = 0.44 + rd2 * 1.05;
         addCatenaryWire(
           wireVerts,
+          wirePins,
           p.x + (rd1 - 0.5) * 0.28, startY, p.z + (rd2 - 0.5) * 0.28,
           endX, endY, endZ,
           dropSag,
-          3,
+          4,
         );
       }
     }
 
     wireGeom.setAttribute('position', new THREE.Float32BufferAttribute(wireVerts, 3));
+    wireGeom.setAttribute('aWirePin', new THREE.Float32BufferAttribute(wirePins, 1));
     wireGeom.computeBoundingSphere();
   }
 

@@ -236,6 +236,8 @@ let airPeakY = EYE_HEIGHT;
 let isFlipping = false;
 let landRecoveryTimer = 0;
 let landRecoveryClip = null;
+let landingCamDip = 0;
+let landingCamDipVel = 0;
 let inWater = false;
 let wallAhead = false;
 const wallProbePos = new THREE.Vector3();
@@ -5301,7 +5303,7 @@ function updateMovement(delta) {
       const vis = car.state.driving || car.state.aiDriving || dSq < 150 * 150;
       if (car.group.visible !== vis) car.group.visible = vis;
       if (vis || Math.abs(car.state.speed) > 0.05) {
-        car.update(delta, keys, house, environment, cars);
+        car.update(delta, keys, house, environment, cars, computeGroundHeight);
       }
     }
     if (updateVehicleTransition(delta)) {
@@ -5375,6 +5377,12 @@ function updateMovement(delta) {
           const lookFwd = recentlyMovedMouse ? 1.2 : 3.6;
           carCamLookTarget.set(st.pos.x + sinO * lookFwd, st.pos.y + 1.02, st.pos.z + cosO * lookFwd);
           camera.position.copy(carCamDesired);
+          // GTA VI visceral vehicle impact jolt on wall/car collisions
+          if (st.lastImpactIntensity > 0.02) {
+            const jolt = st.lastImpactIntensity * 0.14;
+            camera.position.x += (Math.random() - 0.5) * jolt;
+            camera.position.y += (Math.random() - 0.5) * jolt;
+          }
           camera.lookAt(carCamLookTarget);
         }
       }
@@ -5616,7 +5624,14 @@ function updateMovement(delta) {
   } else {
     const targetVx = wishDir.x * maxSpeed;
     const targetVz = wishDir.z * maxSpeed;
-    const accel = (isMovingInput ? (inWater ? 10.0 : 24.0) : (inWater ? 6.0 : 15.0)) * delta;
+    // GTA VI weighted character momentum: grounded start/stop inertia + realistic mid-air steering
+    const airFactor = (!grounded && !inWater) ? (specialAbility?.active && specialAbility?.charId === 'sabit' ? 0.85 : 0.42) : 1.0;
+    const curSpd = horizontalVelocity.length();
+    const sharpPivot = isMovingInput && curSpd > 3.5 && ((horizontalVelocity.x * wishDir.x + horizontalVelocity.y * wishDir.z) < 0.25);
+    const baseRate = isMovingInput
+      ? (inWater ? 9.5 : (sharpPivot ? 10.5 : (isSprinting ? 14.5 : 18.5)))
+      : (inWater ? 5.5 : 12.5);
+    const accel = baseRate * airFactor * delta;
     horizontalVelocity.x += (targetVx - horizontalVelocity.x) * Math.min(1, accel);
     horizontalVelocity.y += (targetVz - horizontalVelocity.y) * Math.min(1, accel);
 
@@ -5734,7 +5749,7 @@ function updateMovement(delta) {
     airPeakY = playerPos.y;
   } else {
     grounded = false;
-    verticalVelocity -= 14.8 * delta;
+    verticalVelocity -= 15.8 * delta;
     playerPos.y += verticalVelocity * delta;
     if (playerPos.y > airPeakY) airPeakY = playerPos.y;
     if (verticalVelocity <= 0 && playerPos.y <= targetEyeY) {
@@ -5744,6 +5759,9 @@ function updateMovement(delta) {
       grounded = true;
       isFlipping = false;
       specialAbility?.onGrounded?.();
+      if (dropH > 0.35) {
+        landingCamDipVel -= THREE.MathUtils.clamp(dropH * 0.92, 0.35, 2.35);
+      }
       if (dropH > 5.2) {
         landRecoveryClip = 'HitBody';
         landRecoveryTimer = 0.72;
@@ -5807,7 +5825,12 @@ function updateMovement(delta) {
     }
     const camRes = resolveThirdPersonCamera(playerPos, camDesiredPos, camFootY, delta, camModeChanged, true);
     hidePlayerMesh = camRes.hidePlayerMesh;
+    // Smooth damped spring landing dip for realistic physical jump weight
+    const dipForce = -landingCamDip * 78.0 - landingCamDipVel * 14.0;
+    landingCamDipVel += dipForce * delta;
+    landingCamDip = THREE.MathUtils.clamp(landingCamDip + landingCamDipVel * delta, -0.26, 0.08);
     camera.position.copy(camRes.camPos);
+    camera.position.y += landingCamDip;
   } else if (playerCharacter && activeCamMode === 'front') {
     camDesiredPos.copy(playerPos).addScaledVector(forwardVec, insideLiftNow ? 0.72 : 1.15);
     camDesiredPos.y = playerPos.y - 0.08;

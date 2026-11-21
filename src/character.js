@@ -1769,12 +1769,25 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       } else if (horizSpeed > 0.15) {
         state.walkCycle += dt * (isSprinting ? 10.5 : 7.2);
         const moveYaw = Math.atan2(moveDirX, moveDirZ);
-        state.facingYaw += wrapAngleDelta(moveYaw - state.facingYaw) * Math.min(1, dt * 12.0);
+        const yawDiff = wrapAngleDelta(moveYaw - state.facingYaw);
+        state.facingYaw += yawDiff * Math.min(1, dt * 12.0);
+        // GTA VI Euphoria-style natural sprint corner banking & forward momentum lean!
+        const speedFrac = THREE.MathUtils.clamp((horizSpeed - 1.5) / 6.0, 0, 1);
+        const targetBank = THREE.MathUtils.clamp(-yawDiff * 0.34 * speedFrac, -0.22, 0.22);
+        const targetFwdLean = (isSprinting ? 0.085 : 0.025) * speedFrac;
+        modelHolder.rotation.z = THREE.MathUtils.lerp(modelHolder.rotation.z, targetBank, Math.min(1, dt * 9.0));
+        modelHolder.rotation.x = THREE.MathUtils.lerp(modelHolder.rotation.x, targetFwdLean, Math.min(1, dt * 8.0));
       } else if (state.emote && state.emote !== 'sit' && state.cameraMode === 'back') {
-        // Keep facing toward camera while emoting
+        modelHolder.rotation.z = THREE.MathUtils.lerp(modelHolder.rotation.z, 0, Math.min(1, dt * 10.0));
+        modelHolder.rotation.x = THREE.MathUtils.lerp(modelHolder.rotation.x, 0, Math.min(1, dt * 10.0));
       } else if (state.emote !== 'sit' && state.cameraMode === 'first') {
         const defaultFacing = yaw + Math.PI;
         state.facingYaw += wrapAngleDelta(defaultFacing - state.facingYaw) * Math.min(1, dt * 9.0);
+        modelHolder.rotation.z = THREE.MathUtils.lerp(modelHolder.rotation.z, 0, Math.min(1, dt * 10.0));
+        modelHolder.rotation.x = THREE.MathUtils.lerp(modelHolder.rotation.x, 0, Math.min(1, dt * 10.0));
+      } else {
+        modelHolder.rotation.z = THREE.MathUtils.lerp(modelHolder.rotation.z, 0, Math.min(1, dt * 10.0));
+        modelHolder.rotation.x = THREE.MathUtils.lerp(modelHolder.rotation.x, 0, Math.min(1, dt * 10.0));
       }
       root.rotation.y = state.facingYaw;
     }

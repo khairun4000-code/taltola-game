@@ -3,6 +3,7 @@ import {
   attachDerivedPBRMaps,
   upgradeWetAsphaltMaterial,
   applyFoliageWindShader,
+  applyWireWindShader,
 } from './aaa-shaders.js';
 
 function diffTexture(loader, name, anisotropy) {
@@ -392,6 +393,7 @@ export function createMaterials(renderer, manager) {
   attachDerivedPBRMaps(materials.darkWood, darkWoodTex, { strength: 1.4, roughBase: 0.52, normalScale: 0.42 });
   upgradeWetAsphaltMaterial(materials.road, sharedUniforms, 0.72);
   applyFoliageWindShader(materials.leaf, sharedUniforms);
+  applyWireWindShader(materials.wire, sharedUniforms);
 
   const allMaterials = Object.values(materials);
   materials.shaderUniforms = sharedUniforms;

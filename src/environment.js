@@ -9,6 +9,7 @@ import { buildAltapoleEnterableHouses } from './altapole-houses.js';
 import { buildAltapoleHeadTower } from './altapole-tower.js';
 import { buildAltapoleOppositeGoli } from './altapole-goli.js';
 import { createKhulnaTraffic } from './khulna-vehicles.js';
+import { buildKhulnaWildlife } from './khulna-wildlife.js';
 import { applyFoliageWindShader } from './aaa-shaders.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 
@@ -17,74 +18,133 @@ function leafClusterTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 512;
   const ctx = canvas.getContext('2d');
-  for (let i = 0; i < 95; i++) {
+
+  // Subtle dark woody interior twigs radiating from cluster center for realistic silhouette depth
+  ctx.strokeStyle = 'rgba(54, 42, 28, 0.85)';
+  ctx.lineWidth = 3.2;
+  for (let b = 0; b < 9; b++) {
+    const a = (b / 9) * Math.PI * 2 + random() * 0.4;
+    const r = 90 + random() * 85;
+    ctx.beginPath();
+    ctx.moveTo(256, 256);
+    ctx.quadraticCurveTo(256 + Math.cos(a + 0.25) * r * 0.5, 256 + Math.sin(a + 0.25) * r * 0.5, 256 + Math.cos(a) * r, 256 + Math.sin(a) * r);
+    ctx.stroke();
+  }
+
+  // 180 layered tropical mango / rain-tree leaves (deep shaded core -> lush sunlit outer tips!)
+  for (let i = 0; i < 180; i++) {
+    const isOuter = i >= 75;
     const angle = random() * Math.PI * 2;
-    const distance = Math.sqrt(random()) * 205;
+    const distance = Math.sqrt(random()) * (isOuter ? 218 : 148);
     const x = 256 + Math.cos(angle) * distance;
     const y = 256 + Math.sin(angle) * distance;
-    const length = 28 + random() * 42;
-    const width = length * (0.32 + random() * 0.2);
-    const hue = 83 + random() * 32;
-    const light = 20 + random() * 22;
+    const length = (isOuter ? 26 : 32) + random() * 38;
+    const width = length * (0.28 + random() * 0.18);
+    const hue = 84 + random() * 34;
+    const sat = 46 + random() * 18;
+    const light = (isOuter ? 24 : 15) + random() * (isOuter ? 22 : 12);
+
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(random() * Math.PI * 2);
-    const gradient = ctx.createLinearGradient(0, -length / 2, 0, length / 2);
-    gradient.addColorStop(0, `hsl(${hue}, 48%, ${light + 12}%)`);
-    gradient.addColorStop(0.55, `hsl(${hue}, 52%, ${light}%)`);
-    gradient.addColorStop(1, `hsl(${hue}, 48%, ${Math.max(10, light - 8)}%)`);
+    ctx.rotate(angle + (random() - 0.5) * 1.4);
+    const gradient = ctx.createLinearGradient(0, -length * 0.5, 0, length * 0.5);
+    gradient.addColorStop(0, `hsl(${hue + 4}, ${sat}%, ${light + 14}%)`);
+    gradient.addColorStop(0.5, `hsl(${hue}, ${sat + 4}%, ${light}%)`);
+    gradient.addColorStop(1, `hsl(${hue - 4}, ${sat}%, ${Math.max(8, light - 10)}%)`);
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.moveTo(0, -length / 2);
-    ctx.bezierCurveTo(width, -length * 0.28, width, length * 0.23, 0, length / 2);
-    ctx.bezierCurveTo(-width, length * 0.23, -width, -length * 0.28, 0, -length / 2);
+    ctx.moveTo(0, -length * 0.5);
+    ctx.bezierCurveTo(width, -length * 0.26, width * 0.92, length * 0.24, 0, length * 0.5);
+    ctx.bezierCurveTo(-width * 0.92, length * 0.24, -width, -length * 0.26, 0, -length * 0.5);
     ctx.fill();
-    ctx.strokeStyle = `hsla(${hue + 8}, 45%, ${light + 18}%, .65)`;
-    ctx.lineWidth = 1;
+
+    // Crisp central midrib & delicate side veins
+    ctx.strokeStyle = `hsla(${hue + 10}, 48%, ${light + 22}%, 0.58)`;
+    ctx.lineWidth = 1.0;
     ctx.beginPath();
-    ctx.moveTo(0, -length * 0.38);
-    ctx.lineTo(0, length * 0.4);
+    ctx.moveTo(0, -length * 0.40);
+    ctx.lineTo(0, length * 0.42);
     ctx.stroke();
     ctx.restore();
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
+  texture.anisotropy = 8;
   return texture;
 }
 
-const sharedBarkMat = new THREE.MeshStandardMaterial({ color: 0x625c46, roughness: 0.94, metalness: 0.02 });
-const sharedDarkBarkMat = new THREE.MeshStandardMaterial({ color: 0x57523e, roughness: 0.94, metalness: 0.02 });
+function barkTexture() {
+  const random = seededRandom(51931);
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#574c3b';
+  ctx.fillRect(0, 0, 256, 512);
+  // Vertical tropical bark ridges, fissures & subtle monsoon moss patches
+  for (let i = 0; i < 160; i++) {
+    const x = random() * 256;
+    const y = random() * 512;
+    const w = 2 + random() * 6;
+    const h = 36 + random() * 140;
+    const dark = random() > 0.42;
+    ctx.fillStyle = dark
+      ? `rgba(38, 31, 22, ${0.28 + random() * 0.32})`
+      : `rgba(116, 102, 80, ${0.18 + random() * 0.24})`;
+    ctx.fillRect(x, y, w, h);
+  }
+  for (let m = 0; m < 26; m++) {
+    ctx.fillStyle = `rgba(54, 78, 38, ${0.14 + random() * 0.16})`;
+    ctx.beginPath();
+    ctx.ellipse(random() * 256, random() * 512, 8 + random() * 14, 14 + random() * 26, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 3);
+  tex.anisotropy = 4;
+  return tex;
+}
+
+const sharedBarkTex = barkTexture();
+const sharedBarkMat = new THREE.MeshStandardMaterial({ color: 0x9b8e78, map: sharedBarkTex, roughness: 0.95, metalness: 0.02 });
+const sharedDarkBarkMat = new THREE.MeshStandardMaterial({ color: 0x7d7260, map: sharedBarkTex, roughness: 0.96, metalness: 0.02 });
 
 function createBroadleafTree(parent, position, height, seed, material) {
   const random = seededRandom(seed);
   const group = new THREE.Group();
   group.position.set(...position);
   parent.add(group);
-  cylinder(group, 0.11, 0.23, height * 0.68, [0, height * 0.34, 0], sharedBarkMat, 9);
-  const clusterCount = 24;
+  // Natural tapered trunk + subtle root flare + forked boughs
+  cylinder(group, 0.11, 0.26, height * 0.68, [0, height * 0.34, 0], sharedBarkMat, 9);
+  cylinder(group, 0.24, 0.38, height * 0.12, [0, height * 0.06, 0], sharedDarkBarkMat, 8);
+  const clusterCount = 30;
   const clusters = [];
   for (let i = 0; i < clusterCount; i++) {
     const angle = random() * Math.PI * 2;
-    const radius = Math.sqrt(random()) * height * 0.32;
-    const y = height * (0.55 + random() * 0.4);
+    const radius = Math.sqrt(random()) * height * 0.35;
+    const yFrac = 0.52 + random() * 0.44;
+    const y = height * yFrac;
     const center = new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
-    clusters.push({ center, scale: 1.2 + random() * 1.35 });
-    if (i < 10) rodBetween(group, [0, height * 0.43, 0], [center.x * 0.83, center.y - 0.35, center.z * 0.83], 0.035 + random() * 0.025, sharedBarkMat, 6);
+    clusters.push({ center, yFrac, scale: 1.15 + random() * 1.4 });
+    if (i < 12) rodBetween(group, [0, height * 0.42, 0], [center.x * 0.84, center.y - 0.32, center.z * 0.84], 0.036 + random() * 0.026, sharedBarkMat, 6);
   }
   mergeStaticMeshes(group);
-  const geometry = new THREE.PlaneGeometry(2.2, 2.0);
+  const geometry = new THREE.PlaneGeometry(2.3, 2.1);
   const cards = new THREE.InstancedMesh(geometry, material, clusterCount * 3);
   const dummy = new THREE.Object3D();
   let index = 0;
   for (const cluster of clusters) {
+    // Realistic vertical ambient occlusion: darker shaded lower canopy, sunlit brighter upper crown!
+    const crownBright = 0.58 + (cluster.yFrac - 0.52) * 0.72;
     for (let j = 0; j < 3; j++) {
       dummy.position.copy(cluster.center);
       dummy.rotation.set(random() * Math.PI, random() * Math.PI, random() * Math.PI);
-      dummy.scale.setScalar(cluster.scale * (0.8 + random() * 0.3));
+      dummy.scale.setScalar(cluster.scale * (0.82 + random() * 0.28));
       dummy.updateMatrix();
       cards.setMatrixAt(index, dummy.matrix);
-      cards.setColorAt(index, new THREE.Color().setHSL(0.25 + random() * 0.055, 0.65, 0.72 + random() * 0.18));
+      cards.setColorAt(index, new THREE.Color().setHSL(0.245 + random() * 0.06, 0.62 + random() * 0.12, THREE.MathUtils.clamp(crownBright + random() * 0.14, 0.46, 0.92)));
       index++;
     }
   }
@@ -296,9 +356,10 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
   mergeStaticMeshes(wiresStaticGroup);
   mergeStaticMeshes(taltolaWiresGroup);
 
-  const city = buildKhulnaCity(group, renderer, skySystem);
+  const city = buildKhulnaCity(group, renderer, skySystem, m.shaderUniforms);
   const landmarks = buildKhulnaLandmarks(group, m);
   const tower = buildHajiMohsinRoad(group, m);
+  const wildlife = buildKhulnaWildlife(group);
 
   const foliageMaterial = new THREE.MeshStandardMaterial({
     map: leafClusterTexture(),
@@ -437,6 +498,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     altapoleTower,
     altapoleGoli,
     traffic,
+    wildlife,
     tower,
     detailsGroup,
     roadBaseGroup,
@@ -463,10 +525,12 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
       syncVisibility(playerPos);
       corridors.update(time, playerPos);
       traffic.update(time, playerPos);
+      wildlife.update(time, playerPos);
       if (!isLow) {
+        const gustEnv = 0.65 + 0.55 * Math.sin(time * 0.38);
         for (const item of animated) {
-          item.object.rotation.x = Math.sin(time * 0.55 + item.phase) * item.strength;
-          item.object.rotation.z = Math.cos(time * 0.43 + item.phase) * item.strength;
+          item.object.rotation.x = Math.sin(time * 0.85 + item.phase) * item.strength * 2.2 * gustEnv;
+          item.object.rotation.z = Math.cos(time * 0.68 + item.phase) * item.strength * 2.0 * gustEnv;
         }
       }
     },

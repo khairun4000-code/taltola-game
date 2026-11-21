@@ -223,7 +223,7 @@ export function applyFoliageWindShader(material, sharedUniforms) {
   if (!material) return material;
   const uTime = sharedUniforms?.uTime || { value: 0 };
   material.userData.windUniforms = { uTime };
-  material.customProgramCacheKey = () => 'taltola-foliage-wind-v1';
+  material.customProgramCacheKey = () => 'taltola-foliage-wind-v2';
 
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = uTime;
@@ -240,11 +240,61 @@ export function applyFoliageWindShader(material, sharedUniforms) {
         #ifdef USE_INSTANCING
           fWorld = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
         #endif
-        float heightW = clamp((fWorld.y - 1.4) * 0.18, 0.0, 1.3);
-        float breeze = sin(uTime * 1.45 + fWorld.x * 0.34 + fWorld.z * 0.27);
-        float gust = cos(uTime * 2.35 + fWorld.z * 0.61 - fWorld.x * 0.19) * 0.45;
-        transformed.x += (breeze + gust) * 0.065 * heightW;
-        transformed.z += (gust - breeze * 0.5) * 0.045 * heightW;`
+        float heightW = clamp((fWorld.y - 1.2) * 0.20, 0.0, 1.45);
+        float gustEnv = 0.55 + 0.45 * sin(uTime * 0.42 + fWorld.x * 0.045 - fWorld.z * 0.038);
+        float breeze = sin(uTime * 1.65 + fWorld.x * 0.34 + fWorld.z * 0.27);
+        float gust = cos(uTime * 2.75 + fWorld.z * 0.61 - fWorld.x * 0.22) * 0.55;
+        float flutter = sin(uTime * 5.2 + fWorld.x * 1.9 + fWorld.y * 2.1 + fWorld.z * 1.7) * 0.16;
+        transformed.x += (breeze + gust + flutter) * 0.095 * heightW * gustEnv;
+        transformed.y += (flutter * 0.55 + breeze * 0.18) * 0.045 * heightW * gustEnv;
+        transformed.z += (gust - breeze * 0.55 + flutter * 0.7) * 0.070 * heightW * gustEnv;`
+      );
+  };
+  material.needsUpdate = true;
+  return material;
+}
+
+/**
+ * Patches overhead utility wire materials (LineBasicMaterial & MeshStandardMaterial)
+ * so cables sway gently & realistically in the Khulna breeze while staying 100% pinned
+ * to electric pole attachment points (zero CPU overhead, zero extra draw calls!).
+ */
+export function applyWireWindShader(material, sharedUniforms, options = {}) {
+  if (!material) return material;
+  const usePinAttr = Boolean(options.usePinAttr);
+  const uTime = sharedUniforms?.uTime || { value: 0 };
+  material.userData.wireWindUniforms = { uTime };
+  material.customProgramCacheKey = () => (usePinAttr ? 'taltola-wire-wind-pin-v2' : 'taltola-wire-wind-uv-v2');
+
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = uTime;
+    const pinDecl = usePinAttr ? 'attribute float aWirePin;\n' : '';
+    const pinExpr = usePinAttr
+      ? 'clamp(aWirePin, 0.0, 1.0)'
+      : 'sin(clamp(uv.x, 0.0, 1.0) * 3.14159265) * smoothstep(2.4, 4.6, wWorld.y)';
+
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        uniform float uTime;
+        ${pinDecl}`
+      )
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        vec4 wWorld = modelMatrix * vec4(transformed, 1.0);
+        // Gentle intermittent breeze envelope (calm most of the time, soft natural gusts)
+        float gustWave = 0.5 + 0.5 * sin(uTime * 0.28 + wWorld.x * 0.022 + wWorld.z * 0.019);
+        float gustStrength = 0.22 + 0.78 * gustWave * gustWave;
+        // Exact pole-to-pole catenary weight: 0.0 at pole insulators, 1.0 at mid-span sag
+        float spanPin = ${pinExpr};
+        float swayA = sin(uTime * 1.15 + wWorld.z * 0.18 + wWorld.x * 0.14);
+        float swayB = cos(uTime * 1.85 + wWorld.x * 0.22 - wWorld.z * 0.15) * 0.30;
+        // Subtle, realistic 2-3cm side sway & ~1.2cm vertical rise/fall (never cartoonish!)
+        transformed.x += (swayA + swayB) * 0.026 * spanPin * gustStrength;
+        transformed.y += sin(uTime * 1.35 + wWorld.z * 0.21 + wWorld.x * 0.12) * 0.013 * spanPin * gustStrength;
+        transformed.z += (swayB - swayA * 0.45) * 0.021 * spanPin * gustStrength;`
       );
   };
   material.needsUpdate = true;

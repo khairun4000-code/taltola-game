@@ -96,6 +96,14 @@ export const CNG_PAINT_PRESETS = [
   { name: 'Crimson Red', hex: '#ffd6d6' },
 ];
 
+export const BICYCLE_PAINT_PRESETS = [
+  { name: 'Atlas Jet Black', hex: '#101318' },
+  { name: 'Heritage Green', hex: '#0f4c32' },
+  { name: 'Royal Maroon', hex: '#7f1d1d' },
+  { name: 'Navy Blue', hex: '#162d54' },
+  { name: 'Vintage Silver', hex: '#8b95a5' },
+];
+
 export const CAR_FLEET_CONFIGS = [
   {
     id: 'bmw_m3',
@@ -455,6 +463,29 @@ export const CAR_FLEET_CONFIGS = [
     hoodForward: 0.36,
     isBMW: false,
     isCNG: true,
+  },
+  {
+    id: 'atlas_roadster_bicycle',
+    name: 'Atlas Roadster Bicycle',
+    badge: 'ATLAS ROADSTER BICYCLE',
+    assetUrl: './assets/atlas_roadster_bicycle.glb',
+    targetLength: 1.88,
+    width: 0.63,
+    rotateY: 0,
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.45, 0.01, TALTOLA_HOUSE_OFFSET.z - 0.6],
+    spawnHeading: 0.0,
+    paintPresets: BICYCLE_PAINT_PRESETS,
+    bodyPaintMats: ['Atlas_Frame_Black'],
+    maxSpeed: 9.8,
+    boostMaxSpeed: 14.5,
+    engineForce: 11.2,
+    camBack: 2.95,
+    camHeight: 1.72,
+    hoodHeight: 1.42,
+    hoodForward: 0.14,
+    isBMW: false,
+    isRickshaw: true,
+    isBicycle: true,
   },
 ];
 
@@ -1194,8 +1225,18 @@ export function createDrivableCar(scene, manager, config) {
     boostCooldown: 0.0,
     rpm: 920,
     gear: 'N',
+    velY: 0,
+    grounded: true,
     pitch: 0,
     roll: 0,
+    terrainPitch: 0,
+    terrainRoll: 0,
+    dynPitch: 0,
+    dynPitchVel: 0,
+    dynRoll: 0,
+    suspHeave: 0,
+    suspHeaveVel: 0,
+    lastGroundY: 0.01,
     frontSuspOffset: 0,
     frontSuspVel: 0,
     rearSuspOffset: 0,
@@ -1204,6 +1245,7 @@ export function createDrivableCar(scene, manager, config) {
     paintIndex: 0,
     paintName: paintPresets[0].name,
     isRickshaw: Boolean(config.isRickshaw),
+    isBicycle: Boolean(config.isBicycle),
     isBike: Boolean(config.isBike),
     isCNG: Boolean(config.isCNG),
     bikeSportLean: Boolean(config.bikeSportLean),
@@ -1216,6 +1258,10 @@ export function createDrivableCar(scene, manager, config) {
     hoodForward: config.hoodForward || 0.65,
     gearCount: config.gearCount || 6,
     headlightsMode: 0, // 0 = OFF, 1 = LOW BEAM, 2 = HIGH BEAM
+    lastImpactIntensity: 0,
+    crashCooldown: 0,
+    slipIntensity: 0,
+    lastGear: 'N',
   };
 
   // Real 3D Dual Car/Bike/CNG Headlight Beams (toggled with [L] while driving!)
@@ -1538,12 +1584,16 @@ export function createDrivableCar(scene, manager, config) {
     } catch {}
   }
 
-  function updateEngineAudio(active, rpm, throttle) {
+  let screechOsc = null;
+  let screechGain = null;
+
+  function updateEngineAudio(active, rpm, throttle, slip = 0) {
     if (config.isRickshaw) return;
     if (!audioCtx || !engineGain || !osc1 || !osc2) return;
     const now = audioCtx.currentTime;
     if (!active) {
       engineGain.gain.setTargetAtTime(0.0, now, 0.08);
+      if (screechGain) screechGain.gain.setTargetAtTime(0.0, now, 0.05);
       return;
     }
     const baseFreq = (config.engineBaseFreq || 32) + (rpm / 7500) * (config.engineRangeFreq || 150);
@@ -1551,6 +1601,74 @@ export function createDrivableCar(scene, manager, config) {
     osc2.frequency.setTargetAtTime(baseFreq * 1.5, now, 0.04);
     const targetGain = 0.030 + throttle * 0.045;
     engineGain.gain.setTargetAtTime(targetGain, now, 0.06);
+
+    // GTA VI Tire Screech Synthesis during drifting, high-G cornering & hard braking
+    if (slip > 0.16) {
+      if (!screechOsc) {
+        try {
+          screechOsc = audioCtx.createOscillator();
+          const sFilt = audioCtx.createBiquadFilter();
+          screechGain = audioCtx.createGain();
+          screechOsc.type = 'sawtooth';
+          screechOsc.frequency.value = 1120;
+          sFilt.type = 'bandpass';
+          sFilt.frequency.value = 1480;
+          sFilt.Q.value = 5.5;
+          screechGain.gain.value = 0.0;
+          screechOsc.connect(sFilt);
+          sFilt.connect(screechGain);
+          screechGain.connect(audioCtx.destination);
+          screechOsc.start();
+        } catch {}
+      }
+      if (screechOsc && screechGain) {
+        screechOsc.frequency.setTargetAtTime(980 + slip * 460, now, 0.04);
+        screechGain.gain.setTargetAtTime(Math.min(0.048, (slip - 0.16) * 0.062), now, 0.04);
+      }
+    } else if (screechGain) {
+      screechGain.gain.setTargetAtTime(0.0, now, 0.06);
+    }
+  }
+
+  function playCrashSound(intensity) {
+    if (!state.driving) return;
+    ensureAudio();
+    if (!audioCtx) return;
+    try {
+      const now = audioCtx.currentTime;
+      const vol = THREE.MathUtils.clamp(intensity * 0.24, 0.05, 0.28);
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.001, now);
+      g.gain.exponentialRampToValueAtTime(vol, now + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+      g.connect(audioCtx.destination);
+      const thud = audioCtx.createOscillator();
+      thud.type = 'triangle';
+      thud.frequency.setValueAtTime(115 + intensity * 40, now);
+      thud.frequency.exponentialRampToValueAtTime(28, now + 0.22);
+      thud.connect(g);
+      thud.start(now);
+      thud.stop(now + 0.27);
+    } catch {}
+  }
+
+  function playGearShiftPop() {
+    if (!state.driving || config.isRickshaw || config.isCNG || !audioCtx) return;
+    try {
+      const now = audioCtx.currentTime;
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.001, now);
+      g.gain.exponentialRampToValueAtTime(config.isBMW ? 0.072 : 0.030, now + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.085);
+      g.connect(audioCtx.destination);
+      const o = audioCtx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(150, now);
+      o.frequency.exponentialRampToValueAtTime(46, now + 0.08);
+      o.connect(g);
+      o.start(now);
+      o.stop(now + 0.09);
+    } catch {}
   }
 
   function playHorn() {
@@ -2106,25 +2224,42 @@ export function createDrivableCar(scene, manager, config) {
 
           const steering = model.getObjectByName('Steering_Assembly');
           const wheelFront = model.getObjectByName('Wheel_Front');
+          const wheelRear = model.getObjectByName('Wheel_Rear');
           const wheelRearL = model.getObjectByName('Wheel_Rear_L');
           const wheelRearR = model.getObjectByName('Wheel_Rear_R');
           const crank = model.getObjectByName('Crank_Assembly');
           const pedalL = model.getObjectByName('Pedal_L');
           const pedalR = model.getObjectByName('Pedal_R');
+          const chainGroup = model.getObjectByName('Chain_Links');
+          let chainLinks = null;
+          let chainCurve = null;
+          let chainLength = 1.0;
+          if (chainGroup && chainGroup.children.length >= 8) {
+            chainLinks = chainGroup.children.slice();
+            const pts = chainLinks.map((ch) => ch.position.clone());
+            chainCurve = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.12);
+            chainLength = Math.max(0.25, chainCurve.getLength());
+          }
+          if (config.isBicycle) {
+            measuredWheelRadius = 0.355;
+          }
           let gripAnchorL = null;
           let gripAnchorR = null;
           if (steering) {
-            // Exact measured center of the green rubber handlebar grips in Steering_Assembly local space
             gripAnchorL = new THREE.Object3D();
-            gripAnchorL.position.set(0.294, 0.245, -0.137);
-            steering.add(gripAnchorL);
             gripAnchorR = new THREE.Object3D();
-            gripAnchorR.position.set(-0.291, 0.245, -0.138);
+            if (config.isBicycle) {
+              gripAnchorL.position.set(0.288, 0.197, -0.130);
+              gripAnchorR.position.set(-0.288, 0.197, -0.130);
+            } else {
+              gripAnchorL.position.set(0.294, 0.245, -0.137);
+              gripAnchorR.position.set(-0.291, 0.245, -0.138);
+            }
+            steering.add(gripAnchorL);
             steering.add(gripAnchorR);
           }
           const saddleAnchor = new THREE.Object3D();
-          // Attach to orientedWrapper (normalized world space) right on top-center of saddle_leather so pelvis covers saddle & hands easily grip handlebars!
-          saddleAnchor.position.set(0, 1.09, -0.14);
+          saddleAnchor.position.set(0, config.isBicycle ? 1.03 : 1.09, config.isBicycle ? -0.31 : -0.14);
           orientedWrapper.add(saddleAnchor);
           const passengerAnchor = new THREE.Object3D();
           passengerAnchor.position.set(0, 0.88, -0.78);
@@ -2136,20 +2271,25 @@ export function createDrivableCar(scene, manager, config) {
           passengerFootR.position.set(-0.15, 0.59, -0.34);
           orientedWrapper.add(passengerFootR);
           const pedalFootL = new THREE.Object3D();
-          pedalFootL.position.set(0.055, 0.02, 0.0);
+          pedalFootL.position.set(0.056, 0.018, 0.0);
           if (pedalL) pedalL.add(pedalFootL);
           const pedalFootR = new THREE.Object3D();
-          pedalFootR.position.set(-0.055, 0.02, 0.0);
+          pedalFootR.position.set(-0.056, 0.018, 0.0);
           if (pedalR) pedalR.add(pedalFootR);
           rickshawParts = {
             steering,
             steerRestQ: steering ? steering.quaternion.clone() : null,
             wheelFront,
+            wheelRear,
             wheelRearL,
             wheelRearR,
             crank,
             pedalL,
             pedalR,
+            chainGroup,
+            chainLinks,
+            chainCurve,
+            chainLength,
             gripAnchorL,
             gripAnchorR,
             saddleAnchor,
@@ -2416,9 +2556,16 @@ export function createDrivableCar(scene, manager, config) {
   function syncTransform() {
     root.position.copy(state.pos);
     root.rotation.y = state.heading;
-    bodyTiltGroup.position.y = config.isBike ? (state.frontSuspOffset * 0.42 + state.rearSuspOffset * 0.58) : 0;
+    bodyTiltGroup.position.y = config.isBike
+      ? (state.frontSuspOffset * 0.42 + state.rearSuspOffset * 0.58 + state.suspHeave * 0.65)
+      : state.suspHeave;
     bodyTiltGroup.rotation.x = state.pitch;
     bodyTiltGroup.rotation.z = state.roll;
+    if (contactShadow) {
+      contactShadow.rotation.x = -Math.PI * 0.5 + state.terrainPitch;
+      contactShadow.rotation.y = -state.terrainRoll;
+      contactShadow.position.y = Math.max(0.025, 0.025 + Math.abs(Math.sin(state.terrainPitch)) * 0.14);
+    }
     if (carDriverRig) {
       carDriverRig.rigGroup.visible = (state.driving && state.cameraMode !== 'interior') || state.aiDriving;
       carDriverRig.wheelSpin.rotation.z = -state.steerAngle * 2.65;
@@ -2451,11 +2598,27 @@ export function createDrivableCar(scene, manager, config) {
         rickshawParts.steering.quaternion.copy(rickshawParts.steerRestQ).multiply(steerDeltaQ);
       }
       if (rickshawParts.wheelFront) rickshawParts.wheelFront.rotation.x = state.wheelSpin;
+      if (rickshawParts.wheelRear) rickshawParts.wheelRear.rotation.x = state.wheelSpin;
       if (rickshawParts.wheelRearL) rickshawParts.wheelRearL.rotation.x = state.wheelSpin;
       if (rickshawParts.wheelRearR) rickshawParts.wheelRearR.rotation.x = state.wheelSpin;
       if (rickshawParts.crank) rickshawParts.crank.rotation.x = state.pedalPhase;
       if (rickshawParts.pedalL) rickshawParts.pedalL.rotation.x = -state.pedalPhase;
       if (rickshawParts.pedalR) rickshawParts.pedalR.rotation.x = -state.pedalPhase;
+      if (rickshawParts.chainLinks && rickshawParts.chainCurve) {
+        const n = rickshawParts.chainLinks.length;
+        const advance = (state.pedalPhase * 0.092) / rickshawParts.chainLength;
+        const pt = anchorCache.passengerSeat;
+        const tan = anchorCache.passengerFootL;
+        for (let i = 0; i < n; i++) {
+          let u = (i / n + advance) % 1;
+          if (u < 0) u += 1;
+          rickshawParts.chainCurve.getPointAt(u, pt);
+          rickshawParts.chainCurve.getTangentAt(u, tan);
+          const lnk = rickshawParts.chainLinks[i];
+          lnk.position.copy(pt);
+          lnk.rotation.x = Math.atan2(-tan.y, tan.z);
+        }
+      }
       return;
     }
 
@@ -2545,10 +2708,10 @@ export function createDrivableCar(scene, manager, config) {
     const altGoliRes = envRef?.altapoleGoli?.applyCarCollisions?.(p, state);
     if (altGoliRes?.hitWall) hitWall = true;
 
-    // 3c. Solid Landmark Collisions for Cars (Royal More, PTI More & Ahsan Ahmed Rd)
+    // 3c. Solid Landmark Collisions for Cars (Royal More, PTI More, Kaborkhana More & Ahsan Ahmed Rd)
     const preX = p.x;
     const preZ = p.z;
-    envRef?.landmarks?.applyCollisions?.(p, Math.max(state.halfWidth, 0.95), 0);
+    envRef?.landmarks?.applyCollisions?.(p, Math.max(state.halfWidth, 0.95), Math.max(0, p.y));
     if (Math.abs(p.x - preX) > 0.005 || Math.abs(p.z - preZ) > 0.005) hitWall = true;
 
     // 4. Prevent driving into Khulna lakes/ponds/river water
@@ -2561,7 +2724,7 @@ export function createDrivableCar(scene, manager, config) {
       hitWall = true;
     }
 
-    // 5. Car-to-car separation so vehicles don't overlap each other
+    // 5. Realistic car-to-car separation & momentum impulse transfer
     for (const other of allCars) {
       if (!other || other.state === state) continue;
       const dx = p.x - other.state.pos.x;
@@ -2571,23 +2734,195 @@ export function createDrivableCar(scene, manager, config) {
       const overlapX = minSepX - Math.abs(dx);
       const overlapZ = minSepZ - Math.abs(dz);
       if (overlapX > 0 && overlapZ > 0) {
+        const myMass = config.isBike || config.isRickshaw ? 0.35 : (config.isCNG ? 0.65 : 1.15);
+        const otherMass = other.state.isBike || other.state.isRickshaw ? 0.35 : (other.state.isCNG ? 0.65 : 1.15);
+        const pushShare = otherMass / (myMass + otherMass);
         if (overlapX < overlapZ) {
-          p.x += (dx >= 0 ? 1 : -1) * overlapX;
+          const dir = dx >= 0 ? 1 : -1;
+          p.x += dir * overlapX * pushShare;
+          other.state.pos.x -= dir * overlapX * (1 - pushShare);
         } else {
-          p.z += (dz >= 0 ? 1 : -1) * overlapZ;
+          const dir = dz >= 0 ? 1 : -1;
+          p.z += dir * overlapZ * pushShare;
+          other.state.pos.z -= dir * overlapZ * (1 - pushShare);
+        }
+        // Transfer longitudinal bump impulse to the struck vehicle & jolt its suspension
+        if (Math.abs(state.speed) > 2.0) {
+          const oFwdX = Math.sin(other.state.heading);
+          const oFwdZ = Math.cos(other.state.heading);
+          const myFwdX = Math.sin(state.heading);
+          const myFwdZ = Math.cos(state.heading);
+          const align = myFwdX * oFwdX + myFwdZ * oFwdZ;
+          const impulse = THREE.MathUtils.clamp(state.speed * 0.38 * (myMass / otherMass), -8.5, 8.5);
+          other.state.speed += impulse * align;
+          other.state.suspHeaveVel -= Math.min(1.2, Math.abs(state.speed) * 0.08);
+          other.state.dynPitchVel += Math.sign(impulse || 1) * Math.min(0.55, Math.abs(state.speed) * 0.04);
         }
         hitWall = true;
       }
     }
 
-    if (!onTowerRamp && !altGarageRes?.inGarage && !altGoliRes?.inGarage) {
-      p.y = 0.01;
+    if (hitWall) {
+      const impactSpeed = Math.hypot(state.speed, state.lateralVel);
+      if (impactSpeed > 2.4 && state.crashCooldown <= 0) {
+        const severity = THREE.MathUtils.clamp((impactSpeed - 2.0) / 18.0, 0.12, 1.0);
+        state.lastImpactIntensity = Math.max(state.lastImpactIntensity, severity);
+        state.crashCooldown = 0.26;
+        state.frontSuspVel -= severity * 1.15;
+        state.suspHeaveVel -= severity * 0.95;
+        state.dynPitchVel += Math.sign(state.speed || 1) * severity * 0.72;
+        playCrashSound(severity);
+      }
+      state.speed = Math.abs(state.speed) > 5.0 ? -state.speed * 0.20 : state.speed * 0.50;
+      state.lateralVel *= -0.32;
+    }
+    return { onTowerRamp, inGarage: Boolean(altGarageRes?.inGarage || altGoliRes?.inGarage) };
+  }
+
+  const probeVec = new THREE.Vector3();
+  function sampleWheelGroundY(wx, wz, refFootY, envRef, groundHeightFn) {
+    let bestY = 0.0;
+    if (envRef?.tower?.state?.gateOpen && wz >= 19.3 && wz <= 22.6 && wx < -2.6 && wx >= -9.2) {
+      const rampT = THREE.MathUtils.clamp((-2.6 - wx) / 1.75, 0, 1);
+      bestY = Math.max(bestY, rampT * 0.50);
+    }
+    probeVec.set(wx, refFootY + 1.68, wz);
+    if (typeof groundHeightFn === 'function') {
+      const gy = groundHeightFn(probeVec, true, 0);
+      if (typeof gy === 'number' && Number.isFinite(gy) && gy <= refFootY + 0.72) {
+        bestY = Math.max(bestY, gy);
+      }
+    } else {
+      const ly = envRef?.landmarks?.getGroundHeight?.(probeVec) ?? 0;
+      if (typeof ly === 'number' && Number.isFinite(ly) && ly <= refFootY + 0.72) {
+        bestY = Math.max(bestY, ly);
+      }
+    }
+    return bestY;
+  }
+
+  function update4WheelTerrainAndSuspension(dt, envRef, groundHeightFn, { accel = 0, turnRate = 0, brake = 0, handbrake = false, throttle = 0 } = {}) {
+    const wb = Math.max(0.75, state.halfLength * 0.70);
+    const tw = config.isBike ? 0.14 : Math.max(0.45, state.halfWidth * 0.82);
+    const fx = Math.sin(state.heading);
+    const fz = Math.cos(state.heading);
+    const lx = Math.cos(state.heading);  // local +X (Left side of vehicle)
+    const lz = -Math.sin(state.heading);
+    const refY = Math.max(0, state.pos.y);
+
+    const hFL = sampleWheelGroundY(state.pos.x + fx * wb + lx * tw, state.pos.z + fz * wb + lz * tw, refY, envRef, groundHeightFn);
+    const hFR = sampleWheelGroundY(state.pos.x + fx * wb - lx * tw, state.pos.z + fz * wb - lz * tw, refY, envRef, groundHeightFn);
+    const hRL = sampleWheelGroundY(state.pos.x - fx * wb + lx * tw, state.pos.z - fz * wb + lz * tw, refY, envRef, groundHeightFn);
+    const hRR = sampleWheelGroundY(state.pos.x - fx * wb - lx * tw, state.pos.z - fz * wb - lz * tw, refY, envRef, groundHeightFn);
+    const hC = sampleWheelGroundY(state.pos.x, state.pos.z, refY, envRef, groundHeightFn);
+
+    const hFront = (hFL + hFR) * 0.5;
+    const hRear = (hRL + hRR) * 0.5;
+    const hLeft = (hFL + hRL) * 0.5;
+    const hRight = (hFR + hRR) * 0.5;
+    const avgWheelY = (hFL + hFR + hRL + hRR) * 0.25;
+    const targetGroundY = Math.max(hC, avgWheelY) + 0.01;
+
+    // 1) Real Vertical Gravity, Climbing & Airborne Launch/Landing Physics
+    const stepDelta = targetGroundY - state.lastGroundY;
+    if (state.pos.y > targetGroundY + 0.045 || state.velY > 0.25) {
+      state.grounded = false;
+      state.velY -= 19.6 * dt;
+      state.pos.y += state.velY * dt;
+      if (state.pos.y <= targetGroundY) {
+        const impactSpeed = -state.velY;
+        state.pos.y = targetGroundY;
+        state.velY = 0;
+        state.grounded = true;
+        if (impactSpeed > 0.8) {
+          state.suspHeaveVel -= Math.min(2.2, impactSpeed * 0.32);
+          state.dynPitchVel += Math.min(0.85, impactSpeed * 0.10);
+        }
+      }
+    } else {
+      if (stepDelta > 0.05 && Math.abs(state.speed) > 9.5) {
+        state.velY = Math.min(4.2, (stepDelta / Math.max(dt, 0.016)) * 0.16);
+      }
+      const climbAlpha = Math.min(1, dt * (targetGroundY > state.pos.y ? 20.0 : 14.0));
+      state.pos.y = THREE.MathUtils.lerp(state.pos.y, targetGroundY, climbAlpha);
+      if (Math.abs(state.pos.y - targetGroundY) < 0.004) state.pos.y = targetGroundY;
+      state.velY = 0;
+      state.grounded = true;
+
+      if (stepDelta > 0.035 && Math.abs(state.speed) > 0.6) {
+        state.suspHeaveVel -= Math.min(1.4, stepDelta * 3.8);
+        state.dynPitchVel -= Math.min(0.65, stepDelta * 1.9);
+      }
+    }
+    state.lastGroundY = targetGroundY;
+
+    // 2) Real 4-Wheel Terrain Pitch (Nose UP when climbing stairs/ramps!) & Roll (Side tilt on curbs!)
+    const rawTerrainPitch = state.grounded
+      ? THREE.MathUtils.clamp(-Math.atan2(hFront - hRear, wb * 2.0), -0.58, 0.58)
+      : THREE.MathUtils.clamp(-state.velY * 0.035, -0.42, 0.42);
+    const rawTerrainRoll = state.grounded
+      ? THREE.MathUtils.clamp(Math.atan2(hLeft - hRight, tw * 2.0), -0.34, 0.34)
+      : 0;
+    const alignRate = state.grounded ? 14.0 : 5.5;
+    state.terrainPitch = THREE.MathUtils.lerp(state.terrainPitch, rawTerrainPitch, Math.min(1, dt * alignRate));
+    state.terrainRoll = THREE.MathUtils.lerp(state.terrainRoll, rawTerrainRoll, Math.min(1, dt * alignRate));
+
+    // Vehicle-class suspension profile (stiff sports BMW M3 vs plush SUV/MPV vs agile bikes & 3-wheeler CNG)
+    const isHeavyTall = /alphard|fortuner|hiace|townace/i.test(config.id || '');
+    const heaveStiff = config.isBMW ? 82.0 : (isHeavyTall ? 52.0 : (config.isBike ? 76.0 : 66.0));
+    const heaveDamp = config.isBMW ? 11.4 : (isHeavyTall ? 7.6 : (config.isBike ? 10.2 : 9.0));
+
+    // 3) Chassis Vertical Spring-Damper Suspension (squat & rebound on bumps/landings)
+    const speedMag = Math.abs(state.speed);
+    const speedRatio = Math.min(1, speedMag / 16.0);
+    const heaveRoadBump = state.grounded && speedMag > 1.2
+      ? (Math.sin(state.roadTravelDist * 2.1) * 0.0085 + Math.sin(state.roadTravelDist * 5.2) * 0.0042) * Math.min(1, speedMag / 14.0)
+      : 0;
+    const heaveForce = (heaveRoadBump - state.suspHeave) * heaveStiff - state.suspHeaveVel * heaveDamp;
+    state.suspHeaveVel += heaveForce * dt;
+    state.suspHeave = THREE.MathUtils.clamp(state.suspHeave + state.suspHeaveVel * dt, -0.15, 0.15);
+
+    // 4) Real-World Damped Spring-Mass Weight Transfer Pitch, Road Micro-Bumps & Body Roll / Bike Lean
+    const pitchRoadBump = state.grounded && speedMag > 1.0
+      ? (Math.sin(state.roadTravelDist * 2.15) * 0.0068 + Math.sin(state.roadTravelDist * 5.7) * 0.0034) * speedRatio
+      : 0;
+    const diveScale = config.isBMW ? 0.84 : (isHeavyTall ? 1.24 : 1.0);
+    const brakeDive = (brake > 0 || handbrake) && state.speed > 0.8 ? (config.isBike ? 0.078 : 0.064 * diveScale) : 0;
+    const accelLift = throttle > 0 ? (config.isBike ? -0.078 : -0.044 * diveScale) : 0;
+    const targetDynPitch = THREE.MathUtils.clamp(-accel * 0.0029 + brakeDive + accelLift + pitchRoadBump, -0.135, 0.115);
+    const pitchStiff = config.isBike ? 64.0 : (config.isBMW ? 68.0 : (isHeavyTall ? 44.0 : 54.0));
+    const pitchDamp = config.isBike ? 9.2 : (config.isBMW ? 9.6 : (isHeavyTall ? 6.8 : 7.8));
+    const pitchForce = (targetDynPitch - state.dynPitch) * pitchStiff - state.dynPitchVel * pitchDamp;
+    state.dynPitchVel += pitchForce * dt;
+    state.dynPitch = THREE.MathUtils.clamp(state.dynPitch + state.dynPitchVel * dt, -0.16, 0.14);
+
+    // Speed-breaker suspension impulse near Hadis Park, Boro Maath & Judge Court speed humps
+    if (speedMag > 2.2 && !config.isRickshaw) {
+      const nearHump =
+        (Math.abs(state.pos.x - -295.0) < 3.6 && Math.abs(state.pos.z - -831.0) < 0.55)
+        || (Math.abs(state.pos.x - 40.0) < 3.6 && Math.abs(state.pos.z - -522.0) < 0.55)
+        || (Math.abs(state.pos.x - 143.0) < 3.6 && Math.abs(state.pos.z - -684.0) < 0.65);
+      if (nearHump) {
+        state.suspHeaveVel += Math.min(1.2, speedMag * 0.065) * dt * 20.0;
+        state.dynPitchVel -= Math.min(1.4, speedMag * 0.085) * dt * 18.0;
+        if (config.isBike) state.frontSuspVel -= Math.min(1.1, speedMag * 0.075) * dt * 22.0;
+      }
     }
 
-    if (hitWall) {
-      state.speed *= 0.65;
-      state.lateralVel *= -0.2;
-    }
+    const pedalSway = config.isRickshaw ? Math.sin(state.pedalPhase) * 0.028 * Math.min(1, speedMag / 2.5) : 0;
+    const rollGain = config.isBMW ? 0.0036 : (isHeavyTall ? 0.0066 : (config.isCNG ? 0.0074 : 0.0048));
+    const targetDynRoll = config.isBike
+      ? THREE.MathUtils.clamp(-turnRate * Math.min(speedMag, 26) * (config.bikeSportLean ? 0.025 : 0.022), -0.54, 0.54)
+      : THREE.MathUtils.clamp(-turnRate * state.speed * rollGain + pedalSway, -0.145, 0.145);
+    const rollStiff = config.isBike ? 48.0 : (config.isBMW ? 72.0 : (isHeavyTall ? 46.0 : 58.0));
+    const rollDamp = config.isBike ? 8.8 : (config.isBMW ? 9.8 : (isHeavyTall ? 7.2 : 8.2));
+    state.dynRollVel = (state.dynRollVel || 0) + ((targetDynRoll - state.dynRoll) * rollStiff - (state.dynRollVel || 0) * rollDamp) * dt;
+    state.dynRoll = THREE.MathUtils.clamp(state.dynRoll + state.dynRollVel * dt, config.isBike ? -0.56 : -0.155, config.isBike ? 0.56 : 0.155);
+
+    // Combine Terrain Slope Orientation + Dynamic Suspension Tilt
+    const suspPitch = config.isBike ? THREE.MathUtils.clamp((state.rearSuspOffset - state.frontSuspOffset) * 1.15, -0.095, 0.085) : 0;
+    state.pitch = state.terrainPitch + state.dynPitch + suspPitch;
+    state.roll = state.terrainRoll + state.dynRoll;
   }
 
   function cyclePaintColor() {
@@ -2661,14 +2996,14 @@ export function createDrivableCar(scene, manager, config) {
     aiControlInput = null;
     state.driving = true;
     state.cameraMode = 'chase';
-    state.rideSeat = (config.isRickshaw && seatMode === 'passenger') ? 'passenger' : 'driver';
+    state.rideSeat = (config.isRickshaw && !config.isBicycle && seatMode === 'passenger') ? 'passenger' : 'driver';
     ensureAudio();
     for (const m of drlMats) m.emissiveIntensity = 4.5;
     syncInteriorVisibility();
   }
 
   function toggleRideSeat() {
-    if (!config.isRickshaw || !state.driving) return state.rideSeat;
+    if (!config.isRickshaw || config.isBicycle || !state.driving) return state.rideSeat;
     state.rideSeat = state.rideSeat === 'passenger' ? 'driver' : 'passenger';
     return state.rideSeat;
   }
@@ -2682,7 +3017,7 @@ export function createDrivableCar(scene, manager, config) {
     for (const m of tailMats) m.emissiveIntensity = 1.6;
 
     const rightVec = new THREE.Vector3(Math.cos(state.heading), 0, -Math.sin(state.heading));
-    const exitDist = config.isRickshaw ? 1.15 : 1.60;
+    const exitDist = config.isBicycle ? 0.95 : (config.isRickshaw ? 1.15 : 1.60);
     const exitOffset = state.pos.x < -0.6 ? exitDist : -exitDist;
     playerPos.set(
       state.pos.x + rightVec.x * exitOffset,
@@ -2702,6 +3037,9 @@ export function createDrivableCar(scene, manager, config) {
 
   function getPrompt(playerPos) {
     if (state.driving) {
+      if (config.isBicycle) {
+        return `[F] Dismount ${state.name} · [H] Bell · [Shift] Fast Pedal`;
+      }
       if (config.isRickshaw) {
         return state.rideSeat === 'passenger'
           ? '[G] Exit Rickshaw · [F] Switch to Driver Seat'
@@ -2713,6 +3051,9 @@ export function createDrivableCar(scene, manager, config) {
       return `[F] Exit ${state.name} · [E] Open Gate`;
     }
     if (isPlayerNear(playerPos)) {
+      if (config.isBicycle) {
+        return `[F] Ride ${state.name}`;
+      }
       if (config.isRickshaw) {
         return '[F] Drive Rickshaw · [G] Sit in Passenger Seat';
       }
@@ -2730,7 +3071,7 @@ export function createDrivableCar(scene, manager, config) {
   const fwd = new THREE.Vector3();
   const rgt = new THREE.Vector3();
 
-  function update(delta, keys, houseRef, envRef, allCars = []) {
+  function update(delta, keys, houseRef, envRef, allCars = [], groundHeightFn = null) {
     const dt = Math.min(delta, 0.05);
     if (tireSmokePuffs.length > 0) updateTireSmoke(dt);
 
@@ -2751,14 +3092,14 @@ export function createDrivableCar(scene, manager, config) {
         state.pos.addScaledVector(fwd, state.speed * dt);
         state.wheelSpin += (state.speed / measuredWheelRadius) * dt;
         applyCarCollisions(houseRef, envRef, allCars);
+        update4WheelTerrainAndSuspension(dt, envRef, groundHeightFn, {});
         moved = true;
       } else if (state.speed !== 0) {
         state.speed = 0;
         moved = true;
       }
-      if (Math.abs(state.pitch) > 0.001 || Math.abs(state.roll) > 0.001 || Math.abs(state.frontSuspOffset) > 0.0005 || Math.abs(state.rearSuspOffset) > 0.0005) {
-        state.pitch = THREE.MathUtils.lerp(state.pitch, 0, Math.min(1, dt * 8));
-        state.roll = THREE.MathUtils.lerp(state.roll, 0, Math.min(1, dt * 8));
+      if (!state.grounded || Math.abs(state.suspHeave) > 0.001 || Math.abs(state.dynPitch) > 0.001 || Math.abs(state.dynRoll) > 0.001 || Math.abs(state.frontSuspOffset) > 0.0005 || Math.abs(state.rearSuspOffset) > 0.0005) {
+        update4WheelTerrainAndSuspension(dt, envRef, groundHeightFn, {});
         state.frontSuspOffset = THREE.MathUtils.lerp(state.frontSuspOffset, 0, Math.min(1, dt * 10));
         state.rearSuspOffset = THREE.MathUtils.lerp(state.rearSuspOffset, 0, Math.min(1, dt * 12));
         state.frontSuspVel = 0;
@@ -2808,9 +3149,14 @@ export function createDrivableCar(scene, manager, config) {
     }
 
     const maxForwardSpeed = boost > 1 ? (config.boostMaxSpeed || 35.0) : (config.maxSpeed || 25.0);
-    const engineForce = (config.engineForce || 14.5) * boost;
-    const brakeForce = 24.0;
-    const drag = 0.012 * state.speed * Math.abs(state.speed) + 0.55 * state.speed;
+    // Realistic progressive gear torque curve (punchy low-end 1st/2nd gear launch, smooth top-end pull)
+    const speedFrac = THREE.MathUtils.clamp(Math.abs(state.speed) / Math.max(1, maxForwardSpeed), 0, 1);
+    const torqueCurve = config.isRickshaw ? 1.0 : (1.26 - 0.36 * speedFrac * speedFrac);
+    state.shiftDipTimer = Math.max(0, (state.shiftDipTimer || 0) - dt);
+    const shiftMult = state.shiftDipTimer > 0 ? 0.45 : 1.0;
+    const engineForce = (config.engineForce || 14.5) * boost * torqueCurve * shiftMult;
+    const brakeForce = config.isBike ? 26.5 : 25.5;
+    const drag = 0.0115 * state.speed * Math.abs(state.speed) + 0.52 * state.speed;
 
     let accel = 0;
     if (throttle > 0) accel += engineForce;
@@ -2819,36 +3165,51 @@ export function createDrivableCar(scene, manager, config) {
       else accel -= 9.5;
     }
     if (handbrake && Math.abs(state.speed) > 0.4) {
-      accel -= Math.sign(state.speed) * 14.0;
+      accel -= Math.sign(state.speed) * 15.5;
     }
 
-    state.speed += (accel - drag) * dt;
+    // Realistic hill/stair slope gravity component (nose up = uphill load, nose down = downhill push)
+    const slopeGravity = state.grounded ? Math.sin(state.terrainPitch) * 8.8 : 0;
+    state.speed += (accel + slopeGravity - drag) * dt;
     state.speed = THREE.MathUtils.clamp(state.speed, -11.5, maxForwardSpeed);
-    if (!throttle && !brake && Math.abs(state.speed) < 0.14) {
+    if (!throttle && !brake && Math.abs(state.speed) < 0.14 && Math.abs(state.terrainPitch) < 0.04) {
       state.speed = 0;
     }
 
-    const maxSteer = THREE.MathUtils.lerp(0.54, 0.22, Math.min(1, Math.abs(state.speed) / 28));
-    state.steerAngle = THREE.MathUtils.lerp(state.steerAngle, steerInput * maxSteer, Math.min(1, dt * 11));
+    if (state.crashCooldown > 0) state.crashCooldown = Math.max(0, state.crashCooldown - dt);
+    if (state.lastImpactIntensity > 0) state.lastImpactIntensity = Math.max(0, state.lastImpactIntensity - dt * 3.4);
 
-    const isDrifting = handbrake && Math.abs(state.speed) > 5.5;
-    const grip = isDrifting ? 2.6 : 8.5;
+    // GTA VI Speed-Sensitive Progressive Steering + Self-Centering Return Torque
+    const absSpd = Math.abs(state.speed);
+    const maxSteer = THREE.MathUtils.lerp(0.56, 0.19, Math.min(1, absSpd / 32));
+    const steerResp = steerInput !== 0 ? (config.isBMW ? 11.5 : 8.8) : (6.5 + Math.min(8.0, absSpd * 0.45));
+    state.steerAngle = THREE.MathUtils.lerp(state.steerAngle, steerInput * maxSteer, Math.min(1, dt * steerResp));
+
+    // Progressive Pacejka-Style Tire Grip, Weight-Transfer Bite & BMW Power-Oversteer Drift
+    const isDrifting = handbrake && absSpd > 4.8;
+    const powerSlide = config.isBMW && throttle > 0 && boost > 1.0 && Math.abs(state.steerAngle) > 0.18 && absSpd > 8.0;
+    const baseGrip = config.isBMW ? 9.6 : (config.isBike ? 10.2 : (config.isCNG ? 6.8 : 7.8));
+    const brakeWeightBite = (brake > 0 && absSpd > 3.0) ? 1.12 : 1.0;
+    const grip = isDrifting ? 2.15 : (powerSlide ? 4.2 : baseGrip * brakeWeightBite);
 
     const turnRate = state.steerAngle
-      * (state.speed / 2.65)
-      * (isDrifting ? 1.42 : 1.0)
-      * (1.0 / (1.0 + Math.abs(state.speed) * 0.025));
+      * (state.speed / (config.isBike ? 2.35 : 2.60))
+      * (isDrifting ? 1.48 : (powerSlide ? 1.18 : 1.0))
+      * (1.0 / (1.0 + absSpd * 0.024));
 
     state.heading += turnRate * dt;
 
-    const centrifugal = turnRate * state.speed * (isDrifting ? 0.36 : 0.10);
+    const slipFactor = isDrifting ? 0.42 : (powerSlide ? 0.24 : (absSpd > 14 ? 0.13 : 0.08));
+    const centrifugal = turnRate * state.speed * slipFactor;
     state.lateralVel = THREE.MathUtils.lerp(state.lateralVel, centrifugal, Math.min(1, dt * grip));
+    state.slipIntensity = THREE.MathUtils.clamp((Math.abs(state.lateralVel) - 0.85) / 5.5 + (isDrifting ? 0.45 : 0), 0, 1);
 
     fwd.set(Math.sin(state.heading), 0, Math.cos(state.heading));
     rgt.set(Math.cos(state.heading), 0, -Math.sin(state.heading));
 
     state.pos.addScaledVector(fwd, state.speed * dt);
     state.pos.addScaledVector(rgt, state.lateralVel * dt);
+    state.roadTravelDist += Math.abs(state.speed) * dt;
 
     applyCarCollisions(houseRef, envRef, allCars);
 
@@ -2881,7 +3242,6 @@ export function createDrivableCar(scene, manager, config) {
     }
     if (config.isBike) {
       // Realistic visibly workable Front Telescopic Fork Suspension (compresses on brake/bumps & rebounds smoothly, zero rear hopping!)
-      state.roadTravelDist += Math.abs(state.speed) * dt;
       const speedBlend = THREE.MathUtils.clamp(Math.abs(state.speed) / 10.0, 0, 1);
       const frontRoadBump = (Math.sin(state.roadTravelDist * 1.9) * 0.024 + Math.sin(state.roadTravelDist * 4.3) * 0.012) * speedBlend;
       const rearRoadBump = Math.sin((state.roadTravelDist - 1.38) * 1.9) * 0.006 * speedBlend;
@@ -2894,19 +3254,9 @@ export function createDrivableCar(scene, manager, config) {
       state.frontSuspVel += fForce * dt;
       state.frontSuspOffset = THREE.MathUtils.clamp(state.frontSuspOffset + state.frontSuspVel * dt, -0.092, 0.048);
 
-      // Critically over-damped rear mono-shock: smooth planted ride, zero rear hopping!
       state.rearSuspOffset = THREE.MathUtils.lerp(state.rearSuspOffset, targetRearSusp, Math.min(1, dt * 11.0));
     }
-    const suspPitch = config.isBike ? THREE.MathUtils.clamp((state.rearSuspOffset - state.frontSuspOffset) * 1.05, -0.085, 0.075) : 0;
-    const targetPitch = config.isBike
-      ? THREE.MathUtils.clamp(-accel * 0.0024 + suspPitch, -0.075, 0.065)
-      : THREE.MathUtils.clamp(-accel * 0.0022, -0.045, 0.045);
-    const pedalSway = config.isRickshaw ? Math.sin(state.pedalPhase) * 0.028 * Math.min(1, Math.abs(state.speed) / 2.5) : 0;
-    const targetRoll = config.isBike
-      ? THREE.MathUtils.clamp(-turnRate * Math.min(Math.abs(state.speed), 24) * 0.017, -0.40, 0.40)
-      : THREE.MathUtils.clamp(-turnRate * state.speed * 0.0025 + pedalSway, -0.065, 0.065);
-    state.pitch = THREE.MathUtils.lerp(state.pitch, targetPitch, Math.min(1, dt * 10));
-    state.roll = THREE.MathUtils.lerp(state.roll, targetRoll, Math.min(1, dt * (config.isBike ? 7.5 : 10)));
+    update4WheelTerrainAndSuspension(dt, envRef, groundHeightFn, { accel, turnRate, brake, handbrake, throttle });
 
     const absKmh = Math.abs(state.speed) * 3.6;
     const totalGears = state.gearCount || 6;
@@ -2920,6 +3270,14 @@ export function createDrivableCar(scene, manager, config) {
       if (absKmh >= gearThresholds[i - 1]) g = i;
     }
     state.gear = state.speed < -0.4 ? 'R' : (absKmh < 1 ? 'N' : g);
+    if (typeof state.gear === 'number' && typeof state.lastGear === 'number' && state.gear > state.lastGear && throttle > 0) {
+      playGearShiftPop();
+      if (!config.isRickshaw) {
+        state.shiftDipTimer = 0.12;
+        state.dynPitchVel -= config.isBike ? 0.58 : 0.42;
+      }
+    }
+    state.lastGear = state.gear;
 
     const gMin = gearThresholds[(typeof g === 'number' ? g : 1) - 1] || 0;
     const gMax = gearThresholds[(typeof g === 'number' ? g : 1)] || 30;
@@ -2933,7 +3291,7 @@ export function createDrivableCar(scene, manager, config) {
       m.emissiveIntensity = (brake > 0 || handbrake) ? 7.0 : 2.2;
     }
 
-    updateEngineAudio(true, state.rpm, throttle);
+    updateEngineAudio(true, state.rpm, throttle, state.slipIntensity);
     syncTransform();
   }
 

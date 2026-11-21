@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
-import { attachDerivedPBRMaps } from './aaa-shaders.js';
+import { attachDerivedPBRMaps, applyFoliageWindShader } from './aaa-shaders.js';
 import { buildCNGAuto } from './khulna-vehicles.js';
 import { buildRoyalMoreDistrict } from './royal-more.js';
 import { buildPtiMoreDistrict } from './pti-more.js';
@@ -106,6 +106,12 @@ function makeLandmarkMaterials(m) {
       metalness: 0.14,
       envMapIntensity: 0.7,
     }),
+    palmLeafMat: applyFoliageWindShader(new THREE.MeshStandardMaterial({
+      color: 0x1f7337,
+      roughness: 0.74,
+      metalness: 0.04,
+      envMapIntensity: 0.45,
+    }), m.shaderUniforms),
     emeraldDark: new THREE.MeshStandardMaterial({
       color: 0x0f3d2e,
       roughness: 0.62,
@@ -233,7 +239,7 @@ function addUtilityPole(staticG, dynamicG, lm, x, z, facingX = 1) {
 
 function addCoconutPalm(staticG, lm, x, z, height = 9.5, leanX = 0.4, leanZ = 0.2) {
   const trunkMat = lm.teakWood;
-  const leafMat = lm.emeraldMat;
+  const leafMat = lm.palmLeafMat || lm.emeraldMat;
   const segs = 5;
   let px = x;
   let py = 0;
