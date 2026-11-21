@@ -468,7 +468,7 @@ export const CAR_FLEET_CONFIGS = [
     id: 'atlas_roadster_bicycle',
     name: 'Atlas Roadster Bicycle',
     badge: 'ATLAS ROADSTER BICYCLE',
-    assetUrl: './assets/atlas_roadster_bicycle.glb',
+    assetUrl: './assets/atlas_roadster_bicycle.glb?v=2',
     targetLength: 1.88,
     width: 0.63,
     rotateY: 0,
@@ -2250,8 +2250,8 @@ export function createDrivableCar(scene, manager, config) {
             gripAnchorL = new THREE.Object3D();
             gripAnchorR = new THREE.Object3D();
             if (config.isBicycle) {
-              gripAnchorL.position.set(0.288, 0.197, -0.130);
-              gripAnchorR.position.set(-0.288, 0.197, -0.130);
+              gripAnchorL.position.set(0.286, 0.206, -0.150);
+              gripAnchorR.position.set(-0.286, 0.206, -0.150);
             } else {
               gripAnchorL.position.set(0.294, 0.245, -0.137);
               gripAnchorR.position.set(-0.291, 0.245, -0.138);
@@ -2260,7 +2260,7 @@ export function createDrivableCar(scene, manager, config) {
             steering.add(gripAnchorR);
           }
           const saddleAnchor = new THREE.Object3D();
-          saddleAnchor.position.set(0, config.isBicycle ? 1.03 : 1.09, config.isBicycle ? -0.31 : -0.14);
+          saddleAnchor.position.set(0, config.isBicycle ? 1.00 : 1.09, config.isBicycle ? -0.295 : -0.14);
           orientedWrapper.add(saddleAnchor);
           const passengerAnchor = new THREE.Object3D();
           passengerAnchor.position.set(0, 0.88, -0.78);
@@ -2272,10 +2272,10 @@ export function createDrivableCar(scene, manager, config) {
           passengerFootR.position.set(-0.15, 0.59, -0.34);
           orientedWrapper.add(passengerFootR);
           const pedalFootL = new THREE.Object3D();
-          pedalFootL.position.set(0.056, 0.018, 0.0);
+          pedalFootL.position.set(0.056, config.isBicycle ? 0.022 : 0.018, 0.0);
           if (pedalL) pedalL.add(pedalFootL);
           const pedalFootR = new THREE.Object3D();
-          pedalFootR.position.set(-0.056, 0.018, 0.0);
+          pedalFootR.position.set(-0.056, config.isBicycle ? 0.022 : 0.018, 0.0);
           if (pedalR) pedalR.add(pedalFootR);
           rickshawParts = {
             steering,
@@ -2610,7 +2610,7 @@ export function createDrivableCar(scene, manager, config) {
       if (rickshawParts.pedalR) rickshawParts.pedalR.rotation.x = -state.pedalPhase;
       if (rickshawParts.chainLinks && rickshawParts.chainCurve) {
         const n = rickshawParts.chainLinks.length;
-        const advance = (state.pedalPhase * 0.092) / rickshawParts.chainLength;
+        const advance = (state.pedalPhase * (config.isBicycle ? 0.096 : 0.092)) / rickshawParts.chainLength;
         for (let i = 0; i < n; i++) {
           let u = (i / n + advance) % 1;
           if (u < 0) u += 1;
@@ -3242,8 +3242,9 @@ export function createDrivableCar(scene, manager, config) {
       }
     }
     if (config.isRickshaw) {
+      const gearRatio = config.isBicycle ? 0.50 : 0.72;
       const pedalRate = (throttle > 0 || state.speed > 0.15)
-        ? Math.max(throttle * 3.8, (state.speed / wheelRadius) * 0.72)
+        ? Math.max(throttle * 3.8, (state.speed / wheelRadius) * gearRatio)
         : (state.speed < -0.15 ? (state.speed / wheelRadius) * 0.5 : 0);
       state.pedalPhase += pedalRate * dt;
     }

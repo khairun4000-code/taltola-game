@@ -2048,13 +2048,17 @@ function startVehicleTransition(type, car, seatMode = 'driver') {
     vehicleTransition.startPos.set(st.pos.x - sinH * 0.18, st.pos.y + 0.04 + EYE_HEIGHT, st.pos.z - cosH * 0.18);
     vehicleTransition.endPos.set(st.pos.x + rx * 0.88 - sinH * 0.18, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.88 - cosH * 0.18);
   } else if (type === 'rickshaw_mount_driver') {
+    const seatBack = st.isBicycle ? 0.28 : 0.05;
+    const seatLift = st.isBicycle ? 0.08 : 0.16;
     vehicleTransition.duration = 0.78;
-    vehicleTransition.startPos.set(st.pos.x + rx * 0.78 - sinH * 0.05, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.78 - cosH * 0.05);
-    vehicleTransition.endPos.set(st.pos.x - sinH * 0.05, st.pos.y + 0.16 + EYE_HEIGHT, st.pos.z - cosH * 0.05);
+    vehicleTransition.startPos.set(st.pos.x + rx * 0.78 - sinH * seatBack, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.78 - cosH * seatBack);
+    vehicleTransition.endPos.set(st.pos.x - sinH * seatBack, st.pos.y + seatLift + EYE_HEIGHT, st.pos.z - cosH * seatBack);
   } else if (type === 'rickshaw_dismount_driver') {
+    const seatBack = st.isBicycle ? 0.28 : 0.05;
+    const seatLift = st.isBicycle ? 0.08 : 0.16;
     vehicleTransition.duration = 0.68;
-    vehicleTransition.startPos.set(st.pos.x - sinH * 0.05, st.pos.y + 0.16 + EYE_HEIGHT, st.pos.z - cosH * 0.05);
-    vehicleTransition.endPos.set(st.pos.x + rx * 0.92 - sinH * 0.05, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * 0.05);
+    vehicleTransition.startPos.set(st.pos.x - sinH * seatBack, st.pos.y + seatLift + EYE_HEIGHT, st.pos.z - cosH * seatBack);
+    vehicleTransition.endPos.set(st.pos.x + rx * 0.92 - sinH * seatBack, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * seatBack);
   } else if (type === 'rickshaw_mount_passenger') {
     vehicleTransition.duration = 0.54;
     vehicleTransition.startPos.set(st.pos.x + rx * 0.92 - sinH * 0.62, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * 0.62);
@@ -2296,6 +2300,7 @@ function updateVehicleTransition(delta) {
         facingYaw,
         clip,
         timeScale,
+        isBicycle: Boolean(st.isBicycle),
         anchors: st.isRickshaw ? car.getRickshawAnchors?.() : (st.isBike ? car.getBikeRiderAnchors?.() : null),
         handTarget: vt.handTarget,
       },
@@ -2988,9 +2993,17 @@ async function initialize() {
       updateHUDPrompt();
     },
   });
-  // Vehicles stay tucked away on startup and only spawn on-demand via [P] phone cheat codes (max 2 at a time)
+  // Park the custom Atlas Roadster Bicycle right outside Taltola House on startup; other vehicles spawn via [P] phone cheat codes
   cars = [];
   bmwCar = null;
+  const bikeCfg = CAR_FLEET_CONFIGS.find((c) => c.id === 'atlas_roadster_bicycle');
+  if (bikeCfg) {
+    const starterBike = createDrivableCar(scene, undefined, bikeCfg);
+    starterBike.setQualityMode?.(quality);
+    const selectiveEnv = (quality === 'ultra' || quality === 'high') ? null : (skySystem?.getEnvTexture?.() || null);
+    starterBike.setEnvironmentMap?.(selectiveEnv);
+    cars.push(starterBike);
+  }
 
   await Promise.race([
     allLoaded,
@@ -5413,7 +5426,7 @@ function updateMovement(delta) {
         } else if (st.isRickshaw) {
           const anchors = drivingCar.getRickshawAnchors?.();
           const isPassenger = st.rideSeat === 'passenger';
-          const seatBackOffset = isPassenger ? 0.62 : 0.05;
+          const seatBackOffset = isPassenger ? 0.62 : (st.isBicycle ? 0.28 : 0.05);
           const riderPos = {
             x: st.pos.x - sinH * seatBackOffset,
             y: st.pos.y + EYE_HEIGHT,
@@ -5431,6 +5444,7 @@ function updateMovement(delta) {
             rickshawRide: {
               active: true,
               seat: st.rideSeat,
+              isBicycle: Boolean(st.isBicycle),
               heading: st.heading,
               pedalPhase: st.pedalPhase,
               steerAngle: st.steerAngle,

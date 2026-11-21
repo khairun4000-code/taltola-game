@@ -1375,9 +1375,10 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     resetUpperAndLimbBonesToRest();
 
     // 2. Clean upright posture built strictly on Mixamo's rest quaternions (ZERO sideways tilt!), gentle forward lean
+    const isBike = Boolean(ride.isBicycle);
     const stand = THREE.MathUtils.clamp(ride.standingBlend || 0, 0, 1);
     if (spineBone) {
-      eulerTemp.set(0.22 + stand * 0.14, 0, 0);
+      eulerTemp.set((isBike ? 0.26 : 0.22) + stand * 0.14, 0, 0);
       qTempA.setFromEuler(eulerTemp);
       spineBone.quaternion.copy(restSpineQ).multiply(qTempA);
     }
@@ -1405,12 +1406,15 @@ export function createPlayerCharacter(scene, manager, options = {}) {
 
     // 5. Exact 2-Bone World-Space IK: guarantee BOTH hands stay 100% glued directly onto the handlebar grips!
     if (a.gripL && a.gripR && leftArm && leftForeArm && leftHand && rightArm && rightForeArm && rightHand) {
-      ikPole.copy(ikTarget).addScaledVector(ikFwd, 0.14).addScaledVector(ikRight, 0.48);
-      ikPole.y -= 0.08;
+      const elbowFwd = isBike ? 0.12 : 0.14;
+      const elbowOut = isBike ? 0.42 : 0.48;
+      const elbowDrop = isBike ? 0.14 : 0.08;
+      ikPole.copy(ikTarget).addScaledVector(ikFwd, elbowFwd).addScaledVector(ikRight, elbowOut);
+      ikPole.y -= elbowDrop;
       solveTwoBoneIK(leftArm, leftForeArm, leftHand, a.gripL, ikPole);
 
-      ikPole.copy(ikTarget).addScaledVector(ikFwd, 0.14).addScaledVector(ikRight, -0.48);
-      ikPole.y -= 0.08;
+      ikPole.copy(ikTarget).addScaledVector(ikFwd, elbowFwd).addScaledVector(ikRight, -elbowOut);
+      ikPole.y -= elbowDrop;
       solveTwoBoneIK(rightArm, rightForeArm, rightHand, a.gripR, ikPole);
     }
     lockHeadAndNeckStraight();
@@ -1630,8 +1634,14 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       lockHeadAndNeckStraight();
     } else if (va.type === 'rickshaw_mount_driver' || va.type === 'rickshaw_dismount_driver') {
       resetUpperAndLimbBonesToRest();
-      root.updateMatrixWorld(true);
       const u = va.type === 'rickshaw_dismount_driver' ? (1 - p) : p;
+      const isBike = Boolean(va.isBicycle);
+      if (spineBone) {
+        eulerTemp.set(u * (isBike ? 0.26 : 0.22), 0, 0);
+        qTempA.setFromEuler(eulerTemp);
+        spineBone.quaternion.copy(restSpineQ).multiply(qTempA);
+      }
+      root.updateMatrixWorld(true);
       const swingArc = Math.sin(u * Math.PI);
       if (va.anchors && rightUpLeg && rightLeg && rightFoot) {
         root.updateMatrixWorld(true);
@@ -1651,12 +1661,14 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         ikPole.y += 0.15;
         solveTwoBoneIK(leftUpLeg, leftLeg, leftFoot, ikTarget, ikPole);
       }
-      if (va.anchors && u > 0.40 && leftArm && rightArm) {
-        ikPole.copy(va.anchors.saddle).addScaledVector(ikRight, 0.50);
-        ikPole.y += 0.12;
+      if (va.anchors && u > 0.22 && leftArm && leftForeArm && leftHand && rightArm && rightForeArm && rightHand) {
+        const elbowOut = isBike ? 0.42 : 0.50;
+        const elbowY = isBike ? -0.14 : 0.12;
+        ikPole.copy(va.anchors.saddle).addScaledVector(ikFwd, 0.12).addScaledVector(ikRight, elbowOut);
+        ikPole.y += elbowY;
         solveTwoBoneIK(leftArm, leftForeArm, leftHand, va.anchors.gripL, ikPole);
-        ikPole.copy(va.anchors.saddle).addScaledVector(ikRight, -0.50);
-        ikPole.y += 0.12;
+        ikPole.copy(va.anchors.saddle).addScaledVector(ikFwd, 0.12).addScaledVector(ikRight, -elbowOut);
+        ikPole.y += elbowY;
         solveTwoBoneIK(rightArm, rightForeArm, rightHand, va.anchors.gripR, ikPole);
       }
     } else if (va.type === 'car_enter' || va.type === 'car_exit') {

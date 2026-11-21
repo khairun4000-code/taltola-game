@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atlas Roadster Bicycle — 3D Animated Preview Studio</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #e9edf2;
+      color: #111827;
+      overflow: hidden;
+      user-select: none;
+    }
+    #canvas-wrap { position: fixed; inset: 0; }
+    .panel {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      width: 300px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+      z-index: 10;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+    }
+    .panel h1 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 2px;
+    }
+    .panel .sub {
+      font-size: 11px;
+      color: #475569;
+      margin-bottom: 12px;
+    }
+    .section {
+      border-top: 1px solid rgba(15, 23, 42, 0.08);
+      padding-top: 10px;
+      margin-top: 10px;
+    }
+    .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #475569;
+      margin-bottom: 7px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    button {
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      color: #0f172a;
+      border-radius: 8px;
+      padding: 7px 9px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    button:hover { background: #e2e8f0; }
+    button.active {
+      background: #0f172a;
+      color: #ffffff;
+      border-color: #0f172a;
+    }
+    .slider-row {
+      margin-bottom: 8px;
+    }
+    .slider-row input[type="range"] {
+      width: 100%;
+      accent-color: #0f172a;
+    }
+    .swatches {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+    .swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid #cbd5e1;
+      cursor: pointer;
+    }
+    .swatch.active { border-color: #0f172a; transform: scale(1.12); }
+    .hud-bottom {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.84);
+      color: #f8fafc;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 12px;
+      backdrop-filter: blur(8px);
+      z-index: 10;
+      pointer-events: none;
+    }
+    #status {
+      font-size: 11px;
+      color: #059669;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-wrap"></div>
+
+  <div class="panel">
+    <h1>Atlas Roadster Bicycle 3D</h1>
+    <div class="sub">Workable GLB · Animations + Live Rigging</div>
+
+    <div class="section">
+      <div class="label"><span>Mode</span><span id="mode-tag">GLB Animation</span></div>
+      <div class="btn-grid">
+        <button id="btn-ride" class="active">Ride Demo</button>
+        <button id="btn-pedal">Pedal &amp; Chain</button>
+        <button id="btn-steer">Steer L / R</button>
+        <button id="btn-manual">Manual Control</button>
+      </div>
+    </div>
+
+    <div class="section" id="anim-controls">
+      <div class="label"><span>Animation Speed</span><span id="spd-val">1.0x</span></div>
+      <div class="slider-row">
+        <input id="anim-speed" type="range" min="0" max="2.5" step="0.05" value="1.0" />
+      </div>
+    </div>
+
+    <div class="section" id="manual-controls" style="display:none;">
+      <div class="label"><span>Steering Angle</span><span id="steer-val">0°</span></div>
+      <div class="slider-row">
+        <input id="steer-slider" type="range" min="-36" max="36" step="1" value="0" />
+      </div>
+      <div class="label"><span>Pedal / Wheel Speed</span><span id="pedal-val">0.0</span></div>
+      <div class="slider-row">
+        <input id="pedal-slider" type="range" min="-3" max="5" step="0.1" value="1.8" />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label"><span>Reference Camera Angles</span></div>
+      <div class="btn-grid">
+        <button data-cam="right">Right / Drive</button>
+        <button data-cam="left">Left Side</button>
+        <button data-cam="front34">Front 3/4</button>
+        <button data-cam="rear34">Rear 3/4</button>
+        <button data-cam="front">Front</button>
+        <button data-cam="rear">Rear</button>
+        <button data-cam="top">Top View</button>
+        <button data-cam="chain">Chain &amp; Pedal</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label"><span>Frame Paint</span></div>
+      <div class="swatches" id="paint-swatches"></div>
+    </div>
+
+    <div id="status">Loading atlas_roadster_bicycle.glb...</div>
+  </div>
+
+  <div class="hud-bottom">
+    মাউস ড্র্যাগ: ৩৬০° ঘোরান · স্ক্রল: জুম · Manual Mode-এ <b>W/S</b> প্যাডেল, <b>A/D</b> ডানে-বামে স্টিয়ারিং
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    const wrap = document.getElementById('canvas-wrap');
+    const statusEl = document.getElementById('status');
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    wrap.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#eef1f5');
+
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+    const camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerHeight, 0.05, 50);
+    camera.position.set(-2.35, 1.05, 1.55);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0.56, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxPolarAngle = Math.PI * 0.495;
+    controls.update();
+
+    // Clean Studio Lighting
+    const hemi = new THREE.HemisphereLight(0xffffff, 0xcbd5e1, 0.85);
+    scene.add(hemi);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    keyLight.position.set(-3.5, 5.5, 3.2);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.near = 0.5;
+    keyLight.shadow.camera.far = 16;
+    keyLight.shadow.camera.left = -2.2;
+    keyLight.shadow.camera.right = 2.2;
+    keyLight.shadow.camera.top = 2.2;
+    keyLight.shadow.camera.bottom = -2.2;
+    keyLight.shadow.bias = -0.0005;
+    scene.add(keyLight);
+
+    const rimLight = new THREE.DirectionalLight(0xdbeafe, 1.1);
+    rimLight.position.set(3.2, 3.0, -3.5);
+    scene.add(rimLight);
+
+    // Studio Ground Plane + Subtle Grid
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(24, 24),
+      new THREE.ShadowMaterial({ opacity: 0.22 }),
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const grid = new THREE.GridHelper(10, 20, 0xcbd5e1, 0xdbe2ea);
+    grid.position.y = 0.001;
+    scene.add(grid);
+
+    // State
+    let mixer = null;
+    let actions = {};
+    let mode = 'Ride_Demo'; // 'Ride_Demo' | 'Pedal_Drive' | 'Steer_Left_Right' | 'manual'
+    let animSpeed = 1.0;
+    let parts = null;
+    let paintMats = [];
+    let manualSteer = 0;
+    let manualPedalSpeed = 1.8;
+    let pedalPhase = 0;
+    let wheelSpin = 0;
+    const keys = new Set();
+
+    window.addEventListener('keydown', (e) => keys.add(e.code));
+    window.addEventListener('keyup', (e) => keys.delete(e.code));
+
+    const loader = new GLTFLoader();
+    loader.load(
+      './assets/atlas_roadster_bicycle.glb',
+      (gltf) => {
+        const model = gltf.scene;
+        model.traverse((ch) => {
+          if (ch.isMesh) {
+            ch.castShadow = true;
+            ch.receiveShadow = true;
+            const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+            for (const m of mats) {
+              if (m?.name === 'Atlas_Frame_Black') paintMats.push(m);
+            }
+          }
+        });
+        scene.add(model);
+
+        const steering = model.getObjectByName('Steering_Assembly');
+        const wheelFront = model.getObjectByName('Wheel_Front');
+        const wheelRear = model.getObjectByName('Wheel_Rear');
+        const crank = model.getObjectByName('Crank_Assembly');
+        const pedalL = model.getObjectByName('Pedal_L');
+        const pedalR = model.getObjectByName('Pedal_R');
+        const chainGroup = model.getObjectByName('Chain_Links');
+        let chainLinks = null;
+        let chainCurve = null;
+        if (chainGroup && chainGroup.children.length >= 8) {
+          chainLinks = chainGroup.children.slice();
+          chainCurve = new THREE.CatmullRomCurve3(chainLinks.map((c) => c.position.clone()), true, 'catmullrom', 0.05);
+        }
+        parts = {
+          steering,
+          steerRestQ: steering ? steering.quaternion.clone() : null,
+          wheelFront,
+          wheelRear,
+          crank,
+          pedalL,
+          pedalR,
+          chainLinks,
+          chainCurve,
+        };
+
+        mixer = new THREE.AnimationMixer(model);
+        for (const clip of gltf.animations) {
+          actions[clip.name] = mixer.clipAction(clip);
+        }
+        setMode('Ride_Demo');
+        statusEl.textContent = `Loaded! ${gltf.animations.length} GLB animations ready.`;
+      },
+      undefined,
+      (err) => {
+        statusEl.style.color = '#dc2626';
+        statusEl.textContent = 'Load error: ' + err.message;
+      },
+    );
+
+    const btnMap = {
+      Ride_Demo: document.getElementById('btn-ride'),
+      Pedal_Drive: document.getElementById('btn-pedal'),
+      Steer_Left_Right: document.getElementById('btn-steer'),
+      manual: document.getElementById('btn-manual'),
+    };
+    const modeTag = document.getElementById('mode-tag');
+    const animPanel = document.getElementById('anim-controls');
+    const manualPanel = document.getElementById('manual-controls');
+
+    function setMode(next) {
+      mode = next;
+      for (const [k, btn] of Object.entries(btnMap)) {
+        btn.classList.toggle('active', k === next);
+      }
+      const isManual = next === 'manual';
+      animPanel.style.display = isManual ? 'none' : 'block';
+      manualPanel.style.display = isManual ? 'block' : 'none';
+      modeTag.textContent = isManual ? 'Interactive Rig' : next;
+
+      if (mixer) {
+        mixer.stopAllAction();
+        if (!isManual && actions[next]) {
+          actions[next].reset().play();
+        }
+      }
+    }
+
+    btnMap.Ride_Demo.onclick = () => setMode('Ride_Demo');
+    btnMap.Pedal_Drive.onclick = () => setMode('Pedal_Drive');
+    btnMap.Steer_Left_Right.onclick = () => setMode('Steer_Left_Right');
+    btnMap.manual.onclick = () => setMode('manual');
+
+    document.getElementById('anim-speed').oninput = (e) => {
+      animSpeed = parseFloat(e.target.value);
+      document.getElementById('spd-val').textContent = animSpeed.toFixed(2) + 'x';
+    };
+    document.getElementById('steer-slider').oninput = (e) => {
+      manualSteer = parseFloat(e.target.value) * (Math.PI / 180);
+      document.getElementById('steer-val').textContent = e.target.value + '°';
+    };
+    document.getElementById('pedal-slider').oninput = (e) => {
+      manualPedalSpeed = parseFloat(e.target.value);
+      document.getElementById('pedal-val').textContent = manualPedalSpeed.toFixed(1);
+    };
+
+    // Camera Presets matching the reference sheet!
+    const CAM_PRESETS = {
+      right:   { pos: [-2.75, 0.62,  0.00], tgt: [0, 0.56, 0.00] },
+      left:    { pos: [ 2.75, 0.62,  0.00], tgt: [0, 0.56, 0.00] },
+      front34: { pos: [-2.10, 0.92,  1.75], tgt: [0, 0.56, 0.02] },
+      rear34:  { pos: [-2.10, 0.92, -1.75], tgt: [0, 0.56, -0.04] },
+      front:   { pos: [ 0.00, 0.68,  2.45], tgt: [0, 0.56, 0.00] },
+      rear:    { pos: [ 0.00, 0.68, -2.45], tgt: [0, 0.56, 0.00] },
+      top:     { pos: [-0.01, 2.75,  0.00], tgt: [0, 0.50, 0.00] },
+      chain:   { pos: [-1.05, 0.42, -0.25], tgt: [-0.04, 0.34, -0.32] },
+    };
+    document.querySelectorAll('[data-cam]').forEach((btn) => {
+      btn.onclick = () => {
+        const p = CAM_PRESETS[btn.dataset.cam];
+        if (!p) return;
+        camera.position.set(...p.pos);
+        controls.target.set(...p.tgt);
+        controls.update();
+      };
+    });
+
+    // Paint Swatches
+    const PAINTS = [
+      { name: 'Atlas Jet Black', hex: '#101318' },
+      { name: 'Heritage Green', hex: '#0f4c32' },
+      { name: 'Royal Maroon', hex: '#7f1d1d' },
+      { name: 'Navy Blue', hex: '#162d54' },
+      { name: 'Vintage Silver', hex: '#8b95a5' },
+    ];
+    const swatchWrap = document.getElementById('paint-swatches');
+    PAINTS.forEach((p, idx) => {
+      const el = document.createElement('div');
+      el.className = 'swatch' + (idx === 0 ? ' active' : '');
+      el.title = p.name;
+      el.style.background = p.hex;
+      el.onclick = () => {
+        document.querySelectorAll('.swatch').forEach((s) => s.classList.remove('active'));
+        el.classList.add('active');
+        for (const m of paintMats) m.color.set(p.hex);
+      };
+      swatchWrap.appendChild(el);
+    });
+
+    const clock = new THREE.Clock();
+    const yAxis = new THREE.Vector3(0, 1, 0);
+    const tmpQ = new THREE.Quaternion();
+    const tmpPt = new THREE.Vector3();
+    const tmpTan = new THREE.Vector3();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+
+      if (mode !== 'manual' && mixer) {
+        mixer.update(dt * animSpeed);
+      } else if (mode === 'manual' && parts) {
+        if (keys.has('KeyA') || keys.has('ArrowLeft')) manualSteer = Math.min(0.63, manualSteer + dt * 1.8);
+        if (keys.has('KeyD') || keys.has('ArrowRight')) manualSteer = Math.max(-0.63, manualSteer - dt * 1.8);
+        let pRate = manualPedalSpeed;
+        if (keys.has('KeyW') || keys.has('ArrowUp')) pRate = 3.8;
+        else if (keys.has('KeyS') || keys.has('ArrowDown')) pRate = -2.2;
+
+        pedalPhase += pRate * dt;
+        wheelSpin += pRate * 2.0 * dt;
+
+        if (parts.steering && parts.steerRestQ) {
+          tmpQ.setFromAxisAngle(yAxis, manualSteer);
+          parts.steering.quaternion.copy(parts.steerRestQ).multiply(tmpQ);
+        }
+        if (parts.wheelFront) parts.wheelFront.rotation.x = wheelSpin;
+        if (parts.wheelRear) parts.wheelRear.rotation.x = wheelSpin;
+        if (parts.crank) parts.crank.rotation.x = pedalPhase;
+        if (parts.pedalL) parts.pedalL.rotation.x = -pedalPhase;
+        if (parts.pedalR) parts.pedalR.rotation.x = -pedalPhase;
+        if (parts.chainLinks && parts.chainCurve) {
+          const n = parts.chainLinks.length;
+          const adv = (pedalPhase / (Math.PI * 2)) * (28 / n);
+          for (let i = 0; i < n; i++) {
+            let u = (i / n + adv) % 1;
+            if (u < 0) u += 1;
+            parts.chainCurve.getPointAt(u, tmpPt);
+            parts.chainCurve.getTangentAt(u, tmpTan);
+            const lnk = parts.chainLinks[i];
+            lnk.position.copy(tmpPt);
+            lnk.rotation.x = Math.atan2(-tmpTan.y, tmpTan.z);
+          }
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
