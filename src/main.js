@@ -1824,30 +1824,32 @@ function syncCarHUD() {
   const driving = Boolean(activeCar);
   if (carToggleButton) {
     carToggleButton.innerHTML = driving
-      ? (activeCar.state.isRickshaw ? 'EXIT RICKSHAW <span>[T]</span>' : (activeCar.state.isBike ? 'EXIT BIKE <span>[T]</span>' : 'EXIT CAR <span>[T]</span>'))
+      ? (activeCar.state.isBicycle ? 'EXIT BICYCLE <span>[T]</span>' : (activeCar.state.isRickshaw ? 'EXIT RICKSHAW <span>[T]</span>' : (activeCar.state.isBike ? 'EXIT BIKE <span>[T]</span>' : 'EXIT CAR <span>[T]</span>')))
       : 'DRIVE CAR <span>[T]</span>';
   }
   carHud?.classList.toggle('hidden', !driving);
   emoteBar?.classList.toggle('hidden', driving);
   if (driving && activeCar) {
     const isRick = Boolean(activeCar.state.isRickshaw);
+    const isBicycle = Boolean(activeCar.state.isBicycle);
     const isBike = Boolean(activeCar.state.isBike);
-    const isPass = isRick && activeCar.state.rideSeat === 'passenger';
+    const isPass = isRick && !isBicycle && activeCar.state.rideSeat === 'passenger';
     if (carBadgeEl) {
       if (isRick) {
         const stR = activeCar.state;
+        const pedLabel = isBicycle ? 'ATLAS BICYCLE' : 'RICKSHAW';
         carBadgeEl.textContent = isPass
           ? 'RICKSHAW · PASSENGER SEAT'
           : (stR.boostCooldown > 0
-            ? `RICKSHAW · COOLDOWN (${Math.ceil(stR.boostCooldown)}s)`
+            ? `${pedLabel} · COOLDOWN (${Math.ceil(stR.boostCooldown)}s)`
             : (stR.standingPedal
-              ? `RICKSHAW · STANDING SPRINT (${Math.ceil(stR.boostStamina)}s)`
-              : 'RICKSHAW · SPRINT READY [SHIFT]'));
+              ? `${pedLabel} · STANDING SPRINT (${Math.ceil(stR.boostStamina)}s)`
+              : `${pedLabel} · SPRINT READY [SHIFT]`));
       } else {
         carBadgeEl.textContent = activeCar.state.badge;
       }
     }
-    if (carSeatBtn) carSeatBtn.classList.toggle('hidden', !isRick);
+    if (carSeatBtn) carSeatBtn.classList.toggle('hidden', !isRick || isBicycle);
     if (carHudDoorsEl) carHudDoorsEl.classList.toggle('hidden', isRick || isBike);
     if (carSeatLabelEl && isRick) {
       carSeatLabelEl.textContent = isPass ? 'DRIVER SEAT' : 'PASSENGER SEAT';
@@ -3988,12 +3990,12 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  // [G] Sit directly in Rickshaw Back Passenger Seat (when near a rickshaw)!
+  // [G] Sit directly in Rickshaw Back Passenger Seat (when near a rickshaw, excluding 1-seat bicycles)!
   if (event.code === 'KeyG' && !event.repeat) {
     const curCar = getDrivingCar();
     if (!curCar) {
       const nearCar = findNearestEnterableCar(playerPos);
-      if (nearCar?.state.isRickshaw) {
+      if (nearCar?.state.isRickshaw && !nearCar.state.isBicycle) {
         event.preventDefault();
         toggleCarDriving(nearCar, 'passenger');
         return;
@@ -4018,7 +4020,7 @@ window.addEventListener('keydown', (event) => {
       syncHUDButtons();
       return;
     }
-    if (activeCar.state.isRickshaw) {
+    if (activeCar.state.isRickshaw && !activeCar.state.isBicycle) {
       if (event.code === 'KeyF' && !event.repeat) {
         event.preventDefault();
         if (activeCar.state.rideSeat === 'passenger') {
@@ -4525,18 +4527,18 @@ function findNearestSeat(pos) {
  *
  * Uses `maxStepUp` and stairwell/shaft cutouts so jumping on stairs or indoors NEVER snaps the player to the floor above.
  */
-function computeGroundHeight(pos) {
+function computeGroundHeight(pos, isGroundedOverride = grounded, velYOverride = verticalVelocity) {
   const footY = pos.y - EYE_HEIGHT;
-  const maxStepUp = grounded ? 0.55 : (verticalVelocity > 0 ? 0.08 : 0.38);
+  const maxStepUp = isGroundedOverride ? 0.55 : (velYOverride > 0 ? 0.08 : 0.38);
 
-  const altTowerY = environment?.altapoleTower?.computeGroundHeight?.(pos, grounded, verticalVelocity);
+  const altTowerY = environment?.altapoleTower?.computeGroundHeight?.(pos, isGroundedOverride, velYOverride);
   if (altTowerY !== null && altTowerY !== undefined) return altTowerY;
-  const altGoliY = environment?.altapoleGoli?.computeGroundHeight?.(pos, grounded, verticalVelocity);
+  const altGoliY = environment?.altapoleGoli?.computeGroundHeight?.(pos, isGroundedOverride, velYOverride);
   if (altGoliY !== null && altGoliY !== undefined) return altGoliY;
 
   // --- KHULNA ALIA KAMIL MADRASAH & MODEL MOSQUE WALKABLE INTERIORS (delegated to alia-madrasah.js) ---
   if (pos.x >= 156.0 && pos.x <= 196.0 && pos.z >= 74.0 && pos.z <= 184.0) {
-    const aliaY = environment?.landmarks?.aliaMadrasah?.getGroundHeight?.(pos, grounded, verticalVelocity);
+    const aliaY = environment?.landmarks?.aliaMadrasah?.getGroundHeight?.(pos, isGroundedOverride, velYOverride);
     if (typeof aliaY === 'number' && aliaY > 0) return aliaY;
   }
 

@@ -1234,6 +1234,7 @@ export function createDrivableCar(scene, manager, config) {
     dynPitch: 0,
     dynPitchVel: 0,
     dynRoll: 0,
+    dynRollVel: 0,
     suspHeave: 0,
     suspHeaveVel: 0,
     lastGroundY: 0.01,
@@ -2553,6 +2554,9 @@ export function createDrivableCar(scene, manager, config) {
     return anchorCache;
   }
 
+  const chainPt = new THREE.Vector3();
+  const chainTan = new THREE.Vector3();
+
   function syncTransform() {
     root.position.copy(state.pos);
     root.rotation.y = state.heading;
@@ -2607,16 +2611,14 @@ export function createDrivableCar(scene, manager, config) {
       if (rickshawParts.chainLinks && rickshawParts.chainCurve) {
         const n = rickshawParts.chainLinks.length;
         const advance = (state.pedalPhase * 0.092) / rickshawParts.chainLength;
-        const pt = anchorCache.passengerSeat;
-        const tan = anchorCache.passengerFootL;
         for (let i = 0; i < n; i++) {
           let u = (i / n + advance) % 1;
           if (u < 0) u += 1;
-          rickshawParts.chainCurve.getPointAt(u, pt);
-          rickshawParts.chainCurve.getTangentAt(u, tan);
+          rickshawParts.chainCurve.getPointAt(u, chainPt);
+          rickshawParts.chainCurve.getTangentAt(u, chainTan);
           const lnk = rickshawParts.chainLinks[i];
-          lnk.position.copy(pt);
-          lnk.rotation.x = Math.atan2(-tan.y, tan.z);
+          lnk.position.copy(chainPt);
+          lnk.rotation.x = Math.atan2(-chainTan.y, chainTan.z);
         }
       }
       return;
@@ -2803,7 +2805,7 @@ export function createDrivableCar(scene, manager, config) {
 
   function update4WheelTerrainAndSuspension(dt, envRef, groundHeightFn, { accel = 0, turnRate = 0, brake = 0, handbrake = false, throttle = 0 } = {}) {
     const wb = Math.max(0.75, state.halfLength * 0.70);
-    const tw = config.isBike ? 0.14 : Math.max(0.45, state.halfWidth * 0.82);
+    const tw = (config.isBike || config.isBicycle) ? 0.14 : Math.max(0.45, state.halfWidth * 0.82);
     const fx = Math.sin(state.heading);
     const fz = Math.cos(state.heading);
     const lx = Math.cos(state.heading);  // local +X (Left side of vehicle)
@@ -2913,7 +2915,9 @@ export function createDrivableCar(scene, manager, config) {
     const rollGain = config.isBMW ? 0.0036 : (isHeavyTall ? 0.0066 : (config.isCNG ? 0.0074 : 0.0048));
     const targetDynRoll = config.isBike
       ? THREE.MathUtils.clamp(-turnRate * Math.min(speedMag, 26) * (config.bikeSportLean ? 0.025 : 0.022), -0.54, 0.54)
-      : THREE.MathUtils.clamp(-turnRate * state.speed * rollGain + pedalSway, -0.145, 0.145);
+      : (config.isBicycle
+        ? THREE.MathUtils.clamp(-turnRate * Math.min(speedMag, 14) * 0.018 + pedalSway, -0.28, 0.28)
+        : THREE.MathUtils.clamp(-turnRate * state.speed * rollGain + pedalSway, -0.145, 0.145));
     const rollStiff = config.isBike ? 48.0 : (config.isBMW ? 72.0 : (isHeavyTall ? 46.0 : 58.0));
     const rollDamp = config.isBike ? 8.8 : (config.isBMW ? 9.8 : (isHeavyTall ? 7.2 : 8.2));
     state.dynRollVel = (state.dynRollVel || 0) + ((targetDynRoll - state.dynRoll) * rollStiff - (state.dynRollVel || 0) * rollDamp) * dt;
@@ -3374,8 +3378,26 @@ export function createDrivableCar(scene, manager, config) {
       state.speed = 0;
       state.lateralVel = 0;
       state.steerAngle = 0;
+      state.velY = 0;
+      state.grounded = true;
       state.pitch = 0;
       state.roll = 0;
+      state.terrainPitch = 0;
+      state.terrainRoll = 0;
+      state.dynPitch = 0;
+      state.dynPitchVel = 0;
+      state.dynRoll = 0;
+      state.dynRollVel = 0;
+      state.suspHeave = 0;
+      state.suspHeaveVel = 0;
+      state.lastGroundY = 0.01;
+      state.frontSuspOffset = 0;
+      state.frontSuspVel = 0;
+      state.rearSuspOffset = 0;
+      state.rearSuspVel = 0;
+      state.lastImpactIntensity = 0;
+      state.crashCooldown = 0;
+      state.slipIntensity = 0;
       syncTransform();
     },
     destroy() {

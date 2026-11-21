@@ -286,7 +286,9 @@ export function buildKhulnaWildlife(parent) {
     template.updateMatrixWorld(true);
     const rawBox = new THREE.Box3().setFromObject(template);
     const rawSize = new THREE.Vector3();
+    const rawCenter = new THREE.Vector3();
     rawBox.getSize(rawSize);
+    rawBox.getCenter(rawCenter);
     const maxDim = Math.max(rawSize.x, rawSize.y, rawSize.z, 0.001);
     // Normalize the 5-bird flock to a realistic ~4.8m flock span (~0.55m per crow)
     const baseScale = 4.8 / maxDim;
@@ -296,13 +298,16 @@ export function buildKhulnaWildlife(parent) {
       const spot = CROW_SPOTS[i];
       const flockObj = SkeletonUtils.clone(template);
       const scaleMult = spot.isCrow ? (0.94 + (i % 3) * 0.08) : 0.86;
-      flockObj.scale.setScalar(baseScale * scaleMult);
+      const s = baseScale * scaleMult;
+      flockObj.scale.setScalar(s);
+      // Center flock pivot horizontally & align feet to y=0 so perched birds land cleanly on rooftops/ledges!
+      flockObj.position.set(-rawCenter.x * s, -rawBox.min.y * s, -rawCenter.z * s);
 
       flockObj.traverse((child) => {
         if (child.isMesh) {
           child.castShadow = false; // Zero shadow-pass FPS overhead for flying birds!
           child.receiveShadow = false;
-          child.frustumCulled = true;
+          child.frustumCulled = false; // Prevent animated SkinnedMesh popping at screen edges (already distance-culled at 240m!)
           if (spot.isCrow) {
             const matName = child.material?.name || '';
             child.material = matName.includes('.001') ? crowAccentMat : crowBlackMat;
