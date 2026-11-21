@@ -1592,19 +1592,21 @@ export function getModelMosqueGroundHeight(pos, grounded = true, verticalVelocit
     if (h <= footY + maxStepUp && h > bestH) bestH = h;
   };
 
-  // 1) Front Lower Wide White Marble Staircase (bx = -5.6..+5.6, by = -14.9..-9.5)
-  if (bx >= -5.7 && bx <= 5.7 && by >= -15.0 && by <= -9.4) {
-    const t = THREE.MathUtils.clamp((by - (-14.9)) / (-9.5 - (-14.9)), 0, 1);
-    tryFloor(Y_GROUND + t * (Y_MID_LANDING - Y_GROUND));
+  // 1) Front Lower Wide White Marble Staircase (bx = -5.6..+5.6, step nosings from by = -15.06 to -10.33)
+  if (bx >= -5.75 && bx <= 5.75 && by >= -15.15 && by <= -9.55) {
+    const t = THREE.MathUtils.clamp((by - (-15.06)) / (-10.33 - (-15.06)), 0, 1);
+    const zStep = 0.371 + t * (2.28 - 0.371) + 0.04;
+    tryFloor(MOSQUE_BASE_Y + zStep * S);
   }
-  // Mid-stair landing (bx = -5.6..+5.6, by = -9.6..-6.4)
-  if (bx >= -5.7 && bx <= 5.7 && by >= -9.6 && by <= -6.4) {
-    tryFloor(Y_MID_LANDING);
+  // Mid-stair landing (bx = -5.6..+5.6, by = -10.33..-6.3)
+  if (bx >= -5.75 && bx <= 5.75 && by >= -10.33 && by <= -6.3) {
+    tryFloor(Y_MID_LANDING + 0.02);
   }
-  // 2) Front Upper Twin Stair Flights flanking central green grass planter (bx = -5.5..-1.65 & +1.65..+5.5, by = -9.4..-4.8)
-  if (((bx >= -5.6 && bx <= -1.6) || (bx >= 1.6 && bx <= 5.6)) && by >= -9.4 && by <= -4.7) {
-    const t = THREE.MathUtils.clamp((by - (-9.4)) / (-4.8 - (-9.4)), 0, 1);
-    tryFloor(Y_MID_LANDING + t * (Y_TERRACE - Y_MID_LANDING));
+  // 2) Front Upper Twin Stair Flights flanking central green grass planter (step nosings from by = -9.65 to -5.92)
+  if (((bx >= -5.65 && bx <= -1.6) || (bx >= 1.6 && bx <= 5.65)) && by >= -9.65 && by <= -4.9) {
+    const t = THREE.MathUtils.clamp((by - (-9.65)) / (-5.92 - (-9.65)), 0, 1);
+    const zStep = 2.482 + t * (4.18 - 2.482) + 0.04;
+    tryFloor(MOSQUE_BASE_Y + zStep * S);
   }
 
   // 3) Elevated White Marble Terrace Deck (bx = -15.5..+15.5, by = -13.1..-1.2, excluding central stair cutout)
