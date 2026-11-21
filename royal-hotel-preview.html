@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hotel Royal International Khulna — Standalone 3D Model Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0f172a; font-family: "Manrope", "Noto Sans Bengali", system-ui, sans-serif; color: #f8fafc; }
+    #canvas-wrap { position: fixed; inset: 0; }
+    #hud {
+      position: fixed; top: 14px; left: 14px; z-index: 20;
+      background: rgba(15, 23, 42, 0.84); backdrop-filter: blur(12px);
+      border: 1px solid rgba(250, 204, 21, 0.35); border-radius: 14px;
+      padding: 14px 16px; max-width: 340px; box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    }
+    #hud h1 { font-size: 16px; font-weight: 800; color: #facc15; margin-bottom: 4px; }
+    #hud p { font-size: 12px; color: #cbd5e1; line-height: 1.45; margin-bottom: 10px; }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    button {
+      cursor: pointer; border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(30, 41, 59, 0.9); color: #f8fafc;
+      padding: 7px 9px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      transition: all 0.16s ease;
+    }
+    button:hover { background: rgba(51, 65, 85, 0.95); border-color: #facc15; }
+    button.active { background: #ca8a04; color: #0f172a; border-color: #fde047; }
+    button.primary {
+      width: 100%; background: linear-gradient(135deg, #16a34a, #15803d);
+      border-color: #4ade80; color: #ffffff; padding: 9px; font-size: 13px; margin-top: 4px;
+    }
+    button.primary:hover { filter: brightness(1.1); }
+    #status { font-size: 11px; color: #94a3b8; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div id="canvas-wrap"></div>
+  <div id="hud">
+    <h1>হোটেল রয়্যাল ইন্টারন্যাশনাল (3D মডেল)</h1>
+    <p>মাউস ড্র্যাগ করে ঘোরান, স্ক্রল করে জুম করুন, অথবা <b>W A S D</b> চেপে ভেতরে হাঁটুন।</p>
+    <div class="btn-grid">
+      <button id="btn-ext" class="active">বাইরের ভিউ</button>
+      <button id="btn-lobby">রিসেপশন লবি</button>
+      <button id="btn-rest">স্যাফায়ার রেস্টুরেন্ট</button>
+      <button id="btn-room">রুম ৩০৩ (স্যুট)</button>
+      <button id="btn-roof">রুফটপ গার্ডেন</button>
+      <button id="btn-cut">কাটঅ্যাওয়ে (ভেতর)</button>
+      <button id="btn-night">দিন / রাত</button>
+      <button id="btn-reset">রিসেট ভিউ</button>
+    </div>
+    <button id="btn-glb" class="primary">ডাউনলোড .GLB মডেল</button>
+    <div id="status">লোড সম্পন্ন · ৬০ FPS রেডি</div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+    import { buildHotelRoyalStandalone3D } from './src/hotel-royal-standalone.js';
+
+    const wrap = document.getElementById('canvas-wrap');
+    const statusEl = document.getElementById('status');
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+    wrap.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x9ec5e8);
+    scene.fog = new THREE.FogExp2(0x9ec5e8, 0.0045);
+
+    const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.15, 300);
+    camera.position.set(22, 13, 30);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.target.set(0, 6.5, 2);
+
+    // Rich Day/Night Lighting Rig + Warm Interior Lights
+    const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x475569, 0.95);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff6e5, 2.2);
+    sunLight.position.set(28, 42, 30);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.left = -35;
+    sunLight.shadow.camera.right = 35;
+    sunLight.shadow.camera.top = 35;
+    sunLight.shadow.camera.bottom = -35;
+    scene.add(sunLight);
+
+    // Warm interior point lights so Lobby, Sapphire Restaurant & Room 303 glow beautifully
+    const interiorLights = [
+      [0, 3.2, 4.5, 0xfff3d6, 18, 22],
+      [-7.5, 3.2, -2.5, 0xffe8b8, 14, 16],
+      [7.5, 3.2, 2.0, 0xffe8b8, 14, 16],
+      [0, 7.0, 4.0, 0xfff0cc, 18, 22],
+      [0, 10.8, 4.8, 0xfff3d6, 14, 16],
+    ];
+    for (const [x, y, z, col, intensity, dist] of interiorLights) {
+      const pl = new THREE.PointLight(col, intensity, dist, 1.5);
+      pl.position.set(x, y, z);
+      scene.add(pl);
+    }
+
+    const hotel = buildHotelRoyalStandalone3D();
+    scene.add(hotel.root);
+
+    // Camera Presets
+    const presets = {
+      ext: { pos: [22, 13, 30], target: [0, 6.5, 2], cut: false },
+      lobby: { pos: [0, 1.9, 10.6], target: [-2.5, 1.8, -3.5], cut: false },
+      rest: { pos: [-7.5, 5.8, 8.2], target: [5.5, 5.4, 1.2], cut: false },
+      room: { pos: [0.0, 9.6, 0.8], target: [-0.2, 9.2, 6.5], cut: false },
+      roof: { pos: [14, 17.5, 17], target: [0, 12.0, 4], cut: false },
+    };
+
+    let cutaway = false;
+    let isNight = false;
+
+    function setActiveBtn(id) {
+      for (const el of document.querySelectorAll('#hud button')) el.classList.remove('active');
+      const b = document.getElementById(id);
+      if (b) b.classList.add('active');
+    }
+
+    function goPreset(key, btnId) {
+      const p = presets[key];
+      if (!p) return;
+      cutaway = p.cut;
+      hotel.setCutaway(cutaway);
+      camera.position.set(...p.pos);
+      controls.target.set(...p.target);
+      controls.update();
+      setActiveBtn(btnId);
+    }
+
+    document.getElementById('btn-ext').onclick = () => goPreset('ext', 'btn-ext');
+    document.getElementById('btn-reset').onclick = () => goPreset('ext', 'btn-ext');
+    document.getElementById('btn-lobby').onclick = () => goPreset('lobby', 'btn-lobby');
+    document.getElementById('btn-rest').onclick = () => goPreset('rest', 'btn-rest');
+    document.getElementById('btn-room').onclick = () => goPreset('room', 'btn-room');
+    document.getElementById('btn-roof').onclick = () => goPreset('roof', 'btn-roof');
+    document.getElementById('btn-cut').onclick = () => {
+      cutaway = !cutaway;
+      hotel.setCutaway(cutaway);
+      if (cutaway) {
+        camera.position.set(16, 13, 21);
+        controls.target.set(0, 5.2, 1);
+        setActiveBtn('btn-cut');
+      } else {
+        setActiveBtn('btn-ext');
+      }
+    };
+    document.getElementById('btn-night').onclick = () => {
+      isNight = !isNight;
+      const bg = isNight ? 0x090f1d : 0x9ec5e8;
+      scene.background.setHex(bg);
+      scene.fog.color.setHex(bg);
+      sunLight.intensity = isNight ? 0.25 : 2.2;
+      hemiLight.intensity = isNight ? 0.30 : 0.95;
+      renderer.toneMappingExposure = isNight ? 1.25 : 1.12;
+    };
+
+    // One-Click .GLB Export
+    document.getElementById('btn-glb').onclick = () => {
+      statusEl.textContent = 'GLB এক্সপোর্ট হচ্ছে...';
+      const prevCut = cutaway;
+      hotel.setCutaway(false);
+      const exporter = new GLTFExporter();
+      exporter.parse(
+        hotel.root,
+        (result) => {
+          hotel.setCutaway(prevCut);
+          const blob = new Blob([result], { type: 'model/gltf-binary' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'hotel_royal_international_khulna.glb';
+          a.click();
+          URL.revokeObjectURL(url);
+          statusEl.textContent = 'hotel_royal_international_khulna.glb ডাউনলোড হয়েছে!';
+        },
+        (err) => {
+          hotel.setCutaway(prevCut);
+          statusEl.textContent = 'এক্সপোর্ট এরর: ' + err.message;
+        },
+        { binary: true },
+      );
+    };
+
+    // Smooth WASD Free-Walk Movement inside Lobby / Restaurant / Rooms
+    const keys = {};
+    window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    const fwd = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.05, clock.getDelta());
+      const speed = (keys.ShiftLeft || keys.ShiftRight ? 10 : 4.5) * dt;
+      camera.getWorldDirection(fwd);
+      fwd.y = 0;
+      fwd.normalize();
+      right.crossVectors(fwd, camera.up).normalize();
+
+      const move = new THREE.Vector3();
+      if (keys.KeyW || keys.ArrowUp) move.add(fwd);
+      if (keys.KeyS || keys.ArrowDown) move.sub(fwd);
+      if (keys.KeyD || keys.ArrowRight) move.add(right);
+      if (keys.KeyA || keys.ArrowLeft) move.sub(right);
+      if (keys.KeyE) move.y += 1;
+      if (keys.KeyQ) move.y -= 1;
+      if (move.lengthSq() > 0) {
+        move.normalize().multiplyScalar(speed);
+        camera.position.add(move);
+        controls.target.add(move);
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
