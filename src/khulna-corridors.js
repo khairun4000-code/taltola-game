@@ -1374,7 +1374,7 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   const ox = 420.0;
   const oz = 975.0;
 
-  // Seamless Bangladeshi Pitch-Asphalt road along Tootpara Taltola Hospital Cross Rd & South/North Road Mouths
+  // Restored original Taltola street (Kawsar's real-photo m.road & red-brick m.brick footpaths, flush at y = +0.003 so feet sit cleanly on top!)
   const crossLanePts = [
     [414.2, 922],
     [415.3, 936.2],
@@ -1383,19 +1383,13 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
     [421.1, 1013.2],
     [418.2, 1034.0],
   ];
-  addPitchRoadAlongPolyline(staticG, crossLanePts, 2.95, bank.pitchLane, 0.052);
-  addPitchRoadAlongPolyline(staticG, [[421.1, 1013.2], [396.0, 1011.8]], 2.45, bank.pitchLane, 0.052);
-  // Smooth circular pitch junction pads right at the Taltola road mouths (zero jagged corners / zero Z-fighting!)
-  addPitchJunctionDisc(staticG, 421.1, 1013.2, 4.4, bank.pitchJunction, 0.060);
-  addPitchJunctionDisc(staticG, 414.2, 922.0, 3.8, bank.pitchJunction, 0.060);
+  buildPavedSegmentRoad(staticG, crossLanePts, 5.8, -0.022, m.road, 5.2);
+  buildPavedSegmentRoad(staticG, [[421.1, 1013.2], [396.0, 1011.8]], 4.8, -0.024, m.road, 5.2);
 
-  // Continuous red-brick footpaths + crisp cream curbs on East (leaving driveway gap at house gate z=971..979) and West
-  addBox(staticG, [1.45, 0.14, 35.5], [ox + 2.35, 0.03, oz - 21.25], bank.redBrickFootpath, { castShadow: false, uvScale: 1.8 });
-  addBox(staticG, [1.45, 0.14, 35.5], [ox + 2.35, 0.03, oz + 21.25], bank.redBrickFootpath, { castShadow: false, uvScale: 1.8 });
-  addBox(staticG, [1.35, 0.14, 74.0], [ox - 3.95, 0.03, oz], bank.redBrickFootpath, { castShadow: false, uvScale: 1.8 });
-  addBox(staticG, [0.16, 0.16, 35.5], [ox + 1.62, 0.04, oz - 21.25], bank.creamTrim, { castShadow: false });
-  addBox(staticG, [0.16, 0.16, 35.5], [ox + 1.62, 0.04, oz + 21.25], bank.creamTrim, { castShadow: false });
-  addBox(staticG, [0.16, 0.16, 74.0], [ox - 3.26, 0.04, oz], bank.creamTrim, { castShadow: false });
+  // Continuous red-brick footpaths on East (leaving driveway gap at house gate z=971..979) and West
+  addBox(staticG, [1.45, 0.13, 35.5], [ox + 2.35, 0.02, oz - 21.25], m.brick, { uvScale: 2.2 });
+  addBox(staticG, [1.45, 0.13, 35.5], [ox + 2.35, 0.02, oz + 21.25], m.brick, { uvScale: 2.2 });
+  addBox(staticG, [1.35, 0.13, 74.0], [ox - 3.95, 0.02, oz], m.brick, { uvScale: 2.2 });
 
   // Green tropical roadside verges, tea-garden lawn & shaded compound plots
   addBox(staticG, [9.2, 0.08, 22.5], [ox - 9.0, 0.015, oz + 4.2], m.grass, { castShadow: false, uvScale: 2.6 });
@@ -1419,7 +1413,7 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
     windshield: bank.windowGlass, headlight: bank.lampBulb, taillight: bank.ferryOrange, amber: bank.ferryOrange,
     cngGreen: bank.deckGreen, cngYellow: bank.tinBlue, cngRexine: bank.darkSlate,
   });
-  cornerCng.position.set(ox - 1.9, 0.08, oz + 29.0);
+  cornerCng.position.set(ox - 1.9, 0.02, oz + 29.0);
   cornerCng.rotation.y = 0.08;
   staticG.add(cornerCng);
 

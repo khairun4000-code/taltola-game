@@ -484,6 +484,8 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
     // 3) Kaborkhana More junction & Haji Mohsin / Tutpara / Babu Khan immediate mouths
     if (x >= -56 && x <= 4 && z >= 90 && z <= 120) return true;
     if (x >= -202 && x <= -172 && z >= 76 && z <= 104) return true;
+    // 4) Taltola Hospital Cross Rd outside Taltola House (zero Z-fighting with restored original Taltola street)
+    if (x >= 394 && x <= 428 && z >= 920 && z <= 1036) return true;
     return false;
   };
 

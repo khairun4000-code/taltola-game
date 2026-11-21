@@ -264,7 +264,7 @@ export function applyWireWindShader(material, sharedUniforms, options = {}) {
   const usePinAttr = Boolean(options.usePinAttr);
   const uTime = sharedUniforms?.uTime || { value: 0 };
   material.userData.wireWindUniforms = { uTime };
-  material.customProgramCacheKey = () => (usePinAttr ? 'taltola-wire-wind-pin-v3' : 'taltola-wire-wind-mesh-v3');
+  material.customProgramCacheKey = () => (usePinAttr ? 'taltola-wire-wind-pin-v4' : 'taltola-wire-wind-mesh-v4');
 
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = uTime;
@@ -284,17 +284,17 @@ export function applyWireWindShader(material, sharedUniforms, options = {}) {
         '#include <begin_vertex>',
         `#include <begin_vertex>
         vec4 wWorld = modelMatrix * vec4(transformed, 1.0);
-        // Natural intermittent tropical breeze envelope (soft gusts + calm lulls)
-        float gustWave = 0.5 + 0.5 * sin(uTime * 0.34 + wWorld.x * 0.024 + wWorld.z * 0.020);
-        float gustStrength = 0.35 + 0.65 * gustWave * gustWave;
+        // Natural intermittent tropical breeze envelope (soft gusts + gentle baseline sway)
+        float gustWave = 0.5 + 0.5 * sin(uTime * 0.36 + wWorld.x * 0.024 + wWorld.z * 0.020);
+        float gustStrength = 0.42 + 0.58 * gustWave * gustWave;
         // Pole-to-pole catenary weight: 0.0 pinned at pole insulators, 1.0 at mid-span sag
         float spanPin = ${pinExpr};
-        float swayA = sin(uTime * 1.45 + wWorld.z * 0.19 + wWorld.x * 0.15);
-        float swayB = cos(uTime * 2.25 + wWorld.x * 0.24 - wWorld.z * 0.16) * 0.32;
-        // Clearly visible yet realistic gentle breeze sway (~10cm lateral, ~6cm vertical rise/fall at mid-span)
-        transformed.x += (swayA + swayB) * 0.105 * spanPin * gustStrength;
-        transformed.y += sin(uTime * 1.65 + wWorld.z * 0.22 + wWorld.x * 0.14) * 0.062 * spanPin * gustStrength;
-        transformed.z += (swayB - swayA * 0.45) * 0.085 * spanPin * gustStrength;`
+        float swayA = sin(uTime * 1.55 + wWorld.z * 0.19 + wWorld.x * 0.15);
+        float swayB = cos(uTime * 2.35 + wWorld.x * 0.24 - wWorld.z * 0.16) * 0.34;
+        // Gently enhanced realistic breeze sway (~15cm lateral, ~9cm vertical rise/fall at mid-span)
+        transformed.x += (swayA + swayB) * 0.155 * spanPin * gustStrength;
+        transformed.y += sin(uTime * 1.75 + wWorld.z * 0.22 + wWorld.x * 0.14) * 0.092 * spanPin * gustStrength;
+        transformed.z += (swayB - swayA * 0.45) * 0.125 * spanPin * gustStrength;`
       );
   };
   material.needsUpdate = true;
