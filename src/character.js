@@ -1332,9 +1332,10 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     ikRight.set(Math.cos(h), 0, -Math.sin(h));
 
     if (ride.seat === 'passenger') {
+      const isBikePass = Boolean(ride.isBicycle);
       resetUpperAndLimbBonesToRest();
       if (spineBone) {
-        eulerTemp.set(-0.08, 0, 0);
+        eulerTemp.set(isBikePass ? 0.06 : -0.08, 0, 0);
         qTempA.setFromEuler(eulerTemp);
         spineBone.quaternion.copy(restSpineQ).multiply(qTempA);
       }
@@ -1344,26 +1345,32 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       ikTarget.copy(a.passengerSeat);
       alignHipsToWorldPoint(ikTarget);
 
-      // Lock BOTH passenger shoes cleanly ON TOP of the rickshaw metal footwell floor (zero clipping!)
+      // Lock BOTH passenger shoes cleanly on rickshaw footwell or bicycle rear carrier footrests (zero wheel clipping!)
       if (a.passengerFootL && a.passengerFootR) {
-        ikPole.copy(a.passengerSeat).addScaledVector(ikFwd, 0.78).addScaledVector(ikRight, 0.16);
-        ikPole.y += 0.22;
+        const kneeFwd = isBikePass ? 0.52 : 0.78;
+        const kneeOut = isBikePass ? 0.28 : 0.16;
+        const kneeLift = isBikePass ? 0.10 : 0.22;
+        ikPole.copy(a.passengerSeat).addScaledVector(ikFwd, kneeFwd).addScaledVector(ikRight, kneeOut);
+        ikPole.y += kneeLift;
         solveTwoBoneIK(leftUpLeg, leftLeg, leftFoot, a.passengerFootL, ikPole);
 
-        ikPole.copy(a.passengerSeat).addScaledVector(ikFwd, 0.78).addScaledVector(ikRight, -0.16);
-        ikPole.y += 0.22;
+        ikPole.copy(a.passengerSeat).addScaledVector(ikFwd, kneeFwd).addScaledVector(ikRight, -kneeOut);
+        ikPole.y += kneeLift;
         solveTwoBoneIK(rightUpLeg, rightLeg, rightFoot, a.passengerFootR, ikPole);
       }
 
-      // Rest passenger hands naturally on top of lap/knees (never floating!)
-      ikTarget.copy(a.passengerSeat).addScaledVector(ikFwd, 0.24).addScaledVector(ikRight, 0.16);
-      ikTarget.y -= 0.04;
+      // Rest passenger hands naturally on lap/knees or bicycle rear carrier sides (never floating!)
+      const handFwd = isBikePass ? 0.14 : 0.24;
+      const handOut = isBikePass ? 0.18 : 0.16;
+      const handDrop = isBikePass ? 0.06 : 0.04;
+      ikTarget.copy(a.passengerSeat).addScaledVector(ikFwd, handFwd).addScaledVector(ikRight, handOut);
+      ikTarget.y -= handDrop;
       ikPole.copy(a.passengerSeat).addScaledVector(ikRight, 0.34).addScaledVector(ikFwd, -0.06);
       ikPole.y -= 0.12;
       solveTwoBoneIK(leftArm, leftForeArm, leftHand, ikTarget, ikPole);
 
-      ikTarget.copy(a.passengerSeat).addScaledVector(ikFwd, 0.24).addScaledVector(ikRight, -0.16);
-      ikTarget.y -= 0.04;
+      ikTarget.copy(a.passengerSeat).addScaledVector(ikFwd, handFwd).addScaledVector(ikRight, -handOut);
+      ikTarget.y -= handDrop;
       ikPole.copy(a.passengerSeat).addScaledVector(ikRight, -0.34).addScaledVector(ikFwd, -0.06);
       ikPole.y -= 0.12;
       solveTwoBoneIK(rightArm, rightForeArm, rightHand, ikTarget, ikPole);
@@ -1371,26 +1378,34 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       return;
     }
 
-    // 1. Hard-reset ALL torso/head/limb bones to exact neutral symmetric pose (ZERO sideways lean!)
+    // 1. Hard-reset ALL torso/head/limb bones to exact neutral symmetric pose
     resetUpperAndLimbBonesToRest();
 
-    // 2. Clean upright posture built strictly on Mixamo's rest quaternions (ZERO sideways tilt!), gentle forward lean
+    // 2. Natural riding posture: bicycle rider banks with frame & twists torso smoothly into turns so BOTH hands stay 100% locked on grips!
     const isBike = Boolean(ride.isBicycle);
     const stand = THREE.MathUtils.clamp(ride.standingBlend || 0, 0, 1);
+    const steerYaw = isBike ? THREE.MathUtils.clamp(ride.steerAngle || 0, -0.60, 0.60) : 0;
+    const leanRoll = isBike ? THREE.MathUtils.clamp(ride.roll || 0, -0.25, 0.25) : 0;
+    if (hipsBone && isBike && Math.abs(leanRoll) > 0.0005) {
+      eulerTemp.set(0, 0, leanRoll);
+      qTempA.setFromEuler(eulerTemp);
+      hipsBone.quaternion.copy(restHipsQ).multiply(qTempA);
+    }
+    const bikeFwdLean = (isBike ? 0.30 : 0.22) + stand * 0.14 + Math.abs(steerYaw) * 0.14;
     if (spineBone) {
-      eulerTemp.set((isBike ? 0.26 : 0.22) + stand * 0.14, 0, 0);
+      eulerTemp.set(bikeFwdLean, steerYaw * 0.24, 0);
       qTempA.setFromEuler(eulerTemp);
       spineBone.quaternion.copy(restSpineQ).multiply(qTempA);
     }
     if (spine1Bone) {
-      eulerTemp.set(0.10 + stand * 0.08, 0, 0);
+      eulerTemp.set((isBike ? 0.14 : 0.10) + stand * 0.08, steerYaw * 0.28, 0);
       qTempA.setFromEuler(eulerTemp);
       spine1Bone.quaternion.copy(restSpine1Q).multiply(qTempA);
     }
     lockHeadAndNeckStraight();
     root.updateMatrixWorld(true);
 
-    // 3. Seat hips directly covering the leather saddle (zero visible saddle glitch, rises smoothly on [SHIFT] standing sprint!)
+    // 3. Seat hips directly covering the leather saddle (rises smoothly on [SHIFT] standing sprint!)
     ikTarget.copy(a.saddle).addScaledVector(ikFwd, stand * 0.10);
     ikTarget.y += 0.02 + stand * 0.22;
     alignHipsToWorldPoint(ikTarget);
@@ -1404,7 +1419,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     ikPole.y += 0.12;
     solveTwoBoneIK(rightUpLeg, rightLeg, rightFoot, a.pedalR, ikPole);
 
-    // 5. Exact 2-Bone World-Space IK: guarantee BOTH hands stay 100% glued directly onto the handlebar grips!
+    // 5. Exact 2-Bone World-Space IK: guarantee BOTH hands stay 100% glued directly onto the handlebar grips even at full steering lock!
     if (a.gripL && a.gripR && leftArm && leftForeArm && leftHand && rightArm && rightForeArm && rightHand) {
       const elbowFwd = isBike ? 0.12 : 0.14;
       const elbowOut = isBike ? 0.42 : 0.48;
@@ -1417,7 +1432,21 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       ikPole.y -= elbowDrop;
       solveTwoBoneIK(rightArm, rightForeArm, rightHand, a.gripR, ikPole);
     }
-    lockHeadAndNeckStraight();
+    if (isBike) {
+      const turnLook = THREE.MathUtils.clamp(steerYaw * 0.18, -0.15, 0.15);
+      if (neckBone) {
+        eulerTemp.set(-bikeFwdLean * 0.35, -steerYaw * 0.22 + turnLook * 0.4, -leanRoll * 0.25);
+        qTempA.setFromEuler(eulerTemp);
+        neckBone.quaternion.copy(restNeckQ).multiply(qTempA);
+      }
+      if (headBone) {
+        eulerTemp.set(-bikeFwdLean * 0.55, -steerYaw * 0.25 + turnLook * 0.6, -leanRoll * 0.30);
+        qTempA.setFromEuler(eulerTemp);
+        headBone.quaternion.copy(restHeadQ).multiply(qTempA);
+      }
+    } else {
+      lockHeadAndNeckStraight();
+    }
   }
 
   function applyCarDrivingPose(cd) {
@@ -2012,7 +2041,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     }
 
     applyProceduralHeadAndFace(dt, Boolean(isRidingRickshaw || isRidingBike || isDrivingCar || isVehicleAnim || holdingPhoneNow));
-    if (isRidingRickshaw || isDrivingCar || isVehicleAnim) {
+    if ((isRidingRickshaw && !rickshawRide.isBicycle) || isDrivingCar || isVehicleAnim) {
       lockHeadAndNeckStraight();
     }
   }

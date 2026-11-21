@@ -1374,22 +1374,53 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   const ox = 420.0;
   const oz = 975.0;
 
-  // Restored original Taltola street (Kawsar's real-photo m.road & red-brick m.brick footpaths, flush at y = +0.003 so feet sit cleanly on top!)
-  const crossLanePts = [
-    [414.2, 922],
-    [415.3, 936.2],
-    [419.2, 967.2],
-    [420.9, 990.8],
-    [421.1, 1013.2],
-    [418.2, 1034.0],
-  ];
-  buildPavedSegmentRoad(staticG, crossLanePts, 5.8, -0.022, m.road, 5.2);
-  buildPavedSegmentRoad(staticG, [[421.1, 1013.2], [396.0, 1011.8]], 4.8, -0.024, m.road, 5.2);
+  // Restored Kawsar Bhai's original realistic Taltola House street (4.2m asphalt road, open concrete side drains with water, curbs, gate bridge slab & fallen leaves)
+  addBox(staticG, [4.2, 0.14, 82.0], [ox, -0.067, oz], m.road, { castShadow: false, uvScale: 5.5 });
 
-  // Continuous red-brick footpaths on East (leaving driveway gap at house gate z=971..979) and West
-  addBox(staticG, [1.45, 0.13, 35.5], [ox + 2.35, 0.02, oz - 21.25], m.brick, { uvScale: 2.2 });
-  addBox(staticG, [1.45, 0.13, 35.5], [ox + 2.35, 0.02, oz + 21.25], m.brick, { uvScale: 2.2 });
-  addBox(staticG, [1.35, 0.13, 74.0], [ox - 3.95, 0.02, oz], m.brick, { uvScale: 2.2 });
+  // Seamless north, south & west lane connectors joining Kawsar's Taltola street to the Khulna road network
+  buildPavedSegmentRoad(staticG, [[414.2, 922.0], [416.8, 931.0], [ox, oz - 40.5]], 4.6, -0.025, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, [[ox, oz + 40.5], [419.2, 1024.5], [418.2, 1034.0]], 4.6, -0.025, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, [[ox, 1013.2], [396.0, 1011.8]], 4.5, -0.026, m.road, 5.5);
+
+  // Open concrete drains on BOTH sides with standing drain water & raised road-edge curbs (exact Kawsar Taltola street spec)
+  for (const side of [-1, 1]) {
+    const dx = ox + side * 2.36;
+    addBox(staticG, [0.50, 0.08, 82.0], [dx, -0.32, oz], m.darkConcrete, { castShadow: false });
+    addBox(staticG, [0.08, 0.34, 82.0], [ox + side * 2.09, -0.15, oz], m.concrete);
+    addBox(staticG, [0.08, 0.34, 82.0], [ox + side * 2.63, -0.15, oz], m.concrete);
+    addBox(staticG, [0.35, 0.012, 81.5], [dx, -0.255, oz], m.drainWater, { castShadow: false });
+    addBox(staticG, [0.12, 0.10, 82.0], [ox + side * 2.02, 0.008, oz], m.concrete);
+  }
+
+  // Concrete gate entry bridge slab over East drain right in front of Taltola House main gate
+  addBox(staticG, [1.0, 0.14, 4.75], [ox + 2.34, 0.012, oz], m.concrete);
+
+  // West concrete drain crossing slabs
+  for (const zOff of [-31, -18, 12, 27]) {
+    addBox(staticG, [0.56, 0.09, 1.1], [ox - 2.36, -0.018, oz + zOff], m.concrete);
+  }
+
+  // Red-brick footpaths outside the open drains (East leaves gate opening at z=971..979)
+  addBox(staticG, [1.05, 0.10, 35.5], [ox + 3.22, 0.01, oz - 21.25], m.brick, { uvScale: 2.2 });
+  addBox(staticG, [1.05, 0.10, 35.5], [ox + 3.22, 0.01, oz + 21.25], m.brick, { uvScale: 2.2 });
+  addBox(staticG, [1.35, 0.10, 74.0], [ox - 3.35, 0.01, oz], m.brick, { uvScale: 2.2 });
+
+  // Scattered fallen dry leaves along Kawsar's Taltola street (instanced in dynamicG so zero draw-call overhead)
+  const leafRand = seeded(8182);
+  const leafGeo = new THREE.PlaneGeometry(0.09, 0.18);
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x776a37, roughness: 0.85, side: THREE.DoubleSide });
+  const leavesMesh = new THREE.InstancedMesh(leafGeo, leafMat, 95);
+  const leafDummy = new THREE.Object3D();
+  for (let i = 0; i < 95; i++) {
+    leafDummy.position.set(ox + (leafRand() - 0.5) * 3.9, 0.014, oz + (leafRand() - 0.5) * 78);
+    leafDummy.rotation.set(-Math.PI / 2, leafRand() * Math.PI * 2, 0);
+    const sc = 0.7 + leafRand() * 0.8;
+    leafDummy.scale.set(sc, sc, 1);
+    leafDummy.updateMatrix();
+    leavesMesh.setMatrixAt(i, leafDummy.matrix);
+  }
+  leavesMesh.instanceMatrix.needsUpdate = true;
+  dynamicG.add(leavesMesh);
 
   // Green tropical roadside verges, tea-garden lawn & shaded compound plots
   addBox(staticG, [9.2, 0.08, 22.5], [ox - 9.0, 0.015, oz + 4.2], m.grass, { castShadow: false, uvScale: 2.6 });

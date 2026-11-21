@@ -1833,13 +1833,13 @@ function syncCarHUD() {
     const isRick = Boolean(activeCar.state.isRickshaw);
     const isBicycle = Boolean(activeCar.state.isBicycle);
     const isBike = Boolean(activeCar.state.isBike);
-    const isPass = isRick && !isBicycle && activeCar.state.rideSeat === 'passenger';
+    const isPass = isRick && activeCar.state.rideSeat === 'passenger';
     if (carBadgeEl) {
       if (isRick) {
         const stR = activeCar.state;
         const pedLabel = isBicycle ? 'ATLAS BICYCLE' : 'RICKSHAW';
         carBadgeEl.textContent = isPass
-          ? 'RICKSHAW · PASSENGER SEAT'
+          ? (isBicycle ? 'ATLAS BICYCLE · BACK SEAT' : 'RICKSHAW · PASSENGER SEAT')
           : (stR.boostCooldown > 0
             ? `${pedLabel} · COOLDOWN (${Math.ceil(stR.boostCooldown)}s)`
             : (stR.standingPedal
@@ -1849,10 +1849,12 @@ function syncCarHUD() {
         carBadgeEl.textContent = activeCar.state.badge;
       }
     }
-    if (carSeatBtn) carSeatBtn.classList.toggle('hidden', !isRick || isBicycle);
+    if (carSeatBtn) carSeatBtn.classList.toggle('hidden', !isRick);
     if (carHudDoorsEl) carHudDoorsEl.classList.toggle('hidden', isRick || isBike);
     if (carSeatLabelEl && isRick) {
-      carSeatLabelEl.textContent = isPass ? 'DRIVER SEAT' : 'PASSENGER SEAT';
+      carSeatLabelEl.textContent = isPass
+        ? (isBicycle ? 'RIDER SEAT' : 'DRIVER SEAT')
+        : (isBicycle ? 'BACK SEAT' : 'PASSENGER SEAT');
     }
     if (carCamLabelEl) {
       const camNames = { chase: '3RD PERSON', hood: 'HOOD CAM', pov: 'POV SPEEDO', front: 'FRONT CAM' };
@@ -2993,16 +2995,18 @@ async function initialize() {
       updateHUDPrompt();
     },
   });
-  // Park the custom Atlas Roadster Bicycle right outside Taltola House on startup; other vehicles spawn via [P] phone cheat codes
+  // Park the custom Atlas Roadster Bicycle and Bangladeshi CNG Auto right outside Taltola House on startup; other vehicles spawn via [P] phone cheat codes
   cars = [];
   bmwCar = null;
-  const bikeCfg = CAR_FLEET_CONFIGS.find((c) => c.id === 'atlas_roadster_bicycle');
-  if (bikeCfg) {
-    const starterBike = createDrivableCar(scene, undefined, bikeCfg);
-    starterBike.setQualityMode?.(quality);
-    const selectiveEnv = (quality === 'ultra' || quality === 'high') ? null : (skySystem?.getEnvTexture?.() || null);
-    starterBike.setEnvironmentMap?.(selectiveEnv);
-    cars.push(starterBike);
+  const starterVehicleIds = ['atlas_roadster_bicycle', 'bangladeshi_cng'];
+  const selectiveEnvStartup = (quality === 'ultra' || quality === 'high') ? null : (skySystem?.getEnvTexture?.() || null);
+  for (const vid of starterVehicleIds) {
+    const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);
+    if (!vCfg) continue;
+    const starterVeh = createDrivableCar(scene, undefined, vCfg);
+    starterVeh.setQualityMode?.(quality);
+    starterVeh.setEnvironmentMap?.(selectiveEnvStartup);
+    cars.push(starterVeh);
   }
 
   await Promise.race([
@@ -4003,12 +4007,12 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  // [G] Sit directly in Rickshaw Back Passenger Seat (when near a rickshaw, excluding 1-seat bicycles)!
+  // [G] Sit directly in Rickshaw / Bicycle Back Passenger Seat!
   if (event.code === 'KeyG' && !event.repeat) {
     const curCar = getDrivingCar();
     if (!curCar) {
       const nearCar = findNearestEnterableCar(playerPos);
-      if (nearCar?.state.isRickshaw && !nearCar.state.isBicycle) {
+      if (nearCar?.state.isRickshaw) {
         event.preventDefault();
         toggleCarDriving(nearCar, 'passenger');
         return;
@@ -4016,7 +4020,7 @@ window.addEventListener('keydown', (event) => {
     }
   }
 
-  // Dedicated Driving Controls when inside any drivable car or rickshaw
+  // Dedicated Driving Controls when inside any drivable car, rickshaw or bicycle
   const activeCar = getDrivingCar();
   if (activeCar) {
     if (event.code === 'KeyE' && !event.repeat) {
@@ -4033,7 +4037,7 @@ window.addEventListener('keydown', (event) => {
       syncHUDButtons();
       return;
     }
-    if (activeCar.state.isRickshaw && !activeCar.state.isBicycle) {
+    if (activeCar.state.isRickshaw) {
       if (event.code === 'KeyF' && !event.repeat) {
         event.preventDefault();
         if (activeCar.state.rideSeat === 'passenger') {
@@ -5448,6 +5452,7 @@ function updateMovement(delta) {
               heading: st.heading,
               pedalPhase: st.pedalPhase,
               steerAngle: st.steerAngle,
+              roll: st.roll,
               standingBlend: st.standingBlend || 0,
               standingPedal: Boolean(st.standingPedal),
               speed: st.speed,
