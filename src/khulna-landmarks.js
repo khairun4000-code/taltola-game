@@ -552,10 +552,10 @@ function buildAliaMadrasahCampus(staticG, dynamicG, lm, m) {
         } else {
           dummy.position.set(gx, 0.02, gz);
         }
-        dummy.rotation.set((rand() - 0.5) * 0.12, rand() * Math.PI * 2, (rand() - 0.5) * 0.12);
-        const sx = 0.28 + rand() * 0.18;
-        const sy = 0.24 + rand() * 0.16;
-        const sz = 0.28 + rand() * 0.18;
+        dummy.rotation.set((rand() - 0.5) * 0.08, rand() * Math.PI * 2, (rand() - 0.5) * 0.08);
+        const sx = 0.08 + rand() * 0.05;
+        const sy = 0.05 + rand() * 0.035;
+        const sz = 0.08 + rand() * 0.05;
         dummy.scale.set(sx, sy, sz);
         dummy.updateMatrix();
         inst.setMatrixAt(i, dummy.matrix);

@@ -1456,7 +1456,7 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
         { x0: ox + 3.1,  x1: ox + 7.3, z0: oz + 7.0,  z1: oz + 14.2 },
         { x0: ox - 11.2, x1: ox - 4.4, z0: oz + 33.4, z1: oz + 43.5 },
       ];
-      const count = 900;
+      const count = 1600;
       const dummy = new THREE.Object3D();
       const col = new THREE.Color();
 
@@ -1468,11 +1468,11 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
           const rect = taltolaLawnRects[i % taltolaLawnRects.length];
           const gx = rect.x0 + rand() * (rect.x1 - rect.x0);
           const gz = rect.z0 + rand() * (rect.z1 - rect.z0);
-          dummy.position.set(gx, 0.03, gz);
-          dummy.rotation.set((rand() - 0.5) * 0.12, rand() * Math.PI * 2, (rand() - 0.5) * 0.12);
-          const sx = 0.26 + rand() * 0.16;
-          const sy = 0.22 + rand() * 0.14;
-          const sz = 0.26 + rand() * 0.16;
+          dummy.position.set(gx, 0.018, gz);
+          dummy.rotation.set((rand() - 0.5) * 0.08, rand() * Math.PI * 2, (rand() - 0.5) * 0.08);
+          const sx = 0.14 + rand() * 0.08;
+          const sy = 0.09 + rand() * 0.05;
+          const sz = 0.14 + rand() * 0.08;
           dummy.scale.set(sx, sy, sz);
           dummy.updateMatrix();
           inst.setMatrixAt(i, dummy.matrix);
