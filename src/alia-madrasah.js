@@ -1456,54 +1456,52 @@ function buildMainPorticoBuilding(staticG, dynamicG, bank) {
  * ========================================================================== */
 
 function buildAcademicBuildings(staticG, dynamicG, bank) {
-  // A) REAL-PHOTO 4-STORY CREAM & DEEP-GREEN ARCHED ACADEMIC BUILDING (South Courtyard Side, z = 148)
-  const b4x = 213.5;
-  const b4z = 148.0;
+  // A) REAL-PHOTO 4-STORY CREAM & DEEP-GREEN ARCHED ACADEMIC BUILDING (Relocated off the Central Pond to NW Academic Slot: x = 166, z = 60.5, facing South!)
+  const b4x = 166.0;
+  const b4z = 60.5;
   const b4H = 13.6;
   box(staticG, [32.4, 0.48, 10.2], [b4x, 0.24, b4z], bank.stonePlinth);
   box(staticG, [31.6, b4H, 9.2], [b4x, b4H * 0.5 + 0.44, b4z], bank.academicCream, { uvScale: 3.4 });
   box(staticG, [32.2, 0.50, 9.8], [b4x, b4H + 0.66, b4z], bank.terracotta);
-  // Rooftop Parapet + Iconic Right-Side Stair Tower (matching kakm.edu.bd photo!)
+  // Rooftop Parapet + Iconic Stair Tower (matching kakm.edu.bd photo!)
   box(staticG, [31.8, 0.90, 0.26], [b4x, b4H + 1.32, b4z - 4.6], bank.academicCream);
   box(staticG, [31.8, 0.90, 0.26], [b4x, b4H + 1.32, b4z + 4.6], bank.academicCream);
   box(staticG, [5.0, 3.6, 5.8], [b4x - 12.8, b4H + 2.3, b4z], bank.academicCream);
   box(staticG, [5.3, 0.28, 6.1], [b4x - 12.8, b4H + 4.18, b4z], bank.terracotta);
   cylinder(staticG, 0.68, 0.72, 1.45, [b4x - 12.8, b4H + 5.02, b4z], bank.waterTank, 10);
 
-  // 4 Stories of TRUE CURVED ARCHED Veranda Bays painted deep forest-green inside!
+  // 4 Stories of TRUE CURVED ARCHED Veranda Bays facing SOUTH (+Z) toward the campus!
   for (let fl = 0; fl < 4; fl++) {
     const fy = 0.48 + fl * 3.28;
     box(staticG, [32.0, 0.24, 9.6], [b4x, fy + 3.14, b4z], bank.terracotta);
     for (let bx = -12.0; bx <= 12.1; bx += 3.0) {
       const bayX = b4x + bx;
-      box(staticG, [2.56, 2.22, 0.46], [bayX, fy + 1.78, b4z - 4.44], bank.emeraldDark);
-      box(dynamicG, [1.45, 1.24, 0.08], [bayX, fy + 1.72, b4z - 4.62], bank.warmWindowLit, { castShadow: false });
-      // TRUE CURVED ARCH SPANDREL framing the top of each veranda bay
+      box(staticG, [2.56, 2.22, 0.46], [bayX, fy + 1.78, b4z + 4.44], bank.emeraldDark);
+      box(dynamicG, [1.45, 1.24, 0.08], [bayX, fy + 1.72, b4z + 4.62], bank.warmWindowLit, { castShadow: false });
       addTrueArchSpandrel(staticG, {
         span: 2.66,
         height: 0.72,
         depth: 0.24,
         archRise: 0.48,
-        pos: [bayX, fy + 2.34, b4z - 4.60],
+        pos: [bayX, fy + 2.34, b4z + 4.60],
         rotY: 0,
         mat: bank.academicCream,
       });
-      // Cream veranda parapet with dark green horizontal accent band
-      box(staticG, [2.72, 0.80, 0.24], [bayX, fy + 0.48, b4z - 4.60], bank.academicCream);
-      box(staticG, [2.74, 0.14, 0.26], [bayX, fy + 0.90, b4z - 4.60], bank.emeraldMat);
+      box(staticG, [2.72, 0.80, 0.24], [bayX, fy + 0.48, b4z + 4.60], bank.academicCream);
+      box(staticG, [2.74, 0.14, 0.26], [bayX, fy + 0.90, b4z + 4.60], bank.emeraldMat);
     }
     for (let cx = -13.5; cx <= 13.6; cx += 3.0) {
-      box(staticG, [0.38, 3.28, 0.40], [b4x + cx, fy + 1.64, b4z - 4.60], bank.academicCream);
+      box(staticG, [0.38, 3.28, 0.40], [b4x + cx, fy + 1.64, b4z + 4.60], bank.academicCream);
     }
   }
-  box(staticG, [6.8, 0.24, 2.0], [b4x - 10.6, 3.40, b4z - 5.35], bank.terracotta);
+  box(staticG, [6.8, 0.24, 2.0], [b4x - 10.6, 3.40, b4z + 5.35], bank.terracotta);
   addSignBox(
     dynamicG,
     bank,
-    { title: 'খুলনা আলিয়া কামিল মাদ্রাসা · একাডেমিক ভবন ২', subtitle: 'দাখিল ও আলিম বিজ্ঞান ভবন · ৪-তলা একাডেমিক ভবন', bg: '#0f3d2e', fg: '#ffffff', accent: '#fde047' },
-    [b4x + 2.5, 4.35, b4z - 4.84],
-    Math.PI,
-    6.8,
+    { title: 'খুলনা আলিয়া কামিল মাদ্রাসা · উত্তর-পশ্চিম একাডেমিক ভবন', subtitle: 'দাখিল ও আলিম বিজ্ঞান ভবন · ৪-তলা একাডেমিক ভবন', bg: '#0f3d2e', fg: '#ffffff', accent: '#fde047' },
+    [b4x + 2.5, 4.35, b4z + 4.84],
+    0,
+    7.4,
     1.15,
     true
   );
@@ -1554,15 +1552,7 @@ function buildAcademicBuildings(staticG, dynamicG, bank) {
  * ========================================================================== */
 
 function buildMainGateAndPondGhat(staticG, dynamicG, bank) {
-  // CENTRAL POND BRICK GHAT (পুকুরঘাট — North bank of the real OSM Central Pond)
-  box(staticG, [12.5, 0.24, 3.2], [214.0, 0.12, 150.2], bank.brick, { uvScale: 2.5 });
-  for (let s = 0; s < 4; s++) {
-    box(staticG, [10.8, 0.20, 0.55], [214.0, 0.10 - s * 0.14, 152.0 + s * 0.55], bank.stonePlinth);
-  }
-  addRailingSpan(staticG, bank, 207.8, 148.8, 207.8, 151.6, 3, 0.90, 0.22);
-  addRailingSpan(staticG, bank, 220.2, 148.8, 220.2, 151.6, 3, 0.90, 0.22);
-  addCampusLamp(staticG, dynamicG, bank, 207.8, 149.6, 3.8, 0.20);
-  addCampusLamp(staticG, dynamicG, bank, 220.2, 149.6, 3.8, 0.20);
+  // Full 4-sided Central Pond embankment, Pukurpar promenade & twin stepped ghats live in alia-campus-blockout.js
 }
 
 /* ============================================================================
@@ -1913,17 +1903,17 @@ export function buildAliaMadrasahDistrict(parent, m) {
     if (footY < 20.5) {
       resolveCircleAABB(pos, radius, 192.2, 227.8, 58.6, 69.4);
     }
-    // 2) 4-Story South Arched Academic Building (x = 197..230, z = 142.8..153.2)
+    // 2) 4-Story NW Arched Academic Building (x = 149.8..182.2, z = 55.4..65.6 — pond is now 100% open!)
     if (footY < 14.5) {
-      resolveCircleAABB(pos, radius, 197.2, 229.8, 142.8, 153.2);
+      resolveCircleAABB(pos, radius, 149.8, 182.2, 55.4, 65.6);
     }
     // 3) South-West Khan Jahan Ali Rd Main Gate & Demo Blockout Building Collisions
     if (footY < 2.8 && gateRatio < 0.55) {
-      resolveCircleAABB(pos, radius, mainGate.gx - 3.8, mainGate.gx + 3.8, mainGate.gz - 0.35, mainGate.gz + 0.35);
+      resolveCircleAABB(pos, radius, mainGate.gx - 4.5, mainGate.gx + 4.5, mainGate.gz - 0.35, mainGate.gz + 0.35);
     }
     if (footY < 6.0) {
-      resolveCircleAABB(pos, radius, mainGate.gx - 5.1, mainGate.gx - 3.7, mainGate.gz - 0.7, mainGate.gz + 0.7);
-      resolveCircleAABB(pos, radius, mainGate.gx + 3.7, mainGate.gx + 5.1, mainGate.gz - 0.7, mainGate.gz + 0.7);
+      resolveCircleAABB(pos, radius, mainGate.gx - 6.0, mainGate.gx - 4.4, mainGate.gz - 0.8, mainGate.gz + 0.8);
+      resolveCircleAABB(pos, radius, mainGate.gx + 4.4, mainGate.gx + 6.0, mainGate.gz - 0.8, mainGate.gz + 0.8);
     }
     for (let i = 0; i < blockout.demoColliders.length; i++) {
       const c = blockout.demoColliders[i];
