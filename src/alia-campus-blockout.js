@@ -684,8 +684,15 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
     [191.5, 172.0],
     [193.0, 140.0],
     [193.5, 108.0],
-    [193.5, 73.5],
+    [193.5, 74.5],
   ], 3.8, mats.concreteRoad, 0.060, mats.curb, 0.45);
+
+  // Concrete front promenade running West directly to the newly rotated Main Alia Madrasah Portico Building (x = 164, z = 74.5)!
+  addRoadRibbon(staticG, [
+    [193.5, 74.5],
+    [178.0, 74.5],
+    [156.0, 74.5],
+  ], 3.4, mats.concreteRoad, 0.059, mats.curb, 0.35);
 
   // Iconic Red-and-Green Pipe Railings along the Main Road approaching the Portico (video 02:45-03:00!)
   addRedGreenRoadRailing(staticG, bank, 197.4, 134.0, 114.0);
@@ -880,38 +887,32 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
       labelFaces: ['west', 'south', 'north'], tint: 'hostel', rooftopTower: true,
     },
     {
-      // East Academic Campus building east of Playground (video 03:13!)
-      cx: 248.0, cz: 96.0, w: 11.5, d: 34.0, floors: 4,
-      titleBn: 'পূর্ব একাডেমিক ক্যাম্পাস ভবন', titleEn: 'EAST ACADEMIC CAMPUS',
-      labelFaces: ['west', 'south'], tint: 'neutral',
-    },
-    {
-      // Top-right red-roofed NE Academic Campus building (user's top-right arrow!)
-      cx: 244.0, cz: 63.0, w: 23.0, d: 13.5, floors: 4,
+      // Top-right red-roofed NE Academic Campus building (cleanly East of 6-Story Honors Building!)
+      cx: 247.0, cz: 62.5, w: 17.5, d: 13.5, floors: 4,
       titleBn: 'উত্তর-পূর্ব একাডেমিক ক্যাম্পাস', titleEn: 'NE ACADEMIC CAMPUS',
       labelFaces: ['south', 'west'], tint: 'neutral', redRoof: true,
     },
     {
-      // Science Lab (বিজ্ঞানাগার ভবন — video 02:25-02:42, West of Main Portico)
+      // Science Lab (বিজ্ঞানাগার ভবন — West of open campus courtyard)
       cx: 164.0, cz: 112.7, w: 14.0, d: 14.0, floors: 2,
       titleBn: 'বিজ্ঞানাগার ভবন (সায়েন্স ল্যাব)', titleEn: 'SCIENCE LAB',
       labelFaces: ['east', 'south'], tint: 'neutral',
     },
     {
-      // Madrasah Library (মাদ্রাসার লাইব্রেরী — video 02:18-02:23, West of Science Lab)
-      cx: 144.5, cz: 106.9, w: 9.0, d: 28.0, floors: 2,
+      // Madrasah Library (মাদ্রাসার লাইব্রেরী — West of Science Lab)
+      cx: 144.5, cz: 108.0, w: 9.0, d: 26.0, floors: 2,
       titleBn: 'মাদ্রাসার লাইব্রেরী', titleEn: 'MADRASAH LIBRARY',
       labelFaces: ['east', 'south'], tint: 'neutral', redRoof: true,
     },
     {
-      // Khulna Alia Primary School (খুলনা আলিয়া প্রাইমারি স্কুল — video 03:23-03:34, 1-story arched)
+      // Khulna Alia Primary School (খুলনা আলিয়া প্রাইমারি স্কুল — 1-story arched)
       cx: 158.0, cz: 136.0, w: 16.0, d: 10.0, floors: 1,
       titleBn: 'খুলনা আলিয়া প্রাইমারি স্কুল', titleEn: 'ALIA PRIMARY SCHOOL',
       labelFaces: ['east', 'south'], tint: 'neutral', redRoof: true,
     },
     {
-      // Khulna Alia Madrasah Girls' Wing (মহিলা শাখা — video 03:38-03:50, 1-story cream-pink)
-      cx: 142.0, cz: 76.0, w: 18.0, d: 9.5, floors: 1,
+      // Khulna Alia Madrasah Girls' Wing (মহিলা শাখা — cleanly South of rotated Main Portico front apron!)
+      cx: 142.0, cz: 86.0, w: 18.0, d: 9.5, floors: 1,
       titleBn: 'খুলনা আলিয়া মাদ্রাসা মহিলা শাখা', titleEn: 'GIRLS WING (MOHILA SHAKHA)',
       labelFaces: ['south', 'east'], tint: 'pink', redRoof: true,
     },

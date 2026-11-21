@@ -892,25 +892,8 @@ function buildKaborkhanaMoreAndKhanJahanAli(staticG, dynamicG, bank, phys) {
   addSidewalkAlongPolyline(staticG, bank, phys, kjaToAliaPts, 5.6, 1, { walkWidth: 1.85, curbMat: bank.curbYellowBlack });
   addSidewalkAlongPolyline(staticG, bank, phys, kjaToAliaPts, 5.6, -1, { walkWidth: 1.85, curbMat: bank.curbYellowBlack });
 
-  // Direct Paved Connector Avenue from Khan Jahan Ali Road (166, 206) -> Model Mosque Plaza (190.5, 166) -> Alia Madrasah Gate (233, 108)!
-  const aliaLinkPts = [
-    [166.0, 206.0],
-    [186.0, 182.0],
-    [194.0, 164.0],
-  ];
-  addPitchRoadAlongPolyline(staticG, aliaLinkPts, 4.4, bank.pitchRoad, 0.055);
-  addSidewalkAlongPolyline(staticG, bank, phys, aliaLinkPts, 4.2, 1, { walkWidth: 1.5, curbMat: bank.curbRedWhite });
-
-  // East Bypass Lane from Alia Madrasah Main Gate (233, 108) South-West to Khan Jahan Ali Road (190, 222)
-  const gateRoadPts = [
-    [233.0, 74.0],
-    [233.0, 108.0],
-    [236.0, 142.0],
-    [244.0, 184.0],
-    [214.0, 232.0],
-  ];
-  addPitchRoadAlongPolyline(staticG, gateRoadPts, 4.2, bank.pitchRoad, 0.054);
-  addSidewalkAlongPolyline(staticG, bank, phys, gateRoadPts, 4.0, -1, { walkWidth: 1.5, curbMat: bank.curbYellowBlack });
+  // Internal Alia Madrasah concrete roads & dusty brick walkways are built exclusively in alia-campus-blockout.js
+  // (Removed legacy black-asphalt aliaLinkPts & gateRoadPts that were cutting across the Madrasah playground & ponds!)
 
   // 3) Overhead Directional Highway Gantry at Kaborkhana More
   const kjaYaw = Math.atan2(49.3 - -9.9, 144.2 - 111.2);

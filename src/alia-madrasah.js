@@ -1139,9 +1139,45 @@ function addAliaClassroomFurniture(staticG, dynamicG, bank, cx, cz, fy, roomName
  *    Floors: y0 = 0.50m, y1 = 4.20m, y2 = 7.90m, yRoof = 11.60m
  * ========================================================================== */
 
-function buildMainPorticoBuilding(staticG, dynamicG, bank) {
-  const mainX = 183.5;
-  const mainZ = 108.0;
+const MAIN_OLD_CX = 183.5;
+const MAIN_OLD_CZ = 108.0;
+// Relocated 90° clockwise (-Math.PI * 0.5) to the North-West slot LEFT of the 6-Story Building, facing SOUTH (+Z)!
+const MAIN_NEW_CX = 164.0;
+const MAIN_NEW_CZ = 61.5;
+
+function mainLocalToWorldXZ(oldX, oldZ) {
+  return {
+    x: MAIN_NEW_CX - (oldZ - MAIN_OLD_CZ),
+    z: MAIN_NEW_CZ + (oldX - MAIN_OLD_CX),
+  };
+}
+
+function mainWorldToLocalXZ(wx, wz) {
+  return {
+    x: MAIN_OLD_CX + (wz - MAIN_NEW_CZ),
+    z: MAIN_OLD_CZ - (wx - MAIN_NEW_CX),
+  };
+}
+
+function buildMainPorticoBuilding(outerStaticG, outerDynamicG, bank) {
+  const mainStaticRoot = new THREE.Group();
+  mainStaticRoot.position.set(MAIN_NEW_CX, 0, MAIN_NEW_CZ);
+  mainStaticRoot.rotation.y = -Math.PI * 0.5;
+  outerStaticG.add(mainStaticRoot);
+  const staticG = new THREE.Group();
+  staticG.position.set(-MAIN_OLD_CX, 0, -MAIN_OLD_CZ);
+  mainStaticRoot.add(staticG);
+
+  const mainDynRoot = new THREE.Group();
+  mainDynRoot.position.set(MAIN_NEW_CX, 0, MAIN_NEW_CZ);
+  mainDynRoot.rotation.y = -Math.PI * 0.5;
+  outerDynamicG.add(mainDynRoot);
+  const dynamicG = new THREE.Group();
+  dynamicG.position.set(-MAIN_OLD_CX, 0, -MAIN_OLD_CZ);
+  mainDynRoot.add(dynamicG);
+
+  const mainX = MAIN_OLD_CX;
+  const mainZ = MAIN_OLD_CZ;
   const y0 = 0.50;
   const y1 = 4.20;
   const y2 = 7.90;
@@ -1330,10 +1366,12 @@ function buildMainPorticoBuilding(staticG, dynamicG, bank) {
       staticG.add(horn);
     }
   }
+  const principalMicWorldXZ = mainLocalToWorldXZ(principalMicPos.x, principalMicPos.z);
+  const principalMicWorldPos = new THREE.Vector3(principalMicWorldXZ.x, principalMicPos.y, principalMicWorldXZ.z);
   function isNearPrincipalMic(pos, maxDist = 3.8) {
     if (!pos) return false;
     if (pos.y > y0 + 2.8) return false;
-    return Math.hypot(pos.x - principalMicPos.x, pos.z - principalMicPos.z) <= maxDist;
+    return Math.hypot(pos.x - principalMicWorldPos.x, pos.z - principalMicWorldPos.z) <= maxDist;
   }
   function setPrincipalMicActive(isOn, level = 0) {
     if (isOn) {
@@ -1447,38 +1485,46 @@ function buildMainPorticoBuilding(staticG, dynamicG, bank) {
   const fascia2Mesh = new THREE.Mesh(new THREE.CylinderGeometry(5.42, 5.42, 1.28, 32, 1, true, arcStart, arcSpan), fascia2Mat);
   fascia2Mesh.position.set(portX, 8.05, mainZ);
   dynamicG.add(fascia2Mesh);
-  return { principalMicPos, isNearPrincipalMic, setPrincipalMicActive };
+  return { principalMicPos: principalMicWorldPos, isNearPrincipalMic, setPrincipalMicActive };
 }
 
 /* ============================================================================
- * 3. REAL-PHOTO 4-STORY ARCHED ACADEMIC BUILDING (SOUTH, z = 148)
- *    & MODERN 6-STORY ACADEMIC BUILDING (NORTH, z = 64)
+ * 3. REAL-PHOTO 4-STORY ARCHED ACADEMIC BUILDING (EAST SIDE OF PLAYGROUND, FACING WEST!)
+ *    & MODERN 6-STORY ACADEMIC BUILDING (NORTH RIGHT OF MAIN PORTICO, FACING SOUTH!)
  * ========================================================================== */
 
 function buildAcademicBuildings(staticG, dynamicG, bank) {
-  // A) REAL-PHOTO 4-STORY CREAM & DEEP-GREEN ARCHED ACADEMIC BUILDING (Relocated off the Central Pond to NW Academic Slot: x = 166, z = 60.5, facing South!)
-  const b4x = 166.0;
-  const b4z = 60.5;
-  const b4H = 13.6;
-  box(staticG, [32.4, 0.48, 10.2], [b4x, 0.24, b4z], bank.stonePlinth);
-  box(staticG, [31.6, b4H, 9.2], [b4x, b4H * 0.5 + 0.44, b4z], bank.academicCream, { uvScale: 3.4 });
-  box(staticG, [32.2, 0.50, 9.8], [b4x, b4H + 0.66, b4z], bank.terracotta);
-  // Rooftop Parapet + Iconic Stair Tower (matching kakm.edu.bd photo!)
-  box(staticG, [31.8, 0.90, 0.26], [b4x, b4H + 1.32, b4z - 4.6], bank.academicCream);
-  box(staticG, [31.8, 0.90, 0.26], [b4x, b4H + 1.32, b4z + 4.6], bank.academicCream);
-  box(staticG, [5.0, 3.6, 5.8], [b4x - 12.8, b4H + 2.3, b4z], bank.academicCream);
-  box(staticG, [5.3, 0.28, 6.1], [b4x - 12.8, b4H + 4.18, b4z], bank.terracotta);
-  cylinder(staticG, 0.68, 0.72, 1.45, [b4x - 12.8, b4H + 5.02, b4z], bank.waterTank, 10);
+  // A) REAL-PHOTO 4-STORY CREAM & DEEP-GREEN ARCHED ACADEMIC BUILDING
+  //    Placed on the EAST edge of the Big Playground (x = 247.5, z = 96.5), rotated -90° to face WEST (-X) across the field!
+  const b4StaticRoot = new THREE.Group();
+  b4StaticRoot.position.set(247.5, 0, 96.5);
+  b4StaticRoot.rotation.y = -Math.PI * 0.5;
+  staticG.add(b4StaticRoot);
+  const b4DynRoot = new THREE.Group();
+  b4DynRoot.position.set(247.5, 0, 96.5);
+  b4DynRoot.rotation.y = -Math.PI * 0.5;
+  dynamicG.add(b4DynRoot);
 
-  // 4 Stories of TRUE CURVED ARCHED Veranda Bays facing SOUTH (+Z) toward the campus!
+  const b4x = 0;
+  const b4z = 0;
+  const b4H = 13.6;
+  box(b4StaticRoot, [32.4, 0.48, 10.2], [b4x, 0.24, b4z], bank.stonePlinth);
+  box(b4StaticRoot, [31.6, b4H, 9.2], [b4x, b4H * 0.5 + 0.44, b4z], bank.academicCream, { uvScale: 3.4 });
+  box(b4StaticRoot, [32.2, 0.50, 9.8], [b4x, b4H + 0.66, b4z], bank.terracotta);
+  box(b4StaticRoot, [31.8, 0.90, 0.26], [b4x, b4H + 1.32, b4z - 4.6], bank.academicCream);
+  box(b4StaticRoot, [31.8, 0.90, 0.26], [b4x, b4H + 1.32, b4z + 4.6], bank.academicCream);
+  box(b4StaticRoot, [5.0, 3.6, 5.8], [b4x - 12.8, b4H + 2.3, b4z], bank.academicCream);
+  box(b4StaticRoot, [5.3, 0.28, 6.1], [b4x - 12.8, b4H + 4.18, b4z], bank.terracotta);
+  cylinder(b4StaticRoot, 0.68, 0.72, 1.45, [b4x - 12.8, b4H + 5.02, b4z], bank.waterTank, 10);
+
   for (let fl = 0; fl < 4; fl++) {
     const fy = 0.48 + fl * 3.28;
-    box(staticG, [32.0, 0.24, 9.6], [b4x, fy + 3.14, b4z], bank.terracotta);
+    box(b4StaticRoot, [32.0, 0.24, 9.6], [b4x, fy + 3.14, b4z], bank.terracotta);
     for (let bx = -12.0; bx <= 12.1; bx += 3.0) {
       const bayX = b4x + bx;
-      box(staticG, [2.56, 2.22, 0.46], [bayX, fy + 1.78, b4z + 4.44], bank.emeraldDark);
-      box(dynamicG, [1.45, 1.24, 0.08], [bayX, fy + 1.72, b4z + 4.62], bank.warmWindowLit, { castShadow: false });
-      addTrueArchSpandrel(staticG, {
+      box(b4StaticRoot, [2.56, 2.22, 0.46], [bayX, fy + 1.78, b4z + 4.44], bank.emeraldDark);
+      box(b4DynRoot, [1.45, 1.24, 0.08], [bayX, fy + 1.72, b4z + 4.62], bank.warmWindowLit, { castShadow: false });
+      addTrueArchSpandrel(b4StaticRoot, {
         span: 2.66,
         height: 0.72,
         depth: 0.24,
@@ -1487,18 +1533,18 @@ function buildAcademicBuildings(staticG, dynamicG, bank) {
         rotY: 0,
         mat: bank.academicCream,
       });
-      box(staticG, [2.72, 0.80, 0.24], [bayX, fy + 0.48, b4z + 4.60], bank.academicCream);
-      box(staticG, [2.74, 0.14, 0.26], [bayX, fy + 0.90, b4z + 4.60], bank.emeraldMat);
+      box(b4StaticRoot, [2.72, 0.80, 0.24], [bayX, fy + 0.48, b4z + 4.60], bank.academicCream);
+      box(b4StaticRoot, [2.74, 0.14, 0.26], [bayX, fy + 0.90, b4z + 4.60], bank.emeraldMat);
     }
     for (let cx = -13.5; cx <= 13.6; cx += 3.0) {
-      box(staticG, [0.38, 3.28, 0.40], [b4x + cx, fy + 1.64, b4z + 4.60], bank.academicCream);
+      box(b4StaticRoot, [0.38, 3.28, 0.40], [b4x + cx, fy + 1.64, b4z + 4.60], bank.academicCream);
     }
   }
-  box(staticG, [6.8, 0.24, 2.0], [b4x - 10.6, 3.40, b4z + 5.35], bank.terracotta);
+  box(b4StaticRoot, [6.8, 0.24, 2.0], [b4x - 10.6, 3.40, b4z + 5.35], bank.terracotta);
   addSignBox(
-    dynamicG,
+    b4DynRoot,
     bank,
-    { title: 'খুলনা আলিয়া কামিল মাদ্রাসা · উত্তর-পশ্চিম একাডেমিক ভবন', subtitle: 'দাখিল ও আলিম বিজ্ঞান ভবন · ৪-তলা একাডেমিক ভবন', bg: '#0f3d2e', fg: '#ffffff', accent: '#fde047' },
+    { title: 'খুলনা আলিয়া কামিল মাদ্রাসা · পূর্ব একাডেমিক ভবন', subtitle: 'দাখিল ও আলিম একাডেমিক ভবন · ৪-তলা ভবন', bg: '#0f3d2e', fg: '#ffffff', accent: '#fde047' },
     [b4x + 2.5, 4.35, b4z + 4.84],
     0,
     7.4,
@@ -1506,9 +1552,9 @@ function buildAcademicBuildings(staticG, dynamicG, bank) {
     true
   );
 
-  // B) MODERN 6-STORY WHITE & TERRACOTTA ACADEMIC BUILDING (North Courtyard Side, z = 64)
-  const b6x = 210.0;
-  const b6z = 64.0;
+  // B) MODERN 6-STORY WHITE & TERRACOTTA ACADEMIC BUILDING (North Right of Main Portico, x = 218.0, z = 61.5, facing SOUTH!)
+  const b6x = 218.0;
+  const b6z = 61.5;
   const b6H = 19.8;
   box(staticG, [35.4, 0.50, 10.8], [b6x, 0.25, b6z], bank.terracotta);
   box(staticG, [34.4, b6H, 9.8], [b6x, b6H * 0.5 + 0.45, b6z], bank.whitePlaster, { uvScale: 3.6 });
@@ -1675,21 +1721,21 @@ export function buildAliaMadrasahDistrict(parent, m) {
   mainGate.leftLeaf.rotation.y = gateRatio * (Math.PI * 0.46);
   mainGate.rightLeaf.rotation.y = -gateRatio * (Math.PI * 0.46);
 
-  // 6) Stone Foundation Plaque & Flagpole placed neatly on the Main Portico front apron (Big Playground 100% clear of benches/clutter!)
-  box(staticG, [2.2, 1.05, 1.0], [191.2, 0.52, 102.0], bank.stonePlinth);
+  // 6) Stone Foundation Plaque & Flagpole placed cleanly on the lawn south of the Main Portico concrete promenade (road stays 100% clear!)
+  box(staticG, [2.2, 1.05, 1.0], [156.0, 0.52, 79.5], bank.stonePlinth);
   addSignBox(
     dynamicG,
     bank,
     { title: 'খুলনা আলিয়া কামিল মাদ্রাসা', subtitle: 'স্থাপিত: ২ এপ্রিল ১৯৫২ · খুলনা', bg: '#e5e7eb', fg: '#111827', accent: '#b94a38', border: '#475569' },
-    [191.85, 1.08, 102.0],
-    Math.PI * 0.5,
+    [156.0, 1.08, 80.12],
+    0,
     2.0,
     0.70,
     false
   );
 
-  const flX = 191.2;
-  const flZ = 114.2;
+  const flX = 172.0;
+  const flZ = 79.5;
   box(staticG, [2.6, 0.26, 2.6], [flX, 0.13, flZ], bank.marbleWhite);
   box(staticG, [1.8, 0.24, 1.8], [flX, 0.38, flZ], bank.terracotta);
   cylinder(staticG, 0.06, 0.085, 9.6, [flX, 5.2, flZ], bank.chromeMat, 10);
@@ -1784,26 +1830,27 @@ export function buildAliaMadrasahDistrict(parent, m) {
     const footY = pos.y - 1.68;
     const maxStepUp = grounded ? 0.55 : (verticalVelocity > 0 ? 0.08 : 0.38);
 
-    // 1) Grand 64m Main Building (x = 176.8..192.6, z = 75.8..140.2) — All 3 Floors + S-Stairs!
-    if (pos.x >= 176.8 && pos.x <= 192.6 && pos.z >= 75.8 && pos.z <= 140.2) {
-      if (pos.x > 190.0 && pos.z >= 104.8 && pos.z <= 111.2 && footY < 1.5) {
-        const rt = THREE.MathUtils.clamp((192.6 - pos.x) / 2.6, 0, 1);
+    // 1) Grand 64m Main Building (rotated -90° at NW slot x = 131.8..196.2, z = 54.8..70.6, facing SOUTH!) — All 3 Floors + S-Stairs!
+    const ml = mainWorldToLocalXZ(pos.x, pos.z);
+    if (ml.x >= 176.8 && ml.x <= 192.6 && ml.z >= 75.8 && ml.z <= 140.2) {
+      if (ml.x > 190.0 && ml.z >= 104.8 && ml.z <= 111.2 && footY < 1.5) {
+        const rt = THREE.MathUtils.clamp((192.6 - ml.x) / 2.6, 0, 1);
         return rt * 0.50;
       }
-      if (pos.x <= 190.1) {
+      if (ml.x <= 190.1) {
         let bestY = 0.50;
-        const inStairs = pos.x >= 177.5 && pos.x <= 186.4 && pos.z >= 104.7 && pos.z <= 111.3;
+        const inStairs = ml.x >= 177.5 && ml.x <= 186.4 && ml.z >= 104.7 && ml.z <= 111.3;
         if (inStairs) {
           for (const [yBot, yTop] of [[0.50, 4.20], [4.20, 7.90]]) {
             const yMid = (yBot + yTop) * 0.5;
-            if (pos.x <= 179.8) {
+            if (ml.x <= 179.8) {
               if (yMid <= footY + maxStepUp) bestY = Math.max(bestY, yMid);
-            } else if (pos.z >= 108.0) {
-              const t = THREE.MathUtils.clamp((186.2 - pos.x) / 6.4, 0, 1);
+            } else if (ml.z >= 108.0) {
+              const t = THREE.MathUtils.clamp((186.2 - ml.x) / 6.4, 0, 1);
               const sy = yBot + t * (yMid - yBot);
               if (sy <= footY + maxStepUp) bestY = Math.max(bestY, sy);
             } else {
-              const t = THREE.MathUtils.clamp((pos.x - 179.8) / 6.4, 0, 1);
+              const t = THREE.MathUtils.clamp((ml.x - 179.8) / 6.4, 0, 1);
               const sy = yMid + t * (yTop - yMid);
               if (sy <= footY + maxStepUp) bestY = Math.max(bestY, sy);
             }
@@ -1828,35 +1875,36 @@ export function buildAliaMadrasahDistrict(parent, m) {
     const dz = pos.z - ALIA_CAMPUS_CENTER.z;
     if (dx * dx + dz * dz > 140 * 140) return;
 
-    // 0) Grand 64m Main Building Interior & Exterior Collisions (x = 177..190, z = 76..140)
-    if (pos.x >= 175.8 && pos.x <= 192.0 && pos.z >= 75.0 && pos.z <= 141.0 && footY < 11.4) {
-      resolveCircleAABB(pos, radius, 176.6, 177.25, 75.8, 140.2); // West back wall
-      resolveCircleAABB(pos, radius, 176.8, 190.2, 75.6, 76.25);  // North end wall
-      resolveCircleAABB(pos, radius, 176.8, 190.2, 139.75, 140.4); // South end wall
-      // East balcony railing on 2nd & 3rd floor
+    // 0) Grand 64m Main Building Interior & Exterior Collisions (transformed into -90° rotated NW local frame!)
+    const ml = mainWorldToLocalXZ(pos.x, pos.z);
+    if (ml.x >= 175.8 && ml.x <= 192.0 && ml.z >= 75.0 && ml.z <= 141.0 && footY < 11.4) {
+      resolveCircleAABB(ml, radius, 176.6, 177.25, 75.8, 140.2); // North back wall
+      resolveCircleAABB(ml, radius, 176.8, 190.2, 75.6, 76.25);  // East end wall
+      resolveCircleAABB(ml, radius, 176.8, 190.2, 139.75, 140.4); // West end wall
       if (footY > 3.2) {
-        resolveCircleAABB(pos, radius, 189.65, 190.15, 76.0, 140.0);
+        resolveCircleAABB(ml, radius, 189.65, 190.15, 76.0, 140.0); // South balcony railing on 2nd & 3rd floor
       }
-      // Corridor-to-room partition walls (open 2.1m doors at z = 80.85, 90.25, 99.75, 116.25, 125.75, 135.15)
       for (const [z0, z1] of [
         [76.0, 79.8], [81.9, 89.2], [91.3, 98.7], [100.8, 104.5],
         [111.5, 115.2], [117.3, 124.7], [126.8, 134.1], [136.2, 140.0],
       ]) {
-        resolveCircleAABB(pos, radius, 186.50, 186.80, z0, z1);
+        resolveCircleAABB(ml, radius, 186.50, 186.80, z0, z1);
       }
-      // Room divider walls
       for (const divZ of [85.5, 95.0, 104.5, 111.5, 121.0, 130.5]) {
-        resolveCircleAABB(pos, radius, 177.1, 186.65, divZ - 0.15, divZ + 0.15);
+        resolveCircleAABB(ml, radius, 177.1, 186.65, divZ - 0.15, divZ + 0.15);
       }
+      const mw = mainLocalToWorldXZ(ml.x, ml.z);
+      pos.x = mw.x;
+      pos.z = mw.z;
     }
 
-    // 1) 6-Story North Academic Building (x = 192..228, z = 58.6..69.4)
+    // 1) 6-Story North Academic Building (x = 200.2..235.8, z = 56.1..66.9 — RIGHT of Main Portico!)
     if (footY < 20.5) {
-      resolveCircleAABB(pos, radius, 192.2, 227.8, 58.6, 69.4);
+      resolveCircleAABB(pos, radius, 200.2, 235.8, 56.1, 66.9);
     }
-    // 2) 4-Story NW Arched Academic Building (x = 149.8..182.2, z = 55.4..65.6 — pond is now 100% open!)
+    // 2) 4-Story East Arched Academic Building (x = 242.4..252.6, z = 80.3..112.7 — East of Big Playground!)
     if (footY < 14.5) {
-      resolveCircleAABB(pos, radius, 149.8, 182.2, 55.4, 65.6);
+      resolveCircleAABB(pos, radius, 242.4, 252.6, 80.3, 112.7);
     }
     // 3) South-West Khan Jahan Ali Rd Main Gate & Demo Blockout Building Collisions
     if (footY < 2.8 && gateRatio < 0.55) {
