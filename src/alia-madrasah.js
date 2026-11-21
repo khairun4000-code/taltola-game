@@ -1709,7 +1709,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
       { x0: 193.0, x1: 229.5, z0: 71.5, z1: 103.8 },
       { x0: 193.0, x1: 229.5, z0: 112.2, z1: 142.5 },
     ];
-    const perClumpCount = 7200;
+    const perClumpCount = 1200;
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
 
@@ -1728,9 +1728,9 @@ export function buildAliaMadrasahDistrict(parent, m) {
           dummy.position.set(gx, 0.02, gz);
         }
         dummy.rotation.set((rand() - 0.5) * 0.06, rand() * Math.PI * 2, (rand() - 0.5) * 0.06);
-        const sx = 0.44 + rand() * 0.22;
+        const sx = 0.85 + rand() * 0.45;
         const sy = 0.10 + rand() * 0.05;
-        const sz = 0.44 + rand() * 0.22;
+        const sz = 0.85 + rand() * 0.45;
         dummy.scale.set(sx, sy, sz);
         dummy.updateMatrix();
         inst.setMatrixAt(i, dummy.matrix);
@@ -1847,7 +1847,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
       template.traverse((child) => {
         if (!child.isMesh) return;
-        child.castShadow = true;
+        child.castShadow = false;
         child.receiveShadow = true;
         const mats = Array.isArray(child.material) ? child.material : [child.material];
         for (const mat of mats) {
