@@ -485,6 +485,7 @@ let softwareRendererDetected = false;
 let lowFpsStreak = 0;
 let khulnaMapUI = null;
 let gtaPhoneUI = null;
+let aliaPrincipalMic = null;
 let gtaCharacterSwitch = null;
 let selfiePrevCamMode = null;
 let lastMinimapUpdate = 0;
@@ -2839,7 +2840,7 @@ async function initialize() {
     },
   });
   gtaPhoneUI?.setCharacterTheme?.(selectedCharacterId);
-  const aliaPrincipalMic = createAliaPrincipalMic({
+  aliaPrincipalMic = createAliaPrincipalMic({
     onStatusToast: (msg) => gtaPhoneUI?.showToast?.(msg),
   });
   gtaCharacterSwitch = createGTACharacterSwitch({
