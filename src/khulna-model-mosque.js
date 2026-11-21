@@ -857,9 +857,9 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
     });
     if (!templates.length) return;
 
-    const planterY = MOSQUE_BASE_Y + 2.54 * MOSQUE_AAA_SCALE; // ~2.66m (flush on planter turf!)
-    const cols = 6;
-    const rows = 6;
+    const planterY = MOSQUE_BASE_Y + 2.52 * MOSQUE_AAA_SCALE; // ~2.64m (sits deep inside soil so zero gap/box shows!)
+    const cols = 8;
+    const rows = 8;
     const count = cols * rows;
     const dummy = new THREE.Object3D();
     for (const { geom, mat } of templates) {
@@ -869,12 +869,12 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
       let idx = 0;
       for (let ix = 0; ix < cols; ix++) {
         for (let iz = 0; iz < rows; iz++) {
-          const jitterX = Math.sin(idx * 12.9898) * 0.12;
-          const jitterZ = Math.cos(idx * 78.233) * 0.12;
-          const px = 181.02 + (ix / (cols - 1)) * 2.34 + jitterX;
-          const pz = 164.94 + (iz / (rows - 1)) * 2.12 + jitterZ;
-          const scXZ = 0.52 + (Math.abs(Math.sin(idx * 4.7)) * 0.24);
-          const scY = 0.42 + (Math.abs(Math.cos(idx * 3.1)) * 0.22);
+          const jitterX = Math.sin(idx * 12.9898) * 0.11;
+          const jitterZ = Math.cos(idx * 78.233) * 0.11;
+          const px = 180.84 + (ix / (cols - 1)) * 2.68 + jitterX;
+          const pz = 164.74 + (iz / (rows - 1)) * 2.52 + jitterZ;
+          const scXZ = 0.74 + (Math.abs(Math.sin(idx * 4.7)) * 0.30);
+          const scY = 0.48 + (Math.abs(Math.cos(idx * 3.1)) * 0.30);
           dummy.position.set(px, planterY, pz);
           dummy.rotation.set(0, idx * 1.17, 0);
           dummy.scale.set(scXZ, scY, scXZ);
