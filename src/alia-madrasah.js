@@ -2,7 +2,17 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { attachDerivedPBRMaps } from './aaa-shaders.js';
-import { buildKhulnaModelMosque3D, getModelMosqueGroundHeight, applyModelMosqueCollisions } from './khulna-model-mosque.js';
+import {
+  buildKhulnaModelMosque3D,
+  getModelMosqueGroundHeight,
+  applyModelMosqueCollisions,
+  getModelMosquePrompt,
+  toggleModelMosqueDoor,
+  updateModelMosque,
+  getModelMosqueZoneName,
+  isInsideModelMosque,
+  findNearestModelMosqueSeat,
+} from './khulna-model-mosque.js';
 
 /**
  * KHULNA ALIA KAMIL MADRASAH & KHULNA DISTRICT MODEL MOSQUE CAMPUS
@@ -1444,162 +1454,7 @@ function buildAcademicBuildings(staticG, dynamicG, bank) {
   );
 }
 
-/* ============================================================================
- * 4. WALKABLE 4-STORY KHULNA DISTRICT MODEL MOSQUE & ISLAMIC CULTURAL CENTER
- *    (cx = 171.0, cz = 166.0 — facing East toward Pond & Campus, Qibla West!)
- * ========================================================================== */
-
-function buildKhulnaModelMosque(staticG, dynamicG, bank) {
-  const mx = 171.0;
-  const mz = 166.0;
-  const W = 20.0; // X-span: 161.0..181.0
-  const D = 22.0; // Z-span: 155.0..177.0
-  const yPodium = 3.20;
-  const yRoof = 15.60;
-
-  // Paved Mosque Courtyard Plaza + Wide Ceremonial Avenue linking Main Portico Courtyard directly to Model Mosque!
-  box(staticG, [34.0, 0.08, 30.0], [mx + 3.5, 0.04, mz], bank.marbleWhite, { castShadow: false, uvScale: 4.5 });
-  box(staticG, [9.2, 0.08, 32.0], [190.5, 0.04, 140.0], bank.paverDriveway, { castShadow: false, uvScale: 3.5 });
-
-  box(staticG, [W + 1.2, yPodium, D + 1.2], [mx, yPodium * 0.5, mz], bank.marbleWhite, { uvScale: 3.0 });
-  box(staticG, [4.2, yPodium, D + 0.8], [mx + W * 0.5 + 2.1, yPodium * 0.5, mz], bank.marbleWhite);
-  for (const dz of [-7.8, 7.8]) {
-    box(staticG, [0.35, 2.35, 3.2], [mx + W * 0.5 + 4.15, 1.25, mz + dz], bank.mosqueTeal);
-    box(staticG, [0.42, 0.20, 3.5], [mx + W * 0.5 + 4.18, 2.48, mz + dz], bank.marbleWhite);
-  }
-
-  // GRAND WIDE WHITE MARBLE FRONT STAIRCASE (x = 185.0..190.6, z = 160.0..172.0)
-  const stairSteps = 14;
-  for (let i = 0; i < stairSteps; i++) {
-    const t = (i + 0.5) / stairSteps;
-    const sx = THREE.MathUtils.lerp(190.6, 185.0, t);
-    const sy = THREE.MathUtils.lerp(0.0, yPodium, (i + 1) / stairSteps);
-    box(staticG, [0.46, sy, 12.0], [sx, sy * 0.5, mz], bank.marbleWhite);
-  }
-  box(staticG, [2.6, 0.45, 3.4], [187.8, yPodium * 0.52, mz], bank.marbleWhite);
-  box(staticG, [2.2, 0.14, 3.0], [187.8, yPodium * 0.52 + 0.25, mz], bank.grassTurf);
-  for (const sz of [mz - 6.1, mz + 6.1]) {
-    box(staticG, [5.8, yPodium + 0.4, 0.36], [187.8, (yPodium + 0.4) * 0.5, sz], bank.marbleWhite);
-  }
-  box(staticG, [0.28, 0.95, 5.2], [mx + W * 0.5 + 4.0, yPodium + 0.48, mz - 8.6], bank.marbleWhite);
-  box(staticG, [0.28, 0.95, 5.2], [mx + W * 0.5 + 4.0, yPodium + 0.48, mz + 8.6], bank.marbleWhite);
-
-  const hallH = 4.2;
-  box(staticG, [W - 1.0, 0.04, D - 1.0], [mx, yPodium + 0.02, mz], bank.prayerCarpet, { castShadow: false });
-  box(staticG, [0.42, yRoof - yPodium, D], [mx - W * 0.5 + 0.21, (yPodium + yRoof) * 0.5, mz], bank.marbleWhite);
-  box(staticG, [W, yRoof - yPodium, 0.42], [mx, (yPodium + yRoof) * 0.5, mz - D * 0.5 + 0.21], bank.marbleWhite);
-  box(staticG, [W, yRoof - yPodium, 0.42], [mx, (yPodium + yRoof) * 0.5, mz + D * 0.5 - 0.21], bank.marbleWhite);
-  box(staticG, [0.44, hallH, 8.6], [mx + W * 0.5 - 0.22, yPodium + hallH * 0.5, mz - 6.6], bank.marbleWhite);
-  box(staticG, [0.44, hallH, 8.6], [mx + W * 0.5 - 0.22, yPodium + hallH * 0.5, mz + 6.6], bank.marbleWhite);
-  box(staticG, [0.46, yRoof - (yPodium + hallH), D], [mx + W * 0.5 - 0.23, (yPodium + hallH + yRoof) * 0.5, mz], bank.marbleWhite);
-  box(staticG, [W, 0.34, D], [mx, yPodium + hallH + 0.17, mz], bank.marbleWhite);
-  box(staticG, [W + 0.8, 0.45, D + 0.8], [mx, yRoof + 0.22, mz], bank.marbleWhite);
-  box(staticG, [W + 0.5, 1.05, 0.26], [mx, yRoof + 0.95, mz - D * 0.5], bank.marbleWhite);
-  box(staticG, [W + 0.5, 1.05, 0.26], [mx, yRoof + 0.95, mz + D * 0.5], bank.marbleWhite);
-  box(staticG, [0.26, 1.05, D + 0.5], [mx - W * 0.5, yRoof + 0.95, mz], bank.marbleWhite);
-  box(staticG, [0.26, 1.05, D + 0.5], [mx + W * 0.5, yRoof + 0.95, mz], bank.marbleWhite);
-
-  const fX = mx + W * 0.5 + 0.08;
-  for (const dz of [-8.8, 8.8]) {
-    box(staticG, [0.16, 10.6, 2.2], [fX, yPodium + 5.6, mz + dz], bank.mosqueJaali);
-    box(staticG, [0.20, 10.8, 0.18], [fX + 0.02, yPodium + 5.6, mz + dz - 1.15], bank.marbleWhite);
-    box(staticG, [0.20, 10.8, 0.18], [fX + 0.02, yPodium + 5.6, mz + dz + 1.15], bank.marbleWhite);
-  }
-  box(staticG, [0.10, 10.4, 15.0], [fX - 0.04, yPodium + 5.6, mz], bank.mosqueJaali);
-
-  for (let tier = 0; tier < 3; tier++) {
-    const ty = yPodium + 1.9 + tier * 3.45;
-    for (const [wz, ww, wh] of [[-5.0, 2.2, 2.3], [0, 3.6, 2.65], [5.0, 2.2, 2.3]]) {
-      if (tier === 0 && wz === 0) continue;
-      box(staticG, [0.18, wh, ww], [fX + 0.05, ty, mz + wz], bank.mosqueTurquoise);
-      box(dynamicG, [0.08, wh - 0.35, ww - 0.35], [fX + 0.14, ty, mz + wz], bank.mosqueGlow, { castShadow: false });
-      box(staticG, [0.22, 0.24, ww + 0.24], [fX + 0.06, ty + wh * 0.5 + 0.10, mz + wz], bank.marbleWhite);
-    }
-  }
-
-  for (const [cx, cz] of [[mx - 4.5, mz - 5.5], [mx - 4.5, mz + 5.5], [mx + 3.5, mz - 5.5], [mx + 3.5, mz + 5.5]]) {
-    cylinder(staticG, 0.34, 0.38, hallH, [cx, yPodium + hallH * 0.5, cz], bank.marbleWhite, 12);
-    cylinder(staticG, 0.42, 0.42, 0.16, [cx, yPodium + 0.12, cz], bank.goldMat, 12);
-    cylinder(staticG, 0.42, 0.42, 0.16, [cx, yPodium + hallH - 0.12, cz], bank.goldMat, 12);
-  }
-  box(staticG, [0.65, 3.6, 3.4], [mx - W * 0.5 + 0.65, yPodium + 1.8, mz], bank.mosqueTeal);
-  box(staticG, [0.72, 3.8, 0.24], [mx - W * 0.5 + 0.68, yPodium + 1.9, mz - 1.75], bank.goldMat);
-  box(staticG, [0.72, 3.8, 0.24], [mx - W * 0.5 + 0.68, yPodium + 1.9, mz + 1.75], bank.goldMat);
-  box(staticG, [0.72, 0.24, 3.74], [mx - W * 0.5 + 0.68, yPodium + 3.72, mz], bank.goldMat);
-  box(staticG, [1.6, 1.35, 1.15], [mx - W * 0.5 + 1.4, yPodium + 0.68, mz - 3.2], bank.teakWood);
-  box(staticG, [0.85, 0.65, 1.15], [mx - W * 0.5 + 2.4, yPodium + 0.33, mz - 3.2], bank.teakWood);
-
-  cylinder(staticG, 0.04, 0.04, 1.15, [mx, yPodium + hallH - 0.58, mz], bank.goldMat, 8);
-  cylinder(staticG, 1.15, 1.15, 0.10, [mx, yPodium + hallH - 1.18, mz], bank.goldMat, 16);
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8), bank.bulbGlow);
-    bulb.position.set(mx + Math.cos(a) * 1.05, yPodium + hallH - 1.30, mz + Math.sin(a) * 1.05);
-    dynamicG.add(bulb);
-  }
-
-  const addMosqueDome = (dx, dz, radius, drumH) => {
-    cylinder(staticG, radius * 1.02, radius * 1.05, drumH, [dx, yRoof + 0.45 + drumH * 0.5, dz], bank.marbleWhite, 24);
-    cylinder(staticG, radius * 1.06, radius * 1.06, 0.16, [dx, yRoof + 0.45 + drumH, dz], bank.mosqueTurquoise, 24);
-    const dome = new THREE.Mesh(
-      new THREE.SphereGeometry(radius, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.52),
-      bank.marbleDome
-    );
-    dome.position.set(dx, yRoof + 0.45 + drumH, dz);
-    staticG.add(dome);
-    const topY = yRoof + 0.45 + drumH + radius;
-    cylinder(staticG, 0.05, 0.08, 1.65, [dx, topY + 0.82, dz], bank.goldMat, 8);
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), bank.goldMat);
-    orb.position.set(dx, topY + 0.55, dz);
-    staticG.add(orb);
-  };
-  addMosqueDome(mx - 0.5, mz, 5.2, 1.45);
-  addMosqueDome(mx + 6.5, mz - 7.0, 2.35, 0.85);
-  addMosqueDome(mx + 6.5, mz + 7.0, 2.35, 0.85);
-  addMosqueDome(mx + 6.5, mz, 2.10, 0.78);
-
-  const minX = mx + W * 0.5 + 1.8;
-  const minZ = mz - D * 0.5 + 1.6;
-  const minH = 29.0;
-  box(staticG, [3.6, minH, 3.6], [minX, minH * 0.5, minZ], bank.minaretJaali, { uvScale: 2.5 });
-  for (const sx of [-1.62, 1.62]) {
-    for (const sz of [-1.62, 1.62]) {
-      box(staticG, [0.34, minH + 0.4, 0.34], [minX + sx, minH * 0.5, minZ + sz], bank.marbleWhite);
-    }
-  }
-  box(staticG, [4.2, 0.55, 4.2], [minX, minH - 3.6, minZ], bank.marbleWhite);
-  box(staticG, [4.0, 0.95, 4.0], [minX, minH + 0.45, minZ], bank.marbleWhite);
-  const minDome = new THREE.Mesh(
-    new THREE.SphereGeometry(1.55, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.55),
-    bank.marbleDome
-  );
-  minDome.position.set(minX, minH + 0.90, minZ);
-  staticG.add(minDome);
-  cylinder(staticG, 0.05, 0.08, 1.8, [minX, minH + 3.25, minZ], bank.goldMat, 8);
-
-  addSignBox(
-    dynamicG,
-    bank,
-    {
-      title: 'খুলনা জেলা মডেল মসজিদ ও ইসলামিক সাংস্কৃতিক কেন্দ্র',
-      subtitle: 'KHULNA DISTRICT MODEL MOSQUE · আলিয়া মাদ্রাসা প্রাঙ্গণ, খুলনা',
-      bg: '#0e4f5c',
-      fg: '#ffffff',
-      accent: '#fde047',
-      border: '#38bdf8',
-      width: 680,
-    },
-    [mx + W * 0.5 + 0.42, yPodium + hallH + 0.45, mz],
-    Math.PI * 0.5,
-    8.2,
-    1.22,
-    true
-  );
-
-  for (const [lx, lz] of [[191.8, 158.0], [191.8, 174.0], [184.5, 152.5], [184.5, 179.5]]) {
-    addCampusLamp(staticG, dynamicG, bank, lx, lz, 4.4, 0.06);
-  }
-}
+// Model Mosque builder lives in ./khulna-model-mosque.js (buildKhulnaModelMosque3D)
 
 /* ============================================================================
  * 5. GRAND EAST MAIN GATE (x = 231.5, INTERACTIVE [E]), BOUNDARY WALLS & POND GHAT
@@ -2009,16 +1864,19 @@ export function buildAliaMadrasahDistrict(parent, m) {
   }
 
   function getNearbyPrompt(pos) {
-    if (!pos || pos.y > 3.2) return null;
-    if (Math.hypot(pos.x - 231.5, pos.z - 108.0) < 5.5) {
+    if (!pos) return null;
+    const mosquePrompt = getModelMosquePrompt(pos);
+    if (mosquePrompt) return mosquePrompt;
+    if (pos.y <= 3.2 && Math.hypot(pos.x - 231.5, pos.z - 108.0) < 5.5) {
       return gateTarget > 0.5 ? '[E] Close Alia Madrasah Gate' : '[E] Open Alia Madrasah Gate';
     }
     return null;
   }
 
   function toggleGate(pos) {
-    if (!pos || pos.y > 3.2) return false;
-    if (Math.hypot(pos.x - 231.5, pos.z - 108.0) < 6.0) {
+    if (!pos) return false;
+    if (toggleModelMosqueDoor(pos)) return true;
+    if (pos.y <= 3.2 && Math.hypot(pos.x - 231.5, pos.z - 108.0) < 6.0) {
       gateTarget = gateTarget > 0.5 ? 0 : 1;
       return true;
     }
@@ -2031,6 +1889,9 @@ export function buildAliaMadrasahDistrict(parent, m) {
     applyCollisions,
     getNearbyPrompt,
     toggleGate,
+    getModelMosqueZoneName,
+    isInsideModelMosque,
+    findNearestModelMosqueSeat,
     setNightFactor(nightFactor = 0) {
       const nf = THREE.MathUtils.clamp(nightFactor, 0, 1);
       for (let i = 0; i < bank.emissiveList.length; i++) {
@@ -2054,6 +1915,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
         mainGate.leftLeaf.rotation.y = gateRatio * (Math.PI * 0.46);
         mainGate.rightLeaf.rotation.y = -gateRatio * (Math.PI * 0.46);
       }
+      updateModelMosque(dt);
     },
   };
 }

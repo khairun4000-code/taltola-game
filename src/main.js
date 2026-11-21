@@ -4140,6 +4140,8 @@ function findNearestSeat(pos) {
   if (altSeat) return altSeat;
   const goliSeat = environment?.altapoleGoli?.findNearestSeat?.(pos);
   if (goliSeat) return goliSeat;
+  const mosqueSeat = environment?.landmarks?.aliaMadrasah?.findNearestModelMosqueSeat?.(pos);
+  if (mosqueSeat) return mosqueSeat;
   const footY = pos.y - EYE_HEIGHT;
   let building = null;
   let fy = 0;
@@ -4213,8 +4215,8 @@ function computeGroundHeight(pos) {
   const altGoliY = environment?.altapoleGoli?.computeGroundHeight?.(pos, grounded, verticalVelocity);
   if (altGoliY !== null && altGoliY !== undefined) return altGoliY;
 
-  // --- KHULNA ALIA KAMIL MADRASAH WALKABLE MAIN BUILDING (delegated to alia-madrasah.js) ---
-  if (pos.x >= 175.8 && pos.x <= 193.0 && pos.z >= 75.0 && pos.z <= 141.0) {
+  // --- KHULNA ALIA KAMIL MADRASAH & MODEL MOSQUE WALKABLE INTERIORS (delegated to alia-madrasah.js) ---
+  if (pos.x >= 156.0 && pos.x <= 196.0 && pos.z >= 74.0 && pos.z <= 184.0) {
     const aliaY = environment?.landmarks?.aliaMadrasah?.getGroundHeight?.(pos, grounded, verticalVelocity);
     if (typeof aliaY === 'number' && aliaY > 0) return aliaY;
   }
@@ -4860,6 +4862,8 @@ function updateHUDPrompt() {
       }
     } else if (Math.abs(lx) < 16 && Math.abs(lz) < 16) {
       zone = 'TALTOLA HOUSE · TOOTPARA TALTOLA HOSPITAL CROSS RD';
+    } else if (x >= 158 && x <= 196 && z >= 150 && z <= 181) {
+      zone = environment?.landmarks?.aliaMadrasah?.getModelMosqueZoneName?.(x, z, footY) || 'KHULNA DISTRICT MODEL MOSQUE · ALIA MADRASAH';
     } else if (x >= 144 && x <= 222 && z >= -524 && z <= -292) {
       zone = environment?.altapoleGoli?.getZoneName?.(x, z, footY) || environment?.altapoleTower?.getZoneName?.(x, z, footY) || environment?.altapole?.getZoneName?.(x, z) || 'ALTAPOLE LANE · KHULNA';
     } else if (Math.abs(x) < 35 && Math.abs(z) < 42) {
@@ -5421,7 +5425,8 @@ function updateMovement(delta) {
     || (playerPos.x < -2.8 && playerPos.x > -19.9 && playerPos.z > 14.3 && playerPos.z < 28.6)
     || Boolean(environment?.altapole?.isInsideAnyHouse?.(playerPos))
     || Boolean(environment?.altapoleTower?.isInsideAnyRoom?.(playerPos))
-    || Boolean(environment?.altapoleGoli?.isInsideAnyRoom?.(playerPos));
+    || Boolean(environment?.altapoleGoli?.isInsideAnyRoom?.(playerPos))
+    || Boolean(environment?.landmarks?.aliaMadrasah?.isInsideModelMosque?.(playerPos));
 
   if (indoorLight) {
     indoorLight.visible = insideHouse && quality !== 'low' && quality !== 'medium';
