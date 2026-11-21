@@ -774,14 +774,31 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
         const mats = Array.isArray(child.material) ? child.material : [child.material];
         for (const mat of mats) {
           if (!mat) continue;
-          mat.roughness = 0.62;
-          mat.metalness = 0.04;
+          const mName = (mat.name || '').toLowerCase();
+          if (mName.includes('blue_glass')) {
+            // Transparent blue-tinted architectural glass so interior & exterior are visible through windows!
+            mat.transparent = true;
+            mat.opacity = 0.36;
+            mat.depthWrite = false;
+            mat.roughness = 0.12;
+            mat.metalness = 0.15;
+          } else if (mName.includes('white_dome')) {
+            // Matte weathered concrete-plaster white dome (zero glossy plastic shine!)
+            mat.roughness = 0.88;
+            mat.metalness = 0.0;
+          } else if (mName.includes('prayer_carpet')) {
+            mat.roughness = 0.94;
+            mat.metalness = 0.0;
+          } else if (mName.includes('warm_light')) {
+            mat.emissive = new THREE.Color(0xffe4aa);
+            mat.emissiveIntensity = 1.6;
+          }
           mat.side = THREE.DoubleSide;
           mat.needsUpdate = true;
         }
       });
 
-      // Scale so the mosque spans ~32m wide/deep (~26m tall to minaret dome) matching real Khulna District Model Mosque scale
+      // Scale so the mosque spans ~34m wide matching real Khulna District Model Mosque scale
       const targetSpan = 34.0;
       const scale = targetSpan / Math.max(0.1, size.x);
       const wrapper = new THREE.Group();
@@ -796,6 +813,14 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
       wrapper.rotation.y = Math.PI * 0.5;
       wrapper.position.set(175.0, 0.04, 166.0);
       dynamicG.add(wrapper);
+
+      // Permanent warm interior lighting for the Grand Prayer Hall & Mihrab (never toggled visible/invisible -> zero lag!)
+      const hallLight = new THREE.PointLight(0xffe8bb, 1.35, 28, 1.6);
+      hallLight.position.set(168.4, 9.2, 166.0);
+      dynamicG.add(hallLight);
+      const mihrabLight = new THREE.PointLight(0xffdfb0, 0.85, 16, 1.7);
+      mihrabLight.position.set(162.8, 6.8, 166.0);
+      dynamicG.add(mihrabLight);
     },
     undefined,
     (err) => {
@@ -1529,25 +1554,90 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
  * WALKABLE MULTI-FLOOR PHYSICS, COLLISIONS, INTERACTIVE DOORS, FANS & NIGHT GLOW
  * ========================================================================== */
 
+const MOSQUE_AAA_SCALE = 34.0 / 34.5;
+
+function worldToMosqueLocal(wx, wz) {
+  return {
+    bx: (166.0 - wz) / MOSQUE_AAA_SCALE,
+    by: (175.0 - wx) / MOSQUE_AAA_SCALE - 0.5,
+  };
+}
+
+function mosqueLocalToWorld(bx, by) {
+  return {
+    wx: 175.0 - (by + 0.5) * MOSQUE_AAA_SCALE,
+    wz: 166.0 - bx * MOSQUE_AAA_SCALE,
+  };
+}
+
 export function getModelMosqueGroundHeight(pos, grounded = true, verticalVelocity = 0) {
   if (!pos) return 0.0;
   if (pos.x < 156.0 || pos.x > 199.0 || pos.z < 146.0 || pos.z > 186.0) {
     return 0.0;
   }
 
+  const { bx, by } = worldToMosqueLocal(pos.x, pos.z);
   const footY = pos.y - 1.68;
-  const maxStepUp = grounded ? 0.62 : (verticalVelocity > 0 ? 0.08 : 0.42);
+  const maxStepUp = grounded ? 0.72 : (verticalVelocity > 0 ? 0.08 : 0.45);
+  const S = MOSQUE_AAA_SCALE;
+  const Y_GROUND = 0.34;
+  const Y_MID_LANDING = 0.04 + 2.28 * S;    // ~2.29m
+  const Y_FLOOR2 = 0.04 + 4.22 * S;         // ~4.20m (Terrace & Main Prayer Hall!)
+  const Y_FLOOR3 = 0.04 + 9.65 * S;         // ~9.55m (3rd Floor Mezzanine Gallery!)
 
-  // 1) Grand Front White Marble Staircase (x = 186.5..193.0, z = 161.0..171.0)
-  if (pos.x >= FRONT_STAIR_X0 && pos.x <= FRONT_STAIR_X1 && pos.z >= FRONT_STAIR_Z0 && pos.z <= FRONT_STAIR_Z1) {
-    const t = THREE.MathUtils.clamp((FRONT_STAIR_X1 - pos.x) / (FRONT_STAIR_X1 - FRONT_STAIR_X0), 0, 1);
-    const stairY = 0.34 + t * (Y1 - 0.34);
-    if (stairY <= footY + maxStepUp) return stairY;
-    return 0.34;
+  let bestH = Y_GROUND;
+  const tryFloor = (h) => {
+    if (h <= footY + maxStepUp && h > bestH) bestH = h;
+  };
+
+  // 1) Front Lower Wide White Marble Staircase (bx = -5.6..+5.6, by = -14.9..-9.5)
+  if (bx >= -5.7 && bx <= 5.7 && by >= -15.0 && by <= -9.4) {
+    const t = THREE.MathUtils.clamp((by - (-14.9)) / (-9.5 - (-14.9)), 0, 1);
+    tryFloor(Y_GROUND + t * (Y_MID_LANDING - Y_GROUND));
+  }
+  // Mid-stair landing (bx = -5.6..+5.6, by = -9.6..-6.4)
+  if (bx >= -5.7 && bx <= 5.7 && by >= -9.6 && by <= -6.4) {
+    tryFloor(Y_MID_LANDING);
+  }
+  // 2) Front Upper Twin Stair Flights flanking central green grass planter (bx = -5.5..-1.65 & +1.65..+5.5, by = -9.4..-4.8)
+  if (((bx >= -5.6 && bx <= -1.6) || (bx >= 1.6 && bx <= 5.6)) && by >= -9.4 && by <= -4.7) {
+    const t = THREE.MathUtils.clamp((by - (-9.4)) / (-4.8 - (-9.4)), 0, 1);
+    tryFloor(Y_MID_LANDING + t * (Y_FLOOR2 - Y_MID_LANDING));
   }
 
-  // 2) Raised Mosque Courtyard Apron (keeps feet dry at y = 0.34m > 0.22m water threshold!)
-  return 0.34;
+  // 3) Elevated White Marble Terrace Deck (bx = -15.5..+15.5, by = -13.1..-1.2, excluding central stair cutout)
+  const inTerrace = bx >= -15.6 && bx <= 15.6 && by >= -13.1 && by <= -1.2;
+  const inStairCutout = bx >= -5.6 && bx <= 5.6 && by >= -13.1 && by <= -5.0;
+  if (inTerrace && !inStairCutout) {
+    tryFloor(Y_FLOOR2);
+  }
+
+  // 4) Inside Main Mosque Building (bx = -11.4..+11.4, by = -1.5..+13.4)
+  const inMain = bx >= -11.4 && bx <= 11.4 && by >= -1.5 && by <= 13.4;
+  if (inMain) {
+    // Interior Stair Flight 1: Ground -> 2nd Floor (bx = -10.7..-8.9, by = 9.0..12.8)
+    if (bx >= -10.7 && bx <= -8.9 && by >= 9.0 && by <= 12.8) {
+      const t = THREE.MathUtils.clamp((by - 9.2) / (12.6 - 9.2), 0, 1);
+      tryFloor(Y_GROUND + t * (Y_FLOOR2 - Y_GROUND));
+    }
+    // Interior Stair Flight 2: 2nd Floor -> 3rd Floor Gallery (bx = -8.9..-7.2, by = 9.0..12.8)
+    if (bx >= -8.9 && bx <= -7.2 && by >= 9.0 && by <= 12.8) {
+      const t = THREE.MathUtils.clamp((12.6 - by) / (12.6 - 9.2), 0, 1);
+      tryFloor(Y_FLOOR2 + t * (Y_FLOOR3 - Y_FLOOR2));
+    }
+    // 2nd Floor Grand Main Prayer Hall (excluding stairwell cutout bx = -10.7..-7.2, by = 9.0..12.8)
+    const inStairwell = bx >= -10.7 && bx <= -7.2 && by >= 9.0 && by <= 12.8;
+    if (!inStairwell) {
+      tryFloor(Y_FLOOR2);
+    }
+    // 3rd Floor Mezzanine Gallery (excluding open central dome atrium bx = -4.6..+4.6, by = 1.8..10.4 & stairwell)
+    const inAtrium = bx >= -4.6 && bx <= 4.6 && by >= 1.8 && by <= 10.4;
+    if (!inAtrium && !inStairwell) {
+      tryFloor(Y_FLOOR3);
+    }
+  }
+
+  return bestH;
 }
 
 function resolveCircleAABB(pos, radius, minX, maxX, minZ, maxZ) {
@@ -1576,14 +1666,89 @@ function resolveCircleAABB(pos, radius, minX, maxX, minZ, maxZ) {
   }
 }
 
+function resolveLocalBox(pos, radius, bxMin, bxMax, byMin, byMax) {
+  // Convert local Blender AABB to World AABB cleanly (note axis flip: bx -> -Z, by -> -X)
+  const w0 = mosqueLocalToWorld(bxMax, byMax);
+  const w1 = mosqueLocalToWorld(bxMin, byMin);
+  resolveCircleAABB(pos, radius, Math.min(w0.wx, w1.wx), Math.max(w0.wx, w1.wx), Math.min(w0.wz, w1.wz), Math.max(w0.wz, w1.wz));
+}
+
 export function applyModelMosqueCollisions(pos, radius = 0.34, footY = 0) {
   if (!pos) return;
   if (pos.x < 156.0 || pos.x > 199.0 || pos.z < 146.0 || pos.z > 186.0) {
     return;
   }
-  // Solid outer collision for the Tripo 3D Model Mosque exterior shell (until interior rooms are carved out)
-  if (footY < 18.0) {
-    resolveCircleAABB(pos, radius, 159.0, 185.0, 151.0, 181.0);
+
+  // 1) Ground Level Podium Rooms & Minaret Shaft (footY < 3.6m)
+  if (footY < 3.6) {
+    // Left ground podium block (bx = -15.5..-5.6, by = -13.0..-1.5)
+    resolveLocalBox(pos, radius, -15.5, -5.6, -13.0, -1.5);
+    // Right ground closed room (bx = 10.5..15.5, by = -13.0..-1.5)
+    resolveLocalBox(pos, radius, 10.5, 15.5, -13.0, -1.5);
+    // Central green grass planter box in middle of stairs
+    resolveLocalBox(pos, radius, -1.55, 1.55, -9.4, -6.1);
+  }
+
+  // Minaret shaft (bx = 9.7..13.9, by = -5.7..-1.5, all heights)
+  resolveLocalBox(pos, radius, 9.7, 13.9, -5.7, -1.5);
+
+  // 2) Elevated Terrace Railings (when on terrace footY >= 3.5 && footY < 7.5)
+  if (footY >= 3.5 && footY < 7.5) {
+    resolveLocalBox(pos, radius, -15.6, -5.7, -13.1, -12.7); // Front-left terrace rail
+    resolveLocalBox(pos, radius,   5.7, 15.6, -13.1, -12.7); // Front-right terrace rail
+    resolveLocalBox(pos, radius, -15.6, -15.2, -13.1, -1.5); // Outer-left terrace rail
+    resolveLocalBox(pos, radius,  15.2,  15.6, -13.1, -1.5); // Outer-right terrace rail
+    // Central grass planter cutout guard
+    resolveLocalBox(pos, radius, -1.55, 1.55, -9.4, -5.0);
+  }
+
+  // 3) Main Hollow Mosque Perimeter Walls (by = -1.5, +13.5, bx = -11.5, +11.5) with OPEN DOORWAYS!
+  if (footY < 16.5) {
+    const onFloor2 = footY >= 3.5 && footY < 8.0;
+    const onGround = footY < 3.5;
+
+    // Front Wall (by = -1.78 .. -1.22): OPEN at Center Portal (-1.6..+1.6) & Flanking Doors (±5.6) on 2nd Floor!
+    if (onFloor2) {
+      resolveLocalBox(pos, radius, -11.6, -6.55, -1.80, -1.20);
+      resolveLocalBox(pos, radius, -4.65, -1.65, -1.80, -1.20);
+      resolveLocalBox(pos, radius,  1.65,  4.65, -1.80, -1.20);
+      resolveLocalBox(pos, radius,  6.55, 11.60, -1.80, -1.20);
+    } else {
+      resolveLocalBox(pos, radius, -11.6, 11.6, -1.80, -1.20);
+    }
+
+    // Back / Qibla Wall (by = 13.22 .. 13.78): OPEN at Back Ground Door (bx = 8.75..10.45) on Ground Floor!
+    if (onGround) {
+      resolveLocalBox(pos, radius, -11.6, 8.70, 13.20, 13.80);
+      resolveLocalBox(pos, radius, 10.50, 11.6, 13.20, 13.80);
+    } else {
+      resolveLocalBox(pos, radius, -11.6, 11.6, 13.20, 13.80);
+    }
+
+    // Left Wall (bx = -11.78 .. -11.22)
+    resolveLocalBox(pos, radius, -11.80, -11.20, -1.5, 13.5);
+
+    // Right Wall (bx = 11.22 .. 11.78): OPEN at 2 Ground Doors (by = 4.15..5.45 & 8.55..9.85) on Ground Floor!
+    if (onGround) {
+      resolveLocalBox(pos, radius, 11.20, 11.80, -1.5, 4.10);
+      resolveLocalBox(pos, radius, 11.20, 11.80, 5.50, 8.50);
+      resolveLocalBox(pos, radius, 11.20, 11.80, 9.90, 13.5);
+    } else {
+      resolveLocalBox(pos, radius, 11.20, 11.80, -1.5, 13.5);
+    }
+
+    // Interior Structural Columns (8 fluted marble columns)
+    for (const [cx, cy] of [[-5.0, 1.5], [5.0, 1.5], [-5.0, 6.2], [5.0, 6.2], [-5.0, 10.6], [5.0, 10.6], [-9.2, 6.2], [9.2, 6.2]]) {
+      resolveLocalBox(pos, radius, cx - 0.38, cx + 0.38, cy - 0.38, cy + 0.38);
+    }
+
+    // 3rd Floor Mezzanine Atrium Railings (prevent accidentally walking off the balcony!)
+    if (footY >= 8.8) {
+      resolveLocalBox(pos, radius, -4.65,  4.65,  1.65,  1.95);
+      resolveLocalBox(pos, radius, -4.65,  4.65, 10.25, 10.55);
+      resolveLocalBox(pos, radius, -4.75, -4.45,  1.80, 10.40);
+      resolveLocalBox(pos, radius,  4.45,  4.75,  1.80, 10.40);
+    }
   }
 }
 
