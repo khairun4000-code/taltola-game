@@ -2743,7 +2743,7 @@ async function initialize() {
   }
   selectActiveCharacter(selectedCharacterId, { triggerGreeting: false, refreshCam: false });
   khulnaMapUI = createKhulnaMapUI({
-    onWarpToLandmark: (lm) => warpToLandmark(lm),
+    onWarpToLandmark: (lm) => warpToLandmark(lm, true),
     onSyncSettings: () => syncGtaPauseSettingsUI(),
     onResumeGame: () => {
       if (started && !inStudio) {
@@ -2766,6 +2766,7 @@ async function initialize() {
         pause?.classList.add('hidden');
         if (started && !inStudio) {
           walkHud?.classList.remove('hidden');
+          if (!controls.isLocked) controls.enableFallback?.();
         }
       }
       syncCursorVisibility();
@@ -3327,11 +3328,13 @@ canvas.addEventListener('pointerdown', (event) => {
         if (!started) beginWalking();
         else controls.lock();
         syncCursorVisibility();
+      } else if (!controls.isLocked) {
+        controls.enableFallback?.();
       }
     }
     return;
   }
-  // GTA V Free Move mode (mouse cursor hidden): single click engages full 360° pointer lock seamlessly
+  // GTA V Free Move mode (mouse cursor hidden): single click engages full 360° pointer lock seamlessly without firing punch
   if (event.button === 0) {
     if (!started) {
       beginWalking();
@@ -3340,6 +3343,7 @@ canvas.addEventListener('pointerdown', (event) => {
     if (!controls.pointerLocked) {
       controls.lock();
       syncCursorVisibility();
+      return;
     }
     const activeCar = getDrivingCar();
     if (activeCar) {
@@ -3528,6 +3532,11 @@ function warpToLandmark(lm, lockControls = false) {
       lx = TALTOLA_HOUSE_OFFSET.x + 5.0;
       lz = TALTOLA_HOUSE_OFFSET.z;
     }
+  } else if (lm.id === 'khulna_model_mosque') {
+    sx = 195.5;
+    sz = 166.0;
+    lx = 171.0;
+    lz = 166.0;
   }
 
   if (activeCar) {
@@ -3611,7 +3620,10 @@ function warpToLandmark(lm, lockControls = false) {
     walkHud?.classList.remove('hidden');
     if (lockControls && !inStudio) {
       controls.lock();
+    } else if (!inStudio) {
+      controls.enableFallback?.();
     }
+    syncCursorVisibility();
     return;
   }
 
@@ -3673,7 +3685,10 @@ function warpToLandmark(lm, lockControls = false) {
   walkHud?.classList.remove('hidden');
   if (lockControls && !inStudio) {
     controls.lock();
+  } else if (!inStudio) {
+    controls.enableFallback?.();
   }
+  syncCursorVisibility();
 }
 
 function beginWalking() {

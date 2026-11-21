@@ -1674,10 +1674,10 @@ export function buildAliaMadrasahDistrict(parent, m) {
   addRedGreenFenceSpan(staticG, bank, 195.5, 111.6, 228.5, 111.6, 16);
 
   // Lush green turf beds under the 3D Durba Grass Clumps (expanded for the 64m campus!)
-  box(staticG, [37.0, 0.04, 32.0], [211.5, 0.012, 87.8], bank.grassTurf, { castShadow: false, uvScale: 12.0 });
-  box(staticG, [37.0, 0.04, 32.0], [211.5, 0.012, 128.2], bank.grassTurf, { castShadow: false, uvScale: 12.0 });
+  box(staticG, [37.0, 0.04, 32.0], [211.5, 0.012, 87.8], bank.grassTurf, { castShadow: false, uvScale: 16.0 });
+  box(staticG, [37.0, 0.04, 32.0], [211.5, 0.012, 128.2], bank.grassTurf, { castShadow: false, uvScale: 16.0 });
 
-  // GPU-Instanced Real 3D Durba Grass Clumps (7-sprig patch x 5,400 = 37,800 fine 3D grass sprigs!)
+  // GPU-Instanced Real 3D Durba Grass Clumps (ultra-fast 240 instances for zero mouse lag on any PC!)
   const grassLoader = new GLTFLoader();
   grassLoader.load('./assets/alia_grass_clumps.glb', (gltf) => {
     const clumpTemplates = [];
@@ -1709,7 +1709,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
       { x0: 193.0, x1: 229.5, z0: 71.5, z1: 103.8 },
       { x0: 193.0, x1: 229.5, z0: 112.2, z1: 142.5 },
     ];
-    const perClumpCount = 1200;
+    const perClumpCount = 240;
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
 
@@ -1717,7 +1717,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
       const { geom, mat } = clumpTemplates[ci];
       const inst = new THREE.InstancedMesh(geom, mat, perClumpCount);
       inst.castShadow = false;
-      inst.receiveShadow = true;
+      inst.receiveShadow = false;
       for (let i = 0; i < perClumpCount; i++) {
         const rect = fieldRects[i % 2];
         const gx = rect.x0 + rand() * (rect.x1 - rect.x0);
@@ -1728,9 +1728,9 @@ export function buildAliaMadrasahDistrict(parent, m) {
           dummy.position.set(gx, 0.02, gz);
         }
         dummy.rotation.set((rand() - 0.5) * 0.06, rand() * Math.PI * 2, (rand() - 0.5) * 0.06);
-        const sx = 0.85 + rand() * 0.45;
-        const sy = 0.10 + rand() * 0.05;
-        const sz = 0.85 + rand() * 0.45;
+        const sx = 1.15 + rand() * 0.55;
+        const sy = 0.09 + rand() * 0.045;
+        const sz = 1.15 + rand() * 0.55;
         dummy.scale.set(sx, sy, sz);
         dummy.updateMatrix();
         inst.setMatrixAt(i, dummy.matrix);

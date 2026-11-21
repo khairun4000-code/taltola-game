@@ -63,11 +63,21 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
   const fullCtx = fullCanvas ? fullCanvas.getContext('2d') : null;
   const [minX, maxX, minZ, maxZ] = worldData.meta.bounds;
 
-  const visibleLandmarks = worldData.landmarks
-    .filter((lm) => lm.id !== 'taltola_ward23')
-    .map((lm) => lm.id === 'pti_more'
-      ? { ...lm, c: 'hero', isPti: true, n: 'PTI More · Ahsan Ahmed Rd', bn: 'PTI More · Ahsan Ahmed Rd' }
-      : lm);
+  const visibleLandmarks = [
+    ...worldData.landmarks
+      .filter((lm) => lm.id !== 'taltola_ward23')
+      .map((lm) => lm.id === 'pti_more'
+        ? { ...lm, c: 'hero', isPti: true, n: 'PTI More · Ahsan Ahmed Rd', bn: 'PTI More · Ahsan Ahmed Rd' }
+        : lm),
+    {
+      id: 'khulna_model_mosque',
+      n: 'Khulna District Model Mosque',
+      bn: 'খুলনা জেলা মডেল মসজিদ (আলিয়া মাদ্রাসা ক্যাম্পাস)',
+      c: 'mosque',
+      x: 194.0,
+      z: 166.0,
+    },
+  ];
   const ptiIdx = visibleLandmarks.findIndex((lm) => lm.id === 'pti_more');
   if (ptiIdx > 0) {
     const [ptiLm] = visibleLandmarks.splice(ptiIdx, 1);

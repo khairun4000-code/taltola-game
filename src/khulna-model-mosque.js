@@ -1304,12 +1304,12 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
   // GRAND 4-TIER BRASS & CRYSTAL CHANDELIER SUSPENDED UNDER THE CENTRAL DOME!
   addOrnateChandelier(staticG, dynamicG, mats, MX, Y_ROOF - 0.12, MZ, 1.08, 5.2);
 
-  // REAL WARM INTERIOR POINT LIGHTS (auto-brighten in Dark/Night Mode & cull at >85m for 60 FPS!)
-  const hallChandelierLight = new THREE.PointLight(0xffe7b3, 1.8, 28, 1.4);
+  // REAL WARM INTERIOR POINT LIGHTS (keep pl.visible=true permanently and modulate intensity=0 outside so Three.js NEVER recompiles shaders!)
+  const hallChandelierLight = new THREE.PointLight(0xffe7b3, 0, 28, 1.4);
   hallChandelierLight.position.set(MX, Y2 + 0.4, MZ);
-  const mihrabWarmLight = new THREE.PointLight(0xffe0a0, 1.3, 16, 1.5);
+  const mihrabWarmLight = new THREE.PointLight(0xffe0a0, 0, 16, 1.5);
   mihrabWarmLight.position.set(X_WEST + 2.5, Y1 + 2.8, MZ);
-  const groundFoyerLight = new THREE.PointLight(0xfff0cc, 1.2, 18, 1.5);
+  const groundFoyerLight = new THREE.PointLight(0xfff0cc, 0, 18, 1.5);
   groundFoyerLight.position.set(174.0, Y1 - 0.6, 166.0);
   dynamicG.add(hallChandelierLight, mihrabWarmLight, groundFoyerLight);
   mosqueState.pointLights.push(
@@ -1719,11 +1719,14 @@ export function updateModelMosque(dt = 0.016, playerPos = null) {
     if (mosqueState.rightLeaf) mosqueState.rightLeaf.rotation.y = -mosqueState.mainHallAngle;
   }
 
-  // Distance check so fans & point lights stay active nearby and save GPU/CPU far away
-  const nearMosque = !playerPos || ((playerPos.x - MX) ** 2 + (playerPos.z - MZ) ** 2 < 85 * 85);
+  // Distance check so fans stay active nearby and point lights modulate intensity without toggling visible (prevents WebGL shader recompilation freeze!)
+  const nearMosque = !playerPos || ((playerPos.x - MX) ** 2 + (playerPos.z - MZ) ** 2 < 65 * 65);
+  const insideMosque = Boolean(playerPos && isInsideModelMosque(playerPos));
+  const nf = mosqueState.nightFactor || 0;
   for (let i = 0; i < mosqueState.pointLights.length; i++) {
-    const pl = mosqueState.pointLights[i].light;
-    if (pl.visible !== nearMosque) pl.visible = nearMosque;
+    const item = mosqueState.pointLights[i];
+    const wantIntensity = insideMosque ? (item.day + (item.night - item.day) * nf) : 0;
+    if (item.light.intensity !== wantIntensity) item.light.intensity = wantIntensity;
   }
 
   // Smooth spinning ceiling fans across all 3 floors!

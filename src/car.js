@@ -1523,6 +1523,7 @@ export function createDrivableCar(scene, manager, config) {
       const spot = new THREE.SpotLight(0xfff6dc, 0, 52, Math.PI * 0.24, 0.52, 1.35);
       spot.position.set(ox, hlY, hlZ);
       spot.castShadow = false;
+      spot.visible = false;
       const tgt = new THREE.Object3D();
       tgt.position.set(ox * 0.85, 0.15, hlZ + 18);
       bodyTiltGroup.add(spot, tgt);
@@ -3462,6 +3463,7 @@ export function createDrivableCar(scene, manager, config) {
     const isOn = state.headlightsMode > 0;
     const isHigh = state.headlightsMode === 2;
     for (const b of headlightBeams) {
+      b.spot.visible = isOn;
       b.spot.intensity = isHigh ? 24.0 : (isOn ? 11.5 : 0);
       b.spot.distance = isHigh ? 82 : 48;
       b.spot.angle = isHigh ? Math.PI * 0.30 : Math.PI * 0.23;
