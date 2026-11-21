@@ -28,6 +28,7 @@ export function createAutonomousPartner() {
   let crowdTimer = 0;
   let angryReactTimer = 0;
   let angryClipName = 'Angry1';
+  let annoyedVoiceStep = 0;
 
   function updateStatusLabel(clip) {
     if (angryReactTimer > 0) statusText = 'রেগে বকা দিচ্ছে!';
@@ -93,14 +94,14 @@ export function createAutonomousPartner() {
     // Partner stays stationary at their spot; does not react or chase cars
   }
 
-  function triggerAnnoyedReaction(playerPos) {
+  function triggerAnnoyedReaction(playerPos, fromFight = false) {
     if (!actor || annoyCooldown > 0 || actor.isVoicePlaying?.()) return;
-    // Only Huzzatullah (kurta_blue) plays this specific angry reaction voice line when bothered by Sabit
+    // Only Huzzatullah (kurta_blue) plays his angry/fight reaction voice lines when bothered by Sabit
     const isHuzzatullah = profile?.id === 'kurta_blue';
     if (!isHuzzatullah) return;
 
-    annoyCooldown = 6.5;
-    angryReactTimer = 5.0;
+    annoyCooldown = fromFight ? 1.6 : 4.0;
+    angryReactTimer = 4.2;
     crowdTimer = 0;
     angryClipName = Math.random() < 0.5 ? 'Angry1' : 'Angry2';
     if (playerPos) {
@@ -110,7 +111,15 @@ export function createAutonomousPartner() {
     actor.setExpression?.('angry');
     updateStatusLabel(angryClipName);
 
-    actor.playVoiceClip?.(VOICE_CLIPS.huzzatullahAnnoyed, {
+    const fightPool = [
+      VOICE_CLIPS.huzzatullahAnnoyed,
+      ...(VOICE_CLIPS.huzzatullahFight || []),
+    ].filter((v) => v && v.length);
+    const clipUrls = fromFight && fightPool.length
+      ? fightPool[annoyedVoiceStep++ % fightPool.length]
+      : VOICE_CLIPS.huzzatullahAnnoyed;
+
+    actor.playVoiceClip?.(clipUrls, {
       expression: 'angry',
       volume: 1.0,
       onEnd: () => {
@@ -137,19 +146,20 @@ export function createAutonomousPartner() {
       || playerCharacter?.state?.emote === 'kick2'
       || playerCharacter?.state?.emote === 'combo'
     );
-    if (playerAttacking && distToPlayer < 3.6) {
-      triggerAnnoyedReaction(playerPos);
+    if (playerAttacking && distToPlayer < 4.8) {
+      triggerAnnoyedReaction(playerPos, true);
     } else if (distToPlayer < 1.18) {
       crowdTimer += dt;
       if (crowdTimer >= 0.75) {
-        triggerAnnoyedReaction(playerPos);
+        triggerAnnoyedReaction(playerPos, false);
       }
     } else {
       crowdTimer = Math.max(0, crowdTimer - dt * 1.5);
     }
 
-    if (angryReactTimer > 0) {
-      angryReactTimer = Math.max(0, angryReactTimer - dt);
+    const isFunnyVoicePlaying = Boolean(actor.isVoicePlaying?.() && actor.state?.voiceExpression === 'happy');
+    if (angryReactTimer > 0 || isFunnyVoicePlaying) {
+      if (angryReactTimer > 0) angryReactTimer = Math.max(0, angryReactTimer - dt);
       if (playerPos) {
         const targetYaw = Math.atan2(playerPos.x - pos.x, playerPos.z - pos.z);
         const diff = Math.atan2(Math.sin(targetYaw - yaw), Math.cos(targetYaw - yaw));
@@ -169,10 +179,10 @@ export function createAutonomousPartner() {
     }
 
     if (distToPlayer < 120 || quality !== 'low') {
-      const isReacting = angryReactTimer > 0 || actor.isVoicePlaying?.();
-      const activeClipNow = isReacting ? angryClipName : actionClip;
+      const isAngryReacting = angryReactTimer > 0 || (actor.isVoicePlaying?.() && actor.state?.voiceExpression === 'angry');
+      const activeClipNow = isAngryReacting ? angryClipName : (isFunnyVoicePlaying ? 'StandingRelax' : actionClip);
       actor.state.facingYaw = yaw;
-      actor.setPhoneInHand?.(!isReacting && (actionClip === 'PhoneCall' || actionClip === 'MobileGame'));
+      actor.setPhoneInHand?.(!isAngryReacting && !isFunnyVoicePlaying && (actionClip === 'PhoneCall' || actionClip === 'MobileGame'));
       actor.update(dt, {
         position: pos,
         yaw: yaw + Math.PI,

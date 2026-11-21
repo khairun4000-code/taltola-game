@@ -60,6 +60,7 @@ const carExitBtn = document.querySelector('#car-exit-btn');
 let carDoorCursorMode = false;
 let freeCursorMode = false;
 let lastCanvasClickTime = 0;
+let mouseAttackHeld = false;
 const hudToggleButton = document.querySelector('#hud-toggle-button');
 const emoteBar = document.querySelector('#emote-bar');
 const liftHudButton = document.querySelector('#lift-hud-button');
@@ -3169,6 +3170,7 @@ canvas.addEventListener('pointerdown', (event) => {
     } else if (sittingState.active || findNearestSeat(playerPos) || findNearestEnterableCar(playerPos) || environment?.tower?.getPrompt(playerPos) || house?.getPrompt(playerPos)) {
       handleDoorInteraction();
     } else {
+      mouseAttackHeld = true;
       playerCharacter?.triggerAttack();
     }
   }
@@ -3206,6 +3208,7 @@ window.addEventListener('pointermove', (event) => {
 });
 
 window.addEventListener('pointerup', (event) => {
+  if (event.button === 0) mouseAttackHeld = false;
   if (inStudio && studioOrbit.dragging && event.button === 0) {
     const moveDist = Math.hypot(event.clientX - studioOrbit.downX, event.clientY - studioOrbit.downY);
     if (moveDist <= 6 && event.target === canvas) {
@@ -4132,6 +4135,7 @@ window.addEventListener('blur', () => {
   keys.clear();
   shiftHeld = false;
   doubleTapSprint = false;
+  mouseAttackHeld = false;
 });
 
 function resolveCircleAABB(pos, radius, minX, maxX, minZ, maxZ) {
@@ -5666,6 +5670,23 @@ function updateMovement(delta) {
     || (verticalVelocity < -1.4 && (playerPos.y - targetEyeY) > 1.35)
     || (airPeakY - playerPos.y) > 1.45
   );
+
+  if (
+    mouseAttackHeld
+    && !inStudio
+    && started
+    && !freeCursorMode
+    && !carDoorCursorMode
+    && !getDrivingCar()
+    && !sittingState.active
+    && !liftKeypadOpen
+    && !khulnaMapUI?.isOpen
+    && !gtaPhoneUI?.isOpen
+    && playerCharacter
+    && playerCharacter.state.attackTimer <= 0.06
+  ) {
+    playerCharacter.triggerAttack();
+  }
 
   if (playerCharacter) {
     playerCharacter.update(delta, {

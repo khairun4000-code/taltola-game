@@ -1319,53 +1319,98 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
   );
 
   /* --------------------------------------------------------------------------
-   * 7. PURE WHITE ROOF PARAPET, 4 WHITE RIBBED DOMES & 33m WHITE JAALI MINARET
+   * 7. PURE WHITE ROOF PARAPET, 4 SCULPTED RIBBED DOMES & 33m WHITE JAALI MINARET
    * ------------------------------------------------------------------------ */
   box(staticG, [W + 0.8, 0.42, D + 0.8], [MX, Y_ROOF + 0.21, MZ], mats.pureWhite);
-  box(staticG, [W + 1.1, 0.20, D + 1.1], [MX, Y_ROOF + 0.48, MZ], mats.tealAccent);
-  // Sculpted White Roof Parapet with decorative stepped merlons
+  box(staticG, [W + 1.15, 0.22, D + 1.15], [MX, Y_ROOF + 0.48, MZ], mats.tealAccent);
+  box(staticG, [W + 1.20, 0.08, D + 1.20], [MX, Y_ROOF + 0.62, MZ], mats.brassMat);
+  // Sculpted White Roof Parapet with ornamental stepped battlements (merlons) & warm roof cornice glow
   box(staticG, [W + 0.6, 1.10, 0.28], [MX, Y_ROOF + 1.00, Z_NORTH], mats.pureWhite);
   box(staticG, [W + 0.6, 1.10, 0.28], [MX, Y_ROOF + 1.00, Z_SOUTH], mats.pureWhite);
   box(staticG, [0.28, 1.10, D + 0.6], [X_WEST, Y_ROOF + 1.00, MZ], mats.pureWhite);
   box(staticG, [0.28, 1.10, D + 0.6], [X_EAST, Y_ROOF + 1.00, MZ], mats.pureWhite);
-  // Subtle rooftop corner ornamental white pinnacles
+  // Decorative Islamic stepped parapet merlons along East, North & South roof edges
+  for (let mz = Z_NORTH + 1.2; mz <= Z_SOUTH - 1.2; mz += 1.6) {
+    box(staticG, [0.32, 0.36, 0.72], [X_EAST, Y_ROOF + 1.70, mz], mats.pureWhite);
+    box(staticG, [0.34, 0.16, 0.36], [X_EAST, Y_ROOF + 1.94, mz], mats.pureWhite);
+  }
+  for (let mx = X_WEST + 1.4; mx <= X_EAST - 1.4; mx += 1.8) {
+    box(staticG, [0.76, 0.34, 0.32], [mx, Y_ROOF + 1.70, Z_NORTH], mats.pureWhite);
+    box(staticG, [0.76, 0.34, 0.32], [mx, Y_ROOF + 1.70, Z_SOUTH], mats.pureWhite);
+  }
+  // Subtle warm architectural roofline night-glow strip along East facade
+  box(dynamicG, [0.12, 0.10, D + 0.4], [X_EAST + 0.42, Y_ROOF + 0.32, MZ], mats.exteriorGlowMat, { castShadow: false });
+
+  // Grand Sculpted Rooftop Corner Pinnacles (Guldastas) with Brass Crescent Finials
   for (const [px, pz] of [[X_WEST, Z_NORTH], [X_WEST, Z_SOUTH], [X_EAST, Z_NORTH], [X_EAST, Z_SOUTH]]) {
-    box(staticG, [0.75, 1.95, 0.75], [px, Y_ROOF + 1.25, pz], mats.pureWhite);
-    const pinDome = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), mats.marbleDome);
-    pinDome.position.set(px, Y_ROOF + 2.22, pz);
+    box(staticG, [0.84, 2.05, 0.84], [px, Y_ROOF + 1.28, pz], mats.pureWhite);
+    box(staticG, [0.92, 0.14, 0.92], [px, Y_ROOF + 2.28, pz], mats.tealAccent);
+    const pinDome = new THREE.Mesh(new THREE.SphereGeometry(0.46, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), mats.marbleDome);
+    pinDome.position.set(px, Y_ROOF + 2.34, pz);
     staticG.add(pinDome);
-    cylinder(staticG, 0.025, 0.035, 0.65, [px, Y_ROOF + 2.95, pz], mats.brassMat, 6);
+    cylinder(staticG, 0.025, 0.038, 0.75, [px, Y_ROOF + 3.08, pz], mats.brassMat, 6);
+    const pinCrescent = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.025, 6, 14, Math.PI * 1.35), mats.brassMat);
+    pinCrescent.position.set(px, Y_ROOF + 3.50, pz);
+    pinCrescent.rotation.z = -Math.PI * 0.22;
+    staticG.add(pinCrescent);
   }
 
   const addWhiteRibbedDome = (dx, dz, radius, drumH, withDrumWindows = false) => {
     const baseY = Y_ROOF + 0.42;
-    cylinder(staticG, radius * 1.02, radius * 1.06, drumH, [dx, baseY + drumH * 0.5, dz], mats.pureWhite, 28);
-    cylinder(staticG, radius * 1.08, radius * 1.08, 0.20, [dx, baseY + drumH, dz], mats.tealAccent, 28);
-    cylinder(staticG, radius * 1.09, radius * 1.09, 0.09, [dx, baseY + drumH + 0.14, dz], mats.brassMat, 28);
+    // Octagonal stepped marble base plinth under the dome drum
+    cylinder(staticG, radius * 1.12, radius * 1.16, 0.48, [dx, baseY + 0.24, dz], mats.pureWhite, 8);
+    cylinder(staticG, radius * 1.02, radius * 1.06, drumH, [dx, baseY + drumH * 0.5 + 0.24, dz], mats.pureWhite, 28);
+    cylinder(staticG, radius * 1.08, radius * 1.08, 0.22, [dx, baseY + drumH + 0.24, dz], mats.tealAccent, 28);
+    cylinder(staticG, radius * 1.10, radius * 1.10, 0.10, [dx, baseY + drumH + 0.38, dz], mats.brassMat, 28);
     if (withDrumWindows) {
       for (let i = 0; i < 16; i++) {
         const a = (i / 16) * Math.PI * 2;
-        const w = box(dynamicG, [0.12, drumH * 0.58, 0.68], [dx + Math.cos(a) * (radius * 1.04), baseY + drumH * 0.5, dz + Math.sin(a) * (radius * 1.04)], mats.exteriorGlowMat, { castShadow: false });
+        const w = box(dynamicG, [0.12, drumH * 0.58, 0.68], [dx + Math.cos(a) * (radius * 1.04), baseY + drumH * 0.5 + 0.24, dz + Math.sin(a) * (radius * 1.04)], mats.exteriorGlowMat, { castShadow: false });
         w.rotation.y = -a;
       }
     }
+    const domeY = baseY + drumH + 0.32;
     const dome = new THREE.Mesh(
-      new THREE.SphereGeometry(radius, 30, 18, 0, Math.PI * 2, 0, Math.PI * 0.52),
+      new THREE.SphereGeometry(radius, 32, 20, 0, Math.PI * 2, 0, Math.PI * 0.52),
       mats.marbleDome
     );
-    dome.position.set(dx, baseY + drumH + 0.08, dz);
+    dome.position.set(dx, domeY, dz);
     dome.castShadow = true;
     dome.receiveShadow = true;
     staticG.add(dome);
 
-    const topY = baseY + drumH + 0.08 + radius;
-    cylinder(staticG, 0.055, 0.085, 2.2, [dx, topY + 1.05, dz], mats.brassMat, 10);
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 8), mats.brassMat);
-    orb.position.set(dx, topY + 0.62, dz);
-    staticG.add(orb);
+    // 12 Sculpted Architectural Dome Ribs curving cleanly up to the brass lotus finial!
+    const ribCount = radius >= 4.0 ? 12 : 8;
+    for (let r = 0; r < ribCount; r++) {
+      const ang = (r / ribCount) * Math.PI * 2;
+      const rib = new THREE.Mesh(
+        new THREE.TorusGeometry(radius + 0.04, radius >= 4.0 ? 0.075 : 0.045, 6, 18, Math.PI * 0.48),
+        mats.pureWhite
+      );
+      rib.position.set(dx, domeY, dz);
+      rib.rotation.y = ang;
+      staticG.add(rib);
+    }
+
+    // Lotus cap + 3-orb Brass Finial + Iconic Golden Crescent (Hilal)
+    const topY = domeY + radius;
+    cylinder(staticG, radius * 0.14, radius * 0.22, 0.24, [dx, topY - 0.04, dz], mats.brassMat, 14);
+    cylinder(staticG, 0.055, 0.088, 2.35, [dx, topY + 1.12, dz], mats.brassMat, 10);
+    for (const [oy, or] of [[0.45, 0.28], [0.98, 0.20], [1.42, 0.14]]) {
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(or, 12, 8), mats.brassMat);
+      orb.position.set(dx, topY + oy, dz);
+      staticG.add(orb);
+    }
+    const crescent = new THREE.Mesh(
+      new THREE.TorusGeometry(radius >= 4.0 ? 0.48 : 0.28, radius >= 4.0 ? 0.06 : 0.04, 8, 18, Math.PI * 1.4),
+      mats.brassMat
+    );
+    crescent.position.set(dx, topY + 2.42, dz);
+    crescent.rotation.z = -Math.PI * 0.22;
+    staticG.add(crescent);
   };
 
-  // 1 Grand Central Pure-White Dome + 3 Front Pure-White Domes
+  // 1 Grand Central Pure-White Ribbed Dome + 3 Front Pure-White Ribbed Domes
   addWhiteRibbedDome(MX, MZ, 5.6, 1.65, true);
   addWhiteRibbedDome(X_EAST - 3.0, MZ - 7.4, 2.30, 0.88, false);
   addWhiteRibbedDome(X_EAST - 3.0, MZ, 2.60, 0.98, false);
@@ -1393,10 +1438,14 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
     box(dynamicG, [4.42, 0.10, 4.42], [minX, balY - 0.14, minZ], mats.exteriorGlowMat, { castShadow: false });
   }
   box(staticG, [3.7, 0.85, 3.7], [minX, minH + 0.85, minZ], mats.pureWhite);
-  const minDome = new THREE.Mesh(new THREE.SphereGeometry(1.62, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), mats.marbleDome);
+  const minDome = new THREE.Mesh(new THREE.SphereGeometry(1.62, 22, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), mats.marbleDome);
   minDome.position.set(minX, minH + 1.25, minZ);
   staticG.add(minDome);
   cylinder(staticG, 0.055, 0.085, 2.4, [minX, minH + 3.75, minZ], mats.brassMat, 10);
+  const minCrescent = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.045, 8, 16, Math.PI * 1.4), mats.brassMat);
+  minCrescent.position.set(minX, minH + 5.10, minZ);
+  minCrescent.rotation.z = -Math.PI * 0.22;
+  staticG.add(minCrescent);
 
   // Clean Bengali & English Facade Plaque: ONLY "খুলনা জেলা মডেল মসজিদ" (ZERO Arabic, ZERO Cultural Center!)
   addMosqueSignPlaque(

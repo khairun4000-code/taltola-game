@@ -1281,8 +1281,8 @@ body.freecam-active #gta-cheat-toast {
 }
 .phone-app-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
 }
 .phone-app-tile {
   display: flex;
