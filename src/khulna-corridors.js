@@ -848,7 +848,7 @@ function buildPavedSegmentRoad(staticG, pts, width, y, mat, uvScale = 5.5) {
     const dz = z1 - z0;
     const len = Math.hypot(dx, dz) + 0.9;
     const yaw = Math.atan2(dx, dz);
-    addBox(staticG, [width, 0.05, len], [(x0 + x1) * 0.5, y, (z0 + z1) * 0.5], mat, {
+    addBox(staticG, [width, 0.05, len], [(x0 + x1) * 0.5, y + (i % 2) * 0.0014, (z0 + z1) * 0.5], mat, {
       rotY: yaw,
       castShadow: false,
       uvScale,

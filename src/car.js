@@ -2562,7 +2562,7 @@ export function createDrivableCar(scene, manager, config) {
     root.rotation.y = state.heading;
     bodyTiltGroup.position.y = config.isBike
       ? (state.frontSuspOffset * 0.42 + state.rearSuspOffset * 0.58 + state.suspHeave * 0.65)
-      : state.suspHeave;
+      : ((config.isRickshaw || config.isBicycle) ? 0 : state.suspHeave);
     bodyTiltGroup.rotation.x = state.pitch;
     bodyTiltGroup.rotation.z = state.roll;
     if (contactShadow) {
@@ -2757,8 +2757,10 @@ export function createDrivableCar(scene, manager, config) {
           const align = myFwdX * oFwdX + myFwdZ * oFwdZ;
           const impulse = THREE.MathUtils.clamp(state.speed * 0.38 * (myMass / otherMass), -8.5, 8.5);
           other.state.speed += impulse * align;
-          other.state.suspHeaveVel -= Math.min(1.2, Math.abs(state.speed) * 0.08);
-          other.state.dynPitchVel += Math.sign(impulse || 1) * Math.min(0.55, Math.abs(state.speed) * 0.04);
+          if (!other.state.isRickshaw && !other.state.isBicycle) {
+            other.state.suspHeaveVel -= Math.min(1.2, Math.abs(state.speed) * 0.08);
+            other.state.dynPitchVel += Math.sign(impulse || 1) * Math.min(0.55, Math.abs(state.speed) * 0.04);
+          }
         }
         hitWall = true;
       }
@@ -2770,9 +2772,11 @@ export function createDrivableCar(scene, manager, config) {
         const severity = THREE.MathUtils.clamp((impactSpeed - 2.0) / 18.0, 0.12, 1.0);
         state.lastImpactIntensity = Math.max(state.lastImpactIntensity, severity);
         state.crashCooldown = 0.26;
-        state.frontSuspVel -= severity * 1.15;
-        state.suspHeaveVel -= severity * 0.95;
-        state.dynPitchVel += Math.sign(state.speed || 1) * severity * 0.72;
+        if (!config.isRickshaw && !config.isBicycle) {
+          state.frontSuspVel -= severity * 1.15;
+          state.suspHeaveVel -= severity * 0.95;
+          state.dynPitchVel += Math.sign(state.speed || 1) * severity * 0.72;
+        }
         playCrashSound(severity);
       }
       state.speed = Math.abs(state.speed) > 5.0 ? -state.speed * 0.20 : state.speed * 0.50;
@@ -2868,6 +2872,27 @@ export function createDrivableCar(scene, manager, config) {
     const alignRate = state.grounded ? 14.0 : 5.5;
     state.terrainPitch = THREE.MathUtils.lerp(state.terrainPitch, rawTerrainPitch, Math.min(1, dt * alignRate));
     state.terrainRoll = THREE.MathUtils.lerp(state.terrainRoll, rawTerrainRoll, Math.min(1, dt * alignRate));
+
+    // Rigid frame on bicycles & rickshaws: disable front/rear/chassis suspension heave, brake dive & accel lift!
+    if (config.isRickshaw || config.isBicycle) {
+      state.suspHeave = 0;
+      state.suspHeaveVel = 0;
+      state.dynPitch = 0;
+      state.dynPitchVel = 0;
+      state.frontSuspOffset = 0;
+      state.frontSuspVel = 0;
+      state.rearSuspOffset = 0;
+      state.rearSuspVel = 0;
+      const speedMag = Math.abs(state.speed);
+      const targetDynRoll = config.isBicycle
+        ? THREE.MathUtils.clamp(-turnRate * Math.min(speedMag, 14) * 0.022, -0.28, 0.28)
+        : 0;
+      state.dynRoll = THREE.MathUtils.lerp(state.dynRoll, targetDynRoll, Math.min(1, dt * 10.0));
+      state.dynRollVel = 0;
+      state.pitch = state.terrainPitch;
+      state.roll = state.terrainRoll + state.dynRoll;
+      return;
+    }
 
     // Vehicle-class suspension profile (stiff sports BMW M3 vs plush SUV/MPV vs agile bikes & 3-wheeler CNG)
     const isHeavyTall = /alphard|fortuner|hiace|townace/i.test(config.id || '');
