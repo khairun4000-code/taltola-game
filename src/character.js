@@ -457,19 +457,22 @@ export function createPlayerCharacter(scene, manager, options = {}) {
 
     const analyser = ensureAudioAnalyser();
     if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch(() => {});
+      try { await audioCtx.resume(); } catch {}
     }
 
-    // Primary path: Web Audio API AudioBufferSourceNode (0ms cached playback, works across Chrome/Safari/Firefox + live FFT lip-sync)
-    if (audioCtx && analyser) {
+    // Primary path: Web Audio API AudioBufferSourceNode ONLY when AudioContext is actually running!
+    // (Prevents silent playback if AudioContext stayed suspended outside a direct user gesture.)
+    if (audioCtx && analyser && audioCtx.state === 'running') {
       for (const url of candidates) {
         if (token !== voicePlayToken) return false;
         try {
-          const buffer = await loadDecodedAudioBuffer(url);
+          const resolvedUrl = new URL(url, window.location.href).href;
+          const buffer = await loadDecodedAudioBuffer(resolvedUrl);
           if (token !== voicePlayToken) return false;
-          if (audioCtx.state === 'suspended') {
-            await audioCtx.resume().catch(() => {});
+          if (audioCtx.state !== 'running') {
+            try { await audioCtx.resume(); } catch {}
           }
+          if (audioCtx.state !== 'running') break;
           const src = audioCtx.createBufferSource();
           src.buffer = buffer;
           const gainNode = audioCtx.createGain();
@@ -487,18 +490,20 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       }
     }
 
-    // Fallback path: direct HTML5 Audio element (never muted by MediaElementSource)
+    // Reliable fallback path: direct HTML5 Audio element (never muted by suspended AudioContext!)
     for (const url of candidates) {
       if (token !== voicePlayToken) return false;
       try {
+        const resolvedUrl = new URL(url, window.location.href).href;
         if (!voiceAudioEl) {
           voiceAudioEl = new Audio();
           voiceAudioEl.preload = 'auto';
         }
         voiceAudioEl.volume = clampedVol;
-        voiceAudioEl.src = url;
+        voiceAudioEl.src = resolvedUrl;
         voiceAudioEl.currentTime = 0;
         voiceAudioEl.onended = () => finishVoicePlayback(token);
+        voiceAudioEl.onerror = () => finishVoicePlayback(token);
         state.voicePlaying = true;
         state.voiceExpression = expression || null;
         await voiceAudioEl.play();
@@ -511,6 +516,30 @@ export function createPlayerCharacter(scene, manager, options = {}) {
 
     finishVoicePlayback(token);
     return false;
+  }
+
+  function playCombatVoice({ force = false } = {}) {
+    if (state.sacredSilence) return false;
+    const now = performance.now();
+    if (!force && now < fightVoiceCooldownUntil) return false;
+    if (!VOICE_BUS.canSpeak(options.id, { interruptSelf: false })) return false;
+    const isSabit = options.id !== 'kurta_blue';
+    const pool = isSabit
+      ? (VOICE_CLIPS.sabitPanicFight || [])
+      : (VOICE_CLIPS.huzzatullahFight || []);
+    if (!pool.length) return false;
+    const urls = pool[fightVoiceIdx++ % pool.length];
+    const expr = isSabit ? 'surprised' : 'angry';
+    fightVoiceCooldownUntil = now + 4500;
+    setExpression(expr);
+    playVoiceClip(urls, {
+      expression: expr,
+      volume: 1.0,
+      onEnd: () => {
+        if (state.expression === expr) setExpression('normal');
+      },
+    });
+    return true;
   }
 
   function isVoicePlaying() {
@@ -1986,6 +2015,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     setTalking,
     toggleTalking,
     playVoiceClip,
+    playCombatVoice,
     stopVoiceClip,
     isVoicePlaying,
     startMicLipSync,

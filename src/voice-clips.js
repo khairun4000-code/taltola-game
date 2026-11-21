@@ -34,7 +34,7 @@ export const VOICE_BUS = {
     voiceBusState.activeStopFn = stopFn || null;
     return true;
   },
-  release(speakerId, stopFn = null, gapMs = 240) {
+  release(speakerId, stopFn = null, gapMs = 150) {
     if (
       voiceBusState.activeSpeaker === (speakerId || 'unknown')
       && (!stopFn || !voiceBusState.activeStopFn || voiceBusState.activeStopFn === stopFn)
@@ -87,7 +87,7 @@ export const VOICE_CLIPS = {
     },
   ],
 
-  // 4) Sabit scared/panic fighting & Huzzatullah-proximity voices
+  // 4) Sabit scared/crying fighting voices (4 clips — strictly for combat!)
   sabitPanicFight: [
     ['./assets/audio/sabit_voice_01.mp3'],
     ['./assets/audio/sabit_voice_02.mp3'],
@@ -95,7 +95,7 @@ export const VOICE_CLIPS = {
     ['./assets/audio/sabit_voice_04.mp3'],
   ],
 
-  // 5) Sabit Funny Voice inside Sabit's Green iFruit Phone ([P])
+  // 5) Sabit Funny Voice inside Sabit's Green iFruit Phone ([P]) — strictly #5 only!
   sabitFunny: [
     {
       id: 'sabit_funny_pakhi',

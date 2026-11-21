@@ -16,6 +16,7 @@ export const PHONE_CHEAT_CODES = [
   { code: '7777', carId: 'bike_125cc', label: '125cc Naked Motorcycle' },
   { code: '8888', carId: 'honda_nxr_bros', label: 'Honda NXR Bros 2003' },
   { code: '9999', carId: 'toyota_townace', label: 'Toyota TownAce GL 2005' },
+  { code: '0000', carId: 'bangladeshi_cng', label: 'Bangladeshi CNG Auto' },
 ];
 
 export function createGTAPhoneUI({
@@ -63,6 +64,9 @@ export function createGTAPhoneUI({
   let audioCtx = null;
   let currentCharId = 'sabit';
 
+  const funnyTileLabelEl = document.querySelector('[data-phone-app="funny"] small');
+  const funnyTitleEl = document.querySelector('#phone-funny .phone-section-title');
+
   function setCharacterTheme(charId = 'sabit') {
     currentCharId = charId === 'kurta_blue' ? 'kurta_blue' : 'sabit';
     const isBlue = currentCharId === 'kurta_blue';
@@ -71,10 +75,16 @@ export function createGTAPhoneUI({
     if (phoneTitleEl) {
       phoneTitleEl.textContent = isBlue ? 'iFruit · হুজ্জাতুল্লাহ' : 'iFruit · সাবিদ';
     }
+    if (funnyTileLabelEl) {
+      funnyTileLabelEl.textContent = isBlue ? 'Huzzatullah' : 'Sabit';
+    }
+    if (funnyTitleEl) {
+      funnyTitleEl.textContent = isBlue ? '😂 হুজ্জাতুল্লাহর ফানি ভয়েস' : '😂 সাবিদের ফানি ভয়েস';
+    }
     if (funnyStatusEl) {
       funnyStatusEl.textContent = isBlue
         ? 'ট্যাপ করলেই হুজ্জাতুল্লাহ ফানি ভয়েস বলবে'
-        : 'ট্যাপ করলেই সাবিদ পাখির ভয়েস বলবে';
+        : 'ট্যাপ করলেই সাবিদ পাখির ফানি ভয়েস বলবে';
     }
     if (activeApp === 'funny') populateFunnyList();
   }

@@ -455,6 +455,14 @@ function notifyMosqueSilence(msg = '🕌 মডেল মসজিদে ফা�
   lastMosqueToastAt = now;
   gtaPhoneUI?.showToast?.(msg);
 }
+
+function triggerPlayerCombatVoice() {
+  if (!playerCharacter || isPosInModelMosque(playerPos)) return;
+  const startedPartnerExchange = autonomousPartner.triggerAnnoyedReaction(playerPos, true, playerCharacter);
+  if (!startedPartnerExchange) {
+    playerCharacter.playCombatVoice?.();
+  }
+}
 let sun;
 let ambientLight;
 let hemisphereLight;
@@ -3230,6 +3238,7 @@ canvas.addEventListener('pointerdown', (event) => {
     } else {
       mouseAttackHeld = true;
       playerCharacter?.triggerAttack();
+      triggerPlayerCombatVoice();
     }
   }
 });
@@ -4134,6 +4143,9 @@ window.addEventListener('keydown', (event) => {
     }
     controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
     const next = playerCharacter.triggerEmote(mappedEmote, controls.euler.y);
+    if (next && isFightEmote(mappedEmote)) {
+      triggerPlayerCombatVoice();
+    }
     syncEmoteUI(next);
     return;
   }
@@ -4165,7 +4177,15 @@ window.addEventListener('keydown', (event) => {
       notifyMosqueSilence();
     } else {
       playerCharacter?.triggerAttack(null);
+      triggerPlayerCombatVoice();
       syncEmoteUI(null);
+    }
+  } else if (event.code === 'KeyY' && !event.repeat) {
+    event.preventDefault();
+    if (isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence('🕌 মডেল মসজিদে ভয়েস বন্ধ আছে — বাইরে বের হলে আবার বলবে।');
+    } else {
+      playerCharacter?.playCombatVoice?.({ force: true });
     }
   }
 
@@ -5804,6 +5824,7 @@ function updateMovement(delta) {
     && playerCharacter.state.attackTimer <= 0.06
   ) {
     playerCharacter.triggerAttack();
+    triggerPlayerCombatVoice();
   }
 
   if (playerCharacter) {
