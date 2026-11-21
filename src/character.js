@@ -280,7 +280,6 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   const actions = {};
   const meshEntries = [];
   const morphMeshes = [];
-  const oralCavityUniforms = [];
 
   // Full 52-ARKit Morph Target smoothing & co-articulated speech / Web Audio Formant Lip-Sync state
   const morphCur = Object.fromEntries(ARKIT_MORPH_KEYS.map((k) => [k, 0]));
@@ -536,109 +535,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     return state.sacredSilence;
   }
 
-  function buildProceduralFacialMorphTargets(mesh, srcMat) {
-    const geom = mesh?.geometry;
-    const posAttr = geom?.attributes?.position;
-    if (!posAttr || posAttr.count < 200) return false;
 
-    const count = posAttr.count;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (let i = 0; i < count; i++) {
-      const y = posAttr.getY(i);
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-    }
-    const upperCutY = minY + (maxY - minY) * 0.35;
-    let noseX = 0;
-    let noseY = minY + (maxY - minY) * 0.55;
-    let noseZ = -Infinity;
-    for (let i = 0; i < count; i++) {
-      const y = posAttr.getY(i);
-      if (y < upperCutY) continue;
-      const z = posAttr.getZ(i);
-      if (z > noseZ) {
-        noseZ = z;
-        noseX = posAttr.getX(i);
-        noseY = y;
-      }
-    }
-    if (!Number.isFinite(noseZ)) return false;
-
-    // Anatomical landmarks measured directly from the HD head mesh nose tip
-    const cx = noseX;
-    const mouthY = noseY - 0.033;
-    const mouthZ = noseZ - 0.018;
-    const jawPivotY = noseY - 0.008;
-    const jawPivotZ = noseZ - 0.085;
-    const browY = noseY + 0.042;
-    const sStep = (e0, e1, v) => {
-      const t = THREE.MathUtils.clamp((v - e0) / (e1 - e0), 0, 1);
-      return t * t * (3 - 2 * t);
-    };
-
-    // Lean 12 GPU morph targets registered via updateMorphTargets() for 100% WebGL compatibility & 60 FPS
-    const morphNames = [
-      'jawOpen',
-      'mouthUpperUpLeft', 'mouthUpperUpRight',
-      'mouthLowerDownLeft', 'mouthLowerDownRight',
-      'mouthFunnel',
-      'mouthSmileLeft', 'mouthSmileRight',
-      'mouthFrownLeft', 'mouthFrownRight',
-      'browDownLeft', 'browDownRight',
-    ];
-    const arrays = Object.fromEntries(morphNames.map((n) => [n, new Float32Array(count * 3)]));
-
-    // 100% natural face preservation: only a very gentle chin/lower-jaw movement when talking (zero face distortion, zero shader overlay)
-    const jawAngle = 0.055;
-    const cosJ = Math.cos(jawAngle);
-    const sinJ = Math.sin(jawAngle);
-
-    for (let i = 0; i < count; i++) {
-      const x = posAttr.getX(i);
-      const y = posAttr.getY(i);
-      const z = posAttr.getZ(i);
-      const dx = x - cx;
-      const adx = Math.abs(dx);
-      const i3 = i * 3;
-
-      // Gentle TMJ hinge movement on chin & lower jaw only — keeps original face, lips, nose & beard 100% natural
-      if (y < mouthY - 0.002 && y > noseY - 0.092 && z > jawPivotZ + 0.020) {
-        const seamMask = sStep(mouthY - 0.002, mouthY - 0.014, y);
-        const neckMask = sStep(noseY - 0.092, noseY - 0.068, y);
-        const sideMask = 1.0 - sStep(0.026, 0.058, adx);
-        const frontMask = sStep(jawPivotZ + 0.020, mouthZ - 0.018, z);
-        const wJaw = seamMask * neckMask * sideMask * frontMask;
-        if (wJaw > 0.001) {
-          const ry = y - jawPivotY;
-          const rz = z - jawPivotZ;
-          const ny = ry * cosJ - rz * sinJ;
-          const nz = ry * sinJ + rz * cosJ;
-          arrays.jawOpen[i3 + 1] = (ny - ry) * wJaw;
-          arrays.jawOpen[i3 + 2] = (nz - rz) * wJaw;
-        }
-      }
-    }
-
-    geom.morphAttributes.position = morphNames.map((n) => {
-      const attr = new THREE.Float32BufferAttribute(arrays[n], 3);
-      attr.name = n;
-      return attr;
-    });
-    geom.morphTargetsRelative = true;
-    mesh.updateMorphTargets();
-    if (!mesh.morphTargetDictionary || !Object.keys(mesh.morphTargetDictionary).length) {
-      mesh.morphTargetDictionary = {};
-      morphNames.forEach((n, idx) => {
-        mesh.morphTargetDictionary[n] = idx;
-      });
-    }
-    if (!mesh.morphTargetInfluences || mesh.morphTargetInfluences.length !== morphNames.length) {
-      mesh.morphTargetInfluences = new Array(morphNames.length).fill(0);
-    }
-
-    return true;
-  }
 
   function setMorphWeights(targets, dt) {
     if (!morphMeshes.length) return;
@@ -669,9 +566,6 @@ export function createPlayerCharacter(scene, manager, options = {}) {
           infl[idx] = morphCur[key];
         }
       }
-    }
-    for (const u of oralCavityUniforms) {
-      u.value = morphCur.jawOpen || 0;
     }
   }
 
@@ -787,10 +681,6 @@ export function createPlayerCharacter(scene, manager, options = {}) {
 
       if (obj.morphTargetDictionary && obj.morphTargetInfluences) {
         morphMeshes.push(obj);
-      } else if (matName.includes('head') || (obj.name || '').toLowerCase().includes('head')) {
-        if (buildProceduralFacialMorphTargets(obj, srcMat)) {
-          morphMeshes.push(obj);
-        }
       }
 
       meshEntries.push({
