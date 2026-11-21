@@ -267,22 +267,22 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   const rotY = cfg.rotY ?? (-Math.PI / 2); // Faces West (-X) straight down the alley!
   const W = 18.0;
   const D = 18.0;
-  const floors = 5; // GF (0) + 2F (1) + 3F (2) + 4F (3) + 5F (4) + Open Rooftop (5)
+  const floors = 7; // GF (0) + 2F..7F (1..6) + Open Rooftop Garden (7) — Tall Realistic Cement Structure!
   const hw = W * 0.5; // 9.0
   const hd = D * 0.5; // 9.0
   const gfBaseY = 0.85;
-  const gfH = 4.10;
-  const flH = 3.20;
+  const gfH = 4.25;
+  const flH = 3.35;
   const FLOOR_Y = [gfBaseY];
   for (let k = 1; k <= floors; k++) {
     FLOOR_Y.push(Number((gfBaseY + gfH + (k - 1) * flH).toFixed(2)));
   }
-  const roofY = FLOOR_Y[floors]; // 17.75m
+  const roofY = FLOOR_Y[floors]; // 25.20m
   const rH = 3.15;
-  const upperRoofY = Number((roofY + rH).toFixed(2)); // 20.90m (walkable roof on top of rooftop room!)
-  const tankStandY = Number((upperRoofY + 0.45).toFixed(2)); // 21.35m (very top 2 water tanks platform!)
+  const upperRoofY = Number((roofY + rH).toFixed(2)); // 28.35m (walkable roof on top of rooftop room!)
+  const tankStandY = Number((upperRoofY + 0.45).toFixed(2)); // 28.80m (very top 2 water tanks platform!)
 
-  const nameBn = '২৬ · আলতাপোল গলি ভিলা (৫-তলা)';
+  const nameBn = '২৬ · আলতাপোল গলি ভিলা (৭-তলা)';
   const zonePrefix = '26 ALTAPOLE GOLI VILLA';
 
   const cosR = Math.cos(rotY);
@@ -300,8 +300,17 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     };
   };
 
-  // Shared Materials (zero duplicate materials inside loops for clean 60 FPS batching!)
-  const softWhiteWall = shared.makeWall('#f7f8f5', 4808, false);
+  // Shared Materials — Taltola House (Kawsar Bhai's House) Realistic Weathered Cement & Exposed Brick PBR Materials!
+  const softWhiteWall = m.plaster;
+  const gfCementWall = m.warmPlaster || m.plaster;
+  const cementSlabMat = m.concrete;
+  const cementTrimMat = m.trim || m.concrete;
+  const cementBandMat = m.whiteBand || shared.whiteBand;
+  const taltolaBrickMat = m.brick;
+  const taltolaRailMat = m.rail || shinyStainlessSteel;
+  const taltolaAlumMat = m.aluminum || shared.thaiFrame;
+  const taltolaGlassMat = m.glass || shared.thaiGlass;
+  const taltolaFrostedMat = m.frostedGlass || shared.cobaltGlass;
   const greenEnamelSteel = new THREE.MeshPhysicalMaterial({
     color: 0x16a34a,
     metalness: 0.62,
@@ -434,7 +443,7 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   const MUM_MAX_Z = 3.10;
 
   const root = new THREE.Group();
-  root.name = 'AltapoleGoli_UserDreamHome_5Story';
+  root.name = 'AltapoleGoli_UserDreamHome_7Story';
   root.position.set(cx, 0, cz);
   root.rotation.y = rotY;
   parent.add(root);
@@ -532,44 +541,49 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
 
     const slabH = 0.22;
     const slabY = y - 0.11;
+    const slabMat = y >= roofY - 0.05 ? cementSlabMat : (m.pillarTile || cementSlabMat);
     // Left Wing Slab (A1 + A2)
-    box(exteriorStatic, [CORR_MIN_X - (-hw), slabH, D], [(-hw + CORR_MIN_X) * 0.5, slabY, 0], m.pillarTile || shared.stairConcrete, { uvScale: 2.4 });
+    box(exteriorStatic, [CORR_MIN_X - (-hw), slabH, D], [(-hw + CORR_MIN_X) * 0.5, slabY, 0], slabMat, { uvScale: 2.4 });
     // Right Wing Slab (B1 + B2)
-    box(exteriorStatic, [hw - CORR_MAX_X, slabH, D], [(CORR_MAX_X + hw) * 0.5, slabY, 0], m.pillarTile || shared.stairConcrete, { uvScale: 2.4 });
+    box(exteriorStatic, [hw - CORR_MAX_X, slabH, D], [(CORR_MAX_X + hw) * 0.5, slabY, 0], slabMat, { uvScale: 2.4 });
     // Center Front Landing (lz ∈ [STAIR_START_Z, +hd])
-    box(exteriorStatic, [CORR_MAX_X - CORR_MIN_X, slabH, hd - STAIR_START_Z], [0, slabY, (STAIR_START_Z + hd) * 0.5], m.pillarTile || shared.stairConcrete, { uvScale: 1.8 });
+    box(exteriorStatic, [CORR_MAX_X - CORR_MIN_X, slabH, hd - STAIR_START_Z], [0, slabY, (STAIR_START_Z + hd) * 0.5], slabMat, { uvScale: 1.8 });
     // Center Back Landing (lz ∈ [-hd, STAIR_END_Z])
-    box(exteriorStatic, [CORR_MAX_X - CORR_MIN_X, slabH, STAIR_END_Z - (-hd)], [0, slabY, (-hd + STAIR_END_Z) * 0.5], m.pillarTile || shared.stairConcrete, { uvScale: 1.8 });
+    box(exteriorStatic, [CORR_MAX_X - CORR_MIN_X, slabH, STAIR_END_Z - (-hd)], [0, slabY, (-hd + STAIR_END_Z) * 0.5], slabMat, { uvScale: 1.8 });
     // Center Right Walkway beside Stairwell (lx ∈ [STAIR_MAX_X, CORR_MAX_X])
-    box(exteriorStatic, [CORR_MAX_X - STAIR_MAX_X, slabH, STAIR_START_Z - STAIR_END_Z], [(STAIR_MAX_X + CORR_MAX_X) * 0.5, slabY, (STAIR_END_Z + STAIR_START_Z) * 0.5], m.pillarTile || shared.stairConcrete, { uvScale: 1.8 });
-    // Crisp Pearl-White Cornice Trim Band
-    box(exteriorStatic, [W + 0.36, 0.24, D + 0.36], [0, y - 0.08, 0], shared.whiteBand);
+    box(exteriorStatic, [CORR_MAX_X - STAIR_MAX_X, slabH, STAIR_START_Z - STAIR_END_Z], [(STAIR_MAX_X + CORR_MAX_X) * 0.5, slabY, (STAIR_END_Z + STAIR_START_Z) * 0.5], slabMat, { uvScale: 1.8 });
+    // Taltola-Style Weathered Cement Floor Slab Cornice Band
+    box(exteriorStatic, [W + 0.38, 0.24, D + 0.38], [0, y - 0.08, 0], cementTrimMat, { uvScale: 2.8 });
   }
 
   function addOpenableThaiWindow({ floorIdx, lx, ly, lz, w, h, label, faceSign = 1 }) {
     const halfW = w * 0.5;
-    box(exteriorStatic, [w + 0.10, 0.06, 0.22], [lx, ly + h * 0.5, lz], shared.thaiFrame);
-    box(exteriorStatic, [w + 0.10, 0.06, 0.22], [lx, ly - h * 0.5, lz], shared.thaiFrame);
-    box(exteriorStatic, [0.06, h, 0.22], [lx - halfW, ly, lz], shared.thaiFrame);
-    box(exteriorStatic, [0.06, h, 0.22], [lx + halfW, ly, lz], shared.thaiFrame);
-    box(exteriorStatic, [w + 0.32, 0.10, 0.34], [lx, ly + h * 0.5 + 0.08, lz + faceSign * 0.16], shared.whiteBand);
-    box(exteriorStatic, [w + 0.20, 0.06, 0.28], [lx, ly - h * 0.5 - 0.04, lz + faceSign * 0.10], m.blackTile || shared.whiteBand);
-    box(exteriorStatic, [halfW - 0.03, h - 0.08, 0.03], [lx - halfW * 0.5, ly, lz - faceSign * 0.03], shared.thaiGlass, { castShadow: false });
-    for (let gx = -halfW + 0.30; gx <= halfW - 0.25; gx += 0.38) {
-      box(exteriorStatic, [0.028, h - 0.08, 0.028], [lx + gx, ly, lz + faceSign * 0.11], shared.whiteBand);
+    box(exteriorStatic, [w + 0.10, 0.06, 0.22], [lx, ly + h * 0.5, lz], taltolaAlumMat);
+    box(exteriorStatic, [w + 0.10, 0.06, 0.22], [lx, ly - h * 0.5, lz], taltolaAlumMat);
+    box(exteriorStatic, [0.06, h, 0.22], [lx - halfW, ly, lz], taltolaAlumMat);
+    box(exteriorStatic, [0.06, h, 0.22], [lx + halfW, ly, lz], taltolaAlumMat);
+    // Taltola-style projecting concrete chajja sunshade canopy + drip band
+    box(exteriorStatic, [w + 0.44, 0.10, 0.46], [lx, ly + h * 0.5 + 0.10, lz + faceSign * 0.22], cementTrimMat);
+    box(exteriorStatic, [w + 0.48, 0.04, 0.06], [lx, ly + h * 0.5 + 0.06, lz + faceSign * 0.44], cementBandMat);
+    box(exteriorStatic, [w + 0.20, 0.06, 0.28], [lx, ly - h * 0.5 - 0.04, lz + faceSign * 0.10], cementTrimMat);
+    box(exteriorStatic, [halfW - 0.03, h - 0.08, 0.03], [lx - halfW * 0.5, ly, lz - faceSign * 0.03], taltolaGlassMat, { castShadow: false });
+    for (let gx = -halfW + 0.26; gx <= halfW - 0.22; gx += 0.26) {
+      box(exteriorStatic, [0.022, h - 0.06, 0.022], [lx + gx, ly, lz + faceSign * 0.12], taltolaRailMat);
     }
-    box(exteriorStatic, [w - 0.06, 0.035, 0.028], [lx, ly, lz + faceSign * 0.11], shared.whiteBand);
+    for (const gy of [-h * 0.25, 0, h * 0.25]) {
+      box(exteriorStatic, [w - 0.04, 0.022, 0.022], [lx, ly + gy, lz + faceSign * 0.12], taltolaRailMat);
+    }
     const sash = new THREE.Group();
     const closedX = lx + halfW * 0.5;
     const openX = lx - halfW * 0.42;
     sash.position.set(closedX, ly, lz + faceSign * 0.02);
     const sw = halfW - 0.02;
     const sh = h - 0.08;
-    box(sash, [sw, sh, 0.03], [0, 0, 0], shared.thaiGlass, { castShadow: false });
-    box(sash, [sw, 0.045, 0.045], [0, sh * 0.5, 0], shared.thaiFrame);
-    box(sash, [sw, 0.045, 0.045], [0, -sh * 0.5, 0], shared.thaiFrame);
-    box(sash, [0.045, sh, 0.045], [-sw * 0.5, 0, 0], shared.thaiFrame);
-    box(sash, [0.045, sh, 0.045], [sw * 0.5, 0, 0], shared.thaiFrame);
+    box(sash, [sw, sh, 0.03], [0, 0, 0], taltolaGlassMat, { castShadow: false });
+    box(sash, [sw, 0.045, 0.045], [0, sh * 0.5, 0], taltolaAlumMat);
+    box(sash, [sw, 0.045, 0.045], [0, -sh * 0.5, 0], taltolaAlumMat);
+    box(sash, [0.045, sh, 0.045], [-sw * 0.5, 0, 0], taltolaAlumMat);
+    box(sash, [0.045, sh, 0.045], [sw * 0.5, 0, 0], taltolaAlumMat);
     box(sash, [0.03, 0.20, 0.05], [sw * 0.34, -0.04, -faceSign * 0.04], m.darkMetal);
     dynamicG.add(sash);
     thaiWindows.push({ floorIdx, mesh: sash, closedX, openX, open: false, progress: 0, lx, ly, lz, label });
@@ -578,39 +592,51 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   function addExteriorDecorWindow(lx, ly, lz, w, h, onSideX = true) {
     if (onSideX) {
       const sign = lx > 0 ? 1 : -1;
-      box(exteriorStatic, [0.08, h + 0.12, w + 0.12], [lx + sign * 0.03, ly, lz], shared.thaiFrame, { castShadow: false });
-      box(exteriorStatic, [0.10, h, w], [lx + sign * 0.05, ly, lz], shared.thaiGlass, { castShadow: false });
-      box(exteriorStatic, [0.22, 0.09, w + 0.26], [lx + sign * 0.12, ly + h * 0.5 + 0.08, lz], shared.whiteBand, { castShadow: false });
+      box(exteriorStatic, [0.08, h + 0.12, w + 0.12], [lx + sign * 0.03, ly, lz], taltolaAlumMat, { castShadow: false });
+      box(exteriorStatic, [0.10, h, w], [lx + sign * 0.05, ly, lz], taltolaGlassMat, { castShadow: false });
+      // Taltola-style concrete side sunshade chajja + drip lip + security grill
+      box(exteriorStatic, [0.44, 0.09, w + 0.42], [lx + sign * 0.22, ly + h * 0.5 + 0.12, lz], cementTrimMat, { castShadow: false });
+      box(exteriorStatic, [0.06, 0.04, w + 0.46], [lx + sign * 0.43, ly + h * 0.5 + 0.08, lz], cementBandMat, { castShadow: false });
+      for (let gz = -w * 0.42; gz <= w * 0.43; gz += 0.28) {
+        box(exteriorStatic, [0.02, h - 0.06, 0.02], [lx + sign * 0.13, ly, lz + gz], taltolaRailMat, { castShadow: false });
+      }
     } else {
-      box(exteriorStatic, [w + 0.12, h + 0.12, 0.08], [lx, ly, lz - 0.03], shared.thaiFrame, { castShadow: false });
-      box(exteriorStatic, [w, h, 0.10], [lx, ly, lz - 0.05], shared.thaiGlass, { castShadow: false });
-      box(exteriorStatic, [w + 0.26, 0.09, 0.22], [lx, ly + h * 0.5 + 0.08, lz - 0.12], shared.whiteBand, { castShadow: false });
+      box(exteriorStatic, [w + 0.12, h + 0.12, 0.08], [lx, ly, lz - 0.03], taltolaAlumMat, { castShadow: false });
+      box(exteriorStatic, [w, h, 0.10], [lx, ly, lz - 0.05], taltolaGlassMat, { castShadow: false });
+      box(exteriorStatic, [w + 0.42, 0.09, 0.44], [lx, ly + h * 0.5 + 0.12, lz - 0.22], cementTrimMat, { castShadow: false });
     }
   }
 
   // ==========================================================================
   // 1) ELEVATED LEVEL 0: HUGE 18m × 18m DRIVE-IN GARAGE + SHINY GREEN & STEEL GATE
+  //    Taltola-House Realistic Weathered Cement Plaster + Concrete Base & Pilasters!
   // ==========================================================================
   addFloorSlab(FLOOR_Y[0], true);
-  const gfWallTop = FLOOR_Y[0] + gfH; // 4.95
+  const gfWallTop = FLOOR_Y[0] + gfH; // 5.10
   const doorTopY = FLOOR_Y[0] + ENT_DOOR_H; // 4.25
 
-  box(exteriorStatic, [0.26, gfWallTop, D], [-hw + 0.13, gfWallTop * 0.5, 0], softWhiteWall);
-  box(exteriorStatic, [0.26, gfWallTop, D], [hw - 0.13, gfWallTop * 0.5, 0], softWhiteWall);
-  box(exteriorStatic, [W, gfWallTop, 0.26], [0, gfWallTop * 0.5, -hd + 0.13], softWhiteWall);
-  box(exteriorStatic, [ENT_MIN_X - (-hw), gfWallTop, 0.28], [(-hw + ENT_MIN_X) * 0.5, gfWallTop * 0.5, hd - 0.14], softWhiteWall);
-  box(exteriorStatic, [hw - ENT_MAX_X, gfWallTop, 0.28], [(ENT_MAX_X + hw) * 0.5, gfWallTop * 0.5, hd - 0.14], softWhiteWall);
-  box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 0.04, Math.max(0.28, gfWallTop - doorTopY), 0.28], [ENT_CX, doorTopY + Math.max(0.28, gfWallTop - doorTopY) * 0.5, hd - 0.14], softWhiteWall);
+  box(exteriorStatic, [0.26, gfWallTop, D], [-hw + 0.13, gfWallTop * 0.5, 0], gfCementWall, { uvScale: 3.0 });
+  box(exteriorStatic, [0.26, gfWallTop, D], [hw - 0.13, gfWallTop * 0.5, 0], gfCementWall, { uvScale: 3.0 });
+  box(exteriorStatic, [W, gfWallTop, 0.26], [0, gfWallTop * 0.5, -hd + 0.13], gfCementWall, { uvScale: 3.0 });
+  box(exteriorStatic, [ENT_MIN_X - (-hw), gfWallTop, 0.28], [(-hw + ENT_MIN_X) * 0.5, gfWallTop * 0.5, hd - 0.14], gfCementWall, { uvScale: 2.8 });
+  box(exteriorStatic, [hw - ENT_MAX_X, gfWallTop, 0.28], [(ENT_MAX_X + hw) * 0.5, gfWallTop * 0.5, hd - 0.14], gfCementWall, { uvScale: 2.8 });
+  box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 0.04, Math.max(0.28, gfWallTop - doorTopY), 0.28], [ENT_CX, doorTopY + Math.max(0.28, gfWallTop - doorTopY) * 0.5, hd - 0.14], gfCementWall, { uvScale: 2.4 });
 
-  // Colorful Glazed Mosaic Tiles cladding both Front Wings
+  // Taltola-Style Exposed Cement Plinth Dado, Vertical Plaster Pilasters & Subtle Monsoon Damp Base
   const wingW = ENT_MIN_X - (-hw) - 0.30;
-  box(exteriorStatic, [wingW, 3.25, 0.07], [-hw + 0.14 + wingW * 0.5, gfBaseY + 1.62, hd + 0.02], shared.colorfulTile, { uvScale: 2.2 });
-  box(exteriorStatic, [wingW, 3.25, 0.07], [ENT_MAX_X + 0.28 + wingW * 0.5, gfBaseY + 1.62, hd + 0.02], shared.colorfulTile, { uvScale: 2.2 });
+  box(exteriorStatic, [wingW, 0.85, 0.08], [-hw + 0.14 + wingW * 0.5, 0.425, hd + 0.02], cementSlabMat, { uvScale: 2.4 });
+  box(exteriorStatic, [wingW, 0.85, 0.08], [ENT_MAX_X + 0.28 + wingW * 0.5, 0.425, hd + 0.02], cementSlabMat, { uvScale: 2.4 });
+  box(exteriorStatic, [W + 0.06, 0.24, 0.06], [0, 0.12, -hd - 0.02], m.moss || cementSlabMat, { castShadow: false });
+  box(exteriorStatic, [0.06, 0.24, D + 0.06], [-hw - 0.02, 0.12, 0], m.moss || cementSlabMat, { castShadow: false });
+  box(exteriorStatic, [0.06, 0.24, D + 0.06], [hw + 0.02, 0.12, 0], m.moss || cementSlabMat, { castShadow: false });
+  // Taltola-Style Horizontal Concrete Belt Molding across Ground Floor Wings
+  box(exteriorStatic, [wingW + 0.06, 0.12, 0.10], [-hw + 0.14 + wingW * 0.5, gfBaseY + 1.45, hd + 0.03], cementTrimMat);
+  box(exteriorStatic, [wingW + 0.06, 0.12, 0.10], [ENT_MAX_X + 0.28 + wingW * 0.5, gfBaseY + 1.45, hd + 0.03], cementTrimMat);
 
-  // Lush Front Entrance Mosaic Planter Beds with Flowering Shrubs
+  // Lush Front Entrance Concrete/Brick Planter Beds with Flowering Shrubs
   for (const [plX, plW, fOff] of [[-5.95, 5.1, 0], [6.25, 4.5, 2]]) {
-    box(exteriorStatic, [plW, 0.62, 0.64], [plX, 0.31, hd + 0.36], shared.colorfulTile, { uvScale: 1.2 });
-    box(exteriorStatic, [plW + 0.08, 0.07, 0.70], [plX, 0.64, hd + 0.36], shared.whiteBand);
+    box(exteriorStatic, [plW, 0.62, 0.64], [plX, 0.31, hd + 0.36], taltolaBrickMat, { uvScale: 1.8 });
+    box(exteriorStatic, [plW + 0.10, 0.08, 0.72], [plX, 0.64, hd + 0.36], cementTrimMat);
     box(exteriorStatic, [plW - 0.14, 0.52, 0.50], [plX, 0.34, hd + 0.36], soilMat);
     const nShrub = Math.max(3, Math.floor(plW / 0.85));
     for (let i = 0; i < nShrub; i++) {
@@ -628,26 +654,27 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     }
   }
 
-  // Two Tall Colorful-Tiled Gate Pillars + Glowing Globe Lamps + Intercom & CCTV
-  for (const px of [ENT_MIN_X - 0.26, ENT_MAX_X + 0.26]) {
-    box(exteriorStatic, [0.54, doorTopY + 0.26, 0.56], [px, (doorTopY + 0.26) * 0.5, hd + 0.14], shared.colorfulTile, { uvScale: 1.4 });
-    box(exteriorStatic, [0.58, 0.09, 0.60], [px, gfBaseY + ENT_DOOR_H * 0.5, hd + 0.14], shinyStainlessSteel);
-    box(exteriorStatic, [0.64, 0.14, 0.64], [px, doorTopY + 0.32, hd + 0.14], shared.whiteBand);
-    const globe = new THREE.Mesh(new THREE.SphereGeometry(0.17, 10, 8), shared.liftLed);
-    globe.position.set(px, doorTopY + 0.54, hd + 0.14);
+  // Two Tall Taltola-Style Stone/Cement-Tiled Gate Pillars with Black Accent Bands + Glowing Globe Lamps + Intercom & CCTV
+  for (const px of [ENT_MIN_X - 0.28, ENT_MAX_X + 0.28]) {
+    box(exteriorStatic, [0.58, doorTopY + 0.26, 0.58], [px, (doorTopY + 0.26) * 0.5, hd + 0.14], m.pillarTile || cementTrimMat, { uvScale: 1.5 });
+    box(exteriorStatic, [0.62, 0.10, 0.62], [px, gfBaseY + 0.55, hd + 0.14], m.blackTile || m.darkMetal);
+    box(exteriorStatic, [0.62, 0.10, 0.62], [px, doorTopY - 0.22, hd + 0.14], m.blackTile || m.darkMetal);
+    box(exteriorStatic, [0.68, 0.14, 0.68], [px, doorTopY + 0.32, hd + 0.14], cementTrimMat);
+    const globe = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), m.lamp || shared.liftLed);
+    globe.position.set(px, doorTopY + 0.56, hd + 0.14);
     dynamicG.add(globe);
   }
-  box(exteriorStatic, [0.18, 0.30, 0.06], [ENT_MAX_X + 0.26, gfBaseY + 1.38, hd + 0.44], shinyStainlessSteel, { castShadow: false });
-  box(exteriorStatic, [0.10, 0.14, 0.07], [ENT_MAX_X + 0.26, gfBaseY + 1.42, hd + 0.45], m.darkMetal, { castShadow: false });
-  box(exteriorStatic, [0.04, 0.04, 0.08], [ENT_MAX_X + 0.26, gfBaseY + 1.29, hd + 0.45], acLedGreen, { castShadow: false });
+  box(exteriorStatic, [0.18, 0.30, 0.06], [ENT_MAX_X + 0.28, gfBaseY + 1.38, hd + 0.45], shinyStainlessSteel, { castShadow: false });
+  box(exteriorStatic, [0.10, 0.14, 0.07], [ENT_MAX_X + 0.28, gfBaseY + 1.42, hd + 0.46], m.darkMetal, { castShadow: false });
+  box(exteriorStatic, [0.04, 0.04, 0.08], [ENT_MAX_X + 0.28, gfBaseY + 1.29, hd + 0.46], acLedGreen, { castShadow: false });
   cylinder(exteriorStatic, 0.09, 0.07, 0.08, [ENT_MIN_X + 0.32, doorTopY - 0.04, hd + 0.36], acUnitWhite, 8);
   const cctvLens = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), m.darkMetal);
   cctvLens.position.set(ENT_MIN_X + 0.32, doorTopY - 0.09, hd + 0.36);
   exteriorStatic.add(cctvLens);
 
-  // Grand Overhead Canopy + Warm LED Bar + PointLight
-  box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 1.25, 0.28, 0.78], [ENT_CX, doorTopY + 0.14, hd + 0.18], shared.whiteBand);
-  box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 1.28, 0.08, 0.80], [ENT_CX, doorTopY + 0.30, hd + 0.18], shinyStainlessSteel);
+  // Grand Concrete Overhead Canopy + Structural Corbel Beam (Taltola House Style) + Warm LED Bar
+  box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 1.30, 0.28, 0.82], [ENT_CX, doorTopY + 0.14, hd + 0.18], cementBandMat);
+  box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 1.34, 0.10, 0.86], [ENT_CX, doorTopY + 0.32, hd + 0.18], cementTrimMat);
   box(dynamicG, [2.70, 0.05, 0.22], [ENT_CX, doorTopY - 0.02, hd + 0.28], shared.liftLed, { castShadow: false });
   const gateGlowLight = new THREE.PointLight(0xfff4d6, 2.8, 16.0, 1.35);
   gateGlowLight.position.set(ENT_CX, doorTopY - 0.16, hd + 1.15);
@@ -1133,18 +1160,29 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
       addOpenableThaiWindow({ floorIdx: k, lx: winA, ly: fy + 1.625, lz: zWall, w: winW, h: 1.55, faceSign: faceZ, label: `ফ্ল্যাট ${k + 1}A${suffix} থাই জানালা` });
       addOpenableThaiWindow({ floorIdx: k, lx: winB, ly: fy + 1.625, lz: zWall, w: winW, h: 1.55, faceSign: faceZ, label: `ফ্ল্যাট ${k + 1}B${suffix} থাই জানালা` });
 
-      // Twin Wide Luxury Balconies on BOTH Front (A1/B1) & Rear (A2/B2) Facades!
+      // Twin Wide Taltola-Style Realistic Cement Balconies on BOTH Front (A1/B1) & Rear (A2/B2) Facades!
       for (const bx of [winA, winB]) {
         const balW = 5.10;
-        box(exteriorStatic, [balW, 0.16, 1.05], [bx, fy + 0.04, faceZ * (hd + 0.50)], shared.whiteBand);
-        box(exteriorStatic, [balW, 0.48, 0.10], [bx, fy + 0.34, faceZ * (hd + 0.98)], shared.colorfulTile, { uvScale: 1.5 });
-        box(exteriorStatic, [balW, 0.48, 0.06], [bx, fy + 0.80, faceZ * (hd + 0.98)], shared.thaiGlass, { castShadow: false });
-        box(exteriorStatic, [balW + 0.08, 0.07, 0.10], [bx, fy + 1.06, faceZ * (hd + 0.98)], shinyStainlessSteel);
-        box(exteriorStatic, [0.10, 1.02, 1.05], [bx - balW * 0.5, fy + 0.56, faceZ * (hd + 0.50)], shared.colorfulTile, { uvScale: 0.9 });
-        box(exteriorStatic, [0.10, 1.02, 1.05], [bx + balW * 0.5, fy + 0.56, faceZ * (hd + 0.50)], shared.colorfulTile, { uvScale: 0.9 });
-        addPottedPlant(exteriorStatic, bx - balW * 0.38, fy + 0.12, faceZ * (hd + 0.52), 0.92, k + (bx < 0 ? 0 : 2));
-        addPottedPlant(exteriorStatic, bx + balW * 0.38, fy + 0.12, faceZ * (hd + 0.52), 0.88, k + (bx < 0 ? 1 : 3));
-        const acX = bx < 0 ? (bx - balW * 0.5 + 0.24) : (bx + balW * 0.5 - 0.24);
+        const balOuterZ = faceZ * (hd + 1.00);
+        // Cantilevered Concrete Balcony Slab + White Cement Fascia Edge
+        box(exteriorStatic, [balW + 0.14, 0.22, 1.12], [bx, fy + 0.02, faceZ * (hd + 0.52)], cementBandMat, { uvScale: 2.2 });
+        box(exteriorStatic, [balW + 0.10, 0.42, 0.16], [bx, fy - 0.08, balOuterZ], bx > 0 ? cementBandMat : softWhiteWall, { uvScale: 2.4 });
+        // Solid Weathered Cement Half-Parapet Wall + Concrete Coping Trim
+        box(exteriorStatic, [balW, 0.54, 0.16], [bx, fy + 0.38, balOuterZ], softWhiteWall, { uvScale: 2.2 });
+        box(exteriorStatic, [balW + 0.10, 0.08, 0.24], [bx, fy + 0.68, balOuterZ], cementTrimMat);
+        // Taltola-Style Steel/Aluminum Balcony Railing Bars above Cement Parapet
+        for (const ry of [fy + 0.84, fy + 1.08]) {
+          rodBetween(exteriorStatic, [bx - balW * 0.5, ry, balOuterZ], [bx + balW * 0.5, ry, balOuterZ], 0.022, taltolaRailMat, 8);
+        }
+        for (let px = -balW * 0.5; px <= balW * 0.5 + 0.01; px += 0.64) {
+          rodBetween(exteriorStatic, [bx + px, fy + 0.70, balOuterZ], [bx + px, fy + 1.08, balOuterZ], 0.020, taltolaRailMat, 6);
+        }
+        // Full-Height Cement Side Privacy Wing Walls (just like Taltola House!)
+        box(exteriorStatic, [0.16, h - 0.20, 1.10], [bx - balW * 0.5, fy + (h - 0.20) * 0.5, faceZ * (hd + 0.52)], softWhiteWall, { uvScale: 2.0 });
+        box(exteriorStatic, [0.16, h - 0.20, 1.10], [bx + balW * 0.5, fy + (h - 0.20) * 0.5, faceZ * (hd + 0.52)], softWhiteWall, { uvScale: 2.0 });
+        addPottedPlant(exteriorStatic, bx - balW * 0.38, fy + 0.14, faceZ * (hd + 0.52), 0.92, k + (bx < 0 ? 0 : 2));
+        addPottedPlant(exteriorStatic, bx + balW * 0.38, fy + 0.14, faceZ * (hd + 0.52), 0.88, k + (bx < 0 ? 1 : 3));
+        const acX = bx < 0 ? (bx - balW * 0.5 + 0.28) : (bx + balW * 0.5 - 0.28);
         box(exteriorStatic, [0.32, 0.52, 0.72], [acX, fy + 0.42, faceZ * (hd + 0.48)], acUnitWhite, { castShadow: false });
         const acFan = cylinder(exteriorStatic, 0.18, 0.18, 0.04, [acX + (bx < 0 ? 0.16 : -0.16), fy + 0.44, faceZ * (hd + 0.48)], m.darkMetal, 10);
         acFan.rotation.z = Math.PI / 2;
@@ -1152,13 +1190,19 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
       }
     }
 
-    // Front Facade Colorful Mosaic Feature Piers, Cobalt Stair Glass & Architectural Sconces
-    for (const px of [-hw + 0.55, -1.85, 1.85, hw - 0.55]) {
-      box(exteriorStatic, [0.95, h, 0.08], [px, fy + h * 0.5, hd + 0.02], shared.colorfulTile, { uvScale: 1.4 });
+    // Taltola-House Signature Central Exposed Red-Brick Staircase Column + Frosted Stair Window & Louvers (Front & Rear!)
+    for (const faceZ of [1, -1]) {
+      box(exteriorStatic, [2.45, h, 0.34], [0, fy + h * 0.5, faceZ * (hd + 0.12)], taltolaBrickMat, { uvScale: 2.5 });
+      box(exteriorStatic, [0.92, 2.24, 0.08], [0, fy + 1.56, faceZ * (hd + 0.30)], taltolaFrostedMat, { castShadow: false });
+      box(exteriorStatic, [1.02, 0.06, 0.10], [0, fy + 2.68, faceZ * (hd + 0.30)], taltolaAlumMat, { castShadow: false });
+      box(exteriorStatic, [1.02, 0.06, 0.10], [0, fy + 0.44, faceZ * (hd + 0.30)], taltolaAlumMat, { castShadow: false });
+      for (let li = 0; li < 6; li++) {
+        rodBetween(exteriorStatic, [-0.42, fy + 0.62 + li * 0.34, faceZ * (hd + 0.35)], [0.42, fy + 0.74 + li * 0.34, faceZ * (hd + 0.35)], 0.010, taltolaAlumMat, 5);
+      }
     }
-    box(exteriorStatic, [2.2, h - 0.2, 0.10], [0, fy + h * 0.5, hd + 0.03], shared.cobaltGlass);
-    for (const my of [0.85, 1.65, 2.45]) {
-      box(exteriorStatic, [2.28, 0.055, 0.13], [0, fy + my, hd + 0.04], shinyStainlessSteel, { castShadow: false });
+    // Structural Cement Relief Pilasters flanking Front Facade
+    for (const px of [-hw + 0.20, -1.85, 1.85, hw - 0.20]) {
+      box(exteriorStatic, [0.42, h, 0.14], [px, fy + h * 0.5, hd + 0.05], cementTrimMat, { uvScale: 2.4 });
     }
     for (const sx of [-hw + 0.55, hw - 0.55]) {
       box(exteriorStatic, [0.16, 0.34, 0.12], [sx, fy + 2.0, hd + 0.07], m.darkMetal, { castShadow: false });
@@ -1236,34 +1280,43 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     floorSeats.set(k, [...seatsA1, ...seatsA2, ...seatsB1, ...seatsB2]);
   }
 
-  // Rear Exterior PVC Rainwater Downpipes running full height
-  for (const rpx of [-hw - 0.06, hw + 0.06]) {
-    cylinder(exteriorStatic, 0.055, 0.055, roofY + 0.4, [rpx, (roofY + 0.4) * 0.5, -hd + 0.35], pvcPipeGrey, 8);
+  // Taltola-Style Full-Height Structural Concrete Corner Pilasters + Exposed PVC Rainwater Downpipes
+  for (const cxP of [-hw + 0.04, hw - 0.04]) {
+    for (const czP of [-hd + 0.04, hd - 0.04]) {
+      box(exteriorStatic, [0.34, roofY + 1.15, 0.34], [cxP, (roofY + 1.15) * 0.5, czP], cementTrimMat, { uvScale: 2.8 });
+    }
+  }
+  for (const rpx of [-hw - 0.08, hw + 0.08]) {
+    for (const rpz of [-hd + 0.45, 0.45, hd - 0.45]) {
+      cylinder(exteriorStatic, 0.055, 0.055, roofY + 0.4, [rpx, (roofY + 0.4) * 0.5, rpz], m.pvcPipe || pvcPipeGrey, 8);
+    }
   }
 
   // ==========================================================================
-  // 4) GRAND OPEN ROOFTOP (roofY = 17.75m) + BIG GARDEN + HALF-ROOF ROOM
-  //    + WALKABLE STAIRS TO UPPER ROOF (20.90m) + LIGHT UPPER GARDEN + 2 WATER TANKS ON VERY TOP!
+  // 4) GRAND OPEN ROOFTOP (roofY = 25.20m) + BIG GARDEN + HALF-ROOF ROOM
+  //    + WALKABLE STAIRS TO UPPER ROOF (28.35m) + LIGHT UPPER GARDEN + 2 WATER TANKS ON VERY TOP!
   // ==========================================================================
   addFloorSlab(roofY, false);
-  // Open Rooftop Perimeter Parapet Wall (1.08m tall)
-  box(exteriorStatic, [W, 1.08, 0.24], [0, roofY + 0.54, -hd + 0.12], shared.whiteBand);
-  box(exteriorStatic, [W, 1.08, 0.24], [0, roofY + 0.54, hd - 0.12], shared.whiteBand);
-  box(exteriorStatic, [0.24, 1.08, D], [-hw + 0.12, roofY + 0.54, 0], shared.whiteBand);
-  box(exteriorStatic, [0.24, 1.08, D], [hw - 0.12, roofY + 0.54, 0], shared.whiteBand);
-  box(exteriorStatic, [W + 0.08, 0.58, 0.08], [0, roofY + 0.56, hd + 0.04], shared.colorfulTile, { uvScale: 2.4 });
-  box(exteriorStatic, [W + 0.16, 0.12, 0.30], [0, roofY + 1.10, hd - 0.08], shared.whiteBand);
+  // Taltola-Style Realistic Weathered Cement Rooftop Perimeter Parapet Wall (1.08m tall + coping ledge)
+  box(exteriorStatic, [W, 1.08, 0.24], [0, roofY + 0.54, -hd + 0.12], softWhiteWall, { uvScale: 2.6 });
+  box(exteriorStatic, [W, 1.08, 0.24], [0, roofY + 0.54, hd - 0.12], softWhiteWall, { uvScale: 2.6 });
+  box(exteriorStatic, [0.24, 1.08, D], [-hw + 0.12, roofY + 0.54, 0], softWhiteWall, { uvScale: 2.6 });
+  box(exteriorStatic, [0.24, 1.08, D], [hw - 0.12, roofY + 0.54, 0], softWhiteWall, { uvScale: 2.6 });
+  box(exteriorStatic, [W + 0.22, 0.12, 0.32], [0, roofY + 1.10, hd - 0.08], cementTrimMat);
+  box(exteriorStatic, [W + 0.22, 0.12, 0.32], [0, roofY + 1.10, -hd + 0.08], cementTrimMat);
+  box(exteriorStatic, [0.32, 0.12, D + 0.22], [-hw + 0.08, roofY + 1.10, 0], cementTrimMat);
+  box(exteriorStatic, [0.32, 0.12, D + 0.22], [hw - 0.08, roofY + 1.10, 0], cementTrimMat);
 
-  // Central Stairhead Mumty Room (covers Main Stairwell: lx ∈ [-1.85, +0.20], lz ∈ [-3.20, +3.10], open front at +Z!)
+  // Central Stairhead Mumty Room (চিলেকোঠা — Taltola House Style Plaster + Exposed Brick Rear Wall!)
   {
     const mW = MUM_MAX_X - MUM_MIN_X;
     const mD = MUM_MAX_Z - MUM_MIN_Z;
     const mCx = (MUM_MIN_X + MUM_MAX_X) * 0.5;
     const mCz = (MUM_MIN_Z + MUM_MAX_Z) * 0.5;
-    box(exteriorStatic, [mW + 0.24, 0.22, mD + 0.24], [mCx, upperRoofY - 0.11, mCz], shared.whiteBand);
-    box(exteriorStatic, [0.20, rH, mD], [MUM_MIN_X, roofY + rH * 0.5, mCz], softWhiteWall);
-    box(exteriorStatic, [0.20, rH, mD], [MUM_MAX_X, roofY + rH * 0.5, mCz], softWhiteWall);
-    box(exteriorStatic, [mW, rH, 0.20], [mCx, roofY + rH * 0.5, MUM_MIN_Z], softWhiteWall);
+    box(exteriorStatic, [mW + 0.30, 0.22, mD + 0.30], [mCx, upperRoofY - 0.11, mCz], cementTrimMat);
+    box(exteriorStatic, [0.20, rH, mD], [MUM_MIN_X, roofY + rH * 0.5, mCz], softWhiteWall, { uvScale: 2.4 });
+    box(exteriorStatic, [0.20, rH, mD], [MUM_MAX_X, roofY + rH * 0.5, mCz], softWhiteWall, { uvScale: 2.4 });
+    box(exteriorStatic, [mW, rH, 0.22], [mCx, roofY + rH * 0.5, MUM_MIN_Z], taltolaBrickMat, { uvScale: 2.4 });
   }
 
   // WALKABLE EXTERIOR STAIRCASE FROM MAIN OPEN ROOFTOP UP TO PENTHOUSE ROOM ROOF (roofY -> upperRoofY!)

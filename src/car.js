@@ -2886,18 +2886,36 @@ export function createDrivableCar(scene, manager, config) {
     }
     state.lastGroundY = targetGroundY;
 
-    // 2) Real 4-Wheel Terrain Pitch (Nose UP when climbing stairs/ramps!) & Roll (Side tilt on curbs!)
+    // Unconditionally stable critically-damped analytical spring (zero jitter/glitching at ANY FPS!)
+    const dampSpring = (cur, tgt, vel, smoothTime, lim) => {
+      const omega = 2.0 / Math.max(0.02, smoothTime);
+      const x = omega * dt;
+      const exp = 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x);
+      const diff = cur - tgt;
+      const tmp = (vel + omega * diff) * dt;
+      const nextVel = (vel - omega * tmp) * exp;
+      let nextVal = tgt + (diff + tmp) * exp;
+      if (Math.abs(nextVal) > lim) {
+        nextVal = Math.sign(nextVal) * lim;
+        return { val: nextVal, vel: 0 };
+      }
+      return { val: nextVal, vel: nextVel };
+    };
+
+    // 2) Real 4-Wheel Terrain Pitch & Roll (deadzoned on flat roads to eliminate micro-jitter)
+    const dPitchH = Math.abs(hFront - hRear) < 0.015 ? 0 : (hFront - hRear);
+    const dRollH = Math.abs(hLeft - hRight) < 0.015 ? 0 : (hLeft - hRight);
     const rawTerrainPitch = state.grounded
-      ? THREE.MathUtils.clamp(-Math.atan2(hFront - hRear, wb * 2.0), -0.58, 0.58)
-      : THREE.MathUtils.clamp(-state.velY * 0.035, -0.42, 0.42);
+      ? THREE.MathUtils.clamp(-Math.atan2(dPitchH, wb * 2.0), -0.48, 0.48)
+      : THREE.MathUtils.clamp(-state.velY * 0.032, -0.36, 0.36);
     const rawTerrainRoll = state.grounded
-      ? THREE.MathUtils.clamp(Math.atan2(hLeft - hRight, tw * 2.0), -0.34, 0.34)
+      ? THREE.MathUtils.clamp(Math.atan2(dRollH, Math.max(0.65, tw * 2.0)), -0.24, 0.24)
       : 0;
-    const alignRate = state.grounded ? 11.0 : 5.5;
+    const alignRate = state.grounded ? 10.0 : 5.0;
     state.terrainPitch = THREE.MathUtils.lerp(state.terrainPitch, rawTerrainPitch, Math.min(1, dt * alignRate));
     state.terrainRoll = THREE.MathUtils.lerp(state.terrainRoll, rawTerrainRoll, Math.min(1, dt * alignRate));
 
-    // Bicycles & rickshaws: rigid frame with zero suspension heave/pitch (only natural bicycle corner lean)
+    // Bicycles & rickshaws: planted rigid wheels + silky-smooth light weight-transfer pitch & natural corner lean
     if (config.isRickshaw || config.isBicycle) {
       state.suspHeave = 0;
       state.suspHeaveVel = 0;
@@ -2905,54 +2923,59 @@ export function createDrivableCar(scene, manager, config) {
       state.frontSuspVel = 0;
       state.rearSuspOffset = 0;
       state.rearSuspVel = 0;
-      state.dynPitch = 0;
-      state.dynPitchVel = 0;
       const speedMag = Math.abs(state.speed);
+      const targetCyclePitch = THREE.MathUtils.clamp(
+        -accel * 0.00045 + ((brake > 0 || handbrake) && state.speed > 0.5 ? 0.008 : (throttle > 0 ? -0.006 : 0)),
+        -0.014,
+        0.014,
+      );
+      const cp = dampSpring(state.dynPitch, targetCyclePitch, state.dynPitchVel, 0.16, 0.016);
+      state.dynPitch = cp.val;
+      state.dynPitchVel = cp.vel;
       const targetDynRoll = config.isBicycle
         ? THREE.MathUtils.clamp(-turnRate * Math.min(speedMag, 14) * 0.018, -0.22, 0.22)
         : 0;
-      state.dynRoll = THREE.MathUtils.lerp(state.dynRoll, targetDynRoll, Math.min(1, dt * 10.0));
+      state.dynRoll = THREE.MathUtils.lerp(state.dynRoll, targetDynRoll, Math.min(1, dt * 9.0));
       state.dynRollVel = 0;
-      state.pitch = state.terrainPitch;
+      state.pitch = state.terrainPitch + state.dynPitch;
       state.roll = state.terrainRoll + state.dynRoll;
       return;
     }
 
-    // Vehicle-class suspension profile (firmly damped ~0.85 damping ratio so suspension plays lightly & settles cleanly)
+    // Vehicle-class critically-damped suspension profile (zero bounce-glitching at any framerate)
     const isHeavyTall = /alphard|fortuner|hiace|townace/i.test(config.id || '');
-    const heaveStiff = config.isCNG ? 95.0 : (config.isBMW ? 78.0 : (isHeavyTall ? 54.0 : (config.isBike ? 74.0 : 64.0)));
-    const heaveDamp = config.isCNG ? 17.5 : (config.isBMW ? 15.5 : (isHeavyTall ? 12.8 : (config.isBike ? 15.0 : 14.0)));
+    const heaveTime = config.isCNG ? 0.14 : (config.isBMW ? 0.15 : (isHeavyTall ? 0.22 : (config.isBike ? 0.16 : 0.18)));
+    const pitchTime = config.isCNG ? 0.14 : (config.isBMW ? 0.16 : (isHeavyTall ? 0.23 : (config.isBike ? 0.17 : 0.19)));
+    const rollTime = config.isCNG ? 0.14 : (config.isBMW ? 0.16 : (isHeavyTall ? 0.22 : (config.isBike ? 0.18 : 0.19)));
     const cngScale = config.isCNG ? 0.35 : 1.0;
 
-    // 3) Chassis Vertical Spring-Damper Suspension (subtle micro-texture, never bouncy)
+    // 3) Chassis Vertical Suspension (subtle road feel, critically damped)
     const speedMag = Math.abs(state.speed);
     const speedRatio = Math.min(1, speedMag / 16.0);
     const heaveRoadBump = state.grounded && speedMag > 1.2
-      ? (Math.sin(state.roadTravelDist * 2.05) * 0.0045 + Math.sin(state.roadTravelDist * 4.9) * 0.0022) * speedRatio * cngScale
+      ? (Math.sin(state.roadTravelDist * 2.05) * 0.0038 + Math.sin(state.roadTravelDist * 4.9) * 0.0018) * speedRatio * cngScale
       : 0;
-    const heaveForce = (heaveRoadBump - state.suspHeave) * heaveStiff - state.suspHeaveVel * heaveDamp;
-    state.suspHeaveVel += heaveForce * dt;
-    const maxHeave = config.isCNG ? 0.016 : 0.048;
-    state.suspHeave = THREE.MathUtils.clamp(state.suspHeave + state.suspHeaveVel * dt, -maxHeave, maxHeave);
+    const maxHeave = config.isCNG ? 0.014 : 0.042;
+    const hv = dampSpring(state.suspHeave, heaveRoadBump, state.suspHeaveVel, heaveTime, maxHeave);
+    state.suspHeave = hv.val;
+    state.suspHeaveVel = hv.vel;
 
-    // 4) Subtle Damped Weight-Transfer Pitch on Speed-Up/Braking & Controlled Body Roll / Bike Lean
+    // 4) Smooth Critically-Damped Weight-Transfer Pitch on Speed-Up/Braking & Body Roll / Bike Lean
     const pitchRoadBump = state.grounded && speedMag > 1.2
-      ? (Math.sin(state.roadTravelDist * 2.15) * 0.0024 + Math.sin(state.roadTravelDist * 5.4) * 0.0012) * speedRatio * cngScale
+      ? (Math.sin(state.roadTravelDist * 2.15) * 0.0020 + Math.sin(state.roadTravelDist * 5.4) * 0.0010) * speedRatio * cngScale
       : 0;
-    const diveScale = config.isCNG ? 0.52 : (config.isBMW ? 0.72 : (isHeavyTall ? 1.10 : 0.88));
-    const brakeDive = (brake > 0 || handbrake) && state.speed > 0.6 ? (config.isBike ? 0.030 : 0.016 * diveScale) : 0;
-    const accelLift = throttle > 0 ? (config.isBike ? -0.024 : -0.012 * diveScale) : 0;
-    const maxPitchLim = config.isCNG ? 0.026 : (config.isBike ? 0.048 : 0.038);
+    const diveScale = config.isCNG ? 0.50 : (config.isBMW ? 0.70 : (isHeavyTall ? 1.05 : 0.85));
+    const brakeDive = (brake > 0 || handbrake) && state.speed > 0.6 ? (config.isBike ? 0.026 : 0.015 * diveScale) : 0;
+    const accelLift = throttle > 0 ? (config.isBike ? -0.022 : -0.011 * diveScale) : 0;
+    const maxPitchLim = config.isCNG ? 0.024 : (config.isBike ? 0.044 : 0.036);
     const targetDynPitch = THREE.MathUtils.clamp(
-      -accel * (config.isCNG ? 0.00050 : (config.isBike ? 0.00085 : 0.00080 * diveScale)) + brakeDive + accelLift + pitchRoadBump,
+      -accel * (config.isCNG ? 0.00045 : (config.isBike ? 0.00078 : 0.00075 * diveScale)) + brakeDive + accelLift + pitchRoadBump,
       -maxPitchLim,
       maxPitchLim,
     );
-    const pitchStiff = config.isCNG ? 86.0 : (config.isBike ? 64.0 : (config.isBMW ? 72.0 : (isHeavyTall ? 48.0 : 58.0)));
-    const pitchDamp = config.isCNG ? 16.5 : (config.isBike ? 13.5 : (config.isBMW ? 14.5 : (isHeavyTall ? 11.8 : 13.0)));
-    const pitchForce = (targetDynPitch - state.dynPitch) * pitchStiff - state.dynPitchVel * pitchDamp;
-    state.dynPitchVel += pitchForce * dt;
-    state.dynPitch = THREE.MathUtils.clamp(state.dynPitch + state.dynPitchVel * dt, -maxPitchLim, maxPitchLim);
+    const pt = dampSpring(state.dynPitch, targetDynPitch, state.dynPitchVel, pitchTime, maxPitchLim);
+    state.dynPitch = pt.val;
+    state.dynPitchVel = pt.vel;
 
     // Speed-breaker suspension impulse near Hadis Park, Boro Maath & Judge Court speed humps
     if (speedMag > 2.0 && !config.isRickshaw) {
@@ -2961,25 +2984,24 @@ export function createDrivableCar(scene, manager, config) {
         || (Math.abs(state.pos.x - 40.0) < 3.6 && Math.abs(state.pos.z - -522.0) < 0.65)
         || (Math.abs(state.pos.x - 143.0) < 3.6 && Math.abs(state.pos.z - -684.0) < 0.75);
       if (nearHump) {
-        const humpScale = config.isCNG ? 0.35 : 0.55;
-        state.suspHeaveVel += Math.min(0.75, speedMag * 0.042) * dt * 18.0 * humpScale;
-        state.dynPitchVel -= Math.min(0.75, speedMag * 0.045) * dt * 16.0 * humpScale;
-        if (config.isBike) state.frontSuspVel -= Math.min(0.65, speedMag * 0.045) * dt * 18.0;
+        const humpScale = config.isCNG ? 0.30 : 0.48;
+        state.suspHeaveVel += Math.min(0.55, speedMag * 0.032) * dt * 14.0 * humpScale;
+        state.dynPitchVel -= Math.min(0.55, speedMag * 0.035) * dt * 12.0 * humpScale;
+        if (config.isBike) state.frontSuspVel -= Math.min(0.45, speedMag * 0.032) * dt * 14.0;
       }
     }
 
-    const rollGain = config.isCNG ? 0.0018 : (config.isBMW ? 0.0026 : (isHeavyTall ? 0.0046 : 0.0034));
-    const maxRollLim = config.isBike ? 0.42 : (config.isCNG ? 0.032 : 0.068);
+    const rollGain = config.isCNG ? 0.0016 : (config.isBMW ? 0.0024 : (isHeavyTall ? 0.0042 : 0.0032));
+    const maxRollLim = config.isBike ? 0.42 : (config.isCNG ? 0.030 : 0.062);
     const targetDynRoll = config.isBike
       ? THREE.MathUtils.clamp(-turnRate * Math.min(speedMag, 26) * (config.bikeSportLean ? 0.022 : 0.019), -0.42, 0.42)
       : THREE.MathUtils.clamp(-turnRate * state.speed * rollGain, -maxRollLim, maxRollLim);
-    const rollStiff = config.isCNG ? 88.0 : (config.isBike ? 48.0 : (config.isBMW ? 68.0 : (isHeavyTall ? 46.0 : 56.0)));
-    const rollDamp = config.isCNG ? 16.8 : (config.isBike ? 11.8 : (config.isBMW ? 14.0 : (isHeavyTall ? 11.5 : 12.8)));
-    state.dynRollVel = (state.dynRollVel || 0) + ((targetDynRoll - state.dynRoll) * rollStiff - (state.dynRollVel || 0) * rollDamp) * dt;
-    state.dynRoll = THREE.MathUtils.clamp(state.dynRoll + state.dynRollVel * dt, -maxRollLim, maxRollLim);
+    const rl = dampSpring(state.dynRoll, targetDynRoll, state.dynRollVel || 0, rollTime, maxRollLim);
+    state.dynRoll = rl.val;
+    state.dynRollVel = rl.vel;
 
     // Combine Terrain Slope Orientation + Dynamic Suspension Tilt
-    const suspPitch = config.isBike ? THREE.MathUtils.clamp((state.rearSuspOffset - state.frontSuspOffset) * 0.45, -0.028, 0.024) : 0;
+    const suspPitch = config.isBike ? THREE.MathUtils.clamp((state.rearSuspOffset - state.frontSuspOffset) * 0.40, -0.024, 0.020) : 0;
     state.pitch = state.terrainPitch + state.dynPitch + suspPitch;
     state.roll = state.terrainRoll + state.dynRoll;
   }
@@ -3303,20 +3325,24 @@ export function createDrivableCar(scene, manager, config) {
       state.pedalPhase += pedalRate * dt;
     }
     if (config.isBike) {
-      // Subtle, well-damped Front Telescopic Fork Suspension (light compression on brake/accel, zero pogo bounce)
+      // Unconditionally stable critically-damped Front Telescopic Fork Suspension (zero fork jitter at any FPS!)
       const speedBlend = THREE.MathUtils.clamp(Math.abs(state.speed) / 12.0, 0, 1);
-      const frontRoadBump = (Math.sin(state.roadTravelDist * 1.9) * 0.0055 + Math.sin(state.roadTravelDist * 4.3) * 0.0025) * speedBlend;
-      const rearRoadBump = Math.sin((state.roadTravelDist - 1.38) * 1.9) * 0.002 * speedBlend;
-      const frontBrakeDive = (brake > 0 || handbrake) && state.speed > 0.9 ? -0.026 : (throttle > 0 ? 0.010 : 0);
-      const rearAccelSquat = throttle > 0 ? -0.008 : 0;
-      const targetFrontSusp = THREE.MathUtils.clamp(frontBrakeDive + frontRoadBump, -0.032, 0.016);
-      const targetRearSusp = THREE.MathUtils.clamp(rearAccelSquat + rearRoadBump, -0.012, 0.008);
+      const frontRoadBump = (Math.sin(state.roadTravelDist * 1.9) * 0.0045 + Math.sin(state.roadTravelDist * 4.3) * 0.0020) * speedBlend;
+      const rearRoadBump = Math.sin((state.roadTravelDist - 1.38) * 1.9) * 0.0018 * speedBlend;
+      const frontBrakeDive = (brake > 0 || handbrake) && state.speed > 0.9 ? -0.024 : (throttle > 0 ? 0.009 : 0);
+      const rearAccelSquat = throttle > 0 ? -0.007 : 0;
+      const targetFrontSusp = THREE.MathUtils.clamp(frontBrakeDive + frontRoadBump, -0.030, 0.015);
+      const targetRearSusp = THREE.MathUtils.clamp(rearAccelSquat + rearRoadBump, -0.010, 0.007);
 
-      const fForce = (targetFrontSusp - state.frontSuspOffset) * 85.0 - state.frontSuspVel * 16.0;
-      state.frontSuspVel += fForce * dt;
-      state.frontSuspOffset = THREE.MathUtils.clamp(state.frontSuspOffset + state.frontSuspVel * dt, -0.036, 0.018);
+      const fOmega = 2.0 / 0.15;
+      const fx = fOmega * dt;
+      const fExp = 1.0 / (1.0 + fx + 0.48 * fx * fx + 0.235 * fx * fx * fx);
+      const fDiff = state.frontSuspOffset - targetFrontSusp;
+      const fTmp = (state.frontSuspVel + fOmega * fDiff) * dt;
+      state.frontSuspVel = (state.frontSuspVel - fOmega * fTmp) * fExp;
+      state.frontSuspOffset = THREE.MathUtils.clamp(targetFrontSusp + (fDiff + fTmp) * fExp, -0.034, 0.016);
 
-      state.rearSuspOffset = THREE.MathUtils.lerp(state.rearSuspOffset, targetRearSusp, Math.min(1, dt * 11.0));
+      state.rearSuspOffset = THREE.MathUtils.lerp(state.rearSuspOffset, targetRearSusp, Math.min(1, dt * 10.0));
     }
     update4WheelTerrainAndSuspension(dt, envRef, groundHeightFn, { accel, turnRate, brake, handbrake, throttle });
 
