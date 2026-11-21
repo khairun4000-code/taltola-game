@@ -683,6 +683,38 @@ function createAliaMaterialBank(m) {
     metalness: 0.02,
   });
 
+  // High-detail vibrant Durba grass lawn ground texture so the entire field is lush green turf
+  const durbaCanvas = document.createElement('canvas');
+  durbaCanvas.width = 512;
+  durbaCanvas.height = 512;
+  const dctx = durbaCanvas.getContext('2d');
+  const drnd = seeded(19529);
+  dctx.fillStyle = '#3d7424';
+  dctx.fillRect(0, 0, 512, 512);
+  const turfColors = ['#4d8a2c', '#35681d', '#5c9c36', '#468028', '#68ab3f', '#2d5918'];
+  for (let i = 0; i < 18000; i++) {
+    dctx.strokeStyle = turfColors[Math.floor(drnd() * turfColors.length)];
+    dctx.lineWidth = 1.0 + drnd() * 1.4;
+    const bx = drnd() * 512;
+    const by = drnd() * 512;
+    const ang = (drnd() - 0.5) * 2.2 - Math.PI * 0.5;
+    const len = 4 + drnd() * 9;
+    dctx.beginPath();
+    dctx.moveTo(bx, by);
+    dctx.lineTo(bx + Math.cos(ang) * len, by + Math.sin(ang) * len);
+    dctx.stroke();
+  }
+  const durbaTurfTex = new THREE.CanvasTexture(durbaCanvas);
+  durbaTurfTex.colorSpace = THREE.SRGBColorSpace;
+  durbaTurfTex.wrapS = durbaTurfTex.wrapT = THREE.RepeatWrapping;
+  durbaTurfTex.anisotropy = 8;
+  const durbaTurfMat = new THREE.MeshStandardMaterial({
+    map: durbaTurfTex,
+    roughness: 0.88,
+    metalness: 0.0,
+  });
+  attachDerivedPBRMaps(durbaTurfMat, durbaTurfTex, { strength: 1.5, roughBase: 0.88, normalScale: 0.55 });
+
   const bank = {
     porticoBrick: porticoBrickMat,
     granite: graniteMat,
@@ -725,7 +757,7 @@ function createAliaMaterialBank(m) {
     flowerRed: new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.82 }),
     flowerGold: new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.82 }),
     moss: m.moss || new THREE.MeshStandardMaterial({ color: 0x2e6f3e, roughness: 0.90 }),
-    grassTurf: new THREE.MeshStandardMaterial({ color: 0x3b7d35, roughness: 0.94 }),
+    grassTurf: durbaTurfMat,
     soilBed: new THREE.MeshStandardMaterial({ color: 0x261d14, roughness: 0.99 }),
     chalkLine: new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.92 }),
     awningBlue: new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.62 }),
@@ -1642,10 +1674,10 @@ export function buildAliaMadrasahDistrict(parent, m) {
   addRedGreenFenceSpan(staticG, bank, 195.5, 111.6, 228.5, 111.6, 16);
 
   // Lush green turf beds under the 3D Durba Grass Clumps (expanded for the 64m campus!)
-  box(staticG, [37.0, 0.04, 32.0], [211.5, 0.012, 87.8], m.grass || bank.grassTurf, { castShadow: false, uvScale: 4.5 });
-  box(staticG, [37.0, 0.04, 32.0], [211.5, 0.012, 128.2], m.grass || bank.grassTurf, { castShadow: false, uvScale: 4.5 });
+  box(staticG, [37.0, 0.04, 32.0], [211.5, 0.012, 87.8], bank.grassTurf, { castShadow: false, uvScale: 12.0 });
+  box(staticG, [37.0, 0.04, 32.0], [211.5, 0.012, 128.2], bank.grassTurf, { castShadow: false, uvScale: 12.0 });
 
-  // GPU-Instanced Real 3D Durba Grass Clumps
+  // GPU-Instanced Real 3D Durba Grass Clumps (7-sprig patch x 5,400 = 37,800 fine 3D grass sprigs!)
   const grassLoader = new GLTFLoader();
   grassLoader.load('./assets/alia_grass_clumps.glb', (gltf) => {
     const clumpTemplates = [];
@@ -1677,7 +1709,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
       { x0: 193.0, x1: 229.5, z0: 71.5, z1: 103.8 },
       { x0: 193.0, x1: 229.5, z0: 112.2, z1: 142.5 },
     ];
-    const perClumpCount = 5400;
+    const perClumpCount = 7200;
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
 
@@ -1691,14 +1723,14 @@ export function buildAliaMadrasahDistrict(parent, m) {
         const gx = rect.x0 + rand() * (rect.x1 - rect.x0);
         const gz = rect.z0 + rand() * (rect.z1 - rect.z0);
         if (gx > 200.2 && gx < 204.5 && gz > 101.5 && gz < 104.2) {
-          dummy.position.set(gx + 6.5, 0.018, gz - 4.5);
+          dummy.position.set(gx + 6.5, 0.02, gz - 4.5);
         } else {
-          dummy.position.set(gx, 0.018, gz);
+          dummy.position.set(gx, 0.02, gz);
         }
-        dummy.rotation.set((rand() - 0.5) * 0.08, rand() * Math.PI * 2, (rand() - 0.5) * 0.08);
-        const sx = 0.14 + rand() * 0.08;
-        const sy = 0.09 + rand() * 0.05;
-        const sz = 0.14 + rand() * 0.08;
+        dummy.rotation.set((rand() - 0.5) * 0.06, rand() * Math.PI * 2, (rand() - 0.5) * 0.06);
+        const sx = 0.44 + rand() * 0.22;
+        const sy = 0.10 + rand() * 0.05;
+        const sz = 0.44 + rand() * 0.22;
         dummy.scale.set(sx, sy, sz);
         dummy.updateMatrix();
         inst.setMatrixAt(i, dummy.matrix);

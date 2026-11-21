@@ -1469,10 +1469,10 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
           const gx = rect.x0 + rand() * (rect.x1 - rect.x0);
           const gz = rect.z0 + rand() * (rect.z1 - rect.z0);
           dummy.position.set(gx, 0.018, gz);
-          dummy.rotation.set((rand() - 0.5) * 0.08, rand() * Math.PI * 2, (rand() - 0.5) * 0.08);
-          const sx = 0.14 + rand() * 0.08;
-          const sy = 0.09 + rand() * 0.05;
-          const sz = 0.14 + rand() * 0.08;
+          dummy.rotation.set((rand() - 0.5) * 0.06, rand() * Math.PI * 2, (rand() - 0.5) * 0.06);
+          const sx = 0.38 + rand() * 0.18;
+          const sy = 0.10 + rand() * 0.05;
+          const sz = 0.38 + rand() * 0.18;
           dummy.scale.set(sx, sy, sz);
           dummy.updateMatrix();
           inst.setMatrixAt(i, dummy.matrix);
