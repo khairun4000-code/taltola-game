@@ -15,6 +15,7 @@ import { createGTAPhoneUI } from './gta-phone.js';
 import { VOICE_CLIPS, VOICE_BUS } from './voice-clips.js';
 import { createAliaPrincipalMic } from './alia-pa-mic.js';
 import { createGTACharacterSwitch } from './gta-character-switch.js';
+import { createSpecialAbilitySystem } from './special-abilities.js';
 import { createAtmosphericSkyAndPMREM, TIME_OF_DAY_PRESETS } from './aaa-shaders.js';
 import { CAR_FLEET_CONFIGS, createDrivableCar, createDrivableCarFleet } from './car.js';
 import './style.css';
@@ -170,7 +171,7 @@ function applyTimeOfDay(nextId) {
     }
     environment?.setNightFactor?.(preset.nightFactor);
   }
-  const selectiveEnv = quality === 'ultra' ? null : (skySystem?.getEnvTexture?.() || null);
+  const selectiveEnv = (quality === 'ultra' || quality === 'high') ? null : (skySystem?.getEnvTexture?.() || null);
   sceneMaterials?.setEnvironmentMap?.(selectiveEnv);
   environment?.tower?.setEnvironmentMap?.(selectiveEnv);
   if (Object.keys(characterActors).length) {
@@ -458,6 +459,7 @@ function notifyMosqueSilence(msg = '🕌 মডেল মসজিদে ফা�
 
 function triggerPlayerCombatVoice() {
   if (!playerCharacter || isPosInModelMosque(playerPos)) return;
+  specialAbility?.onCombatHit?.(playerPos);
   const startedPartnerExchange = autonomousPartner.triggerAnnoyedReaction(playerPos, true, playerCharacter);
   if (!startedPartnerExchange) {
     playerCharacter.playCombatVoice?.();
@@ -495,6 +497,7 @@ let khulnaMapUI = null;
 let gtaPhoneUI = null;
 let aliaPrincipalMic = null;
 let gtaCharacterSwitch = null;
+let specialAbility = null;
 let selfiePrevCamMode = null;
 let lastMinimapUpdate = 0;
 let lastSunAnchorX = 0;
@@ -1145,6 +1148,7 @@ function selectActiveCharacter(charId, { triggerGreeting = true, refreshCam = tr
   }
 
   gtaPhoneUI?.setCharacterTheme?.(targetProfile.id);
+  specialAbility?.setCharacter?.(targetProfile.id);
 
   for (const card of charSelectCards) {
     card.classList.toggle('active', card.dataset.charSelect === targetProfile.id);
@@ -1261,7 +1265,8 @@ function setUltraFastPerf(enabled) {
   const dpr = window.devicePixelRatio || 1;
   const isLow = quality === 'low';
   if (enabled && isLow && softwareRendererDetected) {
-    renderer.setPixelRatio(Math.min(dpr, 0.88));
+    // Never drop resolution below native 1.0x
+    renderer.setPixelRatio(Math.min(dpr, 1.0));
     renderer.setSize(window.innerWidth, window.innerHeight);
     scene.fog.near = 140;
     scene.fog.far = 330;
@@ -1315,22 +1320,22 @@ function applyQuality(nextQuality) {
   const isLow = quality === 'low';
   const isUltra = quality === 'ultra';
   const isHigh = quality === 'high';
-  // Crisp native pixel ratio on hardware GPUs (never force blurry 0.85 or wasteful >dpr supersampling on 1080p!)
+  // Crisp full native PC pixel ratios (ZERO resolution drop — GTA V/VI sharpness with smooth 60-120 FPS!)
   const ratios = {
-    low: (ultraFastMode && softwareRendererDetected) ? Math.min(dpr, 0.88) : Math.min(dpr, 1.0),
-    medium: Math.min(dpr, 1.0),
-    high: Math.min(dpr, 1.25),
-    ultra: Math.min(dpr * 1.25, 1.65),
+    low: Math.min(dpr, 1.0),
+    medium: Math.min(dpr, 1.25),
+    high: Math.min(dpr, 1.5),
+    ultra: Math.min(dpr, 2.0),
   };
-  const shadowSizes = { low: 512, medium: 1024, high: 1536, ultra: 2048 };
+  const shadowSizes = { low: 1024, medium: 1024, high: 2048, ultra: 2048 };
   const useShadows = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : !isLow);
   const activeRatio = ratios[quality] ?? ratios.high;
 
   renderer.setPixelRatio(activeRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.toneMappingExposure = isUltra ? 1.12 : (isHigh ? 1.08 : (isLow ? 1.05 : 1.06));
+  renderer.toneMappingExposure = isUltra ? 1.12 : (isHigh ? 1.09 : (isLow ? 1.05 : 1.07));
   if (composer) {
-    composer.setPixelRatio(Math.min(activeRatio, 1.25));
+    composer.setPixelRatio(activeRatio);
     composer.setSize(window.innerWidth, window.innerHeight);
     bloomPass?.setSize?.(
       Math.max(256, Math.floor(window.innerWidth * 0.5)),
@@ -1338,7 +1343,7 @@ function applyQuality(nextQuality) {
     );
   }
   renderer.shadowMap.enabled = useShadows;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = (isHigh || isUltra) ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
   if (useShadows) {
     renderer.shadowMap.needsUpdate = true;
@@ -2851,6 +2856,23 @@ async function initialize() {
   aliaPrincipalMic = createAliaPrincipalMic({
     onStatusToast: (msg) => gtaPhoneUI?.showToast?.(msg),
   });
+  specialAbility = createSpecialAbilitySystem({
+    scene,
+    onToast: (msg) => gtaPhoneUI?.showToast?.(msg),
+  });
+  specialAbility.setCharacter(selectedCharacterId);
+  document.querySelector('#ability-hud-bar')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!started || inStudio) return;
+    controls.getHorizontalVectors(forwardVec, rightVec);
+    specialAbility?.toggle({
+      pos: getDrivingCar()?.state?.pos || playerPos,
+      forwardVec,
+      isDriving: Boolean(getDrivingCar()),
+      inMosque: isPosInModelMosque(playerPos),
+      playerCharacter,
+    });
+  });
   gtaCharacterSwitch = createGTACharacterSwitch({
     camera,
     getActiveCharId: () => selectedCharacterId,
@@ -3943,6 +3965,20 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
+  // GTA V Special Ability Toggle ([CapsLock] primary PC key, plus [Z] instant backup — works on foot & while driving!)
+  if ((event.code === 'CapsLock' || event.code === 'KeyZ') && !event.repeat) {
+    event.preventDefault();
+    controls.getHorizontalVectors(forwardVec, rightVec);
+    specialAbility?.toggle({
+      pos: getDrivingCar()?.state?.pos || playerPos,
+      forwardVec,
+      isDriving: Boolean(getDrivingCar()),
+      inMosque: isPosInModelMosque(playerPos),
+      playerCharacter,
+    });
+    return;
+  }
+
   // Toggle Drivable Vehicle / Rickshaw Mode with [T] anytime
   if (event.code === 'KeyT' && !event.repeat) {
     event.preventDefault();
@@ -4168,7 +4204,7 @@ window.addEventListener('keydown', (event) => {
   } else if (event.code === 'KeyV' || event.code === 'KeyB') {
     event.preventDefault();
     toggleCameraView();
-  } else if (event.code === 'KeyR' || event.code === 'CapsLock') {
+  } else if (event.code === 'KeyR') {
     event.preventDefault();
     toggleRunMode();
   } else if (event.code === 'KeyX') {
@@ -5514,7 +5550,13 @@ function updateMovement(delta) {
   );
 
   let maxSpeed = inWater ? (isSprinting ? 4.4 : 2.9) : (isSprinting ? 7.65 : 3.45);
+  maxSpeed *= (specialAbility?.speedMultiplier ?? 1.0);
   if (landRecoveryTimer > 0) maxSpeed *= 0.45;
+  if (specialAbility?.dashActive && !inWater && !climbState.active && !ledgeHangState.active) {
+    playerPos.x += specialAbility.dashDirX * 15.5 * delta;
+    playerPos.z += specialAbility.dashDirZ * 15.5 * delta;
+    applyWorldCollisions(playerPos);
+  }
 
   if (ledgeHangState.active) {
     playerPos.set(ledgeHangState.grabX, ledgeHangState.grabY, ledgeHangState.grabZ);
@@ -5585,7 +5627,7 @@ function updateMovement(delta) {
 
   // Smooth dynamic speed-rush FOV boost (and natural portrait FOV when viewing face in Front camera!)
   const isFrontCam = playerCharacter?.state?.cameraMode === 'front';
-  const targetFov = isFrontCam ? (isSprinting ? 48.0 : 42.0) : (isSprinting ? Math.min(82.0, baseWalkFov + 7.5) : baseWalkFov);
+  const targetFov = isFrontCam ? (isSprinting ? 48.0 : 42.0) : THREE.MathUtils.clamp((isSprinting ? Math.min(82.0, baseWalkFov + 7.5) : baseWalkFov) + (specialAbility?.fovKick ?? 0), 46.0, 86.0);
   if (Math.abs(camera.fov - targetFov) > 0.05) {
     camera.fov += (targetFov - camera.fov) * Math.min(1, delta * 8.5);
     camera.updateProjectionMatrix();
@@ -5642,7 +5684,8 @@ function updateMovement(delta) {
       const isHighJump = doubleSpaceJumpPending;
       doubleSpaceJumpPending = false;
       const doFlip = isSprinting && !inWater && !diveState.active && !isHighJump;
-      verticalVelocity = inWater ? 6.45 : (isHighJump ? 8.35 : (doFlip ? 6.95 : 6.25));
+      const jumpBoost = specialAbility?.jumpMultiplier ?? 1.0;
+      verticalVelocity = (inWater ? 6.45 : (isHighJump ? 8.35 : (doFlip ? 6.95 : 6.25))) * jumpBoost;
       isFlipping = doFlip;
       grounded = false;
       inWater = false;
@@ -5680,6 +5723,11 @@ function updateMovement(delta) {
     playerPos.y = targetEyeY;
     verticalVelocity = 0;
     airPeakY = playerPos.y;
+  } else if (!grounded && !climbState.active && !ledgeHangState.active && !inWater && jumpBuffer > 0 && specialAbility?.consumeAirJump?.(playerPos)) {
+    jumpBuffer = 0;
+    verticalVelocity = 7.4;
+    isFlipping = true;
+    airPeakY = playerPos.y;
   } else if (grounded && Math.abs(playerPos.y - targetEyeY) <= 0.95) {
     playerPos.y += (targetEyeY - playerPos.y) * Math.min(1, delta * 22.0);
     verticalVelocity = 0;
@@ -5695,6 +5743,7 @@ function updateMovement(delta) {
       verticalVelocity = 0;
       grounded = true;
       isFlipping = false;
+      specialAbility?.onGrounded?.();
       if (dropH > 5.2) {
         landRecoveryClip = 'HitBody';
         landRecoveryTimer = 0.72;
@@ -5871,7 +5920,13 @@ let lastFullMapUpdate = 0;
 function animate() {
   if (!ready) return;
   const rawDelta = Math.min(clock.getDelta(), 0.05);
-  const delta = rawDelta * (gtaCharacterSwitch?.timeScale ?? 1.0);
+  specialAbility?.update?.(rawDelta, {
+    isDriving: Boolean(getDrivingCar()),
+    inStudio,
+    inMosque: isPosInModelMosque(playerPos),
+    playerCharacter,
+  });
+  const delta = rawDelta * (gtaCharacterSwitch?.timeScale ?? 1.0) * (specialAbility?.timeScale ?? 1.0);
   const elapsed = clock.elapsedTime;
   const isLow = quality === 'low';
 
@@ -5960,6 +6015,7 @@ function animate() {
       renderActiveScene();
       camera.quaternion.copy(savedCameraQuat);
     } else {
+      specialAbility?.applyCameraShake?.(camera);
       renderActiveScene();
     }
   }

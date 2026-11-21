@@ -16,6 +16,7 @@
     <div id="vehicle-fade" class="vehicle-fade" aria-hidden="true"></div>
     <div id="freecam-bokeh" class="freecam-bokeh" aria-hidden="true"></div>
     <div id="selfie-flash" class="selfie-flash" aria-hidden="true"></div>
+    <div id="ability-fx-overlay" class="ability-fx-overlay" aria-hidden="true"></div>
     <div id="gta-cheat-toast" class="gta-cheat-toast hidden" role="status"></div>
 
     <section id="loading" class="loading-screen">
@@ -360,6 +361,7 @@
               <div class="gta-ctrl-row"><span>Move</span><kbd>W A S D</kbd></div>
               <div class="gta-ctrl-row"><span>Sprint / Auto-Run</span><kbd>SHIFT / R</kbd></div>
               <div class="gta-ctrl-row"><span>Jump / Grab Ledge</span><kbd>SPACE</kbd></div>
+              <div class="gta-ctrl-row"><span>Special Ability (Sabit / Huzza)</span><kbd>CAPS LOCK / Z</kbd></div>
               <div class="gta-ctrl-row"><span>Parkour Dive</span><kbd>Q</kbd></div>
               <div class="gta-ctrl-row"><span>Show / Hide Mouse Cursor</span><kbd>?</kbd></div>
             </div>
@@ -424,6 +426,13 @@
       </div>
       <div class="location-tag"><span class="location-dot"></span> TALTOLA HOSPITAL CROSS RD</div>
       <div id="partner-status-pill" class="partner-status-pill hidden"><span class="partner-dot"></span> <span id="partner-status-text">Partner spawning...</span></div>
+      <div id="ability-hud-bar" class="ability-hud-bar theme-sabit" role="status" title="Press CapsLock or Z to toggle Special Ability">
+        <div class="ability-hud-top">
+          <span id="ability-hud-label">⚡ সাবিদ রিফ্লেক্স [CAPS]</span>
+          <span id="ability-hud-pct">100%</span>
+        </div>
+        <div class="ability-hud-track"><div id="ability-hud-fill" class="ability-hud-fill"></div></div>
+      </div>
       <button id="minimap-dock" class="minimap-dock" type="button" title="Open City Map &amp; Menu [ESC]">
         <canvas id="khulna-minimap" width="148" height="148"></canvas>
         <div class="minimap-footer">
