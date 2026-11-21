@@ -831,6 +831,61 @@ export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
   // Solid raised concrete courtyard apron so the front stairs sit cleanly above the pond water plane (fixes Swim bug!)
   const plazaMat = new THREE.MeshStandardMaterial({ color: 0xded9cf, roughness: 0.85, metalness: 0.02 });
   box(staticG, [38.0, 0.34, 38.0], [176.5, 0.17, 166.0], plazaMat, { castShadow: false });
+
+  // Lush 3D Durba Grass planted inside the Central Marble Staircase Planter Box (X=180.95..183.42, Z=164.88..167.12, Y=2.66m!)
+  const planterGrassLoader = new GLTFLoader();
+  planterGrassLoader.load('./assets/alia_grass_clumps.glb', (gltf) => {
+    const templates = [];
+    gltf.scene.updateMatrixWorld(true);
+    gltf.scene.traverse((child) => {
+      if (!child.isMesh || !child.geometry) return;
+      const geom = child.geometry.clone();
+      geom.computeBoundingBox();
+      const bb = geom.boundingBox;
+      if (bb) {
+        geom.translate(-(bb.min.x + bb.max.x) * 0.5, -bb.min.y, -(bb.min.z + bb.max.z) * 0.5);
+      }
+      const srcMat = Array.isArray(child.material) ? child.material[0] : child.material;
+      const mat = new THREE.MeshStandardMaterial({
+        map: srcMat?.map || null,
+        color: srcMat?.map ? new THREE.Color(0xffffff) : new THREE.Color(0x3f7d24),
+        roughness: 0.85,
+        metalness: 0.0,
+        side: THREE.DoubleSide,
+      });
+      templates.push({ geom, mat });
+    });
+    if (!templates.length) return;
+
+    const planterY = MOSQUE_BASE_Y + 2.54 * MOSQUE_AAA_SCALE; // ~2.66m (flush on planter turf!)
+    const cols = 6;
+    const rows = 6;
+    const count = cols * rows;
+    const dummy = new THREE.Object3D();
+    for (const { geom, mat } of templates) {
+      const inst = new THREE.InstancedMesh(geom, mat, count);
+      inst.castShadow = false;
+      inst.receiveShadow = true;
+      let idx = 0;
+      for (let ix = 0; ix < cols; ix++) {
+        for (let iz = 0; iz < rows; iz++) {
+          const jitterX = Math.sin(idx * 12.9898) * 0.12;
+          const jitterZ = Math.cos(idx * 78.233) * 0.12;
+          const px = 181.02 + (ix / (cols - 1)) * 2.34 + jitterX;
+          const pz = 164.94 + (iz / (rows - 1)) * 2.12 + jitterZ;
+          const scXZ = 0.52 + (Math.abs(Math.sin(idx * 4.7)) * 0.24);
+          const scY = 0.42 + (Math.abs(Math.cos(idx * 3.1)) * 0.22);
+          dummy.position.set(px, planterY, pz);
+          dummy.rotation.set(0, idx * 1.17, 0);
+          dummy.scale.set(scXZ, scY, scXZ);
+          dummy.updateMatrix();
+          inst.setMatrixAt(idx++, dummy.matrix);
+        }
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      dynamicG.add(inst);
+    }
+  });
   return;
 
   const whiteWallTex = makeWhiteMarbleWallTexture('#f7f5ef', '#ddd5c5', 20261);
