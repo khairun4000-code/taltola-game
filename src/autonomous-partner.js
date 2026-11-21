@@ -26,7 +26,7 @@ export function createAutonomousPartner() {
   let actionTimer = 9.0;
   let statusText = 'এক জায়গায় দাঁড়িয়ে আছে';
 
-  // Synced Combat Exchange State (non-spammy, turn-based)
+  // Synced Alternating Combat Voice State (ONLY during fighting: Huzzatullah -> Sabit -> Huzzatullah -> Sabit!)
   let exchangeCooldown = 0;
   let exchangeActive = false;
   let replyTimer = 0;
@@ -35,6 +35,7 @@ export function createAutonomousPartner() {
   let angryClipName = 'Angry1';
   let huzzatullahStep = 0;
   let sabitStep = 0;
+  let nextTurnSpeaker = 'huzzatullah'; // Always starts with Huzzatullah -> Sabit -> Huzzatullah!
 
   function updateStatusLabel(clip) {
     if (angryReactTimer > 0) statusText = 'মারপিটে জবাব দিচ্ছে!';
@@ -51,6 +52,7 @@ export function createAutonomousPartner() {
     exchangeActive = false;
     replyTimer = 0;
     pendingReplyFn = null;
+    nextTurnSpeaker = 'huzzatullah';
   }
 
   function setActor(nextActor, nextProfile) {
@@ -126,15 +128,21 @@ export function createAutonomousPartner() {
     if (exchangeActive || exchangeCooldown > 0 || VOICE_BUS.isAnySpeaking()) return;
 
     const partnerIsHuzzatullah = profile?.id === 'kurta_blue';
-    const playerIsHuzzatullah = !partnerIsHuzzatullah;
+    const huzzActor = partnerIsHuzzatullah ? actor : playerCharacter;
+    const sabitActor = partnerIsHuzzatullah ? playerCharacter : actor;
 
-    const firstClip = playerIsHuzzatullah ? nextHuzzatullahClip() : nextSabitClip();
-    const secondClip = partnerIsHuzzatullah ? nextHuzzatullahClip() : nextSabitClip();
+    const speaker = nextTurnSpeaker; // Strictly: Huzzatullah -> Sabit -> Huzzatullah -> Sabit!
+    const speakActor = speaker === 'huzzatullah' ? huzzActor : sabitActor;
+    const replySpeaker = speaker === 'huzzatullah' ? 'sabit' : 'huzzatullah';
+    const replyActor = replySpeaker === 'huzzatullah' ? huzzActor : sabitActor;
+
+    const firstClip = speaker === 'huzzatullah' ? nextHuzzatullahClip() : nextSabitClip();
+    const secondClip = replySpeaker === 'huzzatullah' ? nextHuzzatullahClip() : nextSabitClip();
     if (!firstClip && !secondClip) return;
 
     exchangeActive = true;
-    exchangeCooldown = 6.5; // Comfortable cooldown so voices stay fun and never annoying!
-    angryReactTimer = 5.5;
+    exchangeCooldown = 4.2; // Natural non-annoying gap before next synced round!
+    angryReactTimer = 5.2;
     angryClipName = partnerIsHuzzatullah ? (Math.random() < 0.5 ? 'Angry1' : 'Angry2') : 'HitBody';
     if (playerPos) {
       yaw = Math.atan2(playerPos.x - pos.x, playerPos.z - pos.z);
@@ -143,23 +151,27 @@ export function createAutonomousPartner() {
     actor.setExpression?.(partnerIsHuzzatullah ? 'angry' : 'surprised');
     updateStatusLabel(angryClipName);
 
-    const schedulePartnerReply = () => {
+    const scheduleReply = () => {
       if (!secondClip) {
+        nextTurnSpeaker = 'huzzatullah';
         exchangeActive = false;
         return;
       }
-      replyTimer = 0.38; // Clean 380ms natural breath pause between Turn 1 & Turn 2!
+      replyTimer = 0.36; // Crisp 360ms breath pause between Huzzatullah & Sabit!
       pendingReplyFn = () => {
-        if (!actor) {
+        if (!replyActor) {
           exchangeActive = false;
           return;
         }
-        angryReactTimer = Math.max(angryReactTimer, 3.6);
-        actor.setExpression?.(partnerIsHuzzatullah ? 'angry' : 'surprised');
-        actor.playVoiceClip?.(secondClip, {
-          expression: partnerIsHuzzatullah ? 'angry' : 'surprised',
+        angryReactTimer = Math.max(angryReactTimer, 3.4);
+        const replyExpr = replySpeaker === 'huzzatullah' ? 'angry' : 'surprised';
+        replyActor.setExpression?.(replyExpr);
+        replyActor.playVoiceClip?.(secondClip, {
+          expression: replyExpr,
           volume: 0.90,
           onEnd: () => {
+            // Ready for Huzzatullah to lead the next synced combat turn!
+            nextTurnSpeaker = 'huzzatullah';
             exchangeActive = false;
             angryReactTimer = Math.min(angryReactTimer, 0.35);
             actor?.setExpression?.('normal');
@@ -168,22 +180,23 @@ export function createAutonomousPartner() {
       };
     };
 
-    // Turn 1: Player character speaks clearly first, then Turn 2: Partner replies in sync!
+    // Turn 1: Always starts with Huzzatullah -> then Turn 2: Sabit replies in sync!
     if (firstClip) {
-      playerCharacter.playVoiceClip?.(firstClip, {
-        expression: playerIsHuzzatullah ? 'angry' : 'surprised',
+      const firstExpr = speaker === 'huzzatullah' ? 'angry' : 'surprised';
+      speakActor.playVoiceClip?.(firstClip, {
+        expression: firstExpr,
         volume: 0.88,
         onEnd: () => {
-          schedulePartnerReply();
+          scheduleReply();
         },
       });
     } else {
-      schedulePartnerReply();
+      scheduleReply();
     }
   }
 
   function triggerAnnoyedReaction(playerPos, fromFight = false, playerCharacter = null) {
-    if (!fromFight) return; // Never annoyingly yell just for standing near!
+    if (!fromFight) return;
     startSyncedCombatExchange(playerPos, playerCharacter);
   }
 

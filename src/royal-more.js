@@ -2518,19 +2518,143 @@ function buildSatkhiraJadobGhoshDairy(staticG, dynamicG, bank, phys) {
 }
 
 /* ============================================================================
- * 8. COMPLETE ROYAL MORE BUS COUNTER STRIP (KDA Avenue South)
+ * 8. AUTHENTIC ROYAL MORE BUS COUNTER STRIP (Original-Style Brand Logos & Banners)
  * ========================================================================== */
+function makeBusCounterBannerTexture(cInfo) {
+  const W = 640;
+  const H = 224;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const ctx = c.getContext('2d');
+
+  const grad = ctx.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, cInfo.bg);
+  grad.addColorStop(0.65, cInfo.bg2 || cInfo.bg);
+  grad.addColorStop(1, '#090d16');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.beginPath();
+  ctx.moveTo(W - 170, 0);
+  ctx.lineTo(W - 70, 0);
+  ctx.lineTo(W - 140, H);
+  ctx.lineTo(W - 240, H);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = cInfo.accent || '#fde047';
+  ctx.lineWidth = 7;
+  ctx.strokeRect(5, 5, W - 10, H - 10);
+
+  // Original-style Brand Emblem Circle Logo on Left
+  const lx = 78;
+  const ly = 96;
+  ctx.save();
+  ctx.fillStyle = cInfo.logoBg || '#ffffff';
+  ctx.beginPath();
+  ctx.arc(lx, ly, 52, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = cInfo.accent || '#fde047';
+  ctx.lineWidth = 5;
+  ctx.stroke();
+  ctx.fillStyle = cInfo.logoFg || cInfo.bg;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '900 34px "Manrope", "Arial Black", sans-serif';
+  ctx.fillText(cInfo.mono, lx, ly - 5);
+  ctx.fillStyle = cInfo.logoSubFg || '#dc2626';
+  ctx.font = 'bold 13px "Manrope", sans-serif';
+  ctx.fillText(cInfo.badge, lx, ly + 24);
+  ctx.restore();
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 42px "Noto Sans Bengali", "Segoe UI", sans-serif';
+  ctx.fillText(cInfo.name, 148, 62, W - 170);
+
+  ctx.fillStyle = cInfo.accent || '#fde047';
+  ctx.font = '800 22px "Manrope", sans-serif';
+  ctx.fillText(cInfo.enBrand, 148, 108, W - 170);
+
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(12, 152, W - 24, 58);
+  ctx.fillStyle = cInfo.accent || '#fde047';
+  ctx.fillRect(12, 152, 8, 58);
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = '600 19px "Noto Sans Bengali", "Manrope", sans-serif';
+  ctx.fillText(cInfo.route, 30, 174, W - 50);
+  ctx.fillStyle = '#fde047';
+  ctx.font = 'bold 17px "Manrope", "Noto Sans Bengali", sans-serif';
+  ctx.fillText(`রয়্যাল মোড় কাউন্টার · ${cInfo.hotline}`, 30, 198, W - 50);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
 function buildBusCounterStrip(staticG, dynamicG, bank, phys) {
   const bx = -797.5;
   const bz = -260.0;
   const rotY = Math.PI - 0.11;
   const counters = [
-    { name: 'গ্রীন লাইন পরিবহন', sub: 'GREEN LINE AC · খুলনা—ঢাকা', bg: '#065f46', accent: '#fde047' },
-    { name: 'সোহাগ পরিবহন', sub: 'SOHAGH PARIBAHAN · SCANIA AC', bg: '#991b1b', accent: '#fef08a' },
-    { name: 'হানিফ এন্টারপ্রাইজ', sub: 'HANIF ENTERPRISE · NON-STOP', bg: '#1e3a8a', accent: '#38bdf8' },
-    { name: 'এনা ট্রান্সপোর্ট', sub: 'ENA TRANSPORT · HYUNDAI AC', bg: '#7c2d12', accent: '#fde047' },
-    { name: 'ঈগল পরিবহন', sub: 'EAGLE PARIBAHAN · ROYAL MORE', bg: '#0f766e', accent: '#a7f3d0' },
-    { name: 'টুঙ্গিপাড়া এক্সপ্রেস', sub: 'TUNGIPARA EXPRESS · পদ্মা সেতু', bg: '#4c1d95', accent: '#fde047' },
+    {
+      name: 'গ্রীন লাইন পরিবহন',
+      enBrand: 'GREEN LINE PARIBAHAN · SCANIA / VOLVO AC',
+      mono: 'GL',
+      badge: 'AC COACH',
+      route: 'খুলনা ⇄ ঢাকা (পদ্মা সেতু) · চট্টগ্রাম · কক্সবাজার',
+      hotline: 'হটলাইন: ১৬৫৫৭',
+      bg: '#046c4e', bg2: '#064e3b', accent: '#fde047', logoBg: '#ffffff', logoFg: '#046c4e', logoSubFg: '#dc2626',
+    },
+    {
+      name: 'সোহাগ পরিবহন (প্রাঃ) লিঃ',
+      enBrand: 'SHOHAGH PARIBAHAN · BUSINESS CLASS AC',
+      mono: 'SP',
+      badge: 'SCANIA',
+      route: 'খুলনা ⇄ ঢাকা · যশোর · বেনাপোল · কলকাতা',
+      hotline: 'হটলাইন: ০৯৬০৬-৪৪৪৭৭৭',
+      bg: '#b91c1c', bg2: '#7f1d1d', accent: '#fef08a', logoBg: '#fef08a', logoFg: '#991b1b', logoSubFg: '#1e293b',
+    },
+    {
+      name: 'হানিফ এন্টারপ্রাইজ',
+      enBrand: 'HANIF ENTERPRISE · NON-STOP AC / NON-AC',
+      mono: 'HE',
+      badge: 'EXPRESS',
+      route: 'খুলনা ⇄ ঢাকা (গাবতলী · সায়েদাবাদ) · সিলেট',
+      hotline: 'রয়্যাল মোড় কাউন্টার নং-৩',
+      bg: '#1d4ed8', bg2: '#1e3a8a', accent: '#38bdf8', logoBg: '#ffffff', logoFg: '#1d4ed8', logoSubFg: '#ea580c',
+    },
+    {
+      name: 'এনা ট্রান্সপোর্ট (প্রাঃ) লিঃ',
+      enBrand: 'ENA TRANSPORT · HYUNDAI UNIVERSE AC',
+      mono: 'ENA',
+      badge: 'HYUNDAI',
+      route: 'খুলনা ⇄ ঢাকা (মহাখালী · উত্তরা) · চট্টগ্রাম',
+      hotline: '২৪ ঘণ্টা টিকেট বুকিং',
+      bg: '#9a3412', bg2: '#7c2d12', accent: '#fde047', logoBg: '#fde047', logoFg: '#7c2d12', logoSubFg: '#0f172a',
+    },
+    {
+      name: 'ঈগল পরিবহন',
+      enBrand: 'EAGLE PARIBAHAN · ROYAL COACH',
+      mono: 'EG',
+      badge: 'ROYAL',
+      route: 'খুলনা ⇄ ঢাকা · কুষ্টিয়া · রাজশাহী · বগুড়া',
+      hotline: 'রয়্যাল মোড় কাউন্টার নং-৫',
+      bg: '#0f766e', bg2: '#115e59', accent: '#a7f3d0', logoBg: '#ffffff', logoFg: '#0f766e', logoSubFg: '#b91c1c',
+    },
+    {
+      name: 'টুঙ্গিপাড়া এক্সপ্রেস',
+      enBrand: 'TUNGIPARA EXPRESS · PADMA BRIDGE SPECIAL',
+      mono: 'TE',
+      badge: 'EXPRESS',
+      route: 'খুলনা ⇄ গোপালগঞ্জ ⇄ ঢাকা (গুলিস্তান · সায়েদাবাদ)',
+      hotline: 'প্রতি ৩০ মিনিটে বাস ছাড়ে',
+      bg: '#5b21b6', bg2: '#3b0764', accent: '#fde047', logoBg: '#ffffff', logoFg: '#5b21b6', logoSubFg: '#dc2626',
+    },
   ];
 
   const bayW = 7.4;
@@ -2553,7 +2677,7 @@ function buildBusCounterStrip(staticG, dynamicG, bank, phys) {
 
   box(g, [W + 1.5, 0.16, D + 3.4], [0, 0.08, 1.3], bank.footpath, { castShadow: false, uvScale: 2.0 });
   box(g, [W, gfH, D - 0.8], [0, gfH * 0.5, -0.4], bank.modernWhite, { uvScale: 2.8 });
-  box(g, [W + 0.8, 0.24, 2.4], [0, 3.25, D * 0.5 + 0.9], bank.steelDark);
+  box(g, [W + 0.8, 0.24, 2.5], [0, 3.25, D * 0.5 + 0.95], bank.steelDark);
 
   box(g, [W, totalH - gfH, D], [0, gfH + (totalH - gfH) * 0.5, 0], bank.royalCream, { uvScale: 3.0 });
   box(g, [W + 0.5, 0.24, D + 0.5], [0, gfH, 0], bank.marbleWhite);
@@ -2566,20 +2690,31 @@ function buildBusCounterStrip(staticG, dynamicG, bank, phys) {
     const cInfo = counters[i];
 
     box(g, [0.42, gfH, 0.55], [cx - bayW * 0.5, gfH * 0.5, D * 0.5 - 0.25], bank.modernSlate);
-    cylinder(g, 0.10, 0.12, 3.2, [cx - bayW * 0.5 + 0.25, 1.6, D * 0.5 + 1.85], bank.aluminum, 8);
+    cylinder(g, 0.10, 0.12, 3.2, [cx - bayW * 0.5 + 0.25, 1.6, D * 0.5 + 1.90], bank.aluminum, 8);
 
     box(dg, [bayW - 0.85, 2.55, 0.14], [cx, 1.45, D * 0.5 - 0.65], bank.dispBus, { castShadow: false });
-    box(g, [bayW - 1.2, 0.12, 0.55], [cx, 1.05, D * 0.5 - 0.35], bank.marbleWhite);
+    box(g, [bayW - 1.2, 0.12, 0.58], [cx, 1.05, D * 0.5 - 0.35], bank.marbleWhite);
+    // Passenger waiting bench under canopy
+    box(g, [2.4, 0.08, 0.42], [cx, 0.46, D * 0.5 + 1.05], bank.steelDark);
+    box(g, [0.08, 0.42, 0.38], [cx - 0.95, 0.23, D * 0.5 + 1.05], bank.aluminum);
+    box(g, [0.08, 0.42, 0.38], [cx + 0.95, 0.23, D * 0.5 + 1.05], bank.aluminum);
 
-    addSignBox(
-      dg,
-      bank,
-      { title: cInfo.name, subtitle: cInfo.sub, bg: cInfo.bg, accent: cInfo.accent, width: 512, height: 164 },
-      [cx, 3.85, D * 0.5 + 2.05],
-      0,
-      bayW - 0.32,
-      1.18,
-    );
+    // Original-Style Branded Lightbox Banner with Logo Emblem!
+    const bTex = makeBusCounterBannerTexture(cInfo);
+    const bMat = new THREE.MeshStandardMaterial({
+      map: bTex,
+      emissive: 0xffffff,
+      emissiveMap: bTex,
+      emissiveIntensity: 0.48,
+      roughness: 0.24,
+      side: THREE.DoubleSide,
+    });
+    bank.emissiveList.push({ mat: bMat, day: 0.44, night: 1.75 });
+    const bannerGrp = new THREE.Group();
+    bannerGrp.position.set(cx, 3.92, D * 0.5 + 2.15);
+    bannerGrp.add(new THREE.Mesh(new THREE.BoxGeometry(bayW - 0.14, 1.56, 0.16), bank.steelDark));
+    bannerGrp.add(new THREE.Mesh(new THREE.BoxGeometry(bayW - 0.24, 1.46, 0.185), bMat));
+    dg.add(bannerGrp);
 
     for (let f = 0; f < 2; f++) {
       const fy = gfH + f * 3.2 + 1.55;
@@ -2820,26 +2955,8 @@ export function buildRoyalMoreDistrict(parent, m) {
   // 7) Satkhira Adi Jadob Ghosh Dairy — 54 Khan Jahan Ali Rd (Photo G01, Pin S3)
   buildSatkhiraJadobGhoshDairy(staticG, dynamicG, bank, phys);
 
-  // 8) Complete 6-Counter Royal More Bus Counter Strip + 2 Parked AC Coaches (KDA Ave South)
+  // 8) Complete 6-Counter Royal More Bus Counter Strip (Placeholder buses removed for future custom 3D bus models!)
   buildBusCounterStrip(staticG, dynamicG, bank, phys);
-  buildLuxuryCoachBus(staticG, dynamicG, bank, phys, {
-    x: -784.0,
-    z: -269.2,
-    rotY: Math.PI * 0.52,
-    bodyMat: bank.busGreen,
-    title: 'GREEN LINE · ঢাকা — খুলনা (AC)',
-    subtitle: 'ROYAL MORE COUNTER · ROYAL COACH',
-    bg: '#064e3b',
-  });
-  buildLuxuryCoachBus(staticG, dynamicG, bank, phys, {
-    x: -809.5,
-    z: -271.2,
-    rotY: Math.PI * 0.56,
-    bodyMat: bank.busRed,
-    title: 'SOHAGH PARIBAHAN · SCANIA AC',
-    subtitle: 'খুলনা রয়্যাল মোড় — ঢাকা এক্সপ্রেস',
-    bg: '#7f1d1d',
-  });
 
   // 9) REAL DATED STOREFRONTS & WALL-TO-WALL KHULNA URBAN BLOCKS
 

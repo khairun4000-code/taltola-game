@@ -653,16 +653,47 @@ export function buildSatrastaMoreDistrict(parent, m) {
   addZebraCrosswalk(CX + 11.5, CZ + 14.8, Math.PI - 0.55, 9.0);// SE Tootpara
 
   // ============================================================================
-  // 2) ULTRA-DETAIL SCULPTED BLACK WOOD MONUMENT AT SATRASTA MORE ROUNDABOUT
-  //    ("কালো কাঠের হাই কোয়ালিটি ভাস্কর্য")
+  // 2) REALISTIC SCULPTED WOOD LOG / TREE-TRUNK MONUMENT AT SATRASTA MORE
+  //    ("সাতরাস্তা মোড়ের কাঠের গুঁড়ির ভাস্কর্য" — Natural Gnarled Sundarbans Wood Log!)
   // ============================================================================
   {
-    addCircle(CX, CZ, 6.30, 12.0);
+    addCircle(CX, CZ, 6.30, 10.0);
     const mon = new THREE.Group();
     mon.position.set(CX, 0, CZ);
     staticG.add(mon);
 
-    // Outer Black-and-Yellow Striped Island Curb + Granite Apron (r = 6.2m)
+    // Cut-timber growth-ring texture for sawed log ends
+    const ringCan = document.createElement('canvas');
+    ringCan.width = 256;
+    ringCan.height = 256;
+    const rCtx = ringCan.getContext('2d');
+    rCtx.fillStyle = '#5c4028';
+    rCtx.fillRect(0, 0, 256, 256);
+    for (let rad = 118; rad > 8; rad -= 9) {
+      rCtx.strokeStyle = rad % 18 === 0 ? '#3a2414' : '#785436';
+      rCtx.lineWidth = 4;
+      rCtx.beginPath();
+      rCtx.arc(128, 128, rad, 0, Math.PI * 2);
+      rCtx.stroke();
+    }
+    const cutWoodTex = new THREE.CanvasTexture(ringCan);
+    cutWoodTex.colorSpace = THREE.SRGBColorSpace;
+    const cutWoodMat = new THREE.MeshStandardMaterial({ map: cutWoodTex, roughness: 0.78 });
+    const barkMat = new THREE.MeshStandardMaterial({
+      color: 0x2a1f18,
+      map: blackWoodTex,
+      roughness: 0.88,
+      metalness: 0.04,
+    });
+    const darkBarkMat = new THREE.MeshStandardMaterial({
+      color: 0x1a130e,
+      map: blackWoodTex,
+      roughness: 0.92,
+      metalness: 0.03,
+    });
+    const mossStoneMat = new THREE.MeshStandardMaterial({ color: 0x4b5349, roughness: 0.90 });
+
+    // Outer Black-and-Yellow Striped Island Curb + Paved Apron (r = 6.2m)
     cylinder(mon, 6.10, 6.20, 0.24, [0, 0.12, 0], footpathMat, 40);
     const curbCount = 32;
     for (let i = 0; i < curbCount; i++) {
@@ -671,11 +702,11 @@ export function buildSatrastaMoreDistrict(parent, m) {
       addRotBox(mon, [0.28, 0.28, segLen], [Math.cos(a) * 6.16, 0.14, Math.sin(a) * 6.16], i % 2 === 0 ? roadLineYellow : steelDark, -a);
     }
 
-    // Inner Circular Flowerbed & Double Stainless Steel Railing (r = 4.75m)
-    cylinder(mon, 4.72, 4.82, 0.64, [0, 0.42, 0], graniteMat, 32);
-    cylinder(mon, 4.42, 4.42, 0.70, [0, 0.45, 0], grassMat, 32);
-    for (const ry of [0.95, 1.24]) {
-      const railRing = new THREE.Mesh(new THREE.TorusGeometry(4.72, 0.042, 8, 44), chromeMat);
+    // Inner Circular Stone Planter Basin, Flowerbed & Stainless Steel Railing (r = 4.75m)
+    cylinder(mon, 4.72, 4.82, 0.68, [0, 0.44, 0], graniteMat, 32);
+    cylinder(mon, 4.44, 4.44, 0.72, [0, 0.46, 0], grassMat, 32);
+    for (const ry of [0.96, 1.24]) {
+      const railRing = new THREE.Mesh(new THREE.TorusGeometry(4.72, 0.040, 8, 44), chromeMat);
       railRing.rotation.x = Math.PI / 2;
       railRing.position.y = ry;
       mon.add(railRing);
@@ -684,85 +715,121 @@ export function buildSatrastaMoreDistrict(parent, m) {
     for (let i = 0; i < 18; i++) {
       const a = (i / 18) * Math.PI * 2;
       cylinder(mon, 0.03, 0.036, 0.56, [Math.cos(a) * 4.72, 0.96, Math.sin(a) * 4.72], chromeMat, 6);
-      const fl = new THREE.Mesh(new THREE.DodecahedronGeometry(0.30, 1), flMats[i % 3]);
-      fl.position.set(Math.cos(a) * 3.65, 0.94, Math.sin(a) * 3.65);
+      const fl = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 1), flMats[i % 3]);
+      fl.position.set(Math.cos(a) * 3.72, 0.92, Math.sin(a) * 3.72);
       mon.add(fl);
     }
 
-    // Multi-Tiered Octagonal Carved Granite & Ebony Pedestal (y = 0.75 -> 2.30m)
-    cylinder(mon, 2.65, 2.85, 0.48, [0, 0.99, 0], graniteMat, 8);
-    cylinder(mon, 2.15, 2.32, 0.50, [0, 1.48, 0], blackWoodMat, 8);
-    cylinder(mon, 1.65, 1.82, 0.44, [0, 1.94, 0], ebonyTrimMat, 8);
-    cylinder(mon, 1.48, 1.56, 0.14, [0, 2.22, 0], brassMat, 16);
+    // Raised Stone Pedestal & Mossy Earth Mound holding the Giant Wood Log (y = 0.76 -> 1.85m)
+    cylinder(mon, 2.75, 2.95, 0.52, [0, 1.02, 0], graniteMat, 12);
+    cylinder(mon, 2.30, 2.55, 0.52, [0, 1.50, 0], mossStoneMat, 12);
+    // Natural rocky boulders around the base of the wooden log
+    for (let i = 0; i < 9; i++) {
+      const a = (i / 9) * Math.PI * 2 + 0.2;
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55 + (i % 3) * 0.14, 1), i % 2 === 0 ? graniteMat : mossStoneMat);
+      rock.scale.set(1.2, 0.65, 1.0);
+      rock.position.set(Math.cos(a) * 1.85, 1.62, Math.sin(a) * 1.85);
+      rock.rotation.y = a;
+      mon.add(rock);
+    }
 
-    // 6 Golden Night Uplights illuminating the Black Wood Sculpture!
+    // 6 Warm Golden Ground Uplights illuminating the sculpted wooden log at night
     for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2 + 0.3;
-      const ul = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.21, 0.15, 10), uplightGold);
-      ul.position.set(CX + Math.cos(a) * 2.40, 1.28, CZ + Math.sin(a) * 2.40);
+      const a = (i / 6) * Math.PI * 2 + 0.35;
+      const ul = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.19, 0.14, 10), uplightGold);
+      ul.position.set(CX + Math.cos(a) * 2.45, 1.32, CZ + Math.sin(a) * 2.45);
       dynamicG.add(ul);
     }
 
-    // HIGH-QUALITY SCULPTED BLACK WOOD MONUMENT (y = 2.25m -> 10.30m!)
-    // Central Fluted Carved Ebony Totem Core
-    cylinder(mon, 0.28, 0.60, 6.6, [0, 5.50, 0], blackWoodMat, 14);
-    // 4 Intertwining Sweeping Hand-Carved Black Ebony Timber Arches!
-    for (let i = 0; i < 4; i++) {
-      const baseA = (i / 4) * Math.PI * 2;
-      const pts = [];
-      for (let t = 0; t <= 14; t++) {
-        const f = t / 14;
-        const ang = baseA + f * 1.65;
-        const rad = THREE.MathUtils.lerp(1.52, 0.28, f) + Math.sin(f * Math.PI) * 0.64;
-        const y = 2.25 + f * 7.15;
-        pts.push(new THREE.Vector3(Math.cos(ang) * rad, y, Math.sin(ang) * rad));
-      }
-      const archCurve = new THREE.CatmullRomCurve3(pts);
-      const archMesh = new THREE.Mesh(new THREE.TubeGeometry(archCurve, 32, 0.23, 10, false), blackWoodMat);
-      archMesh.castShadow = true;
-      archMesh.receiveShadow = true;
-      mon.add(archMesh);
-
-      // Carved ebony lattice struts connecting each outer arch to the central totem
-      for (let r = 2; r <= 11; r += 2) {
-        const pOuter = pts[r];
-        rodBetween(mon, [0, pOuter.y - 0.16, 0], [pOuter.x, pOuter.y, pOuter.z], 0.085, ebonyTrimMat, 6);
-      }
+    // MASSIVE NATURAL SCULPTED WOODEN LOG / TREE-TRUNK MONUMENT (কাঠের গুঁড়ি · y = 1.6m -> 6.8m!)
+    // 1) Main Thick Gnarled Tree Trunk (built from organic slightly-curving stacked segments + bark ribs!)
+    const mainTrunkPts = [
+      new THREE.Vector3(0.0, 1.55, 0.0),
+      new THREE.Vector3(0.14, 2.65, -0.08),
+      new THREE.Vector3(-0.08, 3.85, 0.12),
+      new THREE.Vector3(0.10, 5.10, -0.06),
+      new THREE.Vector3(-0.04, 6.25, 0.04),
+    ];
+    const mainCurve = new THREE.CatmullRomCurve3(mainTrunkPts);
+    const trunkGeo = new THREE.TubeGeometry(mainCurve, 24, 0.92, 14, false);
+    // Organically taper & furrow the bark vertices so it looks like real carved/weathered timber!
+    const posAttr = trunkGeo.attributes.position;
+    for (let i = 0; i < posAttr.count; i++) {
+      const vx = posAttr.getX(i);
+      const vy = posAttr.getY(i);
+      const vz = posAttr.getZ(i);
+      const hFrac = THREE.MathUtils.clamp((vy - 1.55) / 4.70, 0, 1);
+      const ang = Math.atan2(vz, vx);
+      const taper = THREE.MathUtils.lerp(1.24, 0.62, hFrac);
+      const barkRidge = 1.0 + Math.sin(ang * 7.0 + hFrac * 2.6) * 0.10 + Math.cos(ang * 13.0 - hFrac * 4.0) * 0.05;
+      posAttr.setXYZ(i, vx * taper * barkRidge, vy, vz * taper * barkRidge);
     }
+    trunkGeo.computeVertexNormals();
+    const trunkMesh = new THREE.Mesh(trunkGeo, barkMat);
+    trunkMesh.castShadow = true;
+    trunkMesh.receiveShadow = true;
+    mon.add(trunkMesh);
 
-    // Carved Wooden Ring Bands + Brass Trim + Flame/Lotus Black-Wood Crown Finial
-    for (const [ry, rr] of [[4.0, 1.36], [5.8, 1.14], [7.5, 0.82], [8.8, 0.52]]) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.10, 8, 28), ebonyTrimMat);
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = ry;
-      mon.add(ring);
-    }
-    for (let p = 0; p < 4; p++) {
-      const pa = (p / 4) * Math.PI * 2;
-      const petalCurve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(Math.cos(pa) * 0.56, 8.95, Math.sin(pa) * 0.56),
-        new THREE.Vector3(Math.cos(pa) * 0.36, 9.65, Math.sin(pa) * 0.36),
-        new THREE.Vector3(0, 10.22, 0),
+    // Sawed/Sculpted Top Cut-Face of Main Log showing wood growth rings!
+    const topCut = new THREE.Mesh(new THREE.CylinderGeometry(0.54, 0.56, 0.08, 14), cutWoodMat);
+    topCut.position.set(-0.04, 6.26, 0.04);
+    topCut.rotation.z = 0.18;
+    mon.add(topCut);
+
+    // 2) 7 Thick Flared Sundarbans Buttress Roots gripping the stone mound
+    for (let r = 0; r < 7; r++) {
+      const a = (r / 7) * Math.PI * 2 + (r % 2) * 0.14;
+      const rootCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(Math.cos(a) * 0.65, 3.15 + (r % 2) * 0.35, Math.sin(a) * 0.65),
+        new THREE.Vector3(Math.cos(a + 0.08) * 1.18, 2.20, Math.sin(a + 0.08) * 1.18),
+        new THREE.Vector3(Math.cos(a + 0.14) * 1.85, 1.58, Math.sin(a + 0.14) * 1.85),
       ]);
-      const petalMesh = new THREE.Mesh(new THREE.TubeGeometry(petalCurve, 14, 0.12, 8, false), blackWoodMat);
-      petalMesh.castShadow = true;
-      mon.add(petalMesh);
+      const rootMesh = new THREE.Mesh(new THREE.TubeGeometry(rootCurve, 14, 0.28 + (r % 2) * 0.06, 8, false), darkBarkMat);
+      rootMesh.castShadow = true;
+      mon.add(rootMesh);
     }
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.28, 14, 12), brassMat);
-    orb.position.y = 9.35;
-    mon.add(orb);
 
-    // Engraved Plaques facing East (Royal More) & West (Moylapota)
+    // 3) 3 Thick Sculpted Cut-Log Boughs branching organically out from the main trunk!
+    const boughs = [
+      { ang: 0.45, y0: 3.7, len: 2.05, rise: 1.55, r: 0.42 },
+      { ang: 2.55, y0: 4.1, len: 1.85, rise: 1.75, r: 0.36 },
+      { ang: 4.55, y0: 3.3, len: 1.75, rise: 1.35, r: 0.38 },
+    ];
+    for (const b of boughs) {
+      const p0 = new THREE.Vector3(Math.cos(b.ang) * 0.45, b.y0, Math.sin(b.ang) * 0.45);
+      const p1 = new THREE.Vector3(Math.cos(b.ang + 0.12) * (b.len * 0.55), b.y0 + b.rise * 0.52, Math.sin(b.ang + 0.12) * (b.len * 0.55));
+      const p2 = new THREE.Vector3(Math.cos(b.ang) * b.len, b.y0 + b.rise, Math.sin(b.ang) * b.len);
+      const bCurve = new THREE.CatmullRomCurve3([p0, p1, p2]);
+      const bMesh = new THREE.Mesh(new THREE.TubeGeometry(bCurve, 14, b.r, 10, false), barkMat);
+      bMesh.castShadow = true;
+      mon.add(bMesh);
+      // Natural wood-ring cut cap on each cut log branch
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(b.r * 0.94, b.r * 0.96, 0.07, 12), cutWoodMat);
+      cap.position.copy(p2);
+      cap.lookAt(p2.clone().add(new THREE.Vector3(Math.cos(b.ang), 0.7, Math.sin(b.ang))));
+      cap.rotateX(Math.PI * 0.5);
+      mon.add(cap);
+    }
+
+    // 4) Iconic Sundarbans Wooden Pneumatophores (শ্বাসমূল) & Small Resting Log at the Base
+    for (let k = 0; k < 12; k++) {
+      const a = (k / 12) * Math.PI * 2;
+      const dist = 1.95 + (k % 3) * 0.32;
+      const ph = 0.55 + (k % 4) * 0.22;
+      cylinder(mon, 0.04, 0.09, ph, [Math.cos(a) * dist, 1.55 + ph * 0.4, Math.sin(a) * dist], darkBarkMat, 6);
+    }
+
+    // Clean Engraved Plaques facing East (Royal More) & West (Moylapota)
     addSignBox(dynamicG, {
       title: 'সাতরাস্তা মোড় · খুলনা',
       subtitle: 'SATRASTA MORE · KDA AVENUE',
       bg: '#14110f', fg: '#fde047', accent: '#f59e0b', border: '#eab308',
-    }, [CX + 1.95, 1.56, CZ], Math.PI * 0.5, 2.55, 0.82);
+    }, [CX + 2.15, 1.48, CZ], Math.PI * 0.5, 2.55, 0.78);
     addSignBox(dynamicG, {
       title: 'সাতরাস্তা মোড় · খুলনা',
       subtitle: '← ময়লাপোতা  |  রয়্যাল মোড় →',
       bg: '#14110f', fg: '#fde047', accent: '#f59e0b', border: '#eab308',
-    }, [CX - 1.95, 1.56, CZ], -Math.PI * 0.5, 2.55, 0.82);
+    }, [CX - 2.15, 1.48, CZ], -Math.PI * 0.5, 2.55, 0.78);
   }
 
   // ============================================================================
@@ -892,108 +959,161 @@ export function buildSatrastaMoreDistrict(parent, m) {
   }
 
   // ============================================================================
-  // 3) SHOP #1 (HERO CORNER): বিল্লাল ভাইয়ের চায়ের দোকান (RIGHT AT SATRASTA MORE CORNER!)
+  // 3) SHOP #1 (HERO CORNER): বেলাল ভাইয়ের স্পেশাল চায়ের দোকান + ঢোকার ডান হাতে পানওয়ালার দোকান!
+  //    Exact User Spec:
+  //    - সবসময় খোলা থাকবে, সামনেই চা বিক্রি হবে ও সবসময় গরম চা থাকবে।
+  //    - সোজাসুজি হবে দোকানটা (বেশি চ্যাপ্টা নয়, ভিতরের দিকে বড় — w: 7.6m × d: 14.8m), ভিতরে বসার অনেক জায়গা!
+  //    - দোকানে ঢোকার একদম ডান হাতে (local +X, front entrance) থাকবে পানওয়ালার দোকান ও খালি বসার টুল (কোনো পানওয়ালা NPC ছাড়া)।
   // ============================================================================
   createEnterableShop({
-    name: 'বিল্লাল ভাইয়ের চায়ের দোকান',
-    zoneLabel: 'SATRASTA MORE · BILLAL BHAI-ER CHA-ER DOKAN',
-    cx: -904.5, cz: -306.8, rotY: -0.48, w: 10.8, d: 8.2, h: 3.9, upperFloors: 1,
+    name: 'বেলাল ভাইয়ের স্পেশাল চায়ের দোকান',
+    zoneLabel: 'SATRASTA MORE · BELAL BHAI SPECIAL TEA STALL',
+    cx: -902.5, cz: -309.5, rotY: -0.32, w: 7.6, d: 14.8, h: 4.0, upperFloors: 1,
     wallMat: warmOchre, accentMat: emeraldWall, awningMat: emeraldWall, floorMat: tileFloorMat,
     doorWidth: 5.4, hasGlassDoor: false,
-    signTitle: 'বিল্লাল ভাইয়ের চায়ের দোকান · সাতরাস্তা মোড়',
-    signSub: 'খুলনার বিখ্যাত স্পেশাল মালাই চা · দুধ চা · মশলা চা · ২৪ ঘণ্টা আড্ডা',
+    signTitle: 'বেলাল ভাইয়ের স্পেশাল চায়ের দোকান · সাতরাস্তা',
+    signSub: 'খুলনার বিখ্যাত মালাই চা · দুধ চা · মশলা চা · ২৪ ঘণ্টা খোলা · ভিতরে বসার সুব্যবস্থা',
     signBg: '#065f46', signAccent: '#fde047',
     buildInterior(intG, shopDyn, toWorld, { hw, hd, h }) {
-      // Grand Stainless Tea-Making Counter + 3-Burner Glowing Gas Stove + 3 Brass/Steel Kettles!
-      box(intG, [5.4, 1.00, 0.88], [-1.9, 0.50, -hd + 1.25], chromeMat);
-      box(intG, [5.44, 0.08, 0.92], [-1.9, 1.02, -hd + 1.25], steelDark);
-      box(intG, [1.45, 0.14, 0.58], [-3.4, 1.12, -hd + 1.25], steelDark);
-      for (const kx of [-3.90, -3.40, -2.90]) {
-        cylinder(intG, 0.14, 0.16, 0.04, [kx, 1.21, -hd + 1.25], emberGlowMat, 8);
-        cylinder(intG, 0.14, 0.19, 0.30, [kx, 1.38, -hd + 1.25], kx === -3.40 ? brassMat : chromeMat, 10);
+      // ------------------------------------------------------------------------
+      // A) FRONT ENTRANCE LEFT: LIVE TEA COUNTER (সামনেই সবসময় গরম চা বিক্রি হচ্ছে!)
+      // ------------------------------------------------------------------------
+      const teaZ = hd - 2.1; // right at the open front entrance!
+      box(intG, [2.75, 1.00, 1.05], [-hw + 1.65, 0.50, teaZ], chromeMat);
+      box(intG, [2.80, 0.08, 1.10], [-hw + 1.65, 1.02, teaZ], steelDark);
+      // 3-Burner Glowing Gas Stove + 3 Steaming Brass/Steel Tea Kettles (কেতলি)
+      box(intG, [1.45, 0.14, 0.58], [-hw + 1.25, 1.12, teaZ], steelDark);
+      for (const kx of [-hw + 0.78, -hw + 1.25, -hw + 1.72]) {
+        cylinder(intG, 0.13, 0.15, 0.04, [kx, 1.21, teaZ], emberGlowMat, 8);
+        cylinder(intG, 0.14, 0.19, 0.30, [kx, 1.38, teaZ], kx === -hw + 1.25 ? brassMat : chromeMat, 10);
       }
-      // Pyramid of Condensed Milk Tins + Glass Biscuit & Cake Display Showcase!
+      // Ready-to-Serve Hot Tea Cups Tray right on the front counter (সবসময় চা থাকবে!)
+      box(intG, [0.85, 0.04, 0.52], [-hw + 2.45, 1.08, teaZ + 0.18], brassMat);
+      for (const [cxCup, czCup] of [[-0.25, -0.10], [0.0, -0.10], [0.25, -0.10], [-0.12, 0.12], [0.14, 0.12]]) {
+        cylinder(intG, 0.045, 0.034, 0.09, [-hw + 2.45 + cxCup, 1.14, teaZ + 0.18 + czCup], creamWall, 8);
+        cylinder(intG, 0.040, 0.040, 0.015, [-hw + 2.45 + cxCup, 1.185, teaZ + 0.18 + czCup], warmOchre, 8);
+      }
+      // Pyramid of Condensed Milk Tins + Glass Biscuit & Cake Showcase behind tea counter
       for (let row = 0; row < 3; row++) {
         for (let col = 0; col < 3 - row; col++) {
-          cylinder(intG, 0.06, 0.06, 0.12, [-1.95 + col * 0.14 + row * 0.07, 1.12 + row * 0.12, -hd + 1.10], flowerRed, 8);
+          cylinder(intG, 0.055, 0.055, 0.11, [-hw + 2.25 + col * 0.13 + row * 0.065, 1.12 + row * 0.11, teaZ - 0.30], flowerRed, 8);
         }
       }
-      box(intG, [1.95, 0.82, 0.66], [-0.2, 1.46, -hd + 1.22], glassMat, { castShadow: false });
+      box(intG, [0.65, 1.75, 1.95], [-hw + 0.52, 0.88, teaZ - 1.75], chromeMat);
+      box(intG, [0.58, 0.90, 1.85], [-hw + 0.54, 1.35, teaZ - 1.75], glassMat, { castShadow: false });
       const jarCols = [flowerGold, warmOchre, flowerRed, panGreenMat, flowerPink];
-      for (let i = 0; i < 6; i++) {
-        cylinder(intG, 0.10, 0.10, 0.24, [-0.95 + i * 0.30, 1.20, -hd + 1.20], jarCols[i % jarCols.length], 8);
-        cylinder(intG, 0.09, 0.09, 0.22, [-0.95 + i * 0.30, 1.54, -hd + 1.20], jarCols[(i + 2) % jarCols.length], 8);
+      for (let i = 0; i < 5; i++) {
+        cylinder(intG, 0.09, 0.09, 0.22, [-hw + 0.52, 1.15, teaZ - 2.45 + i * 0.34], jarCols[i % jarCols.length], 8);
+        cylinder(intG, 0.08, 0.08, 0.20, [-hw + 0.52, 1.50, teaZ - 2.45 + i * 0.34], jarCols[(i + 2) % jarCols.length], 8);
       }
-      // Back wall wooden rack + LED TV (Cricket Match!) + Famous Billal Bhai Menu Board
-      box(intG, [5.8, 2.35, 0.42], [-1.8, 1.18, -hd + 0.46], woodMat);
-      box(intG, [1.32, 0.80, 0.08], [2.4, 2.55, -hd + 0.36], steelDark);
-      box(intG, [1.22, 0.70, 0.09], [2.4, 2.55, -hd + 0.37], tvScreenMat, { castShadow: false });
-      const menu = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 1.28), new THREE.MeshStandardMaterial({
-        map: makeMenuBoardTexture('বিল্লাল ভাইয়ের বিখ্যাত চা', [
-          '১. স্পেশাল মালাই চা .......... ২৫ টাকা',
-          '২. গরম দুধ-এলাচ চা ........... ১৫ টাকা',
-          '৩. আদা-লেবু মশলা চা ......... ১৫ টাকা',
-          '৪. কফি ও গরম বাটার বান ....... ৪০ টাকা',
+
+      // ------------------------------------------------------------------------
+      // B) FRONT ENTRANCE RIGHT HAND (+X): পানওয়ালার দোকান (খালি বসার জায়গা, কোনো NPC ছাড়া!)
+      //    ("পানওয়ালার বসার জায়গা একদম ওই বেলাল ভাইয়ের দোকানে ঢোকার ডান হাতে")
+      // ------------------------------------------------------------------------
+      const panX = hw - 1.12;
+      const panZ = hd - 1.05;
+      // Pan Stall Wooden & Steel Counter Base + Glass Showcase facing entrance
+      box(intG, [1.55, 0.96, 1.25], [panX, 0.48, panZ], woodMat);
+      box(intG, [1.60, 0.07, 1.30], [panX, 0.99, panZ], chromeMat);
+      box(intG, [1.48, 0.72, 0.92], [panX, 1.38, panZ + 0.12], glassMat, { castShadow: false });
+      // Neat Green Betel Leaf Stacks (পানের বিড়া) + Colorful Jorda/Supari/Misti Masala Jars
+      for (let bx = -0.45; bx <= 0.46; bx += 0.30) {
+        cylinder(intG, 0.11, 0.13, 0.20, [panX + bx, 1.12, panZ + 0.22], panGreenMat, 8);
+      }
+      const spiceCols = [flowerRed, flowerGold, brassMat, creamWall, copperMat, flowerPink];
+      for (let i = 0; i < 6; i++) {
+        cylinder(intG, 0.065, 0.065, 0.18, [panX - 0.50 + i * 0.20, 1.50, panZ - 0.08], spiceCols[i % spiceCols.length], 8);
+      }
+      // Small red cloth backdrop + glowing mini-bulb over Pan Stall
+      box(intG, [0.06, 1.85, 1.35], [hw - 0.32, 1.45, panZ], redClothMat, { castShadow: false });
+      const panBulb = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), lampGlow);
+      panBulb.position.set(panX, 2.30, panZ);
+      shopDyn.add(panBulb);
+      // Empty Panwala Wooden Seat / Stool behind the pan counter (NO NPC sitting there!)
+      box(intG, [0.58, 0.46, 0.58], [panX + 0.05, 0.23, panZ - 1.02], darkWoodMat);
+      box(intG, [0.54, 0.07, 0.54], [panX + 0.05, 0.49, panZ - 1.02], redClothMat);
+      const swPan = toWorld(panX + 0.05, panZ - 1.02);
+      seats.push({ seatX: swPan.x, seatZ: swPan.z, seatY: 0.52, yaw: -0.32, fy: 0.18, label: 'পানওয়ালার খালি আসন' });
+
+      // Mini Signboard on Right-Hand Pan Stall
+      addSignBox(shopDyn, {
+        title: 'শাহী মিষ্টি পান',
+        subtitle: 'বেলাল ভাই কর্নার · পান স্টল',
+        bg: '#14532d', fg: '#ffffff', accent: '#fde047', width: 384, height: 144,
+      }, [panX, 2.55, panZ + 0.65], 0, 1.75, 0.56);
+
+      // ------------------------------------------------------------------------
+      // C) DEEP STRAIGHT-IN SEATING HALL (ভিতরের দিকে বড় বসার জায়গা — ৬টি আড্ডা টেবিল ও বেঞ্চ!)
+      //    Clean wide straight central walkway (lx ∈ [-1.1 .. +1.1]) down the middle!
+      // ------------------------------------------------------------------------
+      for (const tz of [1.6, -1.6, -4.8]) {
+        // Left-side bench + table
+        const lx = -2.25;
+        box(intG, [1.55, 0.06, 0.82], [lx, 0.72, tz], woodMat);
+        box(intG, [0.06, 0.70, 0.66], [lx - 0.65, 0.35, tz], steelDark);
+        box(intG, [0.06, 0.70, 0.66], [lx + 0.65, 0.35, tz], steelDark);
+        cylinder(intG, 0.045, 0.035, 0.09, [lx - 0.32, 0.79, tz - 0.10], creamWall, 6);
+        cylinder(intG, 0.045, 0.035, 0.09, [lx + 0.30, 0.79, tz + 0.12], creamWall, 6);
+        box(intG, [1.50, 0.06, 0.36], [lx, 0.44, tz + 0.68], darkWoodMat);
+        box(intG, [1.50, 0.06, 0.36], [lx, 0.44, tz - 0.68], darkWoodMat);
+        const swL = toWorld(lx, tz + 0.68);
+        seats.push({ seatX: swL.x, seatZ: swL.z, seatY: 0.46, yaw: -0.32 + Math.PI, fy: 0.18, label: 'বেলাল ভাইয়ের চায়ের আড্ডা বেঞ্চ' });
+
+        // Right-side bench + table
+        const rx = 2.25;
+        box(intG, [1.55, 0.06, 0.82], [rx, 0.72, tz], woodMat);
+        box(intG, [0.06, 0.70, 0.66], [rx - 0.65, 0.35, tz], steelDark);
+        box(intG, [0.06, 0.70, 0.66], [rx + 0.65, 0.35, tz], steelDark);
+        cylinder(intG, 0.045, 0.035, 0.09, [rx - 0.28, 0.79, tz + 0.10], creamWall, 6);
+        cylinder(intG, 0.045, 0.035, 0.09, [rx + 0.34, 0.79, tz - 0.12], creamWall, 6);
+        box(intG, [1.50, 0.06, 0.36], [rx, 0.44, tz + 0.68], darkWoodMat);
+        box(intG, [1.50, 0.06, 0.36], [rx, 0.44, tz - 0.68], darkWoodMat);
+        const swR = toWorld(rx, tz + 0.68);
+        seats.push({ seatX: swR.x, seatZ: swR.z, seatY: 0.46, yaw: -0.32 + Math.PI, fy: 0.18, label: 'বেলাল ভাইয়ের চায়ের আড্ডা বেঞ্চ' });
+      }
+
+      // Back Wall: Big Cricket LED TV + Famous Belal Bhai Special Tea Menu Board!
+      box(intG, [1.80, 1.05, 0.08], [0, 2.72, -hd + 0.34], steelDark);
+      box(intG, [1.68, 0.94, 0.09], [0, 2.72, -hd + 0.35], tvScreenMat, { castShadow: false });
+      const menu = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.45), new THREE.MeshStandardMaterial({
+        map: makeMenuBoardTexture('বেলাল ভাইয়ের স্পেশাল চা · ২৪ ঘণ্টা', [
+          '১. স্পেশাল মালাই চা ............ ২৫ টাকা',
+          '২. গরম দুধ-এলাচ চা ............. ১৫ টাকা',
+          '৩. আদা-লেবু মশলা চা ........... ১৫ টাকা',
+          '৪. বাটার বান · বিস্কুট · কেক .... ৪০ টাকা',
         ], '#064e3b', '#fde047'),
       }));
-      menu.position.set(2.4, 1.42, -hd + 0.34);
+      menu.position.set(0, 1.32, -hd + 0.34);
       intG.add(menu);
 
-      // 4 Indoor Adda Tables & Benches + 2 Outdoor Roundabout-Facing Corner Benches (ALL Sittable!)
-      for (const [tx, tz] of [[-2.6, 1.4], [1.8, 1.4], [2.4, -1.2], [-2.6, 3.6]]) {
-        box(intG, [1.65, 0.06, 0.76], [tx, 0.72, tz], woodMat);
-        box(intG, [0.06, 0.70, 0.64], [tx - 0.70, 0.35, tz], woodMat);
-        box(intG, [0.06, 0.70, 0.64], [tx + 0.70, 0.35, tz], woodMat);
-        cylinder(intG, 0.045, 0.035, 0.09, [tx - 0.36, 0.79, tz - 0.12], creamWall, 6);
-        cylinder(intG, 0.045, 0.035, 0.09, [tx + 0.34, 0.79, tz + 0.10], creamWall, 6);
-        box(intG, [1.60, 0.06, 0.36], [tx, 0.44, tz + 0.64], darkWoodMat);
-        box(intG, [1.60, 0.06, 0.36], [tx, 0.44, tz - 0.64], darkWoodMat);
-        const sw = toWorld(tx, tz + 0.64);
-        seats.push({ seatX: sw.x, seatZ: sw.z, seatY: 0.46, yaw: -0.48 + Math.PI, fy: 0.18, label: 'বিল্লাল ভাইয়ের চায়ের আড্ডা বেঞ্চ' });
+      // Bright Tube Lights & 3 Spinning Ceiling Fans down the deep straight hall!
+      for (const lz of [4.2, 0.0, -4.2]) {
+        box(intG, [1.8, 0.06, 0.16], [0, h - 0.28, lz], lampGlow, { castShadow: false });
+        addSpinningFan(0, h - 0.18, lz, shopDyn);
       }
-      // Extra Outdoor Footpath Adda Bench right on Satrasta More Corner
-      box(intG, [2.2, 0.08, 0.46], [2.6, 0.44, hd + 0.95], darkWoodMat);
-      box(intG, [0.10, 0.42, 0.42], [1.7, 0.21, hd + 0.95], steelDark);
-      box(intG, [0.10, 0.42, 0.42], [3.5, 0.21, hd + 0.95], steelDark);
-      const swOut = toWorld(2.6, hd + 0.95);
-      seats.push({ seatX: swOut.x, seatZ: swOut.z, seatY: 0.46, yaw: -0.48, fy: 0.18, label: 'সাতরাস্তা মোড় আড্ডা বেঞ্চ' });
-
-      for (const lx of [-2.4, 2.2]) {
-        box(intG, [1.6, 0.06, 0.16], [lx, h - 0.30, 0.4], lampGlow, { castShadow: false });
-      }
-      addSpinningFan(-1.8, h - 0.18, 0.8, shopDyn);
-      addSpinningFan(2.2, h - 0.18, 0.8, shopDyn);
     },
   });
 
   // ============================================================================
-  // 4) SHOP #2: খুলনা শাহী মিষ্টি পানের দোকান (Beside Billal Bhai on NE Corner!)
+  // 4) SHOP #2: সাতরাস্তা বেকারি ও কনফেকশনারি (Adjacent NE Shop beside Belal Bhai!)
   // ============================================================================
   createEnterableShop({
-    name: 'শাহী মিষ্টি পানের দোকান',
-    zoneLabel: 'SATRASTA MORE · SHAHI MISTI PANER DOKAN',
-    cx: -891.5, cz: -308.8, rotY: -0.22, w: 7.8, d: 6.8, h: 3.7, upperFloors: 1,
-    wallMat: creamWall, accentMat: panGreenMat, awningMat: panGreenMat, floorMat: tileFloorMat,
-    doorWidth: 4.0, hasGlassDoor: false,
-    signTitle: 'খুলনা শাহী মিষ্টি পানের দোকান',
-    signSub: 'ফায়ার পান · শাহী জর্দা · মিষ্টি মসলা পান · সাতরাস্তা',
-    signBg: '#14532d', signAccent: '#fde047',
+    name: 'সাতরাস্তা বেকারি ও কনফেকশনারি',
+    zoneLabel: 'SATRASTA MORE · BAKERY & CONFECTIONERY',
+    cx: -890.2, cz: -309.2, rotY: -0.18, w: 7.4, d: 8.4, h: 3.7, upperFloors: 1,
+    wallMat: creamWall, accentMat: warmOchre, awningMat: maroonWall, floorMat: tileFloorMat,
+    doorWidth: 3.8, hasGlassDoor: false,
+    signTitle: 'সাতরাস্তা বেকারি ও কনফেকশনারি',
+    signSub: 'তাজা পাউরুটি · পেস্ট্রি · বিস্কুট · কোল্ড ড্রিংকস',
+    signBg: '#78350f', signAccent: '#fde047',
     buildInterior(intG, shopDyn, toWorld, { hd, h }) {
-      box(intG, [4.2, 1.05, 0.95], [0, 0.525, -hd + 1.65], chromeMat);
-      box(intG, [4.0, 0.78, 0.86], [0, 1.42, -hd + 1.65], glassMat, { castShadow: false });
-      for (let bx = -1.5; bx <= 1.55; bx += 0.50) {
-        cylinder(intG, 0.16, 0.18, 0.24, [bx, 1.18, -hd + 1.56], panGreenMat, 8);
+      box(intG, [4.2, 1.02, 0.92], [0, 0.51, -hd + 1.65], chromeMat);
+      box(intG, [4.0, 0.78, 0.84], [0, 1.40, -hd + 1.65], glassMat, { castShadow: false });
+      const cakeCols = [warmOchre, flowerGold, flowerPink, creamWall, flowerRed];
+      for (let i = 0; i < 6; i++) {
+        cylinder(intG, 0.15, 0.16, 0.16, [-1.5 + i * 0.60, 1.18, -hd + 1.60], cakeCols[i % cakeCols.length], 10);
       }
-      const spiceCols = [flowerRed, flowerGold, brassMat, creamWall, copperMat, flowerPink];
-      for (let i = 0; i < 9; i++) {
-        cylinder(intG, 0.08, 0.08, 0.22, [-1.6 + i * 0.40, 1.58, -hd + 1.72], spiceCols[i % spiceCols.length], 8);
-      }
-      box(intG, [5.2, 2.45, 0.08], [0, 1.28, -hd + 0.34], redClothMat, { castShadow: false });
-      for (const sx of [-1.4, 0, 1.4]) {
-        cylinder(intG, 0.22, 0.18, 0.48, [sx, 0.24, 1.25], darkWoodMat, 10);
-      }
-      const sw = toWorld(0, 1.25);
-      seats.push({ seatX: sw.x, seatZ: sw.z, seatY: 0.48, yaw: -0.22 + Math.PI, fy: 0.18, label: 'মিষ্টি পান দোকানের টুল' });
       box(intG, [1.6, 0.06, 0.16], [0, h - 0.28, 0], lampGlow, { castShadow: false });
       addSpinningFan(0, h - 0.18, 0.2, shopDyn);
     },
