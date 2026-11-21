@@ -3258,10 +3258,6 @@ function syncSceneVisibility() {
 function warpToLandmark(lm, lockControls = false) {
   if (!lm) return;
   const activeCar = getDrivingCar();
-  if (activeCar) {
-    activeCar.exitCar(playerPos);
-    syncCarHUD();
-  }
   if (sittingState.active) standUpFromSeat();
   liftKeypadOpen = false;
   liftKeypad?.classList.add('hidden');
@@ -3273,10 +3269,103 @@ function warpToLandmark(lm, lockControls = false) {
   let lz = typeof lm.lookZ === 'number' ? lm.lookZ : sz;
 
   if (lm.id === 'taltola_house') {
-    sx = TALTOLA_HOUSE_OFFSET.x - 0.2;
-    sz = TALTOLA_HOUSE_OFFSET.z + 0.8;
-    lx = TALTOLA_HOUSE_OFFSET.x + 5.0;
-    lz = TALTOLA_HOUSE_OFFSET.z;
+    if (activeCar) {
+      // Spawn vehicle cleanly on the open road in front of Taltola House
+      sx = TALTOLA_HOUSE_OFFSET.x - 1.25;
+      sz = TALTOLA_HOUSE_OFFSET.z + 2.8;
+      lx = TALTOLA_HOUSE_OFFSET.x - 1.25;
+      lz = TALTOLA_HOUSE_OFFSET.z + 14.0;
+    } else {
+      sx = TALTOLA_HOUSE_OFFSET.x - 0.2;
+      sz = TALTOLA_HOUSE_OFFSET.z + 0.8;
+      lx = TALTOLA_HOUSE_OFFSET.x + 5.0;
+      lz = TALTOLA_HOUSE_OFFSET.z;
+    }
+  }
+
+  if (activeCar) {
+    // Teleport WITH the active car, bike, or rickshaw into a clean open drivable spot!
+    const dxLook = lx - sx;
+    const dzLook = lz - sz;
+    const heading = (Math.hypot(dxLook, dzLook) > 0.2) ? Math.atan2(dxLook, dzLook) : 0.0;
+
+    environment?.city?.refreshActiveChunks?.(sx, sz, quality);
+    // Find an open drivable spot if the landmark pin itself sits near water or a wall
+    const probeOffsets = [
+      [0, 0], [0, 3.2], [0, -3.2], [3.2, 0], [-3.2, 0],
+      [4.5, 4.5], [-4.5, 4.5], [4.5, -4.5], [-4.5, -4.5],
+    ];
+    let bestX = sx;
+    let bestZ = sz;
+    const probeVec = new THREE.Vector3();
+    for (const [ox, oz] of probeOffsets) {
+      const tx = sx + ox;
+      const tz = sz + oz;
+      if (environment?.city?.isInWater?.(tx, tz)) continue;
+      probeVec.set(tx, EYE_HEIGHT, tz);
+      const beforeX = probeVec.x;
+      const beforeZ = probeVec.z;
+      environment?.landmarks?.applyCollisions?.(probeVec, Math.max(activeCar.state.halfWidth, 1.05), 0);
+      environment?.altapoleGoli?.applyPlayerCollisions?.(probeVec, Math.max(activeCar.state.halfWidth, 1.05), 0);
+      if (Math.hypot(probeVec.x - beforeX, probeVec.z - beforeZ) < 0.08) {
+        bestX = tx;
+        bestZ = tz;
+        break;
+      }
+    }
+
+    activeCar.spawnAt(bestX, bestZ, heading);
+    const groundY = Math.max(0, computeGroundHeight(new THREE.Vector3(bestX, EYE_HEIGHT, bestZ)));
+    if (groundY > 0.02 && groundY < 2.2) {
+      activeCar.state.pos.y = groundY + 0.01;
+      activeCar.group.position.y = groundY + 0.01;
+    }
+
+    playerPos.set(bestX, activeCar.state.pos.y + EYE_HEIGHT, bestZ);
+    horizontalVelocity.set(0, 0);
+    verticalVelocity = 0;
+    grounded = true;
+    syncSceneVisibility();
+    if (sun?.castShadow) {
+      lastSunAnchorX = Math.round(bestX / 4) * 4;
+      lastSunAnchorZ = Math.round(bestZ / 4) * 4;
+      updateSunPositionFromAnchor(lastSunAnchorX, lastSunAnchorZ);
+      renderer.shadowMap.needsUpdate = true;
+      lastShadowUpdateAt = performance.now();
+    }
+
+    carOrbitYaw = 0;
+    carOrbitPitch = 0.22;
+    carOrbitLastMove = 0;
+    carChaseHeading = heading;
+    const sinH = Math.sin(heading);
+    const cosH = Math.cos(heading);
+    const st = activeCar.state;
+    const backDist = Math.max(st.isBike ? 2.65 : 3.85, st.camBack * 0.88);
+    camera.position.set(bestX - sinH * backDist, st.pos.y + st.camHeight, bestZ - cosH * backDist);
+    camera.lookAt(bestX + sinH * 4.5, st.pos.y + 1.05, bestZ + cosH * 4.5);
+    controls.syncRotationFromCamera();
+
+    syncCarHUD();
+    crosshairEl?.classList.add('hidden');
+    if (spawnSelect && lm.id) {
+      const hasOpt = Array.from(spawnSelect.options).some((o) => o.value === lm.id);
+      if (hasOpt) spawnSelect.value = lm.id;
+    }
+    lastZoneText = null;
+    lastPromptText = null;
+    updateHUDPrompt();
+    if (khulnaMapUI) {
+      const info = environment?.city?.findNearestRoadAndDistrict?.(bestX, bestZ);
+      khulnaMapUI.renderMinimap(activeCar.state.pos, heading + Math.PI, info);
+    }
+    intro?.classList.add('hidden');
+    pause?.classList.add('hidden');
+    walkHud?.classList.remove('hidden');
+    if (lockControls && !inStudio) {
+      controls.lock();
+    }
+    return;
   }
 
   playerPos.set(sx, EYE_HEIGHT, sz);

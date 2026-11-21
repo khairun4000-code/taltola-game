@@ -1655,78 +1655,10 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
     // Narrow mossy concrete side drain along North edge
     addBox(staticG, [alleyLen - 1.4, 0.07, 0.34], [alleyCx + 0.8, 0.02, alleyZ - 1.48], drainDarkMat, { castShadow: false });
 
-    // Helper to build tightly-packed side-lane residential buildings facing North (-1) or South (+1) along Z
-    const buildAlleyHouse = ({ x0, x1, faceZ, zFront, depth = 9.2, floors = 3, wallMat, bandMat, isTin = false, seed = 9501 }) => {
-      const w = x1 - x0;
-      const cx = (x0 + x1) * 0.5;
-      const cz = zFront - faceZ * (depth * 0.5 + 0.85);
-      const wallZ = zFront;
-      const frontZ = zFront - faceZ * 0.85;
-
-      // Front compound wall with steel gate + pillar caps right on the sidewalk edge (zero gap!)
-      const segW = Math.max(0.6, (w - 2.2) * 0.5);
-      addBox(staticG, [segW, 1.95, 0.26], [x0 + segW * 0.5, 0.975, wallZ], bank.brickRed, { uvScale: 2.2 });
-      addBox(staticG, [segW, 1.95, 0.26], [x1 - segW * 0.5, 0.975, wallZ], bank.brickRed, { uvScale: 2.2 });
-      addBox(staticG, [w, 0.12, 0.34], [cx, 1.98, wallZ], bank.creamTrim);
-      addBox(staticG, [2.15, 1.85, 0.08], [cx, 0.94, wallZ], bank.shutterBlue, { uvScale: 1.4 });
-      addBox(staticG, [w, 0.12, 1.1], [cx, 0.06, zFront - faceZ * 0.45], bank.dampPlinth, { castShadow: false });
-
-      if (isTin) {
-        addBox(staticG, [w - 0.15, 3.0, depth], [cx, 1.5, cz], wallMat, { uvScale: 2.2 });
-        addBox(staticG, [w + 0.2, 0.10, depth * 0.60], [cx, 3.35, cz + faceZ * (depth * 0.22)], bandMat, { rotX: faceZ * 0.24, uvScale: 1.6 });
-        addBox(staticG, [w + 0.2, 0.10, depth * 0.60], [cx, 3.35, cz - faceZ * (depth * 0.22)], bandMat, { rotX: -faceZ * 0.24, uvScale: 1.6 });
-        addBox(staticG, [1.05, 2.05, 0.14], [cx, 1.15, frontZ + faceZ * 0.04], bank.woodBoat);
-        for (const ox of [-w * 0.28, w * 0.28]) {
-          addBox(staticG, [1.25, 1.15, 0.14], [cx + ox, 1.65, frontZ + faceZ * 0.04], bank.windowGlass);
-        }
-        return;
-      }
-
-      const fH = 3.05;
-      const totH = floors * fH;
-      addBox(staticG, [w - 0.08, totH, depth], [cx, totH * 0.5, cz], wallMat, { uvScale: 2.6 });
-      for (let f = 0; f < floors; f++) {
-        const fy = f * fH;
-        addBox(staticG, [w + 0.18, 0.20, depth + 0.26], [cx, fy + fH, cz + faceZ * 0.08], bank.creamTrim);
-        if (f === 0) {
-          addBox(staticG, [1.25, 2.20, 0.14], [cx, 1.15, frontZ + faceZ * 0.04], bank.woodBoat);
-          for (const ox of [-w * 0.28, w * 0.28]) {
-            addBox(staticG, [1.55, 1.35, 0.14], [cx + ox, 1.55, frontZ + faceZ * 0.04], bank.windowGlass);
-            addBox(staticG, [1.72, 0.12, 0.26], [cx + ox, 2.28, frontZ + faceZ * 0.10], bank.creamTrim);
-          }
-        } else {
-          // Recessed balcony + window bays
-          addBox(staticG, [3.0, 0.14, 0.88], [cx, fy + 0.10, frontZ + faceZ * 0.42], bank.creamTrim);
-          addBox(staticG, [3.0, 0.92, 0.12], [cx, fy + 0.56, frontZ + faceZ * 0.82], bandMat);
-          addBox(staticG, [2.1, 2.05, 0.14], [cx, fy + 1.15, frontZ + faceZ * 0.03], (seed + f) % 2 === 0 ? bank.warmWindowLit : bank.windowGlass);
-          for (const ox of [-w * 0.30, w * 0.30]) {
-            addBox(staticG, [1.45, 1.40, 0.14], [cx + ox, fy + 1.55, frontZ + faceZ * 0.04], bank.windowGlass);
-            addBox(staticG, [1.65, 0.12, 0.24], [cx + ox, fy + 2.30, frontZ + faceZ * 0.10], bank.creamTrim);
-          }
-        }
-      }
-      // Rooftop parapet & black Gazi overhead water tank
-      addBox(staticG, [w - 0.08, 0.88, 0.22], [cx, totH + 0.44, frontZ], wallMat);
-      addCyl(staticG, 0.58, 0.60, 1.25, [cx + w * 0.18, totH + 0.85, cz], bank.waterTank, 10);
-    };
-
-    // NORTH SIDE of East Side Lane (zFront = -407.0, facing South +1, zero gap right from ochre building x = 182.0 to x = 208.5!)
+    // Keep the short mint boundary wall closing the corner behind [D] Ochre building (x = 172.6..182.2)
+    // All 8 enterable residential buildings (old & new, 1-5 stories, 2 with working 3D lifts) lining
+    // North, South & Dead-End of this alley are built by src/altapole-goli.js!
     addBox(staticG, [9.6, 2.1, 0.28], [177.4, 1.05, -407.0], mintLowerWall, { uvScale: 2.2 });
-    buildAlleyHouse({ x0: 182.0, x1: 191.2, faceZ: 1, zFront: -407.0, depth: 9.4, floors: 3, wallMat: bank.creamTrim, bandMat: bank.terracotta, seed: 9511 });
-    buildAlleyHouse({ x0: 191.2, x1: 199.8, faceZ: 1, zFront: -407.0, depth: 9.4, floors: 2, wallMat: bank.sagePlaster, bandMat: bank.tinBlue, isTin: true, seed: 9523 });
-    buildAlleyHouse({ x0: 199.8, x1: 208.5, faceZ: 1, zFront: -407.0, depth: 9.4, floors: 4, wallMat: bank.modernWhite, bandMat: bank.ochrePlaster, seed: 9537 });
-
-    // SOUTH SIDE of East Side Lane (zFront = -401.0, facing North -1, zero gap from Altapole mouth x = 172.6 to x = 208.5, depth fills all the way to [G] at z = -391.0!)
-    buildAlleyHouse({ x0: 172.6, x1: 181.8, faceZ: -1, zFront: -401.0, depth: 9.2, floors: 3, wallMat: bank.terracotta, bandMat: bank.creamTrim, seed: 9549 });
-    buildAlleyHouse({ x0: 181.8, x1: 190.6, faceZ: -1, zFront: -401.0, depth: 9.2, floors: 2, wallMat: bank.brickRed, bandMat: bank.tinRust, isTin: true, seed: 9561 });
-    buildAlleyHouse({ x0: 190.6, x1: 199.6, faceZ: -1, zFront: -401.0, depth: 9.2, floors: 4, wallMat: bank.creamTrim, bandMat: bank.steelBlue, seed: 9573 });
-    buildAlleyHouse({ x0: 199.6, x1: 208.5, faceZ: -1, zFront: -401.0, depth: 9.2, floors: 3, wallMat: bank.ochrePlaster, bandMat: bank.creamTrim, seed: 9585 });
-
-    // DEAD-END CLOSING RESIDENCE at x = 208.5..216.8 (stops cleanly well before the pond!)
-    buildTaltolaStyleResidence(staticG, dynamicG, bank, {
-      cx: 213.8, cz: alleyZ, widthX: 8.6, lengthZ: 13.8, floors: 3, facing: -1,
-      wallMat: bank.sagePlaster, bandMat: bank.creamTrim, seed: 9599,
-    });
 
     // Side-lane streetlamp poles & overhead Khulna wires
     const alleyPoles = [];

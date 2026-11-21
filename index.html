@@ -187,7 +187,10 @@
         <div id="pause-tab-map" class="gta-tab-panel city-map-body" data-pause-panel="map">
           <div class="city-map-canvas-wrap">
             <canvas id="city-map-canvas" width="760" height="720"></canvas>
-            <p class="city-map-hint">CLICK MAP = SET BLUE GPS ROUTE · FAST TRAVEL = SELECT LANDMARK ON RIGHT</p>
+            <div class="city-map-bottom-bar">
+              <p class="city-map-hint">CLICK MAP = SET BLUE GPS ROUTE · FAST TRAVEL = SELECT LANDMARK ON RIGHT</p>
+              <button id="map-clear-gps-btn" class="city-map-clear-gps-btn hidden" type="button" title="Clear GPS Destination">✕ CLEAR GPS</button>
+            </div>
           </div>
           <aside class="city-map-sidebar">
             <div class="city-sidebar-title">FAST TRAVEL LANDMARKS</div>

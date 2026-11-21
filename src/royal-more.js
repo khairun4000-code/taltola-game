@@ -4,6 +4,7 @@ import { box, cylinder, rodBetween } from './scene-utils.js';
 import { attachDerivedPBRMaps } from './aaa-shaders.js';
 import { decorateCorridorPole } from './khulna-street-props.js';
 import { buildCNGAuto, buildEasybike } from './khulna-vehicles.js';
+import { buildHotelRoyalComplex } from './hotel-royal-complex.js';
 
 /**
  * ROYAL MORE / CHINGRI CHATTAR (খুলনা রয়্যালের মোড় · চিংড়ি চত্বর)
@@ -1255,9 +1256,19 @@ function buildRoyalMoreRoadsAndFootpaths(staticG, dynamicG, bank, phys) {
     const mz = (z0 + z1) * 0.5;
     addRotBox(staticG, [1.50, 0.30, len], [mx, 0.15, mz], bank.curbBlackYellow, yaw);
     addRotBox(staticG, [0.98, 0.36, len - 0.6], [mx, 0.18, mz], bank.grassTurf, yaw);
-    phys.addOBB(mx, mz, 1.50, len, yaw, 0.48);
+    // Waist-high trimmed green hedges & round ornamental median trees (exact match to S03 & B06!)
+    addRotBox(staticG, [0.84, 0.62, Math.max(2.0, len - 1.4)], [mx, 0.62, mz], bank.foliageDeep, yaw);
+    for (const f of [0.22, 0.78]) {
+      const tx = x0 + dx * f;
+      const tz = z0 + dz * f;
+      cylinder(staticG, 0.08, 0.11, 1.55, [tx, 1.05, tz], bank.royalTerracotta, 6);
+      const crown = new THREE.Mesh(new THREE.DodecahedronGeometry(0.82, 1), bank.grassTurf);
+      crown.position.set(tx, 1.98, tz);
+      crown.scale.set(1.0, 0.78, 1.0);
+      staticG.add(crown);
+    }
+    phys.addOBB(mx, mz, 1.50, len, yaw, 0.95);
     addDoubleArmLamp(staticG, dynamicG, bank, mx, mz, yaw);
-    addOrnamentalPalm(staticG, bank, phys, x0 + dx * 0.28, z0 + dz * 0.28, 6.0, 700 + i * 17);
   }
 
   // SE Khan Jahan Ali Road Raised Center Divider + Median Signs (matches Camera C!)
@@ -1434,15 +1445,32 @@ function buildKdaTigerMedian(staticG, dynamicG, bank, phys) {
     g.add(bush);
   }
 
+  // Iconic Orange "WELCOME TO THE LAND OF TIGERS" sign + Geometric Cube Lattice Sculpture (exact S07 & B02!)
+  cylinder(g, 0.08, 0.10, 4.4, [-2.25, 2.2, 0], bank.aluminum, 8);
   addSignBox(
     dynamicG,
     bank,
-    { title: 'সুন্দরবনের বাঘ · কেডিএ অ্যাভিনিউ', subtitle: 'ROYAL BENGAL TIGER · KHULNA', bg: '#18181b', fg: '#facc15', accent: '#f97316', border: '#facc15' },
-    [tx + 2.85, 0.95, tz - 0.52],
+    { title: 'WELCOME TO THE LAND OF TIGERS', subtitle: 'KHULNA · KDA AVENUE', bg: '#ea580c', fg: '#ffffff', accent: '#fef08a', border: '#ffffff', width: 512, height: 224, align: 'center' },
+    [tx - Math.cos(rotY) * 2.25, 2.55, tz + Math.sin(rotY) * 2.25],
     Math.PI * 0.5 + rotY,
-    1.55,
-    0.44,
+    1.85,
+    1.15,
   );
+  // Geometric white-steel cube lattice sculpture atop pole (visible in B02 & S07!)
+  const cubeC = [-2.25, 4.35, 0];
+  for (const [ox, oy, oz] of [[0, 0, 0], [0.45, 0.45, 0.35], [-0.45, 0.45, -0.35]]) {
+    const s = 0.72;
+    const cx = cubeC[0] + ox;
+    const cy = cubeC[1] + oy;
+    const cz = cubeC[2] + oz;
+    for (const dx of [-s, s]) {
+      for (const dy of [-s, s]) rodBetween(g, [cx + dx, cy + dy, cz - s], [cx + dx, cy + dy, cz + s], 0.025, bank.aluminum, 4);
+      for (const dz of [-s, s]) rodBetween(g, [cx + dx, cy - s, cz + dz], [cx + dx, cy + s, cz + dz], 0.025, bank.aluminum, 4);
+    }
+    for (const dy of [-s, s]) {
+      for (const dz of [-s, s]) rodBetween(g, [cx - s, cy + dy, cz + dz], [cx + s, cy + dy, cz + dz], 0.025, bank.aluminum, 4);
+    }
+  }
 }
 
 /* ============================================================================
@@ -1837,12 +1865,18 @@ function buildChingriChattarMonument(staticG, dynamicG, bank, phys) {
     allEyeGeos.push(...eyeGeos);
   }
 
-  // FULL CENTRAL BILLBOARD MAST + TRIANGULAR 3-SIDED BILLBOARD BRACING (matches S01, S02, S08!)
+  // FULL CENTRAL BILLBOARD MAST + STEEL CLIMBING RUNGS (U01!) + TRIANGULAR 3-SIDED BILLBOARD BRACING
   const mastH = 10.6;
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, mastH, 16), bank.galvanizedPole);
   pole.position.y = 0.95 + mastH * 0.5;
   pole.castShadow = true;
   mon.add(pole);
+  // Welded steel climbing rungs up the central mast (visible clearly in U01!)
+  for (let ry = 2.0; ry <= 6.0; ry += 0.55) {
+    const rung = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.04, 0.14), bank.steelDark);
+    rung.position.set(-0.28, ry, 0);
+    mon.add(rung);
+  }
 
   // Small vertical ad panel mid-way up the mast (visible in S10 & S11!)
   addSignBox(
@@ -2774,8 +2808,8 @@ export function buildRoyalMoreDistrict(parent, m) {
   // 3) KDA Avenue Royal Bengal Tiger Median (Photo S07)
   buildKdaTigerMedian(staticG, dynamicG, bank, phys);
 
-  // 4) Hotel Royal International — WNW Corner with 3-Story Curved Podium, Terrace Garden & Red HERLAN (B01, B02, B07, S03)
-  buildHotelRoyalInternational(staticG, dynamicG, bank, phys);
+  // 4) 1:1 Photo-Accurate Hotel Royal International + Frontier/Fatima Twin Tower Complex (B01, B02, B06, B07, S03, S07, S10, U01)
+  buildHotelRoyalComplex(staticG, dynamicG, bank, phys);
 
   // 5) Hotel Castle Salam — SSE Corner with Pink Frame, Blue Glazing & White Script Canopy (B03, S13, B08, S08)
   buildHotelCastleSalam(staticG, dynamicG, bank, phys);
@@ -3044,12 +3078,12 @@ export function buildRoyalMoreDistrict(parent, m) {
     seed: 635,
   });
 
-  // --- NW KHAN JAHAN ALI ROAD (West side behind Hotel Royal: Frontier Block & City Medical) ---
+  // --- NW KHAN JAHAN ALI ROAD (West side north of Frontier/Fatima Twin Tower: City Medical & Shantidham) ---
   buildRoyalCornerBuilding(staticG, dynamicG, bank, phys, {
-    cx: -761.0,
-    cz: -343.0,
+    cx: -768.0,
+    cz: -350.0,
     rotY: Math.PI * 0.66,
-    w: 20.0,
+    w: 18.5,
     d: 11.5,
     floors: 5,
     wallMat: bank.paleBlueWall,
@@ -3057,8 +3091,8 @@ export function buildRoyalMoreDistrict(parent, m) {
     accentMat: bank.hospitalBlue,
     awningMat: bank.awningGreen,
     shopMat: bank.dispPharm,
-    signTitle: 'ফ্রন্টিয়ার কমপ্লেক্স · সিটি মেডিকেল হল',
-    signSub: 'KHAN JAHAN ALI ROAD · NEXT TO HOTEL ROYAL',
+    signTitle: 'সিটি মেডিকেল হল · ডায়াগনস্টিক · কুরিয়ার',
+    signSub: 'KHAN JAHAN ALI ROAD · KHULNA',
     signBg: '#0f766e',
     seed: 662,
   });

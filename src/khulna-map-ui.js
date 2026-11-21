@@ -9,6 +9,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
   const mapCloseBtn = document.querySelector('#close-city-map');
   const resumeGameBtn = document.querySelector('#pause-resume-game-btn');
   const myLocBtn = document.querySelector('#map-my-location-btn');
+  const clearGpsBtn = document.querySelector('#map-clear-gps-btn');
   const pauseMenuTitle = document.querySelector('#pause-menu-title');
   const tabButtons = Array.from(document.querySelectorAll('[data-pause-tab]'));
   const tabPanels = Array.from(document.querySelectorAll('[data-pause-panel]'));
@@ -177,13 +178,22 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     return path;
   }
 
+  function syncClearGpsButton() {
+    if (!clearGpsBtn) return;
+    clearGpsBtn.classList.toggle('hidden', !gpsWaypoint);
+  }
+
   function updateGpsRouteIfNeeded(px, pz, force = false) {
-    if (!gpsWaypoint) return;
+    if (!gpsWaypoint) {
+      syncClearGpsButton();
+      return;
+    }
     const directDist = Math.hypot(gpsWaypoint.x - px, gpsWaypoint.z - pz);
     if (directDist < 18) {
       gpsWaypoint = null;
       gpsRoutePts = [];
       gpsRouteDistM = 0;
+      syncClearGpsButton();
       return;
     }
     if (!force && Math.hypot(px - lastRouteRecomputePos.x, pz - lastRouteRecomputePos.z) < 16) {
@@ -197,11 +207,13 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       total += Math.hypot(gpsRoutePts[i][0] - gpsRoutePts[i - 1][0], gpsRoutePts[i][1] - gpsRoutePts[i - 1][1]);
     }
     gpsRouteDistM = Math.round(total || directDist);
+    syncClearGpsButton();
   }
 
   function setGpsWaypoint(x, z, label = 'GPS Waypoint') {
     gpsWaypoint = { x, z, label };
     updateGpsRouteIfNeeded(lastPlayerPos.x, lastPlayerPos.z, true);
+    syncClearGpsButton();
     if (isOpen) renderFullMap(lastPlayerPos, lastPlayerYaw);
   }
 
@@ -209,6 +221,7 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     gpsWaypoint = null;
     gpsRoutePts = [];
     gpsRouteDistM = 0;
+    syncClearGpsButton();
     if (isOpen) renderFullMap(lastPlayerPos, lastPlayerYaw);
   }
 
@@ -676,6 +689,12 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     pingUntil = performance.now() + 2600;
     populateLandmarkButtons(lastPlayerPos.x, lastPlayerPos.z);
     renderFullMap(lastPlayerPos, lastPlayerYaw);
+  });
+
+  clearGpsBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearGpsWaypoint();
   });
 
   return {

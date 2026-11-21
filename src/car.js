@@ -2444,9 +2444,11 @@ export function createDrivableCar(scene, manager, config) {
       }
     }
 
-    // 3b. Altapole Lane Head 6-Story Tower Empty Car Garage & [E] Main Car Gate
+    // 3b. Altapole Lane Head 6-Story Tower Empty Car Garage & [E] Main Car Gate + Opposite Goli Buildings
     const altGarageRes = envRef?.altapoleTower?.applyCarCollisions?.(p, state);
     if (altGarageRes?.hitWall) hitWall = true;
+    const altGoliRes = envRef?.altapoleGoli?.applyCarCollisions?.(p, state);
+    if (altGoliRes?.hitWall) hitWall = true;
 
     // 3c. Solid Landmark Collisions for Cars (Royal More, PTI More & Ahsan Ahmed Rd)
     const preX = p.x;
@@ -2483,7 +2485,7 @@ export function createDrivableCar(scene, manager, config) {
       }
     }
 
-    if (!onTowerRamp && !altGarageRes?.inGarage) {
+    if (!onTowerRamp && !altGarageRes?.inGarage && !altGoliRes?.inGarage) {
       p.y = 0.01;
     }
 

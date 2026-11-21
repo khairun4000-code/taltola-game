@@ -1210,11 +1210,9 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
     interiorGroups.push({ group: facInt, cx: fCx, cz: fCz, maxDistSq: 54 * 54 });
   }
 
-  // Solid bounding colliders for the Altapole East Side Lane buildings & dead-end house (z = -404.0, x = 172.6..218.2)
+  // Enterable Altapole East Side Lane buildings (z = -404.0, x = 172.6..217.5) handle their own hollow colliders in src/altapole-goli.js
   staticColliders.push(
-    { minX: 172.5, maxX: 208.6, minZ: -417.5, maxZ: -406.85, maxY: 13.0 }, // North row of East Side Lane
-    { minX: 172.5, maxX: 208.6, minZ: -401.15, maxZ: -390.8, maxY: 13.0 }, // South row of East Side Lane
-    { minX: 208.1, maxX: 218.5, minZ: -411.5, maxZ: -396.5, maxY: 11.0 }, // Dead-end closing house
+    { minX: 172.5, maxX: 182.1, minZ: -407.20, maxZ: -406.82, maxY: 2.2 }, // Short mint corner wall behind [D]
   );
 
   mergeStaticMeshes(exteriorStatic);

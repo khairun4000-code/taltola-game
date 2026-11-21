@@ -7,6 +7,7 @@ import { buildKhulnaLandmarks } from './khulna-landmarks.js';
 import { buildKhulnaCorridors } from './khulna-corridors.js';
 import { buildAltapoleEnterableHouses } from './altapole-houses.js';
 import { buildAltapoleHeadTower } from './altapole-tower.js';
+import { buildAltapoleOppositeGoli } from './altapole-goli.js';
 import { createKhulnaTraffic } from './khulna-vehicles.js';
 import { applyFoliageWindShader } from './aaa-shaders.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
@@ -413,6 +414,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
   const corridors = buildKhulnaCorridors(group, m, corridorHelpers);
   const altapole = buildAltapoleEnterableHouses(group, m, corridorHelpers);
   const altapoleTower = buildAltapoleHeadTower(group, m);
+  const altapoleGoli = buildAltapoleOppositeGoli(group, m, corridorHelpers);
   const traffic = createKhulnaTraffic(group);
 
   function syncVisibility(playerPos = null) {
@@ -433,6 +435,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     corridors,
     altapole,
     altapoleTower,
+    altapoleGoli,
     traffic,
     tower,
     detailsGroup,
