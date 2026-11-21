@@ -2958,7 +2958,10 @@ async function initialize() {
   cars = [];
   bmwCar = null;
 
-  await allLoaded;
+  await Promise.race([
+    allLoaded,
+    new Promise((resolve) => setTimeout(resolve, 12000)),
+  ]);
 
   const params = new URLSearchParams(window.location.search);
   const qParam = params.get('quality');

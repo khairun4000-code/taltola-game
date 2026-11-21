@@ -1414,6 +1414,7 @@ function buildMainPorticoBuilding(staticG, dynamicG, bank) {
   const fascia2Mesh = new THREE.Mesh(new THREE.CylinderGeometry(5.42, 5.42, 1.28, 32, 1, true, arcStart, arcSpan), fascia2Mat);
   fascia2Mesh.position.set(portX, 8.05, mainZ);
   dynamicG.add(fascia2Mesh);
+  return { principalMicPos, isNearPrincipalMic, setPrincipalMicActive };
 }
 
 /* ============================================================================
@@ -1725,7 +1726,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
   rodBetween(staticG, [196.6, 9.05, 103.6], [230.5, 8.55, 103.6], 0.016, bank.wire, 6);
 
   // 2) Grand 64m Main Walkable Portico Building (All 3 Floors Walkable!)
-  buildMainPorticoBuilding(staticG, dynamicG, bank);
+  const { principalMicPos, isNearPrincipalMic, setPrincipalMicActive } = buildMainPorticoBuilding(staticG, dynamicG, bank);
 
   // 3) 4-Story Arched Academic Building (South) & 6-Story Modern Academic Building (North)
   buildAcademicBuildings(staticG, dynamicG, bank);
