@@ -232,22 +232,24 @@ export const CAR_FLEET_CONFIGS = [
     id: 'toyota_corolla',
     name: 'Toyota Corolla 2017',
     badge: 'TOYOTA COROLLA 2017',
-    assetUrl: './assets/toyota_corolla.glb',
+    assetUrl: './assets/toyota_corolla_game_ready.glb?v=4',
     targetLength: 4.55,
     width: 1.82,
-    rotateY: 0, // Raw Corolla already faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z + 17.5],
+    rotateY: Math.PI, // Game-ready GLB faces -Z; rotate 180deg so front faces +Z
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 0.0],
     spawnHeading: 0.0,
     paintPresets: COROLLA_PAINT_PRESETS,
-    bodyPaintMats: ['e180body'],
-    glassMats: ['e180_glass', 'e180_glass_out'],
-    tailMats: ['e180_tail', 'e180_glassred', 'e180_red'],
-    headlightMats: ['e180_lights', 'e180_fog'],
-    chromeMats: ['e180_chrome', 'mirror'],
-    dashGlowMats: ['e180_gauge', 'displaye180', 'e180_intlight'],
+    bodyPaintMats: ['body'],
+    glassMats: ['d_glass', 'glass'],
+    tailMats: ['emit_taillight', 'emit_brake'],
+    headlightMats: ['emit_headlight', 'emit_fog'],
+    chromeMats: ['chrome', 'int_chrome'],
+    dashGlowMats: ['tex_gauges', 'tex_console'],
     khulnaPlateText: ['খুলনা মেট্রো-গ', '১২-৪৫৭৮'],
     khulnaPlatePos: { front: [0, 0.43, 2.27], rear: [0, 0.66, -2.27] },
     hasBuiltInSteeringWheel: true,
+    isGameReadyCorolla: true,
+    exhaustTip: [-0.54, 0.27, -2.18],
     wheelNameRegex: /wheel|brakedisc/i,
     gearCount: 6,
     maxSpeed: 32.0,
@@ -276,8 +278,11 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.50,
     width: 1.76,
     rotateY: Math.PI, // Game-ready GLB faces -Z; rotate 180 deg Y so it faces +Z in-game
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z + 23.4],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.0, TALTOLA_HOUSE_OFFSET.z + 23.4],
     spawnHeading: 0.0,
+    groundOffset: 0.0,
+    exhaustTip: [-0.447, 0.253, -2.145],
+    builtInSteeringNode: 'Steering_Wheel',
     paintPresets: NISSAN_SUNNY_PAINT_PRESETS,
     bodyPaintMats: ['Nissan_Metallic_Paint'],
     glassMats: ['Window_Tinted_Glass'],
@@ -1583,15 +1588,17 @@ export function createDrivableCar(scene, manager, config) {
   }
 
   let riggedWheels = [];
+  let builtInSteeringWheel = null;
   let bikeFrontAssembly = null;
   let measuredWheelRadius = config.isRickshaw ? 0.365 : (config.isBike ? 0.32 : (config.isCNG ? 0.255 : 0.34));
   let rickshawParts = null;
   let cngParts = null;
+  let corollaParts = null;
   let bikeDriverRig = null;
   let carDoors = {};
   let driverDoorOverride = null;
   let exteriorWrapper = null;
-  const cockpitRig = (config.isRickshaw || config.isBike) ? null : createInteriorCockpitRig(config, paintPresets[0].hex);
+  const cockpitRig = (config.isRickshaw || config.isBike || config.isGameReadyCorolla) ? null : createInteriorCockpitRig(config, paintPresets[0].hex);
   if (cockpitRig) bodyTiltGroup.add(cockpitRig.group);
 
   // Interactive 3D Motorcycle Rider Rig + Live Working Digital/Analog POV Speedometer Dashboard!
@@ -1851,6 +1858,84 @@ export function createDrivableCar(scene, manager, config) {
       p.mesh.scale.setScalar(p.startScale + Math.pow(t, 0.72) * 1.75);
       p.mesh.material.rotation += p.rotSpeed * dt;
       p.mesh.material.opacity = Math.pow(1 - t, 1.8) * 0.28;
+    }
+  }
+
+  // GTA V-style ultra-subtle silencer/exhaust wisps (starts when player enters / engine runs; barely visible from afar, clear up close)
+  const exhaustTipLocal = Array.isArray(config.exhaustTip) ? new THREE.Vector3(...config.exhaustTip) : null;
+  const exhaustSmokePuffs = [];
+  const exhaustWorldPos = new THREE.Vector3();
+  let exhaustSmokeCooldown = 0;
+
+  function spawnExhaustSmokePuff(throttleAmt, speedAbs) {
+    if (!exhaustTipLocal || !state.loaded || exhaustSmokePuffs.length > 26) return;
+    root.updateMatrixWorld(true);
+    exhaustWorldPos.copy(exhaustTipLocal);
+    bodyTiltGroup.localToWorld(exhaustWorldPos);
+
+    const isRevving = throttleAmt > 0 || speedAbs > 1.2;
+    const peakOpacity = isRevving
+      ? (0.068 + Math.random() * 0.024)
+      : (0.048 + Math.random() * 0.018);
+    const startScale = isRevving
+      ? (0.095 + Math.random() * 0.030)
+      : (0.075 + Math.random() * 0.028);
+    const mat = new THREE.SpriteMaterial({
+      map: smokeTex,
+      transparent: true,
+      opacity: 0.001,
+      depthWrite: false,
+      color: new THREE.Color(0xdbe1e8),
+      rotation: Math.random() * Math.PI * 2,
+    });
+    const sp = new THREE.Sprite(mat);
+    sp.position.set(
+      exhaustWorldPos.x + (Math.random() - 0.5) * 0.022,
+      exhaustWorldPos.y + (Math.random() - 0.5) * 0.018,
+      exhaustWorldPos.z + (Math.random() - 0.5) * 0.022,
+    );
+    sp.scale.setScalar(startScale);
+    scene.add(sp);
+
+    const backPush = isRevving ? (0.85 + Math.min(speedAbs * 0.08, 1.4)) : 0.42;
+    const fx = Math.sin(state.heading);
+    const fz = Math.cos(state.heading);
+    exhaustSmokePuffs.push({
+      mesh: sp,
+      age: 0,
+      maxAge: isRevving ? (0.62 + Math.random() * 0.30) : (0.80 + Math.random() * 0.34),
+      vx: -fx * backPush + (Math.random() - 0.5) * 0.14,
+      vy: (isRevving ? 0.18 : 0.16) + Math.random() * 0.09,
+      vz: -fz * backPush + (Math.random() - 0.5) * 0.14,
+      rotSpeed: (Math.random() - 0.5) * 0.9,
+      startScale,
+      growScale: isRevving ? (0.34 + Math.random() * 0.12) : (0.28 + Math.random() * 0.10),
+      peakOpacity,
+    });
+  }
+
+  function updateExhaustSmoke(dt) {
+    for (let i = exhaustSmokePuffs.length - 1; i >= 0; i--) {
+      const p = exhaustSmokePuffs[i];
+      p.age += dt;
+      if (p.age >= p.maxAge) {
+        scene.remove(p.mesh);
+        p.mesh.material.dispose();
+        exhaustSmokePuffs.splice(i, 1);
+        continue;
+      }
+      const t = p.age / p.maxAge;
+      const drag = Math.max(0, 1 - dt * 2.8);
+      p.vx *= drag;
+      p.vz *= drag;
+      p.mesh.position.x += p.vx * dt;
+      p.mesh.position.y += p.vy * dt;
+      p.mesh.position.z += p.vz * dt;
+      p.mesh.scale.setScalar(p.startScale + Math.pow(t, 0.78) * p.growScale);
+      p.mesh.material.rotation += p.rotSpeed * dt;
+      const fadeIn = Math.min(1, t / 0.16);
+      const fadeOut = Math.pow(1 - t, 1.85);
+      p.mesh.material.opacity = fadeIn * fadeOut * p.peakOpacity;
     }
   }
   let paintMaterials = [];
@@ -2501,20 +2586,38 @@ export function createDrivableCar(scene, manager, config) {
               paintMaterials.push(out);
               glossyMaterials.push(out);
             } else if (glassSet.has(mName)) {
-              out = new THREE.MeshPhysicalMaterial({
-                name: mName,
-                color: new THREE.Color(config.isCNG ? '#142433' : '#0c1724'),
-                side: THREE.DoubleSide,
-                transparent: true,
-                opacity: config.isCNG ? 0.30 : 0.34,
-                depthWrite: false,
-                metalness: 0.35,
-                roughness: config.isCNG ? 0.05 : 0.06,
-                clearcoat: 1.0,
-                clearcoatRoughness: 0.04,
-                reflectivity: 1.0,
-                envMapIntensity: 1.85,
-              });
+              if (config.isGameReadyCorolla) {
+                const isHeadlightLens = mName === 'glass';
+                out = new THREE.MeshPhysicalMaterial({
+                  name: mName,
+                  color: new THREE.Color(isHeadlightLens ? '#f4f8ff' : '#d8e4ee'),
+                  side: THREE.DoubleSide,
+                  transparent: true,
+                  opacity: isHeadlightLens ? 0.11 : 0.16,
+                  depthWrite: false,
+                  metalness: 0.08,
+                  roughness: 0.04,
+                  clearcoat: 1.0,
+                  clearcoatRoughness: 0.03,
+                  reflectivity: 0.9,
+                  envMapIntensity: 1.35,
+                });
+              } else {
+                out = new THREE.MeshPhysicalMaterial({
+                  name: mName,
+                  color: new THREE.Color(config.isCNG ? '#142433' : '#0c1724'),
+                  side: THREE.DoubleSide,
+                  transparent: true,
+                  opacity: config.isCNG ? 0.30 : 0.34,
+                  depthWrite: false,
+                  metalness: 0.35,
+                  roughness: config.isCNG ? 0.05 : 0.06,
+                  clearcoat: 1.0,
+                  clearcoatRoughness: 0.04,
+                  reflectivity: 1.0,
+                  envMapIntensity: 1.85,
+                });
+              }
               glossyMaterials.push(out);
             } else if (chromeSet.has(mName)) {
               out = new THREE.MeshPhysicalMaterial({
@@ -2549,28 +2652,36 @@ export function createDrivableCar(scene, manager, config) {
               });
             } else if (dashGlowSet.has(mName)) {
               out = mat.clone();
-              out.emissive = new THREE.Color('#38bdf8');
-              out.emissiveIntensity = 1.15;
-              out.roughness = 0.25;
+              if (config.isGameReadyCorolla) {
+                out.emissiveIntensity = 1.05;
+                out.roughness = 0.28;
+              } else {
+                out.emissive = new THREE.Color('#38bdf8');
+                out.emissiveIntensity = 1.15;
+                out.roughness = 0.25;
+              }
             } else if (tailSet.has(mName)) {
               out = mat.clone();
               if ('transmission' in out && out.transmission > 0) out.transmission = 0;
               out.color = new THREE.Color('#d61424');
               out.emissive = new THREE.Color('#ff1228');
-              out.emissiveIntensity = 2.1;
+              out.emissiveIntensity = config.isGameReadyCorolla ? 1.5 : 2.1;
               tailMats.push(out);
             } else if (hlSet.has(mName)) {
               out = mat.clone();
               if ('transmission' in out && out.transmission > 0) out.transmission = 0;
-              out.emissive = new THREE.Color('#f4f9ff');
-              out.emissiveIntensity = 2.0;
+              out.emissive = new THREE.Color('#fff5e0');
+              out.emissiveIntensity = config.isGameReadyCorolla ? 1.55 : 2.0;
               drlMats.push(out);
             } else {
               out = mat.clone();
               if ('transmission' in out && out.transmission > 0) out.transmission = 0;
-              if (!config.isRickshaw && !out.transparent && !out.alphaTest
+              if (!config.isRickshaw && !config.isGameReadyCorolla && !out.transparent && !out.alphaTest
                 && /int|leather|stitch|seat|dash|black|gray|dark|chrome|rim|tire|engine|brake|sunburst|carpet|wood/i.test(mName)) {
                 out.side = THREE.FrontSide;
+              }
+              if (config.isGameReadyCorolla && /int_leather|seat|bolster|door/i.test(mName)) {
+                out.side = THREE.DoubleSide;
               }
               if ('envMapIntensity' in out) {
                 out.envMapIntensity = /chrome|cr|rim|mirror/i.test(mName) ? 1.55 : 1.0;
@@ -2766,6 +2877,37 @@ export function createDrivableCar(scene, manager, config) {
             gripL,
             gripR,
           };
+        } else if (config.isGameReadyCorolla) {
+          const find = (n) => orientedWrapper.getObjectByName(n) || null;
+          const wheelFL = find('Wheel_FL');
+          const wheelFR = find('Wheel_FR');
+          const wheelRL = find('Wheel_RL');
+          const wheelRR = find('Wheel_RR');
+          const wheelFLSteer = find('Wheel_FL_Steer');
+          const wheelFRSteer = find('Wheel_FR_Steer');
+          const steeringWheel = find('Steering_Wheel');
+          const lightsGroup = find('Lights');
+          corollaParts = {
+            wheelFL, wheelFR, wheelRL, wheelRR,
+            wheelFLSteer, wheelFRSteer,
+            steeringWheel,
+            lightsGroup,
+            headlights: [find('Light_Headlight_L'), find('Light_Headlight_R')].filter(Boolean),
+            fogLights: [find('Light_Fog_L'), find('Light_Fog_R')].filter(Boolean),
+            taillights: [find('Light_Taillight_L'), find('Light_Taillight_R')].filter(Boolean),
+            brakeLights: [find('Light_Brake_L'), find('Light_Brake_R'), find('Light_Brake_Center')].filter(Boolean),
+            reverseLights: [find('Light_Reverse_L'), find('Light_Reverse_R')].filter(Boolean),
+            indLeft: [find('Light_Indicator_FL'), find('Light_Indicator_RL')].filter(Boolean),
+            indRight: [find('Light_Indicator_FR'), find('Light_Indicator_RR')].filter(Boolean),
+            domeLight: find('Light_Interior_Dome'),
+            dashLight: find('Light_Dash_Cluster'),
+          };
+          for (const grp of [corollaParts.headlights, corollaParts.fogLights, corollaParts.taillights, corollaParts.brakeLights, corollaParts.reverseLights, corollaParts.indLeft, corollaParts.indRight]) {
+            for (const obj of grp) obj.visible = false;
+          }
+          if (corollaParts.domeLight) corollaParts.domeLight.visible = false;
+          if (corollaParts.dashLight) corollaParts.dashLight.visible = false;
+          measuredWheelRadius = 0.32;
         } else {
           if (config.wheelNameRegex || config.wheelMatRegex) {
             const res = rigGenericCarWheels(orientedWrapper, config.wheelNameRegex, config.wheelMatRegex);
@@ -2775,15 +2917,63 @@ export function createDrivableCar(scene, manager, config) {
         }
       }
 
-      // Keep original full-detail exterior car geometry intact (black fade transition used instead of door animation)
+      // Keep original full-detail exterior car geometry intact; wire native hinged doors for our game-ready Corolla
       carDoors = {};
+      if (config.isGameReadyCorolla) {
+        const doorDefs = [
+          { key: 'FL', nodeName: 'Door_FL', side: -1 },
+          { key: 'FR', nodeName: 'Door_FR', side: 1 },
+          { key: 'RL', nodeName: 'Door_RL', side: -1 },
+          { key: 'RR', nodeName: 'Door_RR', side: 1 },
+        ];
+        for (const def of doorDefs) {
+          const pivot = orientedWrapper.getObjectByName(def.nodeName);
+          if (pivot) {
+            carDoors[def.key] = {
+              key: def.key,
+              pivot,
+              side: def.side,
+              sliding: false,
+              restPos: pivot.position.clone(),
+              current: 0,
+              target: 0,
+            };
+          }
+        }
+      }
+
+      if (config.builtInSteeringNode) {
+        builtInSteeringWheel = model.getObjectByName(config.builtInSteeringNode) || null;
+      }
 
       // Batch all static chassis/interior child meshes by material (cuts 4,098 Alphard draw calls down to ~35!)
       const dynamicNodes = new Set();
+      if (builtInSteeringWheel) {
+        builtInSteeringWheel.traverse((o) => {
+          if (o.isMesh) dynamicNodes.add(o);
+        });
+      }
       for (const w of riggedWheels) {
         w.wheelRoot?.traverse((o) => {
           if (o.isMesh) dynamicNodes.add(o);
         });
+      }
+      for (const d of Object.values(carDoors)) {
+        d.pivot?.traverse((o) => {
+          if (o.isMesh) dynamicNodes.add(o);
+        });
+      }
+      if (corollaParts) {
+        const dynRoots = [
+          corollaParts.wheelFLSteer, corollaParts.wheelFRSteer,
+          corollaParts.wheelFL, corollaParts.wheelFR, corollaParts.wheelRL, corollaParts.wheelRR,
+          corollaParts.steeringWheel, corollaParts.lightsGroup,
+        ];
+        for (const r of dynRoots) {
+          r?.traverse((o) => {
+            if (o.isMesh) dynamicNodes.add(o);
+          });
+        }
       }
       if (bikeFrontAssembly) {
         bikeFrontAssembly.traverse((o) => {
@@ -2825,7 +3015,10 @@ export function createDrivableCar(scene, manager, config) {
           }
         }
       }
-      batchStaticCarMeshes(orientedWrapper, dynamicNodes);
+      // Preserve full un-merged steel/chrome mudguards, forks & frames on bicycles/rickshaws so curved steel parts never deform!
+      if (!config.isBicycle && !config.isRickshaw) {
+        batchStaticCarMeshes(orientedWrapper, dynamicNodes);
+      }
 
       // Attach a single 24-triangle shadow hull proxy for non-rickshaw cars (saves millions of shadow triangles!)
       if (!config.isRickshaw) {
@@ -2927,6 +3120,14 @@ export function createDrivableCar(scene, manager, config) {
   }
 
   function getInteriorCameraPose(outEye, outLook) {
+    if (config.isGameReadyCorolla) {
+      root.updateMatrixWorld(true);
+      outEye.set(0.36, 1.18, -0.05);
+      outLook.set(0.36, 1.12, 8.0);
+      bodyTiltGroup.localToWorld(outEye);
+      bodyTiltGroup.localToWorld(outLook);
+      return true;
+    }
     if (!cockpitRig) return false;
     root.updateMatrixWorld(true);
     outEye.copy(cockpitRig.getEyeLocal());
@@ -3081,6 +3282,9 @@ export function createDrivableCar(scene, manager, config) {
       carDriverRig.rigGroup.visible = (state.driving && state.cameraMode !== 'interior') || state.aiDriving;
       carDriverRig.wheelSpin.rotation.z = -state.steerAngle * 2.65;
     }
+    if (builtInSteeringWheel) {
+      builtInSteeringWheel.rotation.z = state.steerAngle * 2.65;
+    }
     if (bikeDriverRig) {
       bikeDriverRig.steerPivot.rotation.y = state.steerAngle * 0.95;
       bikeDriverRig.dashHousing.visible = state.driving && state.cameraMode === 'pov';
@@ -3138,6 +3342,34 @@ export function createDrivableCar(scene, manager, config) {
       if (cngParts.wheelFront) cngParts.wheelFront.rotation.x = state.wheelSpin;
       if (cngParts.wheelRearL) cngParts.wheelRearL.rotation.x = state.wheelSpin;
       if (cngParts.wheelRearR) cngParts.wheelRearR.rotation.x = state.wheelSpin;
+      return;
+    }
+
+    if (corollaParts) {
+      // Spin all 4 wheels + locked lug nuts & Toyota hub logos together
+      if (corollaParts.wheelFL) corollaParts.wheelFL.rotation.x = -state.wheelSpin;
+      if (corollaParts.wheelFR) corollaParts.wheelFR.rotation.x = -state.wheelSpin;
+      if (corollaParts.wheelRL) corollaParts.wheelRL.rotation.x = -state.wheelSpin;
+      if (corollaParts.wheelRR) corollaParts.wheelRR.rotation.x = -state.wheelSpin;
+      // Steer front wheels & turn the real 3-spoke steering wheel in sync
+      if (corollaParts.wheelFLSteer) corollaParts.wheelFLSteer.rotation.y = state.steerAngle;
+      if (corollaParts.wheelFRSteer) corollaParts.wheelFRSteer.rotation.y = state.steerAngle;
+      if (corollaParts.steeringWheel) corollaParts.steeringWheel.rotation.z = state.steerAngle * 5.2;
+      // Sync all workable bulbs (headlights, fog, taillights, brake, reverse, indicators, dome, dash)
+      const engineOn = Boolean(state.driving || state.aiDriving);
+      const hlOn = state.headlightsMode > 0;
+      const hlHigh = state.headlightsMode === 2;
+      const anyDoorOpen = Object.values(carDoors).some((d) => d.current > 0.06);
+      const blinkOn = Math.floor(performance.now() / 420) % 2 === 0;
+      for (const obj of corollaParts.headlights) obj.visible = hlOn;
+      for (const obj of corollaParts.fogLights) obj.visible = hlHigh;
+      for (const obj of corollaParts.taillights) obj.visible = engineOn || hlOn;
+      for (const obj of corollaParts.brakeLights) obj.visible = Boolean(state.isBraking);
+      for (const obj of corollaParts.reverseLights) obj.visible = engineOn && state.gear === 'R';
+      for (const obj of corollaParts.indLeft) obj.visible = engineOn && state.steerAngle > 0.22 && blinkOn;
+      for (const obj of corollaParts.indRight) obj.visible = engineOn && state.steerAngle < -0.22 && blinkOn;
+      if (corollaParts.dashLight) corollaParts.dashLight.visible = engineOn || hlOn;
+      if (corollaParts.domeLight) corollaParts.domeLight.visible = anyDoorOpen;
       return;
     }
 
@@ -3352,7 +3584,8 @@ export function createDrivableCar(scene, manager, config) {
     const hLeft = (hFL + hRL) * 0.5;
     const hRight = (hFR + hRR) * 0.5;
     const avgWheelY = (hFL + hFR + hRL + hRR) * 0.25;
-    const targetGroundY = Math.max(hC, avgWheelY) + (config.isCNG ? 0.0 : 0.01);
+    const groundOffset = typeof config.groundOffset === 'number' ? config.groundOffset : (config.isCNG ? 0.0 : 0.01);
+    const targetGroundY = Math.max(hC, avgWheelY) + groundOffset;
 
     // 1) Real Vertical Gravity, Climbing & Airborne Launch/Landing Physics
     const stepDelta = targetGroundY - state.lastGroundY;
@@ -3542,13 +3775,23 @@ export function createDrivableCar(scene, manager, config) {
     const isHigh = state.headlightsMode === 2;
     for (const b of headlightBeams) {
       b.spot.visible = isOn;
-      b.spot.intensity = isHigh ? 24.0 : (isOn ? 11.5 : 0);
+      if (config.isGameReadyCorolla) {
+        b.spot.intensity = isHigh ? 13.5 : (isOn ? 7.0 : 0);
+      } else {
+        b.spot.intensity = isHigh ? 24.0 : (isOn ? 11.5 : 0);
+      }
       b.spot.distance = isHigh ? 82 : 48;
       b.spot.angle = isHigh ? Math.PI * 0.30 : Math.PI * 0.23;
       b.tgt.position.set(b.ox * 0.85, isHigh ? 0.55 : 0.12, b.hlZ + (isHigh ? 28 : 16));
     }
-    for (const m of drlMats) m.emissiveIntensity = isHigh ? 9.5 : (isOn ? 6.0 : 2.0);
-    for (const m of tailMats) m.emissiveIntensity = isOn ? 4.2 : 1.8;
+    if (config.isGameReadyCorolla) {
+      for (const m of drlMats) m.emissiveIntensity = isHigh ? 2.4 : (isOn ? 1.55 : 0.0);
+      for (const m of tailMats) m.emissiveIntensity = isOn ? 2.0 : 1.3;
+    } else {
+      for (const m of drlMats) m.emissiveIntensity = isHigh ? 9.5 : (isOn ? 6.0 : 2.0);
+      for (const m of tailMats) m.emissiveIntensity = isOn ? 4.2 : 1.8;
+    }
+    syncTransform();
     return state.headlightsMode;
   }
 
@@ -3558,15 +3801,21 @@ export function createDrivableCar(scene, manager, config) {
     if (state.driving || config.isRickshaw || config.isBike) return false;
     state.aiDriving = true;
     aiControlInput = { throttle: 0, brake: 0, steerInput: 0, handbrake: false };
-    for (const m of drlMats) m.emissiveIntensity = 3.8;
+    if (!config.isGameReadyCorolla) {
+      for (const m of drlMats) m.emissiveIntensity = 3.8;
+    }
     return true;
   }
 
   function exitAICar() {
     state.aiDriving = false;
     aiControlInput = null;
-    for (const m of drlMats) m.emissiveIntensity = 1.8;
-    for (const m of tailMats) m.emissiveIntensity = 1.6;
+    state.isBraking = false;
+    if (!config.isGameReadyCorolla) {
+      for (const m of drlMats) m.emissiveIntensity = 1.8;
+      for (const m of tailMats) m.emissiveIntensity = 1.6;
+    }
+    syncTransform();
   }
 
   function setAIControl(input) {
@@ -3584,8 +3833,15 @@ export function createDrivableCar(scene, manager, config) {
       state.passengerSeatIndex = ((passengerSeatIdx % 4) + 4) % 4;
     }
     ensureAudio();
-    for (const m of drlMats) m.emissiveIntensity = 4.5;
+    if (!config.isGameReadyCorolla) {
+      for (const m of drlMats) m.emissiveIntensity = 4.5;
+    }
+    if (exhaustTipLocal && state.loaded) {
+      spawnExhaustSmokePuff(0.4, 0);
+      exhaustSmokeCooldown = 0.08;
+    }
     syncInteriorVisibility();
+    syncTransform();
   }
 
   function setPassengerSeatIndex(idx) {
@@ -3610,11 +3866,15 @@ export function createDrivableCar(scene, manager, config) {
     const wasVanPass = Boolean(config.isVan && state.rideSeat === 'passenger');
     const vanPose = wasVanPass ? getVanSeatPose(state.passengerSeatIndex) : null;
     state.driving = false;
+    state.isBraking = false;
     state.rideSeat = 'driver';
     syncInteriorVisibility();
     updateEngineAudio(false, 920, 0);
-    for (const m of drlMats) m.emissiveIntensity = 1.8;
-    for (const m of tailMats) m.emissiveIntensity = 1.6;
+    if (!config.isGameReadyCorolla) {
+      for (const m of drlMats) m.emissiveIntensity = 1.8;
+      for (const m of tailMats) m.emissiveIntensity = 1.6;
+    }
+    syncTransform();
 
     if (vanPose?.dismountPos) {
       playerPos.set(vanPose.dismountPos.x, state.pos.y + 1.68, vanPose.dismountPos.z);
@@ -3689,12 +3949,16 @@ export function createDrivableCar(scene, manager, config) {
   function update(delta, keys, houseRef, envRef, allCars = [], groundHeightFn = null) {
     const dt = Math.min(delta, 0.05);
     if (tireSmokePuffs.length > 0) updateTireSmoke(dt);
+    if (exhaustSmokePuffs.length > 0) updateExhaustSmoke(dt);
 
     // Smoothly animate all 4 doors whether parked or driving
+    let doorMoved = false;
     for (const d of Object.values(carDoors)) {
       if (d.key === 'FL' && driverDoorOverride !== null) continue;
+      const prev = d.current;
       d.current = THREE.MathUtils.lerp(d.current, d.target, Math.min(1, dt * 8.5));
       if (Math.abs(d.current - d.target) < 0.002) d.current = d.target;
+      if (Math.abs(d.current - prev) > 0.0005) doorMoved = true;
     }
 
     const isPassengerSitting = config.isRickshaw && state.rideSeat === 'passenger';
@@ -3722,7 +3986,7 @@ export function createDrivableCar(scene, manager, config) {
         moved = true;
       }
       updateEngineAudio(false, 920, 0);
-      if (moved || isPassengerSitting) syncTransform();
+      if (moved || doorMoved || isPassengerSitting) syncTransform();
       return;
     }
 
@@ -3837,8 +4101,8 @@ export function createDrivableCar(scene, manager, config) {
       smokeCooldown = Math.max(0, smokeCooldown - dt);
       const hardLaunch = throttle > 0 && (boost > 1.0 || (config.isCNG && Math.abs(state.speed) > 0.6 && Math.abs(state.speed) < 4.5)) && Math.abs(state.speed) < 6.5;
       const hardBrake = (brake > 0 || handbrake) && Math.abs(state.speed) > (config.isCNG ? 3.8 : 6.5);
-      const cngCornerFriction = config.isCNG && Math.abs(state.speed) > 5.0 && Math.abs(state.steerAngle) > 0.28;
-      if ((isDrifting || hardLaunch || hardBrake || cngCornerFriction) && smokeCooldown <= 0) {
+      const cornerFriction = (config.isCNG && Math.abs(state.speed) > 5.0 && Math.abs(state.steerAngle) > 0.28) || (state.slipIntensity > 0.35 && Math.abs(state.speed) > 7.5);
+      if ((isDrifting || hardLaunch || hardBrake || cornerFriction) && smokeCooldown <= 0) {
         smokeCooldown = isDrifting ? 0.045 : (config.isCNG ? 0.075 : 0.085);
         const rearDist = config.isCNG ? 0.82 : state.halfLength * 0.62;
         const trackHalf = config.isCNG ? 0.54 : state.halfWidth * 0.78;
@@ -3849,6 +4113,17 @@ export function createDrivableCar(scene, manager, config) {
             state.pos.z - fwd.z * rearDist + rgt.z * trackHalf * side,
           );
         }
+      }
+    }
+    if (exhaustTipLocal && state.loaded) {
+      exhaustSmokeCooldown -= dt;
+      if (exhaustSmokeCooldown <= 0) {
+        const speedAbs = Math.abs(state.speed);
+        const isRevving = throttle > 0 || speedAbs > 1.2;
+        exhaustSmokeCooldown = isRevving
+          ? (0.085 + Math.random() * 0.035)
+          : (0.145 + Math.random() * 0.065);
+        spawnExhaustSmokePuff(throttle, speedAbs);
       }
     }
     if (config.isRickshaw) {
@@ -3909,8 +4184,15 @@ export function createDrivableCar(scene, manager, config) {
       : THREE.MathUtils.clamp(2000 + gearProgress * 5400, 1100, 7800);
     state.rpm = THREE.MathUtils.lerp(state.rpm, targetRpm, Math.min(1, dt * 12));
 
-    for (const m of tailMats) {
-      m.emissiveIntensity = (brake > 0 || handbrake) ? 7.0 : 2.2;
+    state.isBraking = Boolean(brake > 0 || handbrake);
+    if (config.isGameReadyCorolla) {
+      for (const m of tailMats) {
+        m.emissiveIntensity = state.isBraking ? 3.2 : 1.45;
+      }
+    } else {
+      for (const m of tailMats) {
+        m.emissiveIntensity = state.isBraking ? 7.0 : 2.2;
+      }
     }
 
     updateEngineAudio(true, state.rpm, throttle, state.slipIntensity);
@@ -3995,7 +4277,8 @@ export function createDrivableCar(scene, manager, config) {
     getBikeRiderAnchors,
     getBikePovCameraPose,
     spawnAt(x, z, heading = 0) {
-      state.pos.set(x, 0.01, z);
+      const groundOffset = typeof config.groundOffset === 'number' ? config.groundOffset : (config.isCNG ? 0.0 : 0.01);
+      state.pos.set(x, groundOffset, z);
       state.heading = heading;
       state.speed = 0;
       state.lateralVel = 0;
@@ -4012,7 +4295,7 @@ export function createDrivableCar(scene, manager, config) {
       state.dynRollVel = 0;
       state.suspHeave = 0;
       state.suspHeaveVel = 0;
-      state.lastGroundY = 0.01;
+      state.lastGroundY = groundOffset;
       state.frontSuspOffset = 0;
       state.frontSuspVel = 0;
       state.rearSuspOffset = 0;
@@ -4043,6 +4326,12 @@ export function createDrivableCar(scene, manager, config) {
         p.mesh.material?.dispose?.();
       }
       tireSmokePuffs.length = 0;
+      for (const p of exhaustSmokePuffs) {
+        scene.remove(p.mesh);
+        p.mesh.geometry?.dispose?.();
+        p.mesh.material?.dispose?.();
+      }
+      exhaustSmokePuffs.length = 0;
       smokeTex?.dispose?.();
       root.traverse((obj) => {
         if (!obj.isMesh) return;

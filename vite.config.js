@@ -8,6 +8,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         royalHotelPreview: resolve(__dirname, 'royal-hotel-preview.html'),
+        corollaPreview: resolve(__dirname, 'corolla-preview.html'),
       },
     },
   },
