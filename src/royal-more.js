@@ -1144,11 +1144,17 @@ function buildRoyalMoreRoadsAndFootpaths(staticG, dynamicG, bank, phys) {
   // Dense Urban Paved Concrete Ground Deck covering entire Royal Mor district
   box(staticG, [220, 0.024, 200], [-736, 0.012, -296], bank.urbanGround, { castShadow: false });
 
-  // Main Circular Roundabout Asphalt Ring (inner r = 5.60m outer island curb, outer r = 14.2m)
+  // Main Circular Roundabout Asphalt Ring (inner r = 5.60m outer island curb, outer r = 14.2m, flush at y = 0.003)
   const ringGeo = new THREE.RingGeometry(5.55, 14.2, 56);
   ringGeo.rotateX(-Math.PI / 2);
+  const rPos = ringGeo.attributes.position;
+  const rUv = ringGeo.attributes.uv;
+  for (let i = 0; i < rPos.count; i++) {
+    rUv.setXY(i, (CX + rPos.getX(i)) / 5.5, (CZ + rPos.getZ(i)) / 5.5);
+  }
+  rUv.needsUpdate = true;
   const ringMesh = new THREE.Mesh(ringGeo, bank.asphalt);
-  ringMesh.position.set(CX, 0.036, CZ);
+  ringMesh.position.set(CX, 0.003, CZ);
   ringMesh.receiveShadow = true;
   staticG.add(ringMesh);
 
@@ -1210,13 +1216,13 @@ function buildRoyalMoreRoadsAndFootpaths(staticG, dynamicG, bank, phys) {
   const slipKDAtoNW = [[-742.8, -289.1], [-735.2, -299.2], [-727.9, -317.9]];
   const localStreetENE = [[-704.0, -299.0], [-678.0, -318.0], [-652.0, -322.0]];
 
-  addRoadRibbon(staticG, seKhanJahan, 13.4, 0.033, bank.asphalt, 5.5);
-  addRoadRibbon(staticG, nwKhanJahan, 11.8, 0.033, bank.asphalt, 5.5);
-  addRoadRibbon(staticG, kdaSouthLane, 8.2, 0.033, bank.asphalt, 5.5);
-  addRoadRibbon(staticG, kdaNorthLane, 8.2, 0.033, bank.asphalt, 5.5);
-  addRoadRibbon(staticG, slipSEtoKDA, 7.6, 0.031, bank.asphalt, 5.5);
-  addRoadRibbon(staticG, slipKDAtoNW, 7.2, 0.031, bank.asphalt, 5.5);
-  addRoadRibbon(staticG, localStreetENE, 6.2, 0.031, bank.asphalt, 5.0);
+  addRoadRibbon(staticG, seKhanJahan, 13.4, -0.018, bank.asphalt, 5.5);
+  addRoadRibbon(staticG, nwKhanJahan, 11.8, -0.018, bank.asphalt, 5.5);
+  addRoadRibbon(staticG, kdaSouthLane, 8.2, -0.018, bank.asphalt, 5.5);
+  addRoadRibbon(staticG, kdaNorthLane, 8.2, -0.018, bank.asphalt, 5.5);
+  addRoadRibbon(staticG, slipSEtoKDA, 7.6, -0.019, bank.asphalt, 5.5);
+  addRoadRibbon(staticG, slipKDAtoNW, 7.2, -0.019, bank.asphalt, 5.5);
+  addRoadRibbon(staticG, localStreetENE, 6.2, -0.019, bank.asphalt, 5.5);
 
   // Walkable Raised Footpaths (0.16m) with Black-and-Yellow Curbs along all approaches
   const seWalkPts = [[-644, -248], [-670, -264], [-686, -276], [-699, -283.5]];

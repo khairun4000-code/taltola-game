@@ -324,12 +324,13 @@ function createPtiBank(m) {
   const interiorTileTex = makeInteriorTileTexture('#e8e2d5', '#b9b1a3');
   const interiorTileMat = new THREE.MeshStandardMaterial({ map: interiorTileTex, roughness: 0.42, metalness: 0.04 });
 
+  const taltolaRoad = m?.road || pitchJunctionMat;
   const bank = {
-    asphalt: pitchJunctionMat,
-    pitchJunction: pitchJunctionMat,
-    pitchHighway: pitchHighwayMat,
-    pitchAhsan: pitchAhsanMat,
-    pitchLane: pitchLaneMat,
+    asphalt: taltolaRoad,
+    pitchJunction: taltolaRoad,
+    pitchHighway: taltolaRoad,
+    pitchAhsan: taltolaRoad,
+    pitchLane: taltolaRoad,
     footpath: redBrickFootpathMat, // Red brick walkable footpath!
     interiorFloor: interiorTileMat,
     brick: m.brick || mkPlaster('#9b4634', 811, 0.88, { subtleBrick: true }),
@@ -876,27 +877,25 @@ function addSidewalkAlongPolyline(staticG, bank, phys, pts, roadHalfW, sideSign,
 
 function addZebraCrosswalk(parent, bank, cx, cz, yaw, roadWidth = 8.4) {
   const grp = new THREE.Group();
-  grp.position.set(cx, 0.104, cz);
+  grp.position.set(cx, 0.005, cz);
   grp.rotation.y = yaw;
   const count = Math.floor(roadWidth / 0.90);
   const start = -((count - 1) * 0.90) * 0.5;
   for (let i = 0; i < count; i++) {
-    box(grp, [0.44, 0.012, 2.25], [start + i * 0.90, 0, 0], bank.roadLineWhite, { castShadow: false });
+    box(grp, [0.44, 0.004, 2.25], [start + i * 0.90, 0, 0], bank.roadLineWhite, { castShadow: false });
   }
   parent.add(grp);
 }
 
 /**
- * Builds one continuous, ZERO-Z-fighting Bangladeshi Pitch-Asphalt road ribbon along a polyline
- * cleanly elevated above underlying OSM city ribbons (yTop = 0.064) with mitered joints!
+ * Builds one continuous, ZERO-Z-fighting Taltola-style wet-asphalt road ribbon flush at yTop = 0.002!
  */
-function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.064) {
+function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.002) {
   if (!pts || pts.length < 2) return;
   const positions = [];
   const normals = [];
   const uvs = [];
   const indices = [];
-  let distAcc = 0;
 
   for (let i = 0; i < pts.length; i++) {
     const [x, z] = pts[i];
@@ -906,7 +905,6 @@ function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.064) {
       const dx = x - pts[i - 1][0];
       const dz = z - pts[i - 1][1];
       const l = Math.hypot(dx, dz) || 1;
-      distAcc += l;
       nx += -dz / l;
       nz += dx / l;
     }
@@ -921,11 +919,13 @@ function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.064) {
     nx /= nl;
     nz /= nl;
 
-    positions.push(x - nx * roadHalfW, yTop, z - nz * roadHalfW);
-    positions.push(x + nx * roadHalfW, yTop, z + nz * roadHalfW);
+    const lx = x - nx * roadHalfW;
+    const lz = z - nz * roadHalfW;
+    const rx = x + nx * roadHalfW;
+    const rz = z + nz * roadHalfW;
+    positions.push(lx, yTop, lz, rx, yTop, rz);
     normals.push(0, 1, 0, 0, 1, 0);
-    const vCoord = distAcc * 0.11;
-    uvs.push(0, vCoord, 1, vCoord);
+    uvs.push(lx / 5.5, lz / 5.5, rx / 5.5, rz / 5.5);
 
     if (i > 0) {
       const b = (i - 1) * 2;
@@ -966,11 +966,17 @@ function addDoubleArmLamp(staticG, dynamicG, bank, x, z, rotY = 0) {
 }
 
 function buildPtiJunctionAndFootpaths(staticG, dynamicG, bank, phys) {
-  // Single flat Bangladeshi Pitch-Asphalt Junction Circle (y = 0.088m — zero bottom face, cleanly above all 4 arms with ZERO Z-fighting!)
+  // Single flat Taltola-style wet-asphalt Junction Circle flush at ground level (y = 0.003m)
   const jDiscGeo = new THREE.CircleGeometry(16.8, 48);
   jDiscGeo.rotateX(-Math.PI * 0.5);
+  const jPos = jDiscGeo.attributes.position;
+  const jUv = jDiscGeo.attributes.uv;
+  for (let i = 0; i < jPos.count; i++) {
+    jUv.setXY(i, (-307.2 + jPos.getX(i)) / 5.5, (-48.0 + jPos.getZ(i)) / 5.5);
+  }
+  jUv.needsUpdate = true;
   const jDisc = new THREE.Mesh(jDiscGeo, bank.pitchJunction);
-  jDisc.position.set(-307.2, 0.088, -48.0);
+  jDisc.position.set(-307.2, 0.003, -48.0);
   jDisc.receiveShadow = true;
   staticG.add(jDisc);
 
@@ -1014,22 +1020,22 @@ function buildPtiJunctionAndFootpaths(staticG, dynamicG, bank, phys) {
 
   // Clean, Non-Overlapping Bangladeshi Pitch-Asphalt Road Arms (y = 0.052m, cleanly bridging outside city roads to the 16.8m junction circle!)
   const kjaSePts = [[-252.0, 16.0], [-284.0, -22.0], [-298.5, -36.5]];
-  addPitchRoadAlongPolyline(staticG, [[-236.0, 34.0], ...kjaSePts], 6.0, bank.pitchHighway, 0.052);
+  addPitchRoadAlongPolyline(staticG, [[-236.0, 34.0], ...kjaSePts], 6.0, bank.pitchHighway, 0.002);
   addSidewalkAlongPolyline(staticG, bank, phys, kjaSePts, 5.8, 1, { walkWidth: 1.9, curbMat: bank.curbYellowBlack });
   addSidewalkAlongPolyline(staticG, bank, phys, kjaSePts, 5.8, -1, { walkWidth: 1.9, curbMat: bank.curbYellowBlack });
 
   const kjaNwPts = [[-321.0, -52.0], [-338.0, -61.8], [-372.0, -82.0]];
-  addPitchRoadAlongPolyline(staticG, [...kjaNwPts, [-390.0, -93.0]], 5.9, bank.pitchHighway, 0.052);
+  addPitchRoadAlongPolyline(staticG, [...kjaNwPts, [-390.0, -93.0]], 5.9, bank.pitchHighway, 0.002);
   addSidewalkAlongPolyline(staticG, bank, phys, kjaNwPts, 5.7, 1, { walkWidth: 1.9, curbMat: bank.curbYellowBlack });
   addSidewalkAlongPolyline(staticG, bank, phys, kjaNwPts, 5.7, -1, { walkWidth: 1.9, curbMat: bank.curbYellowBlack });
 
   const ahsanPts = [[-299.6, -59.5], [-298.9, -76.0], [-298.3, -95.0], [-301.5, -162.0], [-304.7, -230.0]];
-  addPitchRoadAlongPolyline(staticG, [...ahsanPts, [-305.5, -244.0]], 4.05, bank.pitchAhsan, 0.052);
+  addPitchRoadAlongPolyline(staticG, [...ahsanPts, [-305.5, -244.0]], 4.05, bank.pitchAhsan, 0.002);
   addSidewalkAlongPolyline(staticG, bank, phys, ahsanPts, 3.85, 1, { walkWidth: 1.95, curbMat: bank.curbRedWhite });
   addSidewalkAlongPolyline(staticG, bank, phys, ahsanPts, 3.85, -1, { walkWidth: 1.95, curbMat: bank.curbRedWhite });
 
   const miaPts = [[-313.8, -34.0], [-313.4, -10.0], [-313.1, 14.0]];
-  addPitchRoadAlongPolyline(staticG, [...miaPts, [-312.8, 28.0]], 2.55, bank.pitchLane, 0.052);
+  addPitchRoadAlongPolyline(staticG, [...miaPts, [-312.8, 28.0]], 2.55, bank.pitchLane, 0.002);
   addSidewalkAlongPolyline(staticG, bank, phys, miaPts, 2.35, 1, { walkWidth: 1.55, curbMat: bank.curbYellowBlack });
   addSidewalkAlongPolyline(staticG, bank, phys, miaPts, 2.35, -1, { walkWidth: 1.55, curbMat: bank.curbYellowBlack });
 

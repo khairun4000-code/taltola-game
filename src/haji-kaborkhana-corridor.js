@@ -292,11 +292,12 @@ function createCorridorBank(m) {
   const shutterGreyTex = makeShutterTexture('#586370');
   const shutterGreenTex = makeShutterTexture('#1f5a44');
 
+  const taltolaRoad = m?.road || pitchHighway;
   const bank = {
-    pitchHighway,
-    pitchRoad,
-    pitchLane,
-    pitchJunction,
+    pitchHighway: taltolaRoad,
+    pitchRoad: taltolaRoad,
+    pitchLane: taltolaRoad,
+    pitchJunction: taltolaRoad,
     footpath: footpathMat,
     curbYellowBlack: new THREE.MeshStandardMaterial({ map: curbYB, roughness: 0.76 }),
     curbRedWhite: new THREE.MeshStandardMaterial({ map: curbRW, roughness: 0.76 }),
@@ -480,13 +481,12 @@ function addSignBox(dynamicG, bank, opts, pos, rotY, w, h) {
   return grp;
 }
 
-function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.060) {
+function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.002) {
   if (!pts || pts.length < 2) return;
   const positions = [];
   const normals = [];
   const uvs = [];
   const indices = [];
-  let distAcc = 0;
   for (let i = 0; i < pts.length; i++) {
     const [x, z] = pts[i];
     let nx = 0;
@@ -495,7 +495,6 @@ function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.060) {
       const dx = x - pts[i - 1][0];
       const dz = z - pts[i - 1][1];
       const l = Math.hypot(dx, dz) || 1;
-      distAcc += l;
       nx += -dz / l;
       nz += dx / l;
     }
@@ -509,11 +508,13 @@ function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.060) {
     const nl = Math.hypot(nx, nz) || 1;
     nx /= nl;
     nz /= nl;
-    positions.push(x - nx * roadHalfW, yTop, z - nz * roadHalfW);
-    positions.push(x + nx * roadHalfW, yTop, z + nz * roadHalfW);
+    const lx = x - nx * roadHalfW;
+    const lz = z - nz * roadHalfW;
+    const rx = x + nx * roadHalfW;
+    const rz = z + nz * roadHalfW;
+    positions.push(lx, yTop, lz, rx, yTop, rz);
     normals.push(0, 1, 0, 0, 1, 0);
-    const vCoord = distAcc * 0.11;
-    uvs.push(0, vCoord, 1, vCoord);
+    uvs.push(lx / 5.5, lz / 5.5, rx / 5.5, rz / 5.5);
     if (i > 0) {
       const b = (i - 1) * 2;
       indices.push(b, b + 1, b + 3, b, b + 3, b + 2);
@@ -854,9 +855,15 @@ function buildKaborkhanaMoreAndKhanJahanAli(staticG, dynamicG, bank, phys) {
   const KX = -9.9;
   const KZ = 111.2;
 
-  // 1) Elevated Bangladeshi Pitch-Asphalt Junction Apron at Kaborkhana More
-  const jDisc = new THREE.Mesh(new THREE.CylinderGeometry(14.5, 14.8, 0.04, 40), bank.pitchJunction);
-  jDisc.position.set(KX, 0.056, KZ);
+  // 1) Taltola-style wet-asphalt Junction Apron at Kaborkhana More (flush at y = 0.003)
+  const jDiscGeo = new THREE.CircleGeometry(14.6, 40);
+  jDiscGeo.rotateX(-Math.PI * 0.5);
+  const jPos = jDiscGeo.attributes.position;
+  const jUv = jDiscGeo.attributes.uv;
+  for (let i = 0; i < jPos.count; i++) jUv.setXY(i, (KX + jPos.getX(i)) / 5.5, (KZ + jPos.getZ(i)) / 5.5);
+  jUv.needsUpdate = true;
+  const jDisc = new THREE.Mesh(jDiscGeo, bank.pitchJunction);
+  jDisc.position.set(KX, 0.003, KZ);
   jDisc.receiveShadow = true;
   staticG.add(jDisc);
 
@@ -888,7 +895,7 @@ function buildKaborkhanaMoreAndKhanJahanAli(staticG, dynamicG, bank, phys) {
     [140.0, 194.9],
     [166.0, 208.0],
   ];
-  addPitchRoadAlongPolyline(staticG, kjaToAliaPts, 5.8, bank.pitchHighway, 0.054);
+  addPitchRoadAlongPolyline(staticG, kjaToAliaPts, 5.8, bank.pitchHighway, 0.002);
   addSidewalkAlongPolyline(staticG, bank, phys, kjaToAliaPts, 5.6, 1, { walkWidth: 1.85, curbMat: bank.curbYellowBlack });
   addSidewalkAlongPolyline(staticG, bank, phys, kjaToAliaPts, 5.6, -1, { walkWidth: 1.85, curbMat: bank.curbYellowBlack });
 
@@ -1043,7 +1050,7 @@ function buildHajiMohsinRoadExtended(staticG, dynamicG, bank, phys) {
     [-6.2, 88.0],
     [-9.9, 111.2],
   ];
-  addPitchRoadAlongPolyline(staticG, hajiSouthPts, 4.1, bank.pitchRoad, 0.055);
+  addPitchRoadAlongPolyline(staticG, hajiSouthPts, 4.1, bank.pitchRoad, 0.002);
   addSidewalkAlongPolyline(staticG, bank, phys, hajiSouthPts, 3.9, 1, { walkWidth: 1.75, curbMat: bank.curbRedWhite });
   addSidewalkAlongPolyline(staticG, bank, phys, hajiSouthPts, 3.9, -1, { walkWidth: 1.75, curbMat: bank.curbRedWhite });
 
@@ -1055,7 +1062,7 @@ function buildHajiMohsinRoadExtended(staticG, dynamicG, bank, phys) {
     [0.0, -260.0],
     [0.0, -337.0],
   ];
-  addPitchRoadAlongPolyline(staticG, hajiNorthPts, 4.1, bank.pitchRoad, 0.055);
+  addPitchRoadAlongPolyline(staticG, hajiNorthPts, 4.1, bank.pitchRoad, 0.002);
   addSidewalkAlongPolyline(staticG, bank, phys, hajiNorthPts, 3.9, 1, { walkWidth: 1.75, curbMat: bank.curbRedWhite });
   addSidewalkAlongPolyline(staticG, bank, phys, hajiNorthPts, 3.9, -1, { walkWidth: 1.75, curbMat: bank.curbRedWhite });
 
@@ -1185,9 +1192,15 @@ function buildHajiMohsinRoadExtended(staticG, dynamicG, bank, phys) {
  * ========================================================================== */
 
 function buildSouthCentralToAltapole(staticG, dynamicG, bank, phys) {
-  // 1) South Central Road × Haji Mohsin Road Junction Apron (0, -337)
-  const jDisc = new THREE.Mesh(new THREE.CylinderGeometry(10.5, 10.8, 0.04, 32), bank.pitchJunction);
-  jDisc.position.set(0.0, 0.056, -337.0);
+  // 1) South Central Road × Haji Mohsin Road Junction Apron (0, -337, flush at y = 0.003)
+  const jDiscGeo = new THREE.CircleGeometry(10.6, 32);
+  jDiscGeo.rotateX(-Math.PI * 0.5);
+  const jPos = jDiscGeo.attributes.position;
+  const jUv = jDiscGeo.attributes.uv;
+  for (let i = 0; i < jPos.count; i++) jUv.setXY(i, jPos.getX(i) / 5.5, (-337.0 + jPos.getZ(i)) / 5.5);
+  jUv.needsUpdate = true;
+  const jDisc = new THREE.Mesh(jDiscGeo, bank.pitchJunction);
+  jDisc.position.set(0.0, 0.003, -337.0);
   jDisc.receiveShadow = true;
   staticG.add(jDisc);
 
@@ -1225,13 +1238,19 @@ function buildSouthCentralToAltapole(staticG, dynamicG, bank, phys) {
     [157.4, -296.2],
     [182.0, -290.5],
   ];
-  addPitchRoadAlongPolyline(staticG, scPts, 4.4, bank.pitchRoad, 0.054);
+  addPitchRoadAlongPolyline(staticG, scPts, 4.4, bank.pitchRoad, 0.002);
   addSidewalkAlongPolyline(staticG, bank, phys, scPts, 4.2, 1, { walkWidth: 1.75, curbMat: bank.curbYellowBlack });
   addSidewalkAlongPolyline(staticG, bank, phys, scPts, 4.2, -1, { walkWidth: 1.75, curbMat: bank.curbYellowBlack });
 
-  // Clean Junction Apron where South Central Road meets Altapole Lane (157.4, -296.2)!
-  const altDisc = new THREE.Mesh(new THREE.CylinderGeometry(8.5, 8.8, 0.04, 28), bank.pitchJunction);
-  altDisc.position.set(157.4, 0.057, -296.2);
+  // Clean Junction Apron where South Central Road meets Altapole Lane (157.4, -296.2, flush at y = 0.003)!
+  const altDiscGeo = new THREE.CircleGeometry(8.6, 28);
+  altDiscGeo.rotateX(-Math.PI * 0.5);
+  const aPos = altDiscGeo.attributes.position;
+  const aUv = altDiscGeo.attributes.uv;
+  for (let i = 0; i < aPos.count; i++) aUv.setXY(i, (157.4 + aPos.getX(i)) / 5.5, (-296.2 + aPos.getZ(i)) / 5.5);
+  aUv.needsUpdate = true;
+  const altDisc = new THREE.Mesh(altDiscGeo, bank.pitchJunction);
+  altDisc.position.set(157.4, 0.003, -296.2);
   altDisc.receiveShadow = true;
   staticG.add(altDisc);
   addZebraCrosswalk(staticG, bank, 158.2, -305.0, 0.12, 5.4);

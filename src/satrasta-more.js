@@ -352,15 +352,7 @@ export function buildSatrastaMoreDistrict(parent, m) {
     attachDerivedPBRMaps(mat, tex, { strength: opts.brickLines ? 2.4 : 1.7, roughBase: rough, normalScale: 0.62 });
     return mat;
   };
-  const asphaltTex = makeAsphaltRoadTexture();
-  const asphaltMat = new THREE.MeshStandardMaterial({
-    map: asphaltTex,
-    color: 0xd9dde2,
-    roughness: 0.80,
-    metalness: 0.05,
-    envMapIntensity: 0.55,
-  });
-  attachDerivedPBRMaps(asphaltMat, asphaltTex, { strength: 2.2, roughBase: 0.80, normalScale: 0.70 });
+  const asphaltMat = m.road || new THREE.MeshStandardMaterial({ color: 0x3b4046, roughness: 0.78, metalness: 0.05 });
   const footpathTex = makeFootpathTileTex();
   const footpathMat = new THREE.MeshStandardMaterial({
     map: footpathTex,
@@ -515,7 +507,7 @@ export function buildSatrastaMoreDistrict(parent, m) {
     parentG.add(g);
   }
 
-  function addRoadRibbon(pts, width, y = 0.033) {
+  function addRoadRibbon(pts, width, y = -0.018) {
     for (let i = 0; i < pts.length - 1; i++) {
       const [x0, z0] = pts[i];
       const [x1, z1] = pts[i + 1];
@@ -525,12 +517,12 @@ export function buildSatrastaMoreDistrict(parent, m) {
       const yaw = Math.atan2(dx, dz);
       addRotBox(staticG, [width, 0.04, len], [(x0 + x1) * 0.5, y, (z0 + z1) * 0.5], asphaltMat, yaw, {
         castShadow: false,
-        uvScale: 6.5,
+        uvScale: 5.5,
       });
     }
   }
 
-  function addRoadMarkings(pts, width, { dashedWhite = false, doubleYellow = false, dashedYellow = false, whiteEdges = true, y = 0.056 } = {}) {
+  function addRoadMarkings(pts, width, { dashedWhite = false, doubleYellow = false, dashedYellow = false, whiteEdges = true, y = 0.005 } = {}) {
     const halfW = width * 0.5;
     for (let i = 0; i < pts.length - 1; i++) {
       const [x0, z0] = pts[i];
@@ -609,9 +601,9 @@ export function buildSatrastaMoreDistrict(parent, m) {
     const start = -((stripes - 1) * 0.92) * 0.5;
     for (let i = 0; i < stripes; i++) {
       const off = start + i * 0.92;
-      addRotBox(staticG, [0.46, 0.010, 2.35], [cx + nx * off, 0.057, cz + nz * off], roadLineWhite, yaw, { castShadow: false });
+      addRotBox(staticG, [0.46, 0.004, 2.35], [cx + nx * off, 0.005, cz + nz * off], roadLineWhite, yaw, { castShadow: false });
     }
-    addRotBox(staticG, [roadWidth - 0.6, 0.010, 0.36], [cx + fx * 1.95, 0.057, cz + fz * 1.95], roadLineWhite, yaw, { castShadow: false });
+    addRotBox(staticG, [roadWidth - 0.6, 0.004, 0.36], [cx + fx * 1.95, 0.005, cz + fz * 1.95], roadLineWhite, yaw, { castShadow: false });
   }
 
   function addOrnamentalMedianTree(x, z) {
@@ -671,13 +663,19 @@ export function buildSatrastaMoreDistrict(parent, m) {
   //    North Lane -> [-834.0, -290.5] (w=8.2) | South Lane -> [-834.0, -283.2] (w=8.2)
   //    Central Landscaped Median -> [-828.0, -286.2]
   // ============================================================================
-  box(staticG, [230, 0.024, 194], [-918, 0.012, -292], urbanGroundMat, { castShadow: false });
+  box(staticG, [230, 0.024, 194], [-918, -0.026, -292], urbanGroundMat, { castShadow: false });
 
-  // Main Roundabout Textured Asphalt Apron (inner r = 6.15m, outer r = 16.0m)
+  // Main Roundabout Taltola-style Asphalt Apron (inner r = 6.15m, outer r = 16.0m, flush at y = 0.003)
   const ringGeo = new THREE.RingGeometry(6.15, 16.0, 64);
   ringGeo.rotateX(-Math.PI / 2);
+  const srPos = ringGeo.attributes.position;
+  const srUv = ringGeo.attributes.uv;
+  for (let i = 0; i < srPos.count; i++) {
+    srUv.setXY(i, (CX + srPos.getX(i)) / 5.5, (CZ + srPos.getZ(i)) / 5.5);
+  }
+  srUv.needsUpdate = true;
   const ringMesh = new THREE.Mesh(ringGeo, asphaltMat);
-  ringMesh.position.set(CX, 0.035, CZ);
+  ringMesh.position.set(CX, 0.003, CZ);
   ringMesh.receiveShadow = true;
   staticG.add(ringMesh);
 
@@ -685,18 +683,18 @@ export function buildSatrastaMoreDistrict(parent, m) {
   const innerLineGeo = new THREE.RingGeometry(6.65, 6.82, 48);
   innerLineGeo.rotateX(-Math.PI / 2);
   const innerLineMesh = new THREE.Mesh(innerLineGeo, roadLineWhite);
-  innerLineMesh.position.set(CX, 0.056, CZ);
+  innerLineMesh.position.set(CX, 0.005, CZ);
   staticG.add(innerLineMesh);
   for (let i = 0; i < 28; i++) {
     const a = (i / 28) * Math.PI * 2;
-    addRotBox(staticG, [0.16, 0.010, 1.38], [CX + Math.cos(a) * 11.2, 0.056, CZ + Math.sin(a) * 11.2], roadLineWhite, -a, { castShadow: false });
+    addRotBox(staticG, [0.16, 0.004, 1.38], [CX + Math.cos(a) * 11.2, 0.005, CZ + Math.sin(a) * 11.2], roadLineWhite, -a, { castShadow: false });
   }
 
   // 1a & 1b. EAST KDA AVENUE DUAL CARRIAGEWAY -> SEAMLESSLY CONNECTED TO ROYAL MORE!
   const kdaEastNorthPts = [[CX + 12.0, CZ - 5.2], [-872.0, -293.0], [-833.5, -290.5]];
   const kdaEastSouthPts = [[CX + 12.0, CZ + 5.2], [-872.0, -283.5], [-833.5, -283.2]];
-  addRoadRibbon(kdaEastNorthPts, 8.2, 0.033);
-  addRoadRibbon(kdaEastSouthPts, 8.2, 0.033);
+  addRoadRibbon(kdaEastNorthPts, 8.2, -0.018);
+  addRoadRibbon(kdaEastSouthPts, 8.2, -0.018);
   addRoadMarkings(kdaEastNorthPts, 8.2, { dashedWhite: true, whiteEdges: true });
   addRoadMarkings(kdaEastSouthPts, 8.2, { dashedWhite: true, whiteEdges: true });
   addSidewalkAlongPolyline(kdaEastNorthPts, 4.1, 1, { walkWidth: 2.0, addGrates: true });
@@ -704,7 +702,7 @@ export function buildSatrastaMoreDistrict(parent, m) {
 
   // 2. WEST KDA AVENUE (TOWARD MOYLAPOTA)
   const kdaWestPts = [[CX - 12.0, CZ], [-1022.0, CZ]];
-  addRoadRibbon(kdaWestPts, 14.2, 0.033);
+  addRoadRibbon(kdaWestPts, 14.2, -0.018);
   addRoadMarkings(kdaWestPts, 14.2, { doubleYellow: true, whiteEdges: true });
   addSidewalkAlongPolyline(kdaWestPts, 7.1, -1, { walkWidth: 2.2, addGrates: true });
   addSidewalkAlongPolyline(kdaWestPts, 7.1, 1, { walkWidth: 2.2, addGrates: true });
@@ -718,7 +716,7 @@ export function buildSatrastaMoreDistrict(parent, m) {
     { pts: [[CX, CZ + 12.5], [CX, -214]], w: 7.4, dashedYellow: true },           // 7. South Satrasta Cross Lane
   ];
   for (const r of radialRoads) {
-    addRoadRibbon(r.pts, r.w, 0.032);
+    addRoadRibbon(r.pts, r.w, -0.019);
     addRoadMarkings(r.pts, r.w, { dashedYellow: r.dashedYellow, whiteEdges: true });
     addSidewalkAlongPolyline(r.pts, r.w * 0.5, 1, { walkWidth: 1.65, addGrates: false });
     addSidewalkAlongPolyline(r.pts, r.w * 0.5, -1, { walkWidth: 1.65, addGrates: false });

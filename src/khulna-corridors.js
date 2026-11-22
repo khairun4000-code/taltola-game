@@ -862,13 +862,12 @@ function buildPavedSegmentRoad(staticG, pts, width, y, mat, uvScale = 5.5) {
  * Builds ONE continuous, mitered, ZERO-Z-fighting Bangladeshi Pitch-Asphalt road ribbon
  * along a polyline (eliminates overhanging box corners & flickering at curves and road mouths).
  */
-function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.056) {
+function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.002) {
   if (!pts || pts.length < 2) return;
   const positions = [];
   const normals = [];
   const uvs = [];
   const indices = [];
-  let distAcc = 0;
 
   for (let i = 0; i < pts.length; i++) {
     const [x, z] = pts[i];
@@ -878,7 +877,6 @@ function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.056) {
       const dx = x - pts[i - 1][0];
       const dz = z - pts[i - 1][1];
       const l = Math.hypot(dx, dz) || 1;
-      distAcc += l;
       nx += -dz / l;
       nz += dx / l;
     }
@@ -893,11 +891,13 @@ function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.056) {
     nx /= nl;
     nz /= nl;
 
-    positions.push(x - nx * roadHalfW, yTop, z - nz * roadHalfW);
-    positions.push(x + nx * roadHalfW, yTop, z + nz * roadHalfW);
+    const lx = x - nx * roadHalfW;
+    const lz = z - nz * roadHalfW;
+    const rx = x + nx * roadHalfW;
+    const rz = z + nz * roadHalfW;
+    positions.push(lx, yTop, lz, rx, yTop, rz);
     normals.push(0, 1, 0, 0, 1, 0);
-    const vCoord = distAcc * 0.11;
-    uvs.push(0, vCoord, 1, vCoord);
+    uvs.push(lx / 5.5, lz / 5.5, rx / 5.5, rz / 5.5);
 
     if (i > 0) {
       const b = (i - 1) * 2;
@@ -916,10 +916,16 @@ function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.056) {
   staticG.add(mesh);
 }
 
-/** Flat circular Bangladeshi pitch-asphalt junction pad so intersecting roads & road mouths blend seamlessly */
-function addPitchJunctionDisc(staticG, cx, cz, radius, mat, yTop = 0.064) {
+/** Flat circular Taltola-style asphalt junction pad flush at ground level (yTop = 0.003) */
+function addPitchJunctionDisc(staticG, cx, cz, radius, mat, yTop = 0.003) {
   const geo = new THREE.CircleGeometry(radius, 32);
   geo.rotateX(-Math.PI * 0.5);
+  const pos = geo.attributes.position;
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    uv.setXY(i, (cx + pos.getX(i)) / 5.5, (cz + pos.getZ(i)) / 5.5);
+  }
+  uv.needsUpdate = true;
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(cx, yTop, cz);
   mesh.receiveShadow = true;
@@ -933,8 +939,8 @@ function buildHajiMohsinCorridor(staticG, dynamicG, bank, m, helpers, treesG = s
   // 1) Wet-puddle continuous road aprons north (-140..-38) & south (38..140) matching OSM curves
   const northRoadPts = [[0, -37], [3.2, -55.3], [11.5, -94], [21.5, -142]];
   const southRoadPts = [[0, 37], [-4.5, 52.4], [-8.8, 82], [-15.2, 140]];
-  buildPavedSegmentRoad(staticG, northRoadPts, 5.2, 0.028, m.road, 5.5);
-  buildPavedSegmentRoad(staticG, southRoadPts, 5.2, 0.028, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, northRoadPts, 5.2, -0.023, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, southRoadPts, 5.2, -0.023, m.road, 5.5);
   // Flush shoulder sub-base strictly under carriageway + brick curbs so no corners jut past sidewalks
   buildPavedSegmentRoad(staticG, northRoadPts, 6.8, -0.055, m.darkConcrete, 3.0);
   buildPavedSegmentRoad(staticG, southRoadPts, 6.8, -0.055, m.darkConcrete, 3.0);
@@ -1119,13 +1125,13 @@ function buildRupshaWaterfrontCorridor(staticG, dynamicG, bank, m, helpers) {
   for (let z = -25; z <= 635; z += 35) {
     strandRoadPts.push([getRupshaStrandRoadX(z), z]);
   }
-  buildPavedSegmentRoad(staticG, strandRoadPts, 7.6, 0.032, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, strandRoadPts, 7.6, -0.023, m.road, 5.5);
 
   // 3) Natun Bazar Launch Ghat Plaza, Ticket Shed, Stepped Ghat & Moored MV RUPSHA LAUNCH (z = -18..64, bank x ~ 1163)
   const ghatBankX = getRiverWestBankX(34); // ~1163.4
-  // Broad paved asphalt + concrete port forecourt spanning from Strand Rd right out to embankment (covers z = -18..64)
-  addBox(staticG, [74, 0.12, 82], [ghatBankX - 38, 0.015, 23], m.road, { castShadow: false, uvScale: 5.5 });
-  addBox(staticG, [46, 0.14, 48], [ghatBankX - 24, 0.045, 34], m.concrete, { castShadow: false, uvScale: 3.2 });
+  // Broad paved asphalt + concrete port forecourt spanning from Strand Rd right out to embankment (flush at y = 0.001..0.002)
+  addBox(staticG, [74, 0.12, 82], [ghatBankX - 38, -0.059, 23], m.road, { castShadow: false, uvScale: 5.5 });
+  addBox(staticG, [46, 0.14, 48], [ghatBankX - 24, -0.068, 34], m.concrete, { castShadow: false, uvScale: 3.2 });
   // Passenger Waiting & Ticket Shed with pitched teal tin roof
   addBox(staticG, [8.5, 0.18, 18.0], [ghatBankX - 20, 0.16, 34], m.brick, { uvScale: 2.2 });
   addBox(staticG, [9.4, 0.16, 19.2], [ghatBankX - 20, 3.65, 34], bank.tinBlue, { rotZ: -0.08, uvScale: 2.2 });
@@ -1217,8 +1223,8 @@ function buildRupshaWaterfrontCorridor(staticG, dynamicG, bank, m, helpers) {
 
   // 4) RUPSHA FERRY TERMINAL (x ~ 1140..1295, z ~ 615..676)
   const ferryBankX = getRiverWestBankX(646); // ~1242.9
-  // Broad paved marshalling yard spanning both sides of Ferry Approach Rd so no bare land edge shows north of gate!
-  addBox(staticG, [104, 0.08, 62], [1188, 0.025, 646], m.road, { castShadow: false, uvScale: 5.5 });
+  // Broad paved marshalling yard spanning both sides of Ferry Approach Rd (flush at y = 0.001)
+  addBox(staticG, [104, 0.08, 62], [1188, -0.039, 646], m.road, { castShadow: false, uvScale: 5.5 });
   addBox(staticG, [28, 0.24, 34], [ferryBankX - 10, 0.14, 646], m.concrete, { uvScale: 3.0 });
   // Painted Ferry Boarding Queue Lane Stripes & Safety Bollards on Terminal Apron
   for (const lz of [640.5, 646.0, 651.5]) {
@@ -1746,16 +1752,16 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
     return 166;
   };
 
-  // 1) Narrower, slightly weathered/cracked asphalt lane (3.4m wide) + wider, higher raised brick footpaths!
-  buildPavedSegmentRoad(staticG, lanePts, 3.4, 0.026, m.road, 5.2);
+  // 1) Narrower, slightly weathered/cracked asphalt lane (3.4m wide, flush at y = 0.002) + wider, higher raised brick footpaths!
+  buildPavedSegmentRoad(staticG, lanePts, 3.4, -0.023, m.road, 5.2);
   buildPavedSegmentRoad(staticG, lanePts, 5.2, -0.055, m.darkConcrete, 3.0);
   // Weathered/cracked tarmac patches & uneven concrete repairs along the narrow lane
   for (let pz = -508; pz <= -304; pz += 11) {
     const cx = laneCenterX(pz);
     const sideShift = ((Math.abs(pz) % 3) - 1) * 0.72;
-    addBox(staticG, [1.15, 0.016, 2.3], [cx + sideShift, 0.044, pz], bank.dampPlinth, { castShadow: false, rotY: (pz % 5) * 0.08, uvScale: 1.8 });
+    addBox(staticG, [1.15, 0.004, 2.3], [cx + sideShift, 0.003, pz], bank.dampPlinth, { castShadow: false, rotY: (pz % 5) * 0.08, uvScale: 1.8 });
     if (Math.abs(pz) % 2 === 0) {
-      addBox(staticG, [0.55, 0.014, 1.2], [cx - sideShift * 0.8, 0.045, pz + 3.5], bank.darkSlate, { castShadow: false, rotY: -0.14 });
+      addBox(staticG, [0.55, 0.004, 1.2], [cx - sideShift * 0.8, 0.0035, pz + 3.5], bank.darkSlate, { castShadow: false, rotY: -0.14 });
     }
   }
   // Wider, taller raised brick footpaths (1.75m wide, elevated curb y = 0.14m -> top at 0.27m!)
@@ -1982,11 +1988,11 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
     const alleyLen = xEnd - xStart;
     const alleyCx = (xStart + xEnd) * 0.5;
 
-    // Straight weathered asphalt side lane (3.2m wide) + concrete sub-base + tarmac patches
-    addBox(staticG, [alleyLen + 1.4, 0.05, 3.2], [alleyCx, 0.026, alleyZ], m.road, { castShadow: false, uvScale: 4.8 });
+    // Straight weathered asphalt side lane (3.2m wide, flush at y = 0.002) + concrete sub-base + tarmac patches
+    addBox(staticG, [alleyLen + 1.4, 0.05, 3.2], [alleyCx, -0.023, alleyZ], m.road, { castShadow: false, uvScale: 4.8 });
     addBox(staticG, [alleyLen + 1.6, 0.05, 4.8], [alleyCx, -0.055, alleyZ], m.darkConcrete, { castShadow: false, uvScale: 3.0 });
     for (let px = xStart + 5; px <= xEnd - 4; px += 9) {
-      addBox(staticG, [2.1, 0.015, 1.05], [px, 0.044, alleyZ + ((Math.round(px) % 3) - 1) * 0.55], bank.dampPlinth, { castShadow: false, uvScale: 1.8 });
+      addBox(staticG, [2.1, 0.004, 1.05], [px, 0.003, alleyZ + ((Math.round(px) % 3) - 1) * 0.55], bank.dampPlinth, { castShadow: false, uvScale: 1.8 });
     }
 
     // Raised red-brick footpaths & cream curbs along BOTH North (z = -406.3) and South (z = -401.7) edges
@@ -2143,8 +2149,8 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
  */
 function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, treesG = staticG) {
   function buildPitchStyledRoad(pts, roadWidth = 6.2, { withPoles = true, poleSide = 1, poleStep = 38 } = {}) {
-    // 1) Continuous mitered Bangladeshi Pitch-Asphalt carriageway (exact clean Taltola House pitch style — no artificial stripes!)
-    addPitchRoadAlongPolyline(staticG, pts, roadWidth * 0.5, bank.pitchLane, 0.056);
+    // 1) Continuous mitered Taltola House wet-asphalt carriageway (flush at y = 0.002 — ZERO wheel/foot sinking!)
+    addPitchRoadAlongPolyline(staticG, pts, roadWidth * 0.5, m.road, 0.002);
 
     const poleCoords = [];
     let accumPole = poleStep * 0.4;
@@ -2332,7 +2338,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [-384, -831, 5.0],
     [-384, -967, 5.0],
   ]) {
-    addPitchJunctionDisc(staticG, jx, jz, jr, bank.pitchJunction, 0.064);
+    addPitchJunctionDisc(staticG, jx, jz, jr, m.road, 0.003);
   }
 
   // Authentic Khulna Asphalt Speed Breakers (স্পিড ব্রেকার) near Hadis Park Main Gate, Boro Maath Gate & Judge Court Gate
@@ -2341,8 +2347,8 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [40.0, -522.0, 6.6, Math.PI * 0.5],
     [143.0, -684.0, 6.4, 0.22],
   ]) {
-    addBox(staticG, [w, 0.09, 0.72], [bx, 0.078, bz], bank.dampPlinth, { rotY: yaw, castShadow: false });
-    addBox(staticG, [w * 0.96, 0.04, 0.34], [bx, 0.118, bz], bank.darkSlate, { rotY: yaw, castShadow: false });
+    addBox(staticG, [w, 0.09, 0.72], [bx, 0.028, bz], bank.dampPlinth, { rotY: yaw, castShadow: false });
+    addBox(staticG, [w * 0.96, 0.04, 0.34], [bx, 0.068, bz], bank.darkSlate, { rotY: yaw, castShadow: false });
   }
 
   // Roadside Cast-Iron Storm-Drain Grates along curbs (merged into staticG — zero extra draw calls!)

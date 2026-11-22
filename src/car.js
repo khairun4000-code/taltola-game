@@ -4124,7 +4124,7 @@ export function createDrivableCar(scene, manager, config) {
     const hLeft = (hFL + hRL) * 0.5;
     const hRight = (hFR + hRR) * 0.5;
     const avgWheelY = (hFL + hFR + hRL + hRR) * 0.25;
-    const groundOffset = typeof config.groundOffset === 'number' ? config.groundOffset : (config.isCNG ? 0.0 : 0.01);
+    const groundOffset = typeof config.groundOffset === 'number' ? Math.max(0.003, config.groundOffset) : 0.003;
     const targetGroundY = Math.max(hC, avgWheelY) + groundOffset;
 
     // 1) Real Vertical Gravity, Climbing & Airborne Launch/Landing Physics
@@ -4892,7 +4892,7 @@ export function createDrivableCar(scene, manager, config) {
     getBikeRiderAnchors,
     getBikePovCameraPose,
     spawnAt(x, z, heading = 0) {
-      const groundOffset = typeof config.groundOffset === 'number' ? config.groundOffset : (config.isCNG ? 0.0 : 0.01);
+      const groundOffset = typeof config.groundOffset === 'number' ? Math.max(0.003, config.groundOffset) : 0.003;
       state.pos.set(x, groundOffset, z);
       state.heading = heading;
       state.speed = 0;

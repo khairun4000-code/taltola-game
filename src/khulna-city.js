@@ -437,38 +437,29 @@ function createCityTextures(renderer) {
  * Builds one merged non-indexed/indexed BufferGeometry for all road polylines
  * matching `tierPredicate`, adding circular junction caps to eliminate seam gaps.
  */
-function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 0) {
+function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 0, worldUvScale = 0) {
   const positions = [];
   const normals = [];
   const uvs = [];
   const indices = [];
   let vBase = 0;
 
-  const addTriQuad = (ax, az, bx, bz, cx, cz, dx, dz, uLen) => {
-    positions.push(
-      ax, yHeight, az,
-      bx, yHeight, bz,
-      cx, yHeight, cz,
-      dx, yHeight, dz
-    );
-    for (let k = 0; k < 4; k++) normals.push(0, 1, 0);
-    uvs.push(0, 0, 1, 0, 1, uLen, 0, uLen);
-    indices.push(vBase, vBase + 1, vBase + 2, vBase, vBase + 2, vBase + 3);
-    vBase += 4;
-  };
-
   const addCap = (cx, cz, radius, segs = 8) => {
-    const capY = yHeight - 0.0022; // Slightly below road quad so joint caps never Z-fight!
+    const capY = yHeight - 0.0008; // Slightly below road quad so joint caps never Z-fight!
     const centerIdx = vBase;
     positions.push(cx, capY, cz);
     normals.push(0, 1, 0);
-    uvs.push(0.5, 0.5);
+    if (worldUvScale > 0) uvs.push(cx / worldUvScale, cz / worldUvScale);
+    else uvs.push(0.5, 0.5);
     vBase += 1;
     for (let s = 0; s <= segs; s++) {
       const ang = (s / segs) * Math.PI * 2;
-      positions.push(cx + Math.cos(ang) * radius, capY, cz + Math.sin(ang) * radius);
+      const vx = cx + Math.cos(ang) * radius;
+      const vz = cz + Math.sin(ang) * radius;
+      positions.push(vx, capY, vz);
       normals.push(0, 1, 0);
-      uvs.push(0.5 + 0.5 * Math.cos(ang), 0.5 + 0.5 * Math.sin(ang));
+      if (worldUvScale > 0) uvs.push(vx / worldUvScale, vz / worldUvScale);
+      else uvs.push(0.5 + 0.5 * Math.cos(ang), 0.5 + 0.5 * Math.sin(ang));
       vBase += 1;
     }
     for (let s = 0; s < segs; s++) {
@@ -500,7 +491,7 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
     const pts = r.p;
     const halfW = (r.w + extraWidth) * 0.5;
     // Micro-stagger overlapping same-tier roads (e.g. dual-carriageway Khan Jahan Ali Rd) to prevent coplanar Z-fighting!
-    const roadY = yHeight + (rIdx % 5) * 0.0028;
+    const roadY = yHeight + (rIdx % 5) * 0.0003;
 
     const addRoadQuad = (ax, az, bx, bz, cx, cz, dx, dz, uLen) => {
       positions.push(
@@ -510,7 +501,11 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
         dx, roadY, dz
       );
       for (let k = 0; k < 4; k++) normals.push(0, 1, 0);
-      uvs.push(0, 0, 1, 0, 1, uLen, 0, uLen);
+      if (worldUvScale > 0) {
+        uvs.push(ax / worldUvScale, az / worldUvScale, bx / worldUvScale, bz / worldUvScale, cx / worldUvScale, cz / worldUvScale, dx / worldUvScale, dz / worldUvScale);
+      } else {
+        uvs.push(0, 0, 1, 0, 1, uLen, 0, uLen);
+      }
       indices.push(vBase, vBase + 1, vBase + 2, vBase, vBase + 2, vBase + 3);
       vBase += 4;
     };
@@ -614,7 +609,7 @@ function pointInFlatPoly(x, z, flat) {
   return inside;
 }
 
-export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUniforms = null) {
+export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUniforms = null, taltolaRoadMat = null) {
   const group = new THREE.Group();
   group.name = 'KhulnaCityWorld';
   parent.add(group);
@@ -811,24 +806,20 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
     polygonOffsetUnits: 1,
   });
   attachDerivedPBRMaps(sidewalkMat, tex.sidewalkTex, { strength: 2.0, roughBase: 0.88, normalScale: 0.65 });
-  const roadMajorMat = new THREE.MeshStandardMaterial({ color: 0xd8dce0, map: tex.roadMajorTex, roughness: 0.76, metalness: 0.05, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
-  const roadMidMat = new THREE.MeshStandardMaterial({ color: 0xd8dce0, map: tex.roadMidTex, roughness: 0.78, metalness: 0.04, polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: 0 });
-  const roadLaneMat = new THREE.MeshStandardMaterial({ color: 0xd8dce0, map: tex.roadLaneTex, roughness: 0.82, metalness: 0.03, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-  attachDerivedPBRMaps(roadMajorMat, tex.roadMajorTex, { strength: 1.8, roughBase: 0.78, normalScale: 0.6 });
-  attachDerivedPBRMaps(roadMidMat, tex.roadMidTex, { strength: 1.8, roughBase: 0.80, normalScale: 0.6 });
-  upgradeWetAsphaltMaterial(roadMajorMat, skySystem?.sharedUniforms, 0.68);
-  upgradeWetAsphaltMaterial(roadMidMat, skySystem?.sharedUniforms, 0.56);
+  // Use Taltola House's exact realistic wet-asphalt PBR material (m.road) across ALL Khulna streets, flush at y ≈ 0.000 (ZERO wheel/foot sinking!)
+  const unifiedRoadMat = taltolaRoadMat || new THREE.MeshStandardMaterial({ color: 0xd8dce0, map: tex.roadMajorTex, roughness: 0.78, metalness: 0.04 });
+  const uvS = taltolaRoadMat ? 5.5 : 0;
 
-  const sidewalkGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t <= 3, -0.002, 1.5);
-  const majorGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t <= 1, 0.024, 0.0);
-  const midGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t === 2 || r.t === 3, 0.016, 0.0);
-  const laneGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t >= 4, 0.008, 0.0);
+  const sidewalkGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t <= 3, -0.014, 1.5, 0);
+  const majorGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t <= 1, -0.001, 0.0, uvS);
+  const midGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t === 2 || r.t === 3, -0.003, 0.0, uvS);
+  const laneGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t >= 4, -0.005, 0.0, uvS);
 
   for (const [geo, mat] of [
     [sidewalkGeo, sidewalkMat],
-    [majorGeo, roadMajorMat],
-    [midGeo, roadMidMat],
-    [laneGeo, roadLaneMat],
+    [majorGeo, unifiedRoadMat],
+    [midGeo, unifiedRoadMat],
+    [laneGeo, unifiedRoadMat],
   ]) {
     if (!geo) continue;
     const mesh = new THREE.Mesh(geo, mat);

@@ -451,10 +451,11 @@ function createCorridorBank(m) {
     metalness: 0.06,
   });
 
+  const taltolaRoad = m?.road || pitchHighway;
   const bank = {
-    pitchHighway,
-    pitchSideRoad,
-    pitchJunction,
+    pitchHighway: taltolaRoad,
+    pitchSideRoad: taltolaRoad,
+    pitchJunction: taltolaRoad,
     footpath: footpathMat,
     curbHazard: new THREE.MeshStandardMaterial({ map: makeCurbStripeTexture('#facc15', '#18181b'), roughness: 0.72 }),
     curbMedian: new THREE.MeshStandardMaterial({ map: makeCurbStripeTexture('#f8fafc', '#18181b'), roughness: 0.72 }),
@@ -509,13 +510,12 @@ function createCorridorBank(m) {
 /**
  * Single continuous mitered Bangladeshi pitch-asphalt ribbon along a polyline.
  */
-function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.052) {
+function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.002) {
   if (!pts || pts.length < 2) return;
   const positions = [];
   const normals = [];
   const uvs = [];
   const indices = [];
-  let distAcc = 0;
 
   for (let i = 0; i < pts.length; i++) {
     const [x, z] = pts[i];
@@ -525,7 +525,6 @@ function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.052) {
       const dx = x - pts[i - 1][0];
       const dz = z - pts[i - 1][1];
       const l = Math.hypot(dx, dz) || 1;
-      distAcc += l;
       nx += -dz / l;
       nz += dx / l;
     }
@@ -540,11 +539,13 @@ function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.052) {
     nx /= nl;
     nz /= nl;
 
-    positions.push(x - nx * roadHalfW, yTop, z - nz * roadHalfW);
-    positions.push(x + nx * roadHalfW, yTop, z + nz * roadHalfW);
+    const lx = x - nx * roadHalfW;
+    const lz = z - nz * roadHalfW;
+    const rx = x + nx * roadHalfW;
+    const rz = z + nz * roadHalfW;
+    positions.push(lx, yTop, lz, rx, yTop, rz);
     normals.push(0, 1, 0, 0, 1, 0);
-    const vCoord = distAcc * 0.095;
-    uvs.push(0, vCoord, 1, vCoord);
+    uvs.push(lx / 5.5, lz / 5.5, rx / 5.5, rz / 5.5);
 
     if (i > 0) {
       const b = (i - 1) * 2;
@@ -563,9 +564,15 @@ function addPitchRoadAlongPolyline(staticG, pts, roadHalfW, mat, yTop = 0.052) {
   staticG.add(mesh);
 }
 
-function addPitchJunctionDisc(staticG, cx, cz, radius, mat, yTop = 0.058) {
+function addPitchJunctionDisc(staticG, cx, cz, radius, mat, yTop = 0.003) {
   const geo = new THREE.CircleGeometry(radius, 32);
   geo.rotateX(-Math.PI * 0.5);
+  const pos = geo.attributes.position;
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    uv.setXY(i, (cx + pos.getX(i)) / 5.5, (cz + pos.getZ(i)) / 5.5);
+  }
+  uv.needsUpdate = true;
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(cx, yTop, cz);
   mesh.receiveShadow = true;
@@ -1363,8 +1370,8 @@ export function buildKjaCorridorDistrict(parent, m) {
       [-648.0, -250.5, 14.0],
       [-515.5, -167.5, 8.0],
     ];
-    addPitchRoadAlongPolyline(s.staticG, ROYAL_TO_MID_PTS, 6.2, bank.pitchHighway, 0.052);
-    addPitchJunctionDisc(s.staticG, -646.0, -249.2, 7.0, bank.pitchJunction, 0.048);
+    addPitchRoadAlongPolyline(s.staticG, ROYAL_TO_MID_PTS, 6.2, bank.pitchHighway, 0.002);
+    addPitchJunctionDisc(s.staticG, -646.0, -249.2, 7.0, bank.pitchJunction, 0.003);
 
     addFootpathsAlongPolyline(s.staticG, bank, ROYAL_TO_MID_PTS, 6.2, 1.85, clearance, s.footpathZones);
     addMedianPolesAndLamps(s.staticG, s.dynamicG, bank, ROYAL_TO_MID_PTS, clearance, s.colliders, { lampSpacing: 36, withMedian: true });
@@ -1381,8 +1388,8 @@ export function buildKjaCorridorDistrict(parent, m) {
       [-515.5, -167.5, 8.0],
       [-388.0, -91.8, 16.0],
     ];
-    addPitchRoadAlongPolyline(s.staticG, MID_TO_PTI_PTS, 6.2, bank.pitchHighway, 0.052);
-    addPitchJunctionDisc(s.staticG, -389.0, -92.4, 6.4, bank.pitchJunction, 0.054);
+    addPitchRoadAlongPolyline(s.staticG, MID_TO_PTI_PTS, 6.2, bank.pitchHighway, 0.002);
+    addPitchJunctionDisc(s.staticG, -389.0, -92.4, 6.4, bank.pitchJunction, 0.003);
 
     addFootpathsAlongPolyline(s.staticG, bank, MID_TO_PTI_PTS, 6.2, 1.85, clearance, s.footpathZones);
     addMedianPolesAndLamps(s.staticG, s.dynamicG, bank, MID_TO_PTI_PTS, clearance, s.colliders, { lampSpacing: 36, withMedian: true });
@@ -1404,13 +1411,13 @@ export function buildKjaCorridorDistrict(parent, m) {
       [-193.5, 87.5, 14.0], // Babu Khan Rd junction
       [-179.0, 94.2, 13.0], // Central Rd junction
     ];
-    addPitchRoadAlongPolyline(s.staticG, PTI_TO_BABUKHAN_PTS, 6.0, bank.pitchHighway, 0.052);
-    addPitchRoadAlongPolyline(s.staticG, BABU_KHAN_LINK_PTS, 3.4, bank.pitchSideRoad, 0.048);
-    addPitchRoadAlongPolyline(s.staticG, CENTRAL_RD_LINK_PTS, 3.2, bank.pitchSideRoad, 0.048);
+    addPitchRoadAlongPolyline(s.staticG, PTI_TO_BABUKHAN_PTS, 6.0, bank.pitchHighway, 0.002);
+    addPitchRoadAlongPolyline(s.staticG, BABU_KHAN_LINK_PTS, 3.4, bank.pitchSideRoad, 0.001);
+    addPitchRoadAlongPolyline(s.staticG, CENTRAL_RD_LINK_PTS, 3.2, bank.pitchSideRoad, 0.001);
 
-    addPitchJunctionDisc(s.staticG, -237.0, 33.0, 6.5, bank.pitchJunction, 0.054);
-    addPitchJunctionDisc(s.staticG, -193.5, 87.5, 10.5, bank.pitchJunction, 0.058);
-    addPitchJunctionDisc(s.staticG, -179.0, 94.2, 8.2, bank.pitchJunction, 0.058);
+    addPitchJunctionDisc(s.staticG, -237.0, 33.0, 6.5, bank.pitchJunction, 0.003);
+    addPitchJunctionDisc(s.staticG, -193.5, 87.5, 10.5, bank.pitchJunction, 0.003);
+    addPitchJunctionDisc(s.staticG, -179.0, 94.2, 8.2, bank.pitchJunction, 0.003);
 
     addFootpathsAlongPolyline(s.staticG, bank, PTI_TO_BABUKHAN_PTS, 6.0, 1.85, clearance, s.footpathZones);
     addMedianPolesAndLamps(s.staticG, s.dynamicG, bank, PTI_TO_BABUKHAN_PTS, clearance, s.colliders, { lampSpacing: 36, withMedian: false });
@@ -1433,12 +1440,12 @@ export function buildKjaCorridorDistrict(parent, m) {
       [-13.0, 106.5, 16.0], // Kaborkhana More / Haji Mohsin Rd junction
       [49.3, 142.0, 14.0],
     ];
-    addPitchRoadAlongPolyline(s.staticG, BABUKHAN_TO_KABORKHANA_PTS, 6.0, bank.pitchHighway, 0.052);
-    addPitchRoadAlongPolyline(s.staticG, HAJI_MOHSIN_LINK_PTS, 3.4, bank.pitchSideRoad, 0.048);
-    addPitchRoadAlongPolyline(s.staticG, TUTPARA_LINK_PTS, 3.4, bank.pitchSideRoad, 0.048);
+    addPitchRoadAlongPolyline(s.staticG, BABUKHAN_TO_KABORKHANA_PTS, 6.0, bank.pitchHighway, 0.002);
+    addPitchRoadAlongPolyline(s.staticG, HAJI_MOHSIN_LINK_PTS, 3.4, bank.pitchSideRoad, 0.001);
+    addPitchRoadAlongPolyline(s.staticG, TUTPARA_LINK_PTS, 3.4, bank.pitchSideRoad, 0.001);
 
-    addPitchJunctionDisc(s.staticG, -50.6, 101.8, 10.5, bank.pitchJunction, 0.058);
-    addPitchJunctionDisc(s.staticG, -13.0, 106.5, 13.5, bank.pitchJunction, 0.059);
+    addPitchJunctionDisc(s.staticG, -50.6, 101.8, 10.5, bank.pitchJunction, 0.003);
+    addPitchJunctionDisc(s.staticG, -13.0, 106.5, 13.5, bank.pitchJunction, 0.003);
 
     addFootpathsAlongPolyline(s.staticG, bank, BABUKHAN_TO_KABORKHANA_PTS, 6.0, 1.85, clearance, s.footpathZones);
     addMedianPolesAndLamps(s.staticG, s.dynamicG, bank, BABUKHAN_TO_KABORKHANA_PTS, clearance, s.colliders, { lampSpacing: 36, withMedian: false });
