@@ -2155,10 +2155,14 @@ export function createDrivableCar(scene, manager, config) {
   let lfoGain = null;
   let engineFilter = null;
   let engineGain = null;
+  let pedalNoiseBuf = null;
   let pedalNoiseSrc = null;
   let pedalFilter = null;
   let pedalGain = null;
-  let lastPedalTickPhase = 0;
+  let lastCrankPhase = 0;
+  let lastHubPhase = 0;
+  let crankStrokeIdx = 0;
+  let wasPedalingAudio = false;
 
   function ensureAudio() {
     if (audioCtx) {
@@ -2171,11 +2175,12 @@ export function createDrivableCar(scene, manager, config) {
       audioCtx = new AudioContextClass();
 
       if (isPedalProfile) {
-        // Mechanical chain-whir noise buffer + bandpass filter for realistic Bicycle / Rickshaw / Cargo Van pedaling!
+        // Mechanical chain-whir & crank/hub friction noise buffer for Bicycle / Rickshaw / Cargo Van
         const bufLen = audioCtx.sampleRate * 1.5;
         const nBuf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
         const ch = nBuf.getChannelData(0);
-        for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * 0.45;
+        for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * 0.55;
+        pedalNoiseBuf = nBuf;
         pedalNoiseSrc = audioCtx.createBufferSource();
         pedalNoiseSrc.buffer = nBuf;
         pedalNoiseSrc.loop = true;
@@ -2183,7 +2188,7 @@ export function createDrivableCar(scene, manager, config) {
         pedalFilter = audioCtx.createBiquadFilter();
         pedalFilter.type = 'bandpass';
         pedalFilter.frequency.value = soundProfile === 'pedal_bicycle' ? 1450 : (soundProfile === 'pedal_van' ? 760 : 980);
-        pedalFilter.Q.value = 3.2;
+        pedalFilter.Q.value = 3.4;
 
         pedalGain = audioCtx.createGain();
         pedalGain.gain.value = 0.0;
@@ -2297,24 +2302,126 @@ export function createDrivableCar(scene, manager, config) {
     } catch {}
   }
 
-  function playPedalClick(isCoasting = false) {
+  // Authentic Bangladeshi Bicycle / Rickshaw / Cargo Van Crank 'প্যাচ... প্যাচ...' creak under pedal load
+  function playCrankPach(strokeIndex = 0, isSprint = false) {
     if (!audioCtx || !state.driving) return;
     try {
       const now = audioCtx.currentTime;
+      const isLeftFoot = strokeIndex % 2 === 0;
+      const footJitter = (isLeftFoot ? 1.04 : 0.94) * (0.97 + Math.random() * 0.06);
+      const isBikePedal = soundProfile === 'pedal_bicycle';
+      const isVanPedal = soundProfile === 'pedal_van';
+      const baseF = (isBikePedal ? 630 : (isVanPedal ? 405 : 510)) * footJitter;
+      const dur = isBikePedal ? 0.115 : (isVanPedal ? 0.145 : 0.128);
+      const sprintGain = isSprint ? 1.25 : 1.0;
+
+      // Layer 1: Resonant crank bottom-bracket metallic creak ('প্যাচ')
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(baseF * 0.92, now);
+      osc.frequency.linearRampToValueAtTime(baseF * 1.14, now + dur * 0.28);
+      osc.frequency.exponentialRampToValueAtTime(baseF * 0.62, now + dur);
+
+      const bp = audioCtx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(baseF * 1.45, now);
+      bp.frequency.exponentialRampToValueAtTime(baseF * 0.95, now + dur);
+      bp.Q.value = isBikePedal ? 7.8 : (isVanPedal ? 6.2 : 7.0);
+
+      const hp = audioCtx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 230;
+
       const g = audioCtx.createGain();
-      const o = audioCtx.createOscillator();
-      o.type = isCoasting ? 'triangle' : 'sine';
-      const basePitch = soundProfile === 'pedal_bicycle' ? (isCoasting ? 2350 : 1250) : (soundProfile === 'pedal_van' ? 680 : 920);
-      o.frequency.setValueAtTime(basePitch, now);
-      o.frequency.exponentialRampToValueAtTime(basePitch * 0.45, now + 0.022);
-      const peak = isCoasting ? 0.016 : 0.022;
+      const peak = (isBikePedal ? 0.058 : (isVanPedal ? 0.068 : 0.064)) * sprintGain;
       g.gain.setValueAtTime(0.0008, now);
-      g.gain.exponentialRampToValueAtTime(peak, now + 0.003);
-      g.gain.exponentialRampToValueAtTime(0.0005, now + 0.024);
-      o.connect(g);
+      g.gain.exponentialRampToValueAtTime(peak, now + 0.016);
+      g.gain.exponentialRampToValueAtTime(peak * 0.55, now + dur * 0.58);
+      g.gain.exponentialRampToValueAtTime(0.0005, now + dur);
+
+      osc.connect(bp);
+      bp.connect(hp);
+      hp.connect(g);
       g.connect(audioCtx.destination);
-      o.start(now);
-      o.stop(now + 0.028);
+      osc.start(now);
+      osc.stop(now + dur + 0.015);
+
+      // Layer 2: Short dry bearing/chain-tooth 'চ' friction scrape
+      if (pedalNoiseBuf) {
+        const nSrc = audioCtx.createBufferSource();
+        nSrc.buffer = pedalNoiseBuf;
+        const nBp = audioCtx.createBiquadFilter();
+        nBp.type = 'bandpass';
+        nBp.frequency.value = isBikePedal ? 2250 : (isVanPedal ? 1450 : 1850);
+        nBp.Q.value = 4.6;
+        const nG = audioCtx.createGain();
+        nG.gain.setValueAtTime(0.0005, now + 0.01);
+        nG.gain.exponentialRampToValueAtTime(0.024 * sprintGain, now + 0.028);
+        nG.gain.exponentialRampToValueAtTime(0.0005, now + 0.065);
+        nSrc.connect(nBp);
+        nBp.connect(nG);
+        nG.connect(audioCtx.destination);
+        nSrc.start(now + 0.008, Math.random() * 0.8, 0.065);
+      }
+    } catch {}
+  }
+
+  // Authentic Freewheel Rear Hub 'ঝিন ঝিন ঝিন...' metallic pawl ratchet when coasting (pedals released)
+  function playHubZhin(speedRatio = 0.6) {
+    if (!audioCtx || !state.driving) return;
+    try {
+      const now = audioCtx.currentTime;
+      const jitter = 0.97 + Math.random() * 0.06;
+      const isBikePedal = soundProfile === 'pedal_bicycle';
+      const isVanPedal = soundProfile === 'pedal_van';
+      const f1 = (isBikePedal ? 3450 : (isVanPedal ? 2380 : 2850)) * jitter;
+      const f2 = (isBikePedal ? 5280 : (isVanPedal ? 3680 : 4380)) * jitter;
+      const volScale = THREE.MathUtils.clamp(0.45 + speedRatio * 0.65, 0.35, 1.1);
+      const dur = isBikePedal ? 0.038 : (isVanPedal ? 0.044 : 0.041);
+
+      // Metallic ringing pawl partials ('ঝিন')
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0008, now);
+      g.gain.exponentialRampToValueAtTime(0.028 * volScale, now + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0005, now + dur);
+      g.connect(audioCtx.destination);
+
+      const o1 = audioCtx.createOscillator();
+      o1.type = 'triangle';
+      o1.frequency.setValueAtTime(f1, now);
+      o1.frequency.exponentialRampToValueAtTime(f1 * 0.92, now + dur);
+      o1.connect(g);
+      o1.start(now);
+      o1.stop(now + dur + 0.008);
+
+      const o2 = audioCtx.createOscillator();
+      o2.type = 'sine';
+      o2.frequency.setValueAtTime(f2, now);
+      o2.frequency.exponentialRampToValueAtTime(f2 * 0.95, now + dur);
+      const g2 = audioCtx.createGain();
+      g2.gain.value = 0.55;
+      o2.connect(g2);
+      g2.connect(g);
+      o2.start(now);
+      o2.stop(now + dur + 0.008);
+
+      // Crisp micro metallic click transient
+      if (pedalNoiseBuf) {
+        const cSrc = audioCtx.createBufferSource();
+        cSrc.buffer = pedalNoiseBuf;
+        const cBp = audioCtx.createBiquadFilter();
+        cBp.type = 'bandpass';
+        cBp.frequency.value = isBikePedal ? 5400 : (isVanPedal ? 3900 : 4600);
+        cBp.Q.value = 3.8;
+        const cG = audioCtx.createGain();
+        cG.gain.setValueAtTime(0.0005, now);
+        cG.gain.exponentialRampToValueAtTime(0.022 * volScale, now + 0.0015);
+        cG.gain.exponentialRampToValueAtTime(0.0004, now + 0.011);
+        cSrc.connect(cBp);
+        cBp.connect(cG);
+        cG.connect(audioCtx.destination);
+        cSrc.start(now, Math.random() * 0.9, 0.015);
+      }
     } catch {}
   }
 
@@ -2329,24 +2436,46 @@ export function createDrivableCar(scene, manager, config) {
     if (isPedalProfile) {
       if (!pedalGain || !pedalFilter) return;
       const spd = Math.abs(state.speed);
-      if (!active || spd < 0.12) {
-        pedalGain.gain.setTargetAtTime(0.0, now, 0.08);
+      if (!active || spd < 0.14) {
+        pedalGain.gain.setTargetAtTime(0.0, now, 0.06);
+        lastCrankPhase = state.pedalPhase;
+        lastHubPhase = state.wheelSpin;
         return;
       }
       const isPedaling = throttle > 0.05;
-      const chainVol = isPedaling
-        ? THREE.MathUtils.clamp(0.012 + (spd / 10.0) * 0.028, 0.012, 0.042)
-        : THREE.MathUtils.clamp((spd / 10.0) * 0.012, 0.004, 0.014);
-      const centerF = (soundProfile === 'pedal_bicycle' ? 1200 : (soundProfile === 'pedal_van' ? 620 : 840)) + spd * 75;
-      pedalFilter.frequency.setTargetAtTime(centerF, now, 0.06);
-      pedalGain.gain.setTargetAtTime(chainVol, now, 0.06);
+      if (isPedaling !== wasPedalingAudio) {
+        wasPedalingAudio = isPedaling;
+        lastCrankPhase = state.pedalPhase;
+        lastHubPhase = state.wheelSpin;
+      }
+      const spdRatio = THREE.MathUtils.clamp(spd / (config.maxSpeed || 8.5), 0, 1);
 
-      // Rhythmic pedal-stroke / freewheel ratchet clicks
-      const stepRad = isPedaling ? Math.PI : 0.72;
-      const phaseMetric = isPedaling ? state.pedalPhase : state.wheelSpin;
-      if (Math.abs(phaseMetric - lastPedalTickPhase) >= stepRad) {
-        lastPedalTickPhase = phaseMetric;
-        playPedalClick(!isPedaling);
+      if (isPedaling) {
+        // Soft chain-roller hum + rhythmic crank 'প্যাচ... প্যাচ...' on every half pedal turn
+        const chainVol = THREE.MathUtils.clamp(0.008 + spdRatio * 0.018, 0.008, 0.028);
+        const centerF = (soundProfile === 'pedal_bicycle' ? 1350 : (soundProfile === 'pedal_van' ? 680 : 920)) + spd * 65;
+        pedalFilter.frequency.setTargetAtTime(centerF, now, 0.06);
+        pedalGain.gain.setTargetAtTime(chainVol, now, 0.06);
+
+        if (Math.abs(state.pedalPhase - lastCrankPhase) >= Math.PI) {
+          lastCrankPhase = state.pedalPhase;
+          crankStrokeIdx += 1;
+          playCrankPach(crankStrokeIdx, Boolean(state.standingPedal));
+        }
+      } else if (state.speed > 0.22) {
+        // Pedals released while rolling forward -> Freewheel Hub 'ঝিন ঝিন ঝিন...' ratchet!
+        const shimmerVol = THREE.MathUtils.clamp(0.005 + spdRatio * 0.010, 0.004, 0.015);
+        const shimmerF = (soundProfile === 'pedal_bicycle' ? 4200 : (soundProfile === 'pedal_van' ? 2900 : 3500)) + spd * 85;
+        pedalFilter.frequency.setTargetAtTime(shimmerF, now, 0.05);
+        pedalGain.gain.setTargetAtTime(shimmerVol, now, 0.05);
+
+        const hubStepRad = soundProfile === 'pedal_bicycle' ? 0.78 : (soundProfile === 'pedal_van' ? 0.92 : 0.85);
+        if (Math.abs(state.wheelSpin - lastHubPhase) >= hubStepRad) {
+          lastHubPhase = state.wheelSpin;
+          playHubZhin(spdRatio);
+        }
+      } else {
+        pedalGain.gain.setTargetAtTime(0.0, now, 0.06);
       }
       return;
     }
@@ -4614,7 +4743,8 @@ export function createDrivableCar(scene, manager, config) {
     }
     if (config.isRickshaw) {
       const gearRatio = config.isBicycle ? 0.50 : (config.isVan ? 0.62 : 0.72);
-      const pedalRate = (throttle > 0 || state.speed > 0.15)
+      // Turn crank only when pedaling (throttle > 0); when pedals are released while rolling forward, freewheel hub coasts!
+      const pedalRate = throttle > 0
         ? Math.max(throttle * 3.8, (state.speed / wheelRadius) * gearRatio)
         : (state.speed < -0.15 ? (state.speed / wheelRadius) * 0.5 : 0);
       state.pedalPhase += pedalRate * dt;
