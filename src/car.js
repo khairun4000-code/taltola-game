@@ -354,6 +354,47 @@ export const CAR_FLEET_CONFIGS = [
     hoodHeight: 1.24,
     hoodForward: 0.72,
     isBMW: false,
+    hasNativeDoors: true,
+    doorRegexMap: {
+      FL: /^Door_FL$/i,
+      FR: /^Door_FR$/i,
+      RL: /^Door_RL$/i,
+      RR: /^Door_RR$/i,
+    },
+  },
+  {
+    id: 'toyota_land_cruiser',
+    name: 'Toyota Land Cruiser LC300 VXR',
+    badge: 'TOYOTA LAND CRUISER LC300 VXR',
+    assetUrl: './assets/toyota_land_cruiser_lc300.glb',
+    targetLength: 5.00,
+    width: 2.10,
+    rotateY: 0,
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 4.4, 0.01, TALTOLA_HOUSE_OFFSET.z + 11.5],
+    spawnHeading: 0.0,
+    groundOffset: 0.0,
+    exhaustTip: [-0.62, 0.30, -2.42],
+    paintPresets: FORTUNER_PAINT_PRESETS,
+    bodyPaintMats: ['CarPaint'],
+    glassMats: ['ClearGlass', 'Light_glass'],
+    tailMats: ['Light_Red_Back', 'Light_Red_Back_Lower', 'BackSpotLight'],
+    headlightMats: ['SpotLight', 'LC300_Headlight_LED'],
+    chromeMats: ['Chrome', 'Mirror'],
+    dashGlowMats: ['Screens', 'Buttons'],
+    wheelNameRegex: /^Wheel_(FL|FR|RL|RR)$/i,
+    hasNativeDoors: true,
+    gearCount: 6,
+    maxSpeed: 37.5,
+    boostMaxSpeed: 49.0,
+    engineForce: 20.5,
+    engineBaseFreq: 32,
+    engineRangeFreq: 132,
+    hornFreqs: [360, 450],
+    camBack: 6.1,
+    camHeight: 2.55,
+    hoodHeight: 1.52,
+    hoodForward: 0.72,
+    isBMW: false,
     doorRegexMap: {
       FL: /^Door_FL$/i,
       FR: /^Door_FR$/i,
@@ -3080,9 +3121,9 @@ export function createDrivableCar(scene, manager, config) {
         }
       }
 
-      // Keep original full-detail exterior car geometry intact; wire native hinged doors for our game-ready Corolla
+      // Keep original full-detail exterior car geometry intact; wire native hinged doors for game-ready vehicles
       carDoors = {};
-      if (config.isGameReadyCorolla || config.isGameReadyPrius) {
+      if (config.isGameReadyCorolla || config.isGameReadyPrius || config.hasNativeDoors) {
         const doorDefs = [
           { key: 'FL', nodeName: 'Door_FL', side: -1 },
           { key: 'FR', nodeName: 'Door_FR', side: 1 },
@@ -3913,11 +3954,14 @@ export function createDrivableCar(scene, manager, config) {
       }
     }
 
-    const rollGain = config.isCNG ? 0.0016 : (config.isBMW ? 0.0024 : (isHeavyTall ? 0.0042 : 0.0032));
-    const maxRollLim = config.isBike ? 0.42 : (config.isCNG ? 0.030 : 0.062);
+    // Real-world centrifugal body roll:
+    // - Motorcycles (isBike) lean INTO the turn (right turn -> lean right, left turn -> lean left).
+    // - All cars/SUVs/vans/trucks/CNG roll OUTWARD from centrifugal force (right turn -> roll left, left turn -> roll right).
+    const rollGain = config.isCNG ? 0.0022 : (config.isBMW ? 0.0030 : (isHeavyTall ? 0.0052 : 0.0040));
+    const maxRollLim = config.isBike ? 0.42 : (config.isCNG ? 0.038 : (isHeavyTall ? 0.085 : 0.068));
     const targetDynRoll = config.isBike
       ? THREE.MathUtils.clamp(-turnRate * Math.min(speedMag, 26) * (config.bikeSportLean ? 0.022 : 0.019), -0.42, 0.42)
-      : THREE.MathUtils.clamp(-turnRate * state.speed * rollGain, -maxRollLim, maxRollLim);
+      : THREE.MathUtils.clamp(turnRate * state.speed * rollGain, -maxRollLim, maxRollLim);
     const rl = dampSpring(state.dynRoll, targetDynRoll, state.dynRollVel || 0, rollTime, maxRollLim);
     state.dynRoll = rl.val;
     state.dynRollVel = rl.vel;

@@ -3141,10 +3141,10 @@ async function initialize() {
       updateHUDPrompt();
     },
   });
-  // Park the custom Atlas Roadster Bicycle, Bangladeshi CNG Auto, and Bangladeshi Cargo Van right outside Taltola House on startup; other vehicles spawn via [P] phone cheat codes
+  // Park Toyota Corolla, Toyota Prius, Atlas Bicycle, CNG, Cargo Van & Tata 2515 right outside Taltola House on startup; all 16 vehicles also spawn via [P] phone dial pad
   cars = [];
   bmwCar = null;
-  const starterVehicleIds = ['atlas_roadster_bicycle', 'bangladeshi_cng', 'bangladeshi_cargo_van', 'tata_2515'];
+  const starterVehicleIds = ['toyota_corolla', 'toyota_prius', 'atlas_roadster_bicycle', 'bangladeshi_cng', 'bangladeshi_cargo_van', 'tata_2515'];
   const vehicleEnvStartup = skySystem?.getEnvTexture?.() || null;
   for (const vid of starterVehicleIds) {
     const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);

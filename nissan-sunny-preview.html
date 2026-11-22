@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2000 Nissan Sunny (N16) — 3D Game-Ready Preview Studio</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #111827;
+      color: #f1f5f9;
+      overflow: hidden;
+      user-select: none;
+    }
+    #canvas-wrap { position: fixed; inset: 0; }
+    .panel {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      width: 318px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+      z-index: 10;
+      max-height: calc(100vh - 28px);
+      overflow-y: auto;
+    }
+    .panel h1 { font-size: 15px; font-weight: 700; color: #f8fafc; margin-bottom: 2px; }
+    .panel .sub { font-size: 11px; color: #94a3b8; margin-bottom: 10px; }
+    .section { border-top: 1px solid rgba(148, 163, 184, 0.16); padding-top: 10px; margin-top: 10px; }
+    .label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 7px;
+      display: flex; justify-content: space-between;
+    }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .btn-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    button {
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(30, 41, 59, 0.85);
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 7px 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    button:hover { background: rgba(51, 65, 85, 0.95); }
+    button.active { background: #2563eb; color: #fff; border-color: #3b82f6; }
+    button.warn.active { background: #d97706; border-color: #f59e0b; }
+    button.danger.active { background: #dc2626; border-color: #ef4444; }
+    .slider-row { margin-bottom: 8px; }
+    .slider-row input[type="range"] { width: 100%; accent-color: #3b82f6; }
+    .hud-bottom {
+      position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.86); color: #e2e8f0;
+      padding: 8px 16px; border-radius: 999px; font-size: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      z-index: 10; pointer-events: none; white-space: nowrap;
+    }
+    #status { font-size: 11px; color: #34d399; font-weight: 600; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div id="canvas-wrap"></div>
+
+  <div class="panel">
+    <h1>Nissan Sunny (N16) 3D Studio</h1>
+    <div class="sub">Quilted Leather Interior · Doors, Spinning Wheels, Steering &amp; Lights</div>
+
+    <div class="section">
+      <div class="label"><span>Drive &amp; Steering</span><span id="spd-tag">24 km/h</span></div>
+      <div class="slider-row">
+        <input id="wheel-speed" type="range" min="-8" max="14" step="0.2" value="3.0" />
+      </div>
+      <div class="label"><span>Steering Wheel</span><span id="steer-val">0°</span></div>
+      <div class="slider-row">
+        <input id="steer-slider" type="range" min="-30" max="30" step="1" value="0" />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label"><span>Doors (দরজা খোলা/বন্ধ)</span></div>
+      <div class="btn-grid">
+        <button id="btn-doors-all">Open All Doors</button>
+        <button id="btn-doors-close">Close All</button>
+        <button id="btn-door-fl">Front Left</button>
+        <button id="btn-door-fr">Front Right</button>
+        <button id="btn-door-rl">Rear Left</button>
+        <button id="btn-door-rr">Rear Right</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label"><span>Lights (হেডলাইট, টেইললাইট, ইন্ডিকেটর)</span></div>
+      <div class="btn-grid">
+        <button id="btn-headlight" class="active">Headlights + Fog</button>
+        <button id="btn-taillight" class="active">Taillights</button>
+        <button id="btn-brake" class="danger">Brake Lights</button>
+        <button id="btn-reverse">Reverse Lights</button>
+        <button id="btn-dome" class="active">Interior &amp; Dash</button>
+        <button id="btn-night">Night / Studio</button>
+      </div>
+      <div class="btn-grid-3" style="margin-top:6px;">
+        <button id="btn-ind-l" class="warn">Left Ind</button>
+        <button id="btn-ind-r" class="warn">Right Ind</button>
+        <button id="btn-hazard" class="warn">Hazard</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="label"><span>Camera Views</span></div>
+      <div class="btn-grid">
+        <button data-cam="front34">Front 3/4</button>
+        <button data-cam="rear34">Rear 3/4</button>
+        <button data-cam="interior">Driver POV</button>
+        <button data-cam="seats">Leather Seats</button>
+        <button data-cam="wheel">Wheel &amp; Nuts</button>
+        <button data-cam="front">Front Lights</button>
+        <button data-cam="rear">Rear Lights</button>
+        <button data-cam="top">Top View</button>
+      </div>
+    </div>
+
+    <div id="status">Loading nissan_sunny_game_ready.glb...</div>
+  </div>
+
+  <div class="hud-bottom">
+    মাউস ড্র্যাগ: ৩৬০° ঘোরান · স্ক্রল: জুম · <b>W/S</b> চাকা চালান · <b>A/D</b> স্টিয়ারিং ঘোরান · <b>O</b> সব দরজা খুলুন
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    const wrap = document.getElementById('canvas-wrap');
+    const statusEl = document.getElementById('status');
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    wrap.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#1e293b');
+
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.04, 80);
+    camera.position.set(-3.8, 1.55, -3.5);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0.65, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.update();
+
+    // Lighting
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x334155, 1.0);
+    scene.add(hemi);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    keyLight.position.set(-4.5, 7.0, -4.5);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    scene.add(keyLight);
+    const rimLight = new THREE.DirectionalLight(0xdbeafe, 1.1);
+    rimLight.position.set(4.5, 4.0, 4.5);
+    scene.add(rimLight);
+
+    // Cabin Interior PointLight so the saddle-tan leather seats & dash shine clearly
+    const cabinLight = new THREE.PointLight(0xfff1d6, 2.4, 3.2, 1.4);
+    cabinLight.position.set(0, 1.22, -0.05);
+    scene.add(cabinLight);
+
+    // Real Headlight SpotLights casting beams on the ground
+    const hlSpotL = new THREE.SpotLight(0xfff8e7, 18, 16, Math.PI / 5, 0.45, 1.4);
+    hlSpotL.position.set(-0.55, 0.65, -2.02);
+    hlSpotL.target.position.set(-0.55, 0.1, -9.0);
+    scene.add(hlSpotL, hlSpotL.target);
+
+    const hlSpotR = new THREE.SpotLight(0xfff8e7, 18, 16, Math.PI / 5, 0.45, 1.4);
+    hlSpotR.position.set(0.55, 0.65, -2.02);
+    hlSpotR.target.position.set(0.55, 0.1, -9.0);
+    scene.add(hlSpotR, hlSpotR.target);
+
+    // Ground
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 40),
+      new THREE.MeshStandardMaterial({ color: 0x1e2430, roughness: 0.78, metalness: 0.08 }),
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const grid = new THREE.GridHelper(16, 32, 0x475569, 0x334155);
+    grid.position.y = 0.002;
+    scene.add(grid);
+
+    // Interactive State
+    const nodes = {};
+    const doorTargets = { fl: 0, fr: 0, rl: 0, rr: 0 };
+    const doorCurrent = { fl: 0, fr: 0, rl: 0, rr: 0 };
+    const lightState = {
+      headlight: true,
+      taillight: true,
+      brake: false,
+      reverse: false,
+      dome: true,
+      indL: false,
+      indR: false,
+      hazard: false,
+    };
+    let isNight = false;
+    let wheelSpeed = 3.0;
+    let wheelAngle = 0;
+    let steerDeg = 0;
+    const keys = new Set();
+
+    window.addEventListener('keydown', (e) => {
+      keys.add(e.code);
+      if (e.code === 'KeyO') toggleAllDoors(true);
+    });
+    window.addEventListener('keyup', (e) => keys.delete(e.code));
+
+    function setGroupVisible(names, on) {
+      for (const n of names) {
+        if (nodes[n]) nodes[n].visible = on;
+      }
+    }
+
+    function applyLights(blinkOn) {
+      setGroupVisible(['Light_Headlight_L', 'Light_Headlight_R', 'Light_Fog_L', 'Light_Fog_R'], lightState.headlight);
+      hlSpotL.visible = lightState.headlight;
+      hlSpotR.visible = lightState.headlight;
+
+      setGroupVisible(['Light_Taillight_L', 'Light_Taillight_R'], lightState.taillight);
+      setGroupVisible(['Light_Brake_L', 'Light_Brake_R', 'Light_Brake_Center'], lightState.brake);
+      setGroupVisible(['Light_Reverse_L', 'Light_Reverse_R'], lightState.reverse);
+      setGroupVisible(['Light_Interior_Dome', 'Light_Dash_Cluster'], lightState.dome);
+      cabinLight.intensity = lightState.dome ? (isNight ? 3.5 : 2.4) : 0.4;
+
+      const leftOn  = (lightState.indL || lightState.hazard) && blinkOn;
+      const rightOn = (lightState.indR || lightState.hazard) && blinkOn;
+      setGroupVisible(['Light_Indicator_FL', 'Light_Indicator_RL'], leftOn);
+      setGroupVisible(['Light_Indicator_FR', 'Light_Indicator_RR'], rightOn);
+    }
+
+    const loader = new GLTFLoader();
+    loader.load(
+      './assets/nissan_sunny_game_ready.glb',
+      (gltf) => {
+        const model = gltf.scene;
+        model.traverse((ch) => {
+          if (ch.name) nodes[ch.name] = ch;
+          if (ch.isMesh) {
+            ch.castShadow = true;
+            ch.receiveShadow = true;
+          }
+        });
+        scene.add(model);
+        applyLights(true);
+        statusEl.textContent = 'Loaded! Doors, spinning wheels+lug nuts, steering, leather seats & lights ready.';
+      },
+      undefined,
+      (err) => {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Error: ' + err.message;
+      },
+    );
+
+    const spdSlider = document.getElementById('wheel-speed');
+    const spdTag = document.getElementById('spd-tag');
+    spdSlider.oninput = (e) => {
+      wheelSpeed = parseFloat(e.target.value);
+      spdTag.textContent = Math.round(wheelSpeed * 8) + ' km/h';
+    };
+    const steerSlider = document.getElementById('steer-slider');
+    const steerVal = document.getElementById('steer-val');
+    steerSlider.oninput = (e) => {
+      steerDeg = parseFloat(e.target.value);
+      steerVal.textContent = steerDeg + '°';
+    };
+
+    function toggleAllDoors(open) {
+      const ang = open ? 60 : 0;
+      doorTargets.fl = -ang; doorTargets.rl = -ang;
+      doorTargets.fr =  ang; doorTargets.rr =  ang;
+      ['btn-door-fl','btn-door-fr','btn-door-rl','btn-door-rr'].forEach((id) => {
+        document.getElementById(id).classList.toggle('active', open);
+      });
+    }
+    document.getElementById('btn-doors-all').onclick = () => toggleAllDoors(true);
+    document.getElementById('btn-doors-close').onclick = () => toggleAllDoors(false);
+
+    function wireDoor(id, key, openDeg) {
+      const btn = document.getElementById(id);
+      btn.onclick = () => {
+        const isOpen = Math.abs(doorTargets[key]) > 1;
+        doorTargets[key] = isOpen ? 0 : openDeg;
+        btn.classList.toggle('active', !isOpen);
+      };
+    }
+    wireDoor('btn-door-fl', 'fl', -62);
+    wireDoor('btn-door-fr', 'fr',  62);
+    wireDoor('btn-door-rl', 'rl', -58);
+    wireDoor('btn-door-rr', 'rr',  58);
+
+    function wireToggle(id, prop, exclusiveOff = []) {
+      const btn = document.getElementById(id);
+      btn.onclick = () => {
+        lightState[prop] = !lightState[prop];
+        btn.classList.toggle('active', lightState[prop]);
+        if (lightState[prop]) {
+          for (const [eid, eprop] of exclusiveOff) {
+            lightState[eprop] = false;
+            document.getElementById(eid).classList.remove('active');
+          }
+        }
+      };
+    }
+    wireToggle('btn-headlight', 'headlight');
+    wireToggle('btn-taillight', 'taillight');
+    wireToggle('btn-brake', 'brake');
+    wireToggle('btn-reverse', 'reverse');
+    wireToggle('btn-dome', 'dome');
+    wireToggle('btn-ind-l', 'indL', [['btn-ind-r', 'indR'], ['btn-hazard', 'hazard']]);
+    wireToggle('btn-ind-r', 'indR', [['btn-ind-l', 'indL'], ['btn-hazard', 'hazard']]);
+    wireToggle('btn-hazard', 'hazard', [['btn-ind-l', 'indL'], ['btn-ind-r', 'indR']]);
+
+    document.getElementById('btn-night').onclick = (e) => {
+      isNight = !isNight;
+      e.target.classList.toggle('active', isNight);
+      scene.background = new THREE.Color(isNight ? '#050814' : '#1e293b');
+      hemi.intensity = isNight ? 0.18 : 1.0;
+      keyLight.intensity = isNight ? 0.35 : 2.0;
+      rimLight.intensity = isNight ? 0.25 : 1.1;
+    };
+
+    const CAMS = {
+      front34:  { pos: [-3.8, 1.55, -3.5], tgt: [0, 0.65, 0] },
+      rear34:   { pos: [ 3.8, 1.55,  3.5], tgt: [0, 0.65, 0] },
+      front:    { pos: [ 0.0, 0.90, -4.4], tgt: [0, 0.64, -1.6] },
+      rear:     { pos: [ 0.0, 1.00,  4.5], tgt: [0, 0.72,  1.6] },
+      interior: { pos: [-0.36, 1.10, 0.20], tgt: [-0.36, 0.88, -0.75] },
+      seats:    { pos: [-1.75, 1.22, 0.15], tgt: [ 0.05, 0.68, -0.05], openDoors: true },
+      wheel:    { pos: [-1.85, 0.40, -1.30], tgt: [-0.72, 0.30, -1.30] },
+      top:      { pos: [ 0.0, 5.8,  0.01], tgt: [0, 0.5, 0] },
+    };
+    document.querySelectorAll('[data-cam]').forEach((btn) => {
+      btn.onclick = () => {
+        const c = CAMS[btn.dataset.cam];
+        if (!c) return;
+        camera.position.set(...c.pos);
+        controls.target.set(...c.tgt);
+        controls.update();
+        if (c.openDoors) toggleAllDoors(true);
+      };
+    });
+
+    const clock = new THREE.Clock();
+    let elapsed = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+      elapsed += dt;
+
+      if (keys.has('KeyA') || keys.has('ArrowLeft'))  steerDeg = Math.min(30, steerDeg + dt * 55);
+      if (keys.has('KeyD') || keys.has('ArrowRight')) steerDeg = Math.max(-30, steerDeg - dt * 55);
+      let spd = wheelSpeed;
+      if (keys.has('KeyW') || keys.has('ArrowUp'))   spd = 10.0;
+      if (keys.has('KeyS') || keys.has('ArrowDown')) spd = -5.0;
+
+      wheelAngle -= spd * dt;
+      for (const wn of ['Wheel_FL', 'Wheel_FR', 'Wheel_RL', 'Wheel_RR']) {
+        if (nodes[wn]) nodes[wn].rotation.x = wheelAngle;
+      }
+
+      const steerRad = THREE.MathUtils.degToRad(steerDeg);
+      if (nodes['Wheel_FL_Steer']) nodes['Wheel_FL_Steer'].rotation.y = steerRad;
+      if (nodes['Wheel_FR_Steer']) nodes['Wheel_FR_Steer'].rotation.y = steerRad;
+      if (nodes['Steering_Wheel']) nodes['Steering_Wheel'].rotation.z = steerRad * 5.2;
+
+      const lerp = Math.min(1, dt * 6.5);
+      const map = [['fl','Door_FL'], ['fr','Door_FR'], ['rl','Door_RL'], ['rr','Door_RR']];
+      for (const [k, n] of map) {
+        doorCurrent[k] += (doorTargets[k] - doorCurrent[k]) * lerp;
+        if (nodes[n]) nodes[n].rotation.y = THREE.MathUtils.degToRad(doorCurrent[k]);
+      }
+
+      const blinkOn = Math.floor(elapsed * 3.2) % 2 === 0;
+      applyLights(blinkOn);
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
