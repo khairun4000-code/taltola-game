@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>খুলনা সার্কিট হাউস — 3D মডেল ও .GLB প্রিভিউ স্টুডিও</title>
+  <title>খুলনা সার্কিট হাউস — ফটোরিয়ালিস্টিক 3D ও .GLB প্রিভিউ স্টুডিও</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #0f172a; font-family: "Manrope", "Noto Sans Bengali", system-ui, sans-serif; color: #f8fafc; }
@@ -12,7 +12,7 @@
       position: fixed; top: 14px; left: 14px; z-index: 20;
       background: rgba(15, 23, 42, 0.86); backdrop-filter: blur(12px);
       border: 1px solid rgba(250, 204, 21, 0.38); border-radius: 14px;
-      padding: 14px 16px; max-width: 350px; box-shadow: 0 12px 32px rgba(0,0,0,0.48);
+      padding: 14px 16px; max-width: 356px; box-shadow: 0 12px 32px rgba(0,0,0,0.48);
     }
     #hud h1 { font-size: 16px; font-weight: 800; color: #facc15; margin-bottom: 4px; }
     #hud p { font-size: 12px; color: #cbd5e1; line-height: 1.45; margin-bottom: 10px; }
@@ -36,26 +36,28 @@
 <body>
   <div id="canvas-wrap"></div>
   <div id="hud">
-    <h1>খুলনা সার্কিট হাউস (3D মডেল)</h1>
-    <p>মাউস ড্র্যাগ করে ৩৬০° ঘোরান, স্ক্রল করে জুম করুন, অথবা <b>W A S D</b> চেপে গেট ও ভবনের ভেতর হাঁটুন।</p>
+    <h1>খুলনা সার্কিট হাউস (ফটোরিয়ালিস্টিক 3D)</h1>
+    <p>মাউস ড্র্যাগ করে ৩৬০° ঘোরান, স্ক্রল করে জুম করুন, অথবা <b>W A S D</b> চেপে বাম দিকের রাস্তা দিয়ে ভেতরে হাঁটুন।</p>
     <div class="btn-grid">
       <button id="btn-gate" class="active">মেইন গেট (স্ট্রিট ভিউ)</button>
+      <button id="btn-driveway">বাম দিকের প্রবেশপথ</button>
       <button id="btn-bldg">মূল ভবন ও পোর্টিকো</button>
       <button id="btn-full">পুরো কমপ্লেক্স</button>
       <button id="btn-hall">ভেতরের ভিআইপি হল</button>
       <button id="btn-memorial">একাত্তরের স্মৃতিফলক</button>
       <button id="btn-cut">কাটঅ্যাওয়ে (ভেতর)</button>
-      <button id="btn-night">দিন / রাত</button>
-      <button id="btn-reset">রিসেট ভিউ</button>
+      <button id="btn-time">সময়: দুপুর (DAYLIGHT)</button>
     </div>
     <button id="btn-glb" class="primary">ডাউনলোড .GLB মডেল (khulna_circuit_house.glb)</button>
-    <div id="status">লোড সম্পন্ন · ৬০ FPS রেডি</div>
+    <div id="status">PBR নরমাল ম্যাপ + HDRI স্কাই লোড সম্পন্ন</div>
   </div>
 
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+    import { createAtmosphericSkyAndPMREM } from './src/aaa-shaders.js';
     import { buildKhulnaCircuitHouseStandalone3D } from './src/circuit-house-standalone.js';
 
     const wrap = document.getElementById('canvas-wrap');
@@ -67,56 +69,110 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
+    renderer.toneMappingExposure = 1.04;
     wrap.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x9ec5e8);
-    scene.fog = new THREE.FogExp2(0x9ec5e8, 0.0038);
+    scene.fog = new THREE.FogExp2(0xcfe0ea, 0.0024);
 
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.15, 320);
-    // Start at the exact Street View angle of the Khulna Circuit House Main Gate!
-    camera.position.set(-10.5, 3.2, 31.5);
+    const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.15, 420);
+    // Exact Street View perspective looking at Khulna Circuit House Main Gate on K.D. Ghos Rd!
+    camera.position.set(-1.5, 2.75, 31.2);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.07;
-    controls.target.set(1.2, 2.8, 16.5);
+    controls.target.set(10.8, 2.7, 17.5);
 
-    const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x3b4a36, 0.98);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.28);
+    scene.add(ambientLight);
+
+    const hemiLight = new THREE.HemisphereLight(0xb6daf7, 0x5d6554, 1.05);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff6e5, 2.25);
-    sunLight.position.set(28, 42, 36);
+    const sunLight = new THREE.DirectionalLight(0xfff5e4, 2.45);
+    sunLight.position.set(36, 48, 38);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(2048, 2048);
-    sunLight.shadow.camera.left = -42;
-    sunLight.shadow.camera.right = 42;
-    sunLight.shadow.camera.top = 42;
-    sunLight.shadow.camera.bottom = -42;
+    sunLight.shadow.bias = -0.0004;
+    sunLight.shadow.normalBias = 0.025;
+    sunLight.shadow.camera.left = -52;
+    sunLight.shadow.camera.right = 52;
+    sunLight.shadow.camera.top = 52;
+    sunLight.shadow.camera.bottom = -52;
     scene.add(sunLight);
 
-    const gateLight = new THREE.PointLight(0xffe7b3, 12, 22, 1.5);
-    gateLight.position.set(1.5, 4.6, 18.2);
+    // Volumetric Cloud Sky Dome + Baked PMREM HDRI Environment Reflections!
+    const skySystem = createAtmosphericSkyAndPMREM(scene, renderer);
+    skySystem.applyPreset('daylight', { sun: sunLight, hemisphereLight: hemiLight, ambientLight, quality: 'ultra' });
+
+    const gateLight = new THREE.PointLight(0xffe7b3, 10, 22, 1.5);
+    gateLight.position.set(11.5, 4.6, 18.2);
     scene.add(gateLight);
 
-    const hallLight = new THREE.PointLight(0xfff1cc, 16, 24, 1.5);
-    hallLight.position.set(0, 4.2, -13.0);
+    const hallLight = new THREE.PointLight(0xfff1cc, 14, 24, 1.5);
+    hallLight.position.set(-8.5, 4.2, -12.0);
     scene.add(hallLight);
 
     const circuitHouse = buildKhulnaCircuitHouseStandalone3D();
     scene.add(circuitHouse.root);
 
+    // Load Real High-Detail 3D Tropical Trees (krishnachura_tree.glb) instead of blocky low-poly balls!
+    const treeLoader = new GLTFLoader();
+    treeLoader.load('./assets/krishnachura_tree.glb', (gltf) => {
+      const tmpl = gltf.scene;
+      tmpl.updateMatrixWorld(true);
+      const box3 = new THREE.Box3().setFromObject(tmpl);
+      const sz = new THREE.Vector3();
+      box3.getSize(sz);
+      const baseH = Math.max(0.1, sz.y);
+
+      tmpl.traverse((child) => {
+        if (!child.isMesh) return;
+        child.castShadow = true;
+        child.receiveShadow = true;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        for (const mat of mats) {
+          if (!mat) continue;
+          if (child.name.includes('Foliage') || mat.transparent || mat.alphaMap) {
+            mat.transparent = false;
+            mat.alphaTest = 0.32;
+            mat.side = THREE.DoubleSide;
+            mat.depthWrite = true;
+            mat.roughness = 0.72;
+          }
+          mat.needsUpdate = true;
+        }
+      });
+
+      for (const spot of circuitHouse.treeSpots) {
+        const tree = tmpl.clone(true);
+        const sc = spot.h / baseH;
+        tree.scale.setScalar(sc);
+        tree.rotation.y = spot.rotY;
+        tree.position.set(spot.x, -box3.min.y * sc, spot.z);
+        circuitHouse.root.add(tree);
+      }
+      statusEl.textContent = 'PBR ইট/কংক্রিট + রিয়েল 3D গাছ লোড সম্পন্ন · ৬০ FPS';
+    });
+
     const presets = {
-      gate:     { pos: [-10.5, 3.2, 31.5], target: [1.2, 2.8, 16.5], cut: false },
-      bldg:     { pos: [-16.5, 5.2, 13.5], target: [0.0, 3.4, -10.5], cut: false },
-      full:     { pos: [-26.0, 18.0, 36.0], target: [0.0, 3.0, 3.0], cut: false },
-      hall:     { pos: [0.0, 2.4, -5.5], target: [0.0, 2.2, -14.5], cut: false },
-      memorial: { pos: [-11.8, 2.2, 24.5], target: [-9.8, 1.5, 18.4], cut: false },
+      gate:     { pos: [-1.5, 2.75, 31.2], target: [10.8, 2.7, 17.5], cut: false },
+      driveway: { pos: [12.5, 4.2, 23.5],  target: [-2.0, 2.2, 4.5],  cut: false },
+      bldg:     { pos: [-24.5, 5.2, 13.5], target: [-8.5, 3.2, -9.5], cut: false },
+      full:     { pos: [-16.0, 22.0, 42.0], target: [0.0, 2.5, 4.0],  cut: false },
+      hall:     { pos: [-8.5, 2.4, -4.5],  target: [-8.5, 2.2, -13.5], cut: false },
+      memorial: { pos: [-2.5, 2.1, 24.5],  target: [0.1, 1.6, 18.4],  cut: false },
     };
 
+    const timeModes = [
+      { id: 'daylight', label: 'সময়: দুপুর (DAYLIGHT)', gateI: 10, hallI: 14 },
+      { id: 'golden',   label: 'সময়: বিকেল (GOLDEN)',   gateI: 16, hallI: 18 },
+      { id: 'sunset',   label: 'সময়: সন্ধ্যা (SUNSET)',  gateI: 24, hallI: 24 },
+      { id: 'night',    label: 'সময়: রাত (NIGHT)',       gateI: 32, hallI: 30 },
+    ];
+    let timeIdx = 0;
     let cutaway = false;
-    let isNight = false;
 
     function setActiveBtn(id) {
       for (const el of document.querySelectorAll('#hud button')) el.classList.remove('active');
@@ -136,7 +192,7 @@
     }
 
     document.getElementById('btn-gate').onclick = () => goPreset('gate', 'btn-gate');
-    document.getElementById('btn-reset').onclick = () => goPreset('gate', 'btn-gate');
+    document.getElementById('btn-driveway').onclick = () => goPreset('driveway', 'btn-driveway');
     document.getElementById('btn-bldg').onclick = () => goPreset('bldg', 'btn-bldg');
     document.getElementById('btn-full').onclick = () => goPreset('full', 'btn-full');
     document.getElementById('btn-hall').onclick = () => goPreset('hall', 'btn-hall');
@@ -145,23 +201,21 @@
       cutaway = !cutaway;
       circuitHouse.setCutaway(cutaway);
       if (cutaway) {
-        camera.position.set(12.0, 12.5, 2.5);
-        controls.target.set(0, 2.2, -12.0);
+        camera.position.set(4.5, 13.5, 3.5);
+        controls.target.set(-8.5, 2.2, -11.0);
         setActiveBtn('btn-cut');
       } else {
         setActiveBtn('btn-bldg');
       }
     };
-    document.getElementById('btn-night').onclick = () => {
-      isNight = !isNight;
-      const bg = isNight ? 0x090f1d : 0x9ec5e8;
-      scene.background.setHex(bg);
-      scene.fog.color.setHex(bg);
-      sunLight.intensity = isNight ? 0.24 : 2.25;
-      hemiLight.intensity = isNight ? 0.28 : 0.98;
-      gateLight.intensity = isNight ? 28 : 12;
-      hallLight.intensity = isNight ? 28 : 16;
-      renderer.toneMappingExposure = isNight ? 1.24 : 1.12;
+    const timeBtn = document.getElementById('btn-time');
+    timeBtn.onclick = () => {
+      timeIdx = (timeIdx + 1) % timeModes.length;
+      const mode = timeModes[timeIdx];
+      skySystem.applyPreset(mode.id, { sun: sunLight, hemisphereLight: hemiLight, ambientLight, quality: 'ultra' });
+      gateLight.intensity = mode.gateI;
+      hallLight.intensity = mode.hallI;
+      timeBtn.textContent = mode.label;
     };
 
     document.getElementById('btn-glb').onclick = () => {
@@ -202,6 +256,7 @@
       requestAnimationFrame(animate);
       const dt = Math.min(0.05, clock.getDelta());
       circuitHouse.update(clock.elapsedTime);
+      skySystem.update(clock.elapsedTime, camera.position);
 
       const speed = (keys.ShiftLeft || keys.ShiftRight ? 12 : 5.2) * dt;
       camera.getWorldDirection(fwd);
