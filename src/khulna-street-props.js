@@ -530,7 +530,18 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
     return im;
   });
 
+  // Pre-allocated fixed GPU buffers for overhead wires (eliminates chunk-crossing GC & WebGL hang freezes!)
+  const MAX_WIRE_VERTS = 60000;
+  const wirePosArr = new Float32Array(MAX_WIRE_VERTS * 3);
+  const wirePinArr = new Float32Array(MAX_WIRE_VERTS);
+  const wirePosAttr = new THREE.BufferAttribute(wirePosArr, 3);
+  const wirePinAttr = new THREE.BufferAttribute(wirePinArr, 1);
+  wirePosAttr.setUsage(THREE.DynamicDrawUsage);
+  wirePinAttr.setUsage(THREE.DynamicDrawUsage);
   const wireGeom = new THREE.BufferGeometry();
+  wireGeom.setAttribute('position', wirePosAttr);
+  wireGeom.setAttribute('aWirePin', wirePinAttr);
+  wireGeom.setDrawRange(0, 0);
   const wireLines = new THREE.LineSegments(wireGeom, assets.wireMat);
   wireLines.frustumCulled = false;
 
@@ -720,8 +731,8 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
     // Build SUPER MESSY Bangladeshi Khulna pole-to-pole tangled overhead wires + house service drops!
     const wireVerts = [];
     const wirePins = [];
-    const wireStrands = quality === 'low' ? 8 : 11;
-    const dropCount = quality === 'low' ? 4 : 5;
+    const wireStrands = quality === 'low' ? 6 : 8;
+    const dropCount = quality === 'low' ? 3 : 4;
 
     for (let i = 0; i < activePoles.length && i < MAX_POLES; i++) {
       const p = activePoles[i];
@@ -782,9 +793,12 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
       }
     }
 
-    wireGeom.setAttribute('position', new THREE.Float32BufferAttribute(wireVerts, 3));
-    wireGeom.setAttribute('aWirePin', new THREE.Float32BufferAttribute(wirePins, 1));
-    wireGeom.computeBoundingSphere();
+    const vCount = Math.min(Math.floor(wireVerts.length / 3), MAX_WIRE_VERTS);
+    for (let vi = 0; vi < vCount * 3; vi++) wirePosArr[vi] = wireVerts[vi];
+    for (let pi = 0; pi < vCount; pi++) wirePinArr[pi] = wirePins[pi];
+    wirePosAttr.needsUpdate = true;
+    wirePinAttr.needsUpdate = true;
+    wireGeom.setDrawRange(0, vCount);
   }
 
   function writeSwayingPoleMatrices(rec) {

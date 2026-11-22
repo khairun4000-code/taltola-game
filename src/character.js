@@ -1799,12 +1799,9 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       root.rotation.y = studioYaw || 0;
     }
 
-    // Smooth vertical holder offset for swimming + subtle shoe-clearance lift during sprint forward-lean / corner banking
-    const tiltLift = (!inStudio && grounded && !isSwimming)
-      ? (Math.sin(Math.abs(modelHolder.rotation.x)) * 0.08 + Math.sin(Math.abs(modelHolder.rotation.z)) * 0.09)
-      : 0;
-    const targetHolderY = (!inStudio && isSwimming) ? (baseGroundY - 0.42) : (baseGroundY + tiltLift);
-    modelHolder.position.y += (targetHolderY - modelHolder.position.y) * Math.min(1, dt * 10.0);
+    // Smooth vertical holder offset for swimming (zero tilt-lift vertical bouncing while walking/running!)
+    const targetHolderY = (!inStudio && isSwimming) ? (baseGroundY - 0.42) : baseGroundY;
+    modelHolder.position.y += (targetHolderY - modelHolder.position.y) * Math.min(1, dt * 12.0);
 
     if (state.attackTimer > 0) {
       state.attackTimer = Math.max(0, state.attackTimer - dt);
@@ -1817,7 +1814,8 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       }
     }
 
-    const horizSpeed = Math.hypot(moveDirX, moveDirZ) * speed;
+    const dirLen = Math.hypot(moveDirX, moveDirZ);
+    const horizSpeed = dirLen > 0.05 ? speed : 0;
     if (!inStudio) {
       if (isClimbing || isDiving || isSwimming || !grounded) {
         if (state.emote && state.emote !== 'sit') state.emote = null;
@@ -1842,11 +1840,11 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         const moveYaw = Math.atan2(moveDirX, moveDirZ);
         const yawDiff = wrapAngleDelta(moveYaw - state.facingYaw);
         state.facingYaw += yawDiff * Math.min(1, dt * 12.0);
-        // GTA VI Euphoria-style natural sprint corner banking & forward momentum lean!
+        // Subtle, rock-steady sprint banking without jarring forward pitch wobble
         const speedFrac = THREE.MathUtils.clamp((horizSpeed - 1.5) / 6.0, 0, 1);
-        const targetBank = THREE.MathUtils.clamp(-yawDiff * 0.28 * speedFrac, -0.16, 0.16);
-        const targetFwdLean = (isSprinting ? 0.065 : 0.020) * speedFrac;
-        modelHolder.rotation.z = THREE.MathUtils.lerp(modelHolder.rotation.z, targetBank, Math.min(1, dt * 9.0));
+        const targetBank = THREE.MathUtils.clamp(-yawDiff * 0.18 * speedFrac, -0.10, 0.10);
+        const targetFwdLean = (isSprinting ? 0.032 : 0.0) * speedFrac;
+        modelHolder.rotation.z = THREE.MathUtils.lerp(modelHolder.rotation.z, targetBank, Math.min(1, dt * 8.0));
         modelHolder.rotation.x = THREE.MathUtils.lerp(modelHolder.rotation.x, targetFwdLean, Math.min(1, dt * 8.0));
       } else if (state.emote && state.emote !== 'sit' && state.cameraMode === 'back') {
         modelHolder.rotation.z = THREE.MathUtils.lerp(modelHolder.rotation.z, 0, Math.min(1, dt * 10.0));
