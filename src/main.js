@@ -3144,7 +3144,7 @@ async function initialize() {
   // Park the custom Atlas Roadster Bicycle, Bangladeshi CNG Auto, and Bangladeshi Cargo Van right outside Taltola House on startup; other vehicles spawn via [P] phone cheat codes
   cars = [];
   bmwCar = null;
-  const starterVehicleIds = ['atlas_roadster_bicycle', 'bangladeshi_cng', 'bangladeshi_cargo_van'];
+  const starterVehicleIds = ['atlas_roadster_bicycle', 'bangladeshi_cng', 'bangladeshi_cargo_van', 'tata_2515'];
   const vehicleEnvStartup = skySystem?.getEnvTexture?.() || null;
   for (const vid of starterVehicleIds) {
     const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);

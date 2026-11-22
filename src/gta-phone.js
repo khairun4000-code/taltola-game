@@ -10,6 +10,8 @@ export const PHONE_CHEAT_CODES = [
   { code: '1111', carId: 'bmw_m3', label: 'BMW M3 Competition' },
   { code: '2222', carId: 'toyota_alphard', label: 'Toyota Alphard 2025' },
   { code: '3333', carId: 'toyota_corolla', label: 'Toyota Corolla 2017' },
+  { code: '2012', carId: 'toyota_prius', label: 'Toyota Prius 2012' },
+  { code: '2000', carId: 'nissan_sunny', label: 'Nissan Sunny (N16) 2000' },
   { code: '4444', carId: 'toyota_fortuner', label: 'Toyota Fortuner 2021' },
   { code: '5555', carId: 'toyota_hiace', label: 'Toyota HiAce 2005' },
   { code: '6666', carId: 'bangladeshi_rickshaw_taltola', label: 'Bangladeshi Rickshaw' },
@@ -19,6 +21,7 @@ export const PHONE_CHEAT_CODES = [
   { code: '0000', carId: 'bangladeshi_cng', label: 'Bangladeshi CNG Auto' },
   { code: '1234', carId: 'atlas_roadster_bicycle', label: 'Atlas Roadster Bicycle' },
   { code: '5678', carId: 'bangladeshi_cargo_van', label: 'Bangladeshi Cargo Van' },
+  { code: '2515', carId: 'tata_2515', label: 'Tata LPT 2515 Truck (10-Wheeler)' },
 ];
 
 export function createGTAPhoneUI({

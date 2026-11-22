@@ -4,6 +4,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { rigAllCarDoors, createInteriorCockpitRig } from './car-interior.js';
+import { loadHighQualityTata2515 } from './tata-2515-truck.js';
 
 const BMW_BODY_PAINT_MATS = ['Mesheszx1Mtl', 'Meshesbody151Mtl'];
 const BMW_WHEEL_RIM_MATS = ['Meshesm8rim1Mtl'];
@@ -41,6 +42,15 @@ export const COROLLA_PAINT_PRESETS = [
   { name: 'Barcelona Red', hex: '#a81622' },
   { name: 'Blueprint Blue', hex: '#1b3d7a' },
   { name: 'Slate Gray', hex: '#4b535e' },
+];
+
+export const PRIUS_PAINT_PRESETS = [
+  { name: 'Blizzard Pearl White', hex: '#eef2f6' },
+  { name: 'Midnight Black', hex: '#15181e' },
+  { name: 'Barcelona Red', hex: '#b31824' },
+  { name: 'Nautical Blue', hex: '#183c7a' },
+  { name: 'Classic Silver', hex: '#b4bcc4' },
+  { name: 'Sea Glass Pearl', hex: '#7a9490' },
 ];
 
 export const NISSAN_SUNNY_PAINT_PRESETS = [
@@ -169,7 +179,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.35,
     width: 1.88,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z + 5.2],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z + 8.6],
     spawnHeading: 0.0,
     paintPresets: BMW_PAINT_PRESETS,
     gearCount: 8,
@@ -199,7 +209,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.92,
     width: 1.92,
     rotateY: -Math.PI / 2, // Raw Alphard faces +X; rotate -90 deg Y so it faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z - 5.2],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z - 8.8],
     spawnHeading: 0.0,
     paintPresets: ALPHARD_PAINT_PRESETS,
     bodyPaintMats: ['C_089'],
@@ -236,7 +246,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.55,
     width: 1.82,
     rotateY: Math.PI, // Game-ready GLB faces -Z; rotate 180deg so front faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 0.0],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z + 3.2],
     spawnHeading: 0.0,
     paintPresets: COROLLA_PAINT_PRESETS,
     bodyPaintMats: ['body'],
@@ -271,6 +281,46 @@ export const CAR_FLEET_CONFIGS = [
     },
   },
   {
+    id: 'toyota_prius',
+    name: 'Toyota Prius 2012',
+    badge: 'TOYOTA PRIUS 2012',
+    assetUrl: './assets/toyota_prius_game_ready.glb?v=3',
+    targetLength: 4.48,
+    width: 1.76,
+    rotateY: Math.PI, // Game-ready GLB faces -Z; rotate 180deg so front faces +Z
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z - 3.2],
+    spawnHeading: 0.0,
+    paintPresets: PRIUS_PAINT_PRESETS,
+    bodyPaintMats: ['Color.002'],
+    glassMats: ['Windows.002'],
+    tailMats: ['Brake.005'],
+    headlightMats: ['Headlight', 'Head_light.001'],
+    chromeMats: ['Mirror.002', 'guong_trong.002', 'Kit_Chrome'],
+    dashGlowMats: ['Interiorbadge1Mtl'],
+    khulnaPlateText: ['খুলনা মেট্রো-গ', '১৫-২০১২'],
+    hasBuiltInSteeringWheel: true,
+    isGameReadyPrius: true,
+    exhaustTip: [-0.46, 0.24, -2.10],
+    gearCount: 6,
+    maxSpeed: 31.5,
+    boostMaxSpeed: 42.0,
+    engineForce: 17.0,
+    engineBaseFreq: 34,
+    engineRangeFreq: 132,
+    hornFreqs: [440, 554],
+    camBack: 5.4,
+    camHeight: 2.12,
+    hoodHeight: 1.24,
+    hoodForward: 0.72,
+    isBMW: false,
+    doorRegexMap: {
+      FL: /^Door_FL$/i,
+      FR: /^Door_FR$/i,
+      RL: /^Door_RL$/i,
+      RR: /^Door_RR$/i,
+    },
+  },
+  {
     id: 'nissan_sunny',
     name: 'Nissan Sunny (N16) 2000',
     badge: 'NISSAN SUNNY N16 2000',
@@ -278,7 +328,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.50,
     width: 1.76,
     rotateY: Math.PI, // Game-ready GLB faces -Z; rotate 180 deg Y so it faces +Z in-game
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.0, TALTOLA_HOUSE_OFFSET.z + 23.4],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z + 14.0],
     spawnHeading: 0.0,
     groundOffset: 0.0,
     exhaustTip: [-0.447, 0.253, -2.145],
@@ -319,7 +369,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.80,
     width: 1.90,
     rotateY: 0, // Raw Fortuner already faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z + 11.4],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z - 14.5],
     spawnHeading: 0.0,
     paintPresets: FORTUNER_PAINT_PRESETS,
     bodyPaintMats: ['carpaint'],
@@ -355,7 +405,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.85,
     width: 1.88,
     rotateY: -Math.PI / 2, // Raw HiAce grill faces +X; rotate -90 deg Y so it faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z - 11.6],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 10.2],
     spawnHeading: 0.0,
     paintPresets: HIACE_PAINT_PRESETS,
     bodyPaintMats: ['paint'],
@@ -390,7 +440,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.50,
     width: 1.78,
     rotateY: 0, // Raw TownAce already faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z - 17.8],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z - 10.2],
     spawnHeading: 0.0,
     paintPresets: TOWNACE_PAINT_PRESETS,
     bodyPaintMats: ['Material'],
@@ -425,7 +475,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 2.44,
     width: 1.04,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.15, 0.01, TALTOLA_HOUSE_OFFSET.z + 0.6],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 0.6],
     spawnHeading: 0.0,
     paintPresets: RICKSHAW_PAINT_PRESETS,
     maxSpeed: 7.8,
@@ -469,7 +519,7 @@ export const CAR_FLEET_CONFIGS = [
     rotateY: 0,
     rotateX: 0.071,
     hideMats: ['ground'],
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 2.9],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 3.2],
     spawnHeading: 0.0,
     paintPresets: BIKE_PAINT_PRESETS,
     maxSpeed: 29.0,
@@ -487,15 +537,15 @@ export const CAR_FLEET_CONFIGS = [
     bikeSportLean: true,
     bikeSplitMergedWheels: false,
     bikeRig: {
-      seat: [0, 0.75, -0.26],
-      footL: [0.20, 0.33, -0.16],
-      footR: [-0.20, 0.33, -0.16],
-      steerPivot: [0, 0.96, 0.32],
-      gripL: [0.33, 0.02, -0.04],
-      gripR: [-0.33, 0.02, -0.04],
-      dash: [0, 1.10, 0.44],
-      povEye: [0, 1.35, -0.20],
-      povLook: [0, 1.16, 2.4],
+      seat: [0, 0.97, -0.28],
+      footL: [0.20, 0.35, -0.02],
+      footR: [-0.20, 0.35, -0.02],
+      steerPivot: [0, 1.02, 0.38],
+      gripL: [0.265, 0.075, -0.115],
+      gripR: [-0.265, 0.075, -0.115],
+      dash: [0, 1.12, 0.46],
+      povEye: [0, 1.54, -0.20],
+      povLook: [0, 1.32, 2.4],
     },
   },
   {
@@ -506,7 +556,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 2.12,
     width: 0.82,
     rotateY: Math.PI,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 2.15, 0.01, TALTOLA_HOUSE_OFFSET.z - 1.6],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z - 6.8],
     spawnHeading: 0.0,
     paintPresets: BIKE_PAINT_PRESETS,
     bodyPaintMats: ['FairingGasTank'],
@@ -525,15 +575,15 @@ export const CAR_FLEET_CONFIGS = [
     bikeSportLean: false,
     bikeSplitMergedWheels: true,
     bikeRig: {
-      seat: [0, 0.72, -0.24],
-      footL: [0.21, 0.31, -0.14],
-      footR: [-0.21, 0.31, -0.14],
-      steerPivot: [0, 1.00, 0.32],
-      gripL: [0.37, 0.04, -0.04],
-      gripR: [-0.37, 0.04, -0.04],
-      dash: [0, 1.12, 0.42],
-      povEye: [0, 1.38, -0.20],
-      povLook: [0, 1.18, 2.4],
+      seat: [0, 0.98, -0.26],
+      footL: [0.22, 0.35, -0.08],
+      footR: [-0.22, 0.35, -0.08],
+      steerPivot: [0, 1.04, 0.38],
+      gripL: [0.35, 0.125, -0.12],
+      gripR: [-0.35, 0.125, -0.12],
+      dash: [0, 1.14, 0.44],
+      povEye: [0, 1.58, -0.20],
+      povLook: [0, 1.36, 2.4],
     },
   },
   {
@@ -544,7 +594,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 2.65,
     width: 1.32,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.35, 0.01, TALTOLA_HOUSE_OFFSET.z + 3.8],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 5.6],
     spawnHeading: 0.0,
     paintPresets: CNG_PAINT_PRESETS,
     glassMats: ['CNG_Glass'],
@@ -571,7 +621,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 1.88,
     width: 0.63,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.45, 0.01, TALTOLA_HOUSE_OFFSET.z - 0.6],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z - 1.8],
     spawnHeading: 0.0,
     paintPresets: BICYCLE_PAINT_PRESETS,
     bodyPaintMats: ['Atlas_Frame_Black'],
@@ -594,7 +644,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 2.395,
     width: 1.042,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.35, 0.01, TALTOLA_HOUSE_OFFSET.z - 3.4],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z - 4.4],
     spawnHeading: 0.0,
     paintPresets: VAN_PAINT_PRESETS,
     maxSpeed: 8.2,
@@ -607,6 +657,38 @@ export const CAR_FLEET_CONFIGS = [
     isBMW: false,
     isRickshaw: true,
     isVan: true,
+  },
+  {
+    id: 'tata_2515',
+    name: 'Tata LPT 2515 Truck',
+    badge: 'TATA LPT 2515 (10-WHEELER)',
+    assetUrl: './assets/tata_2515.glb',
+    targetLength: 8.92,
+    width: 2.45,
+    rotateY: 0,
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.5, 0.01, TALTOLA_HOUSE_OFFSET.z + 11.5],
+    spawnHeading: 0.0,
+    paintPresets: [
+      { name: 'BD Highway Red', hex: '#b91c1c', trailerHex: '#1e3a8a' },
+      { name: 'BD Emerald Green', hex: '#15803d', trailerHex: '#eab308' },
+      { name: 'Tata Saffron', hex: '#d97706', trailerHex: '#1e293b' },
+      { name: 'Highway Sky Blue', hex: '#0284c7', trailerHex: '#e2e8f0' },
+      { name: 'Pearl White', hex: '#f8fafc', trailerHex: '#1e3a8a' },
+    ],
+    hasBuiltInSteeringWheel: true,
+    gearCount: 6,
+    maxSpeed: 22.0,
+    boostMaxSpeed: 30.0,
+    engineForce: 15.5,
+    engineBaseFreq: 34,
+    engineRangeFreq: 115,
+    hornFreqs: [215, 275],
+    camBack: 11.2,
+    camHeight: 4.35,
+    hoodHeight: 2.35,
+    hoodForward: 3.15,
+    isBMW: false,
+    isTata2515: true,
   },
 ];
 
@@ -1053,8 +1135,11 @@ function splitMergedBikeMesh(mesh, invWrapper, frontC, rearC, wheelR, stemPivotP
   const allowWheel = Boolean(opts.allowWheel);
   const strictRimOnly = Boolean(opts.strictRimOnly);
   const allowFrontSteer = Boolean(opts.allowFrontSteer);
-  const wheelMaxX = strictRimOnly ? 0.080 : 0.135;
-  const rLim = strictRimOnly ? (wheelR * 0.86) : (wheelR + 0.035);
+  const matName = String(opts.matName || '');
+  const isPureFrontSteerMat = /FrontSuspension|FrontLight|Dashboard/i.test(matName);
+  const isTankFairingMat = /FairingGasTank/i.test(matName);
+  const wheelMaxX = strictRimOnly ? 0.082 : 0.135;
+  const rLim = strictRimOnly ? (wheelR * 0.88) : (wheelR + 0.035);
   const rSq = rLim * rLim;
   const triCount = indexAttr ? indexAttr.count / 3 : posAttr.count / 3;
 
@@ -1075,9 +1160,23 @@ function splitMergedBikeMesh(mesh, invWrapper, frontC, rearC, wheelR, stemPivotP
     } else if (allowWheel && Math.abs(triC.x) <= wheelMaxX && dRearSq <= rSq && triC.z < -0.28) {
       rearWheelTris.push(i0, i1, i2);
     } else if (allowFrontSteer) {
-      const isHandlebarOrMirror = triC.y > 0.86 && triC.z > 0.14;
-      const isForkOrHeadlight = triC.z > (0.24 + Math.max(0, 1.0 - triC.y) * 0.30);
-      if (isHandlebarOrMirror || isForkOrHeadlight) {
+      let steers = false;
+      if (isPureFrontSteerMat) {
+        steers = true;
+      } else if (isTankFairingMat) {
+        // Keep the entire fuel tank & tank shrouds (z <= 0.39) strictly fixed on the frame;
+        // only turn the headlight cowl/mask and high front mudguard!
+        const isHeadlightMask = triC.z > 0.39 && triC.y > 0.84;
+        const isFrontMudguard = triC.z > 0.42 && triC.y > 0.72 && Math.abs(triC.x) < 0.105;
+        steers = isHeadlightMask || isFrontMudguard;
+      } else {
+        // Handlebars, grips, mirrors, front indicators & fork clamps only (never touching tank z<=0.39, y<=1.01, |x|<=0.14)
+        const isHandlebarOrMirror = triC.y > 1.04 && triC.z > 0.14;
+        const isOuterGripOrLever = Math.abs(triC.x) > 0.19 && triC.y > 0.96 && triC.z > 0.12;
+        const isFrontForkOrLamp = triC.z > 0.40 && triC.y > 0.30;
+        steers = isHandlebarOrMirror || isOuterGripOrLever || isFrontForkOrLamp;
+      }
+      if (steers) {
         frontSteerTris.push(i0, i1, i2);
       } else {
         bodyTris.push(i0, i1, i2);
@@ -1142,10 +1241,10 @@ function rigMotorcycleWheels(orientedWrapper, config) {
   const tmpC = new THREE.Vector3();
   const tmpS = new THREE.Vector3();
 
-  const stemPos = config.bikeRig?.steerPivot || [0, 0.96, 0.32];
+  const stemPos = config.bikeRig?.steerPivot || [0, 1.02, 0.38];
   const frontAssemblyPivot = new THREE.Group();
   frontAssemblyPivot.name = 'BikeFrontSteeringAssembly';
-  frontAssemblyPivot.position.set(0, stemPos[1] - 0.08, stemPos[2]);
+  frontAssemblyPivot.position.set(0, stemPos[1], stemPos[2]);
   orientedWrapper.add(frontAssemblyPivot);
   orientedWrapper.updateMatrixWorld(true);
 
@@ -1196,7 +1295,7 @@ function rigMotorcycleWheels(orientedWrapper, config) {
     for (const ch of allMeshes) {
       const mName = Array.isArray(ch.material) ? (ch.material[0]?.name || '') : (ch.material?.name || '');
       const isPureWheel = /TireMat|BrakeDisk|Sprocket/i.test(mName);
-      const isRimCandidate = /Chrome|ScratchedSteel/i.test(mName);
+      const isRimCandidate = /Chrome|ScratchedSteel|Mirror/i.test(mName);
       const isFrontSteerCandidate = !/Engine|Carburettor|ChainMat|Sprocket|BrakeDisk|TireMat/i.test(mName);
       if (!isPureWheel && !isRimCandidate && !isFrontSteerCandidate) continue;
 
@@ -1204,6 +1303,7 @@ function rigMotorcycleWheels(orientedWrapper, config) {
         allowWheel: isPureWheel || isRimCandidate,
         strictRimOnly: isRimCandidate,
         allowFrontSteer: isFrontSteerCandidate,
+        matName: mName,
       });
       if (!res) continue;
       if (res.frontWheelMesh) frontSpin.add(res.frontWheelMesh);
@@ -1286,6 +1386,26 @@ function rigMotorcycleWheels(orientedWrapper, config) {
     steerPivot.add(spinPivot);
     orientedWrapper.updateMatrixWorld(true);
     for (const m of b.meshes) spinPivot.attach(m);
+    // Add subtle metallic alloy rim spoke accents & valve stem so wheel rotation is crisp and unmistakable in motion
+    const spokeAccentMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, metalness: 0.85, roughness: 0.24 });
+    const rimR = wr * 0.72;
+    const spokeGeo = new THREE.BoxGeometry(0.036, rimR * 1.92, 0.011);
+    for (let k = 0; k < 3; k++) {
+      const sp = new THREE.Mesh(spokeGeo, spokeAccentMat);
+      sp.rotation.x = (k * Math.PI) / 3;
+      spinPivot.add(sp);
+      usedSet.add(sp);
+    }
+    const markerGeo = new THREE.BoxGeometry(0.052, 0.022, 0.034);
+    const markerMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.65, roughness: 0.28 });
+    for (let s = 0; s < 2; s++) {
+      const mk = new THREE.Mesh(markerGeo, markerMat);
+      const ang = s * Math.PI;
+      mk.position.set(0, Math.cos(ang) * (wr * 0.77), Math.sin(ang) * (wr * 0.77));
+      mk.rotation.x = ang;
+      spinPivot.add(mk);
+      usedSet.add(mk);
+    }
     builtWheels.push({ wheelRoot: steerPivot, spinGroup: spinPivot, isFront, steerAxis: 'y', spinAxis: 'x', restY: steerPivot.position.y, parentSteers: isFront });
   }
 
@@ -1298,8 +1418,10 @@ function rigMotorcycleWheels(orientedWrapper, config) {
     tmpBox.applyMatrix4(invWrapper);
     tmpBox.getCenter(tmpC);
     tmpBox.getSize(tmpS);
-    const isHandlebarOrMirror = tmpC.y > 0.84 && tmpC.z > 0.14 && tmpS.z < 0.65;
-    const isFrontForkOrLamp = tmpBox.min.z > 0.10 && tmpC.z > 0.24 && tmpS.z < 0.85;
+    // Only turn handlebars/mirrors/upper-clamp AND headlight/forks/front-mudguard;
+    // strictly exclude the fuel tank, tank cap, tank side shrouds, and main frame!
+    const isHandlebarOrMirror = tmpBox.min.y >= 0.97 && tmpC.z >= 0.25 && tmpC.z <= 0.55 && tmpS.z < 0.35;
+    const isFrontForkOrLamp = tmpC.z >= 0.42 && tmpBox.min.z >= 0.34 && tmpS.z < 0.65;
     if (isHandlebarOrMirror || isFrontForkOrLamp) {
       frontTurnMeshes.push(ch);
     }
@@ -1593,12 +1715,13 @@ export function createDrivableCar(scene, manager, config) {
   let measuredWheelRadius = config.isRickshaw ? 0.365 : (config.isBike ? 0.32 : (config.isCNG ? 0.255 : 0.34));
   let rickshawParts = null;
   let cngParts = null;
+  let tataTruckApi = null;
   let corollaParts = null;
   let bikeDriverRig = null;
   let carDoors = {};
   let driverDoorOverride = null;
   let exteriorWrapper = null;
-  const cockpitRig = (config.isRickshaw || config.isBike || config.isGameReadyCorolla) ? null : createInteriorCockpitRig(config, paintPresets[0].hex);
+  const cockpitRig = (config.isRickshaw || config.isBike || config.isGameReadyCorolla || config.isGameReadyPrius) ? null : createInteriorCockpitRig(config, paintPresets[0].hex);
   if (cockpitRig) bodyTiltGroup.add(cockpitRig.group);
 
   // Interactive 3D Motorcycle Rider Rig + Live Working Digital/Analog POV Speedometer Dashboard!
@@ -1704,6 +1827,7 @@ export function createDrivableCar(scene, manager, config) {
     const seatPresets = {
       bmw_m3:          { x:  0.33, y: 0.34, z:  0.04, wy: 0.30, wz: 0.42 },
       toyota_corolla:  { x:  0.32, y: 0.40, z:  0.14, wy: 0.32, wz: 0.42 },
+      toyota_prius:    { x:  0.35, y: 0.42, z:  0.10, wy: 0.32, wz: 0.40 },
       nissan_sunny:    { x:  0.36, y: 0.42, z:  0.14, wy: 0.32, wz: 0.42 },
       toyota_fortuner: { x:  0.34, y: 0.56, z:  0.18, wy: 0.32, wz: 0.44 },
       toyota_alphard:  { x:  0.34, y: 0.60, z:  0.46, wy: 0.32, wz: 0.44 },
@@ -2173,10 +2297,30 @@ export function createDrivableCar(scene, manager, config) {
     } catch {}
   }
 
+  // Custom High-Quality Tata LPT 2515 10-Wheeler Truck Rig (10 spinning wheels, openable cab doors, chrome steel & full lighting)
+  if (config.isTata2515) {
+    measuredWheelRadius = 0.505;
+    loadHighQualityTata2515(config.assetUrl)
+      .then((api) => {
+        tataTruckApi = api;
+        exteriorWrapper = api.root;
+        bodyTiltGroup.add(exteriorWrapper);
+        carDoors = {
+          FL: { key: 'FL', pivot: api.doors.fl, openSign: -1, maxAngle: THREE.MathUtils.degToRad(64), current: 0, target: 0 },
+          FR: { key: 'FR', pivot: api.doors.fr, openSign: 1, maxAngle: THREE.MathUtils.degToRad(64), current: 0, target: 0 },
+        };
+        state.loaded = true;
+        setQualityMode(currentQuality);
+      })
+      .catch((err) => {
+        console.warn('Tata 2515 load warning:', err);
+      });
+  }
+
   // Load GLB asynchronously so startup stays fast (do not pass LoadingManager for optional extra cars so loading screen doesn't hang on 84MB Alphard)
   const loader = new GLTFLoader(config.isBMW ? manager : undefined);
   loader.setMeshoptDecoder(MeshoptDecoder);
-  loader.load(
+  if (!config.isTata2515) loader.load(
     config.assetUrl,
     (gltf) => {
       const model = gltf.scene;
@@ -2582,8 +2726,27 @@ export function createDrivableCar(scene, manager, config) {
                 out.clearcoat = 1.0;
                 out.clearcoatRoughness = 0.05;
                 out.envMapIntensity = 1.75;
+              } else if (config.isGameReadyPrius) {
+                // True 2-layer automotive pearl paint (low metalness so it looks painted, NOT bare steel!)
+                out.metalness = 0.16;
+                out.roughness = 0.22;
+                out.clearcoat = 1.0;
+                out.clearcoatRoughness = 0.05;
+                out.envMapIntensity = 1.25;
               }
               paintMaterials.push(out);
+              glossyMaterials.push(out);
+            } else if (mName === 'Kit_GlossBlack') {
+              out = new THREE.MeshPhysicalMaterial({
+                name: mName,
+                color: new THREE.Color('#0c0e13'),
+                side: THREE.DoubleSide,
+                metalness: 0.18,
+                roughness: 0.14,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.04,
+                envMapIntensity: 1.45,
+              });
               glossyMaterials.push(out);
             } else if (glassSet.has(mName)) {
               if (config.isGameReadyCorolla) {
@@ -2877,7 +3040,7 @@ export function createDrivableCar(scene, manager, config) {
             gripL,
             gripR,
           };
-        } else if (config.isGameReadyCorolla) {
+        } else if (config.isGameReadyCorolla || config.isGameReadyPrius) {
           const find = (n) => orientedWrapper.getObjectByName(n) || null;
           const wheelFL = find('Wheel_FL');
           const wheelFR = find('Wheel_FR');
@@ -2919,7 +3082,7 @@ export function createDrivableCar(scene, manager, config) {
 
       // Keep original full-detail exterior car geometry intact; wire native hinged doors for our game-ready Corolla
       carDoors = {};
-      if (config.isGameReadyCorolla) {
+      if (config.isGameReadyCorolla || config.isGameReadyPrius) {
         const doorDefs = [
           { key: 'FL', nodeName: 'Door_FL', side: -1 },
           { key: 'FR', nodeName: 'Door_FR', side: 1 },
@@ -3120,7 +3283,7 @@ export function createDrivableCar(scene, manager, config) {
   }
 
   function getInteriorCameraPose(outEye, outLook) {
-    if (config.isGameReadyCorolla) {
+    if (config.isGameReadyCorolla || config.isGameReadyPrius) {
       root.updateMatrixWorld(true);
       outEye.set(0.36, 1.18, -0.05);
       outLook.set(0.36, 1.12, 8.0);
@@ -3333,6 +3496,31 @@ export function createDrivableCar(scene, manager, config) {
           lnk.rotation.x = Math.atan2(-chainTan.y, chainTan.z);
         }
       }
+      return;
+    }
+
+    if (tataTruckApi) {
+      const w = tataTruckApi.wheels;
+      for (const wn of ['fl', 'fr', 'rl1', 'rr1', 'rl2', 'rr2']) {
+        if (w[wn]) w[wn].rotation.x = state.wheelSpin;
+      }
+      if (w.flSteer) w.flSteer.rotation.y = state.steerAngle;
+      if (w.frSteer) w.frSteer.rotation.y = state.steerAngle;
+      if (tataTruckApi.steeringWheel) tataTruckApi.steeringWheel.rotation.z = -state.steerAngle * 4.5;
+      if (carDoors.FL?.pivot) carDoors.FL.pivot.rotation.y = carDoors.FL.current * carDoors.FL.openSign;
+      if (carDoors.FR?.pivot) carDoors.FR.pivot.rotation.y = carDoors.FR.current * carDoors.FR.openSign;
+      const blinkOn = Math.floor(performance.now() * 0.003) % 2 === 0;
+      tataTruckApi.applyLights({
+        headlights: state.headlightsMode > 0,
+        highBeam: state.headlightsMode >= 2,
+        brake: state.driving && (state.speed < -0.05 || state.lastImpactIntensity > 0.08),
+        reverse: state.speed < -0.25,
+        indLeft: state.driving && state.steerAngle > 0.22,
+        indRight: state.driving && state.steerAngle < -0.22,
+        hazard: false,
+        blinkOn,
+        cabinLight: state.headlightsMode > 0 || state.driving,
+      });
       return;
     }
 
