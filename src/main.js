@@ -4772,7 +4772,7 @@ function computeGroundHeight(pos, isGroundedOverride = grounded, velYOverride = 
   if (altGoliY !== null && altGoliY !== undefined) return altGoliY;
 
   // --- KHULNA DISTRICT & SESSIONS JUDGE COURT WALKABLE INTERIORS (delegated to khulna-judge-court.js) ---
-  if (pos.x >= 149.0 && pos.x <= 206.0 && pos.z >= -716.0 && pos.z <= -632.0) {
+  if (pos.x >= 148.0 && pos.x <= 206.0 && pos.z >= -728.0 && pos.z <= -632.0) {
     const judgeY = environment?.landmarks?.judgeCourt?.getGroundHeight?.(pos, isGroundedOverride, velYOverride);
     if (typeof judgeY === 'number' && judgeY > 0) return judgeY;
   }

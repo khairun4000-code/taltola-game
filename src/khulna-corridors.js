@@ -2399,7 +2399,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
 
   // Roadside Shade Trees & Palms framing Circuit House Rd, Stadium Ring & Hadis Park Frontage
   for (const [tx, tz, isPalm] of [
-    [126, -590, false], [148, -675, true], [174, -775, false],
+    [126, -590, false], [149.2, -642, true], [174, -775, false],
     [192, -845, true], [78, -948, false], [-22, -834, true],
     [-174, -765, false], [-174, -640, true], [-102, -605, false],
     [-253, -860, false], [-253, -915, true], [-315, -822, false], [-360, -822, true],
