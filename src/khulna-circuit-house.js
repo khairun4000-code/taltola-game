@@ -87,7 +87,7 @@ function resolveCircleAABBLocal(pt, r, minX, maxX, minZ, maxZ) {
   return false;
 }
 
-export function buildKhulnaCircuitHouse(parent, m, renderer = null) {
+export function buildKhulnaCircuitHouse(parent, m, renderer = null, botanicalFoliage = null) {
   const root = new THREE.Group();
   root.name = 'KhulnaCircuitHouse_RealGLB_District';
   root.visible = false;
@@ -178,6 +178,8 @@ export function buildKhulnaCircuitHouse(parent, m, renderer = null) {
         const model = gltf.scene;
         model.name = 'KhulnaCircuitHouse_GLB_Scene';
         model.updateMatrixWorld(true);
+        // Share exact Circuit House botanical tree, Norfolk Pine, Palm & swaying bush prototypes across all of Khulna City!
+        botanicalFoliage?.ingestCircuitHouseGLB?.(model);
 
         const dynamicRoot = new THREE.Group();
         dynamicRoot.name = 'KhulnaCircuitHouse_Dynamic';

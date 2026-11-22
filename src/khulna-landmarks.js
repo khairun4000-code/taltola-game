@@ -1678,7 +1678,7 @@ function buildTaltolaLaneWard23(staticG, dynamicG, lm) {
   );
 }
 
-export function buildKhulnaLandmarks(parent, m, renderer = null) {
+export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliage = null) {
   const group = new THREE.Group();
   group.name = 'KhulnaCityLandmarks';
   parent.add(group);
@@ -1702,13 +1702,13 @@ export function buildKhulnaLandmarks(parent, m, renderer = null) {
   const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -100, -700, 820);
 
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
-  const circuitHouse = buildKhulnaCircuitHouse(group, m, renderer);
+  const circuitHouse = buildKhulnaCircuitHouse(group, m, renderer, botanicalFoliage);
   const judgeCourt = buildKhulnaJudgeCourt(group, m, renderer);
   const aliaMadrasah = buildAliaMadrasahDistrict(group, m);
-  const royalMore = buildRoyalMoreDistrict(group, m);
+  const royalMore = buildRoyalMoreDistrict(group, m, botanicalFoliage);
   const ptiMore = buildPtiMoreDistrict(group, m);
-  const satrastaMore = buildSatrastaMoreDistrict(group, m);
-  const kjaCorridor = buildKjaCorridorDistrict(group, m);
+  const satrastaMore = buildSatrastaMoreDistrict(group, m, botanicalFoliage);
+  const kjaCorridor = buildKjaCorridorDistrict(group, m, botanicalFoliage);
   const hajiKaborkhana = buildHajiKaborkhanaCorridor(group, m);
 
   for (const s of slices) {

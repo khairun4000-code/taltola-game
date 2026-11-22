@@ -1267,6 +1267,10 @@ function buildRoyalMoreRoadsAndFootpaths(staticG, dynamicG, bank, phys) {
     for (const f of [0.22, 0.78]) {
       const tx = x0 + dx * f;
       const tz = z0 + dz * f;
+      if (royalBotanicalFoliage) {
+        royalBotanicalFoliage.addBush(tx, 0.35, tz, 0.56, Math.abs(tx + tz));
+        continue;
+      }
       cylinder(staticG, 0.08, 0.11, 1.55, [tx, 1.05, tz], bank.royalTerracotta, 6);
       const crown = new THREE.Mesh(new THREE.DodecahedronGeometry(0.82, 1), bank.grassTurf);
       crown.position.set(tx, 1.98, tz);
@@ -2929,7 +2933,9 @@ function buildKmpTrafficBox(staticG, dynamicG, bank, phys, x, z) {
 /**
  * Builds the complete Photo-Accurate, Ultra-Detailed, 60+ FPS Royal More District.
  */
-export function buildRoyalMoreDistrict(parent, m) {
+let royalBotanicalFoliage = null;
+export function buildRoyalMoreDistrict(parent, m, botanicalFoliage = null) {
+  royalBotanicalFoliage = botanicalFoliage;
   const root = new THREE.Group();
   root.name = 'KhulnaLandmark_RoyalMore';
   const staticG = new THREE.Group();

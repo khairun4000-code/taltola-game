@@ -1138,6 +1138,10 @@ function addShadeTreesAlongPolyline(staticG, bank, pts, offsetDist, clearanceDis
         }
       }
       if (blocked) continue;
+      if (kjaBotanicalFoliage) {
+        kjaBotanicalFoliage.addShadeTree(tx, 0, tz, 0.62 + rnd() * 0.28, Math.abs(tx + tz), { withBushes: true });
+        continue;
+      }
       const h = 4.2 + rnd() * 2.0;
       cylinder(staticG, 0.20, 0.30, h * 0.56, [tx, h * 0.28, tz], bank.trunk, 6);
       const crown = new THREE.Mesh(new THREE.DodecahedronGeometry(1.85 + rnd() * 0.55, 0), bank.foliage);
@@ -1243,6 +1247,10 @@ function buildKaborkhanaMoreLandmark(staticG, dynamicG, bank, colliders) {
   );
   box(staticG, [29.0, 0.06, 18.0], [-25.5, 0.02, wallZ + 9.4], bank.emeraldMat, { castShadow: false });
   for (const [tx, tz] of [[-35.0, wallZ + 5.5], [-16.0, wallZ + 6.0], [-29.0, wallZ + 12.5], [-20.0, wallZ + 13.0]]) {
+    if (kjaBotanicalFoliage) {
+      kjaBotanicalFoliage.addShadeTree(tx, 0, tz, 0.78, Math.abs(tx + tz), { withBushes: true });
+      continue;
+    }
     cylinder(staticG, 0.24, 0.36, 3.6, [tx, 1.8, tz], bank.trunk, 6);
     const crown = new THREE.Mesh(new THREE.DodecahedronGeometry(2.4, 0), bank.foliage);
     crown.position.set(tx, 4.4, tz);
@@ -1292,7 +1300,9 @@ function resolveCircleOBB(pos, radius, b) {
   pos.z = b.cz - nlx * b.sinY + nlz * b.cosY;
 }
 
-export function buildKjaCorridorDistrict(parent, m) {
+let kjaBotanicalFoliage = null;
+export function buildKjaCorridorDistrict(parent, m, botanicalFoliage = null) {
+  kjaBotanicalFoliage = botanicalFoliage;
   const group = new THREE.Group();
   group.name = 'KhulnaCorridor_RoyalPtiKaborkhana';
   parent.add(group);

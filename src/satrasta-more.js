@@ -310,7 +310,7 @@ function addRotBox(parent, size, pos, mat, rotY = 0, opts = {}) {
   return mesh;
 }
 
-export function buildSatrastaMoreDistrict(parent, m) {
+export function buildSatrastaMoreDistrict(parent, m, botanicalFoliage = null) {
   const CX = SATRASTA_MORE_CENTER.x;
   const CZ = SATRASTA_MORE_CENTER.z;
 
@@ -607,6 +607,10 @@ export function buildSatrastaMoreDistrict(parent, m) {
   }
 
   function addOrnamentalMedianTree(x, z) {
+    if (botanicalFoliage) {
+      botanicalFoliage.addBush(x, 0.32, z, 0.62, Math.abs(x + z));
+      return;
+    }
     cylinder(staticG, 0.11, 0.16, 2.1, [x, 1.35, z], treeTrunkMat, 7);
     const crown1 = new THREE.Mesh(new THREE.DodecahedronGeometry(1.05, 1), panGreenMat);
     crown1.position.set(x, 2.85, z);
@@ -986,6 +990,7 @@ export function buildSatrastaMoreDistrict(parent, m) {
       // Terracotta potted plant flanking entrance veranda
       const potX = px - Math.sign(px) * 0.25;
       cylinder(shopStatic, 0.22, 0.16, 0.38, [potX, 0.33, hd + 0.72], terracottaMat, 10);
+      if (botanicalFoliage) { botanicalFoliage.addBush(x + ox, 0.25, z + oz, 0.34, Math.abs(x + z + ox)); continue; }
       const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.30, 1), panGreenMat);
       bush.position.set(potX, 0.66, hd + 0.72);
       shopStatic.add(bush);

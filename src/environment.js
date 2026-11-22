@@ -10,7 +10,7 @@ import { buildAltapoleHeadTower } from './altapole-tower.js';
 import { buildAltapoleOppositeGoli } from './altapole-goli.js';
 import { createKhulnaTraffic } from './khulna-vehicles.js';
 import { buildKhulnaWildlife } from './khulna-wildlife.js';
-import { applyFoliageWindShader } from './aaa-shaders.js';
+import { createCityBotanicalFoliage } from './botanical-foliage.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 
 function leafClusterTexture() {
@@ -343,104 +343,81 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
   mergeStaticMeshes(taltolaWiresGroup);
 
   const city = buildKhulnaCity(group, renderer, skySystem, m.shaderUniforms, m.road);
-  const landmarks = buildKhulnaLandmarks(group, m, renderer);
+  const botanicalFoliage = createCityBotanicalFoliage(group, renderer);
+  const landmarks = buildKhulnaLandmarks(group, m, renderer, botanicalFoliage);
   const tower = buildHajiMohsinRoad(group, m);
   const wildlife = buildKhulnaWildlife(group);
 
-  const foliageMaterial = new THREE.MeshStandardMaterial({
-    map: leafClusterTexture(),
-    alphaTest: 0.38,
-    side: THREE.DoubleSide,
-    transparent: false,
-    roughness: 0.72,
-    metalness: 0.02,
-    envMapIntensity: 0.65,
-    color: 0xffffff,
-  });
-  applyFoliageWindShader(foliageMaterial, m.shaderUniforms);
-
   const animated = [];
   const zoneFoliageSlices = [];
-  function makeFoliageZone(name, parentG, cx, cz, maxDist, palmCoords, treeCoords) {
-    const zRoot = parentG || new THREE.Group();
-    if (!parentG) {
-      zRoot.name = name;
-      group.add(zRoot);
-    }
-    const treeGroup = new THREE.Group();
-    treeGroup.name = `${name}_Trees`;
-    zRoot.add(treeGroup);
+  function registerBotanicalZone(palmCoords, treeCoords, bushCoords = []) {
     for (const [x, z, height, seed] of palmCoords) {
-      createPalm(zRoot, [x, 0, z], height, seed, m, animated);
+      botanicalFoliage.addPalm(x, 0, z, height, seed);
     }
     for (const [x, z, height, seed] of treeCoords) {
-      createBroadleafTree(treeGroup, [x, 0, z], height, seed, foliageMaterial);
+      botanicalFoliage.addShadeTree(x, 0, z, height / 10.6, seed, { withBushes: true });
     }
-    mergeStaticMeshes(treeGroup);
-    zoneFoliageSlices.push({ root: zRoot, cx, cz, maxDistSq: maxDist * maxDist });
-    return zRoot;
+    for (const [x, z, scale, seed] of bushCoords) {
+      botanicalFoliage.addBush(x, 0, z, scale, seed);
+    }
   }
 
-  // Haji Mohsin local palms & trees stay inside detailsGroup (culled at distHaji >= 190m)
-  const treesStaticGroup = new THREE.Group();
-  treesStaticGroup.name = 'ExteriorBroadleafTrees';
-  detailsGroup.add(treesStaticGroup);
-  for (const [x, z, height, seed] of [
-    [-5.4, -9, 11.8, 41], [-5.2, 7.8, 12.7, 53], [-12.5, 8.2, 11.6, 65], [-5.6, -27, 12.2, 77],
-  ]) createPalm(detailsGroup, [x, 0, z], height, seed, m, animated);
-  for (const [x, z, height, seed] of [
-    [-5.0, -1, 8.0, 211], [-5.4, 6.2, 8.8, 223], [-5.3, -17, 8.8, 227], [-14.0, 8.5, 9.5, 229], [-6.7, -33, 9.2, 233],
-  ]) createBroadleafTree(treesStaticGroup, [x, 0, z], height, seed, foliageMaterial);
-  mergeStaticMeshes(treesStaticGroup);
+  // Haji Mohsin Rd — upgraded to realistic swaying Circuit House Shade Trees, Palms & Ornamental Bushes!
+  registerBotanicalZone(
+    [[-5.4, -9, 11.8, 41], [-5.2, 7.8, 12.7, 53], [-12.5, 8.2, 11.6, 65], [-5.6, -27, 12.2, 77]],
+    [[-5.0, -1, 8.6, 211], [-5.4, 6.2, 9.2, 223], [-5.3, -17, 9.2, 227], [-14.0, 8.5, 9.8, 229], [-6.7, -33, 9.4, 233]],
+    [[-4.2, -5.0, 0.52, 311], [-4.2, 2.5, 0.48, 312], [-4.2, -13.0, 0.50, 313], [-4.5, -22.5, 0.54, 314]]
+  );
 
-  // Per-zone foliage groups so off-screen districts cost zero GPU draw calls
-  makeFoliageZone(
-    'TaltolaDistrictFoliage',
-    taltolaDetailsGroup,
-    tx,
-    tz,
-    210,
+  // Taltola House Neighborhood — lush swaying Circuit House Shade Trees, Norfolk Pines & Ornamental Bushes!
+  registerBotanicalZone(
     [[tx + 4.9, tz - 6.4, 10.8, 89], [tx + 5.3, tz + 6.5, 11.5, 101], [tx + 12.5, tz + 19.5, 13.1, 113], [tx - 5.4, tz - 9.0, 11.9, 125]],
-    [[tx + 9.5, tz + 16.0, 8.5, 239], [tx + 15.2, tz - 11.0, 7.8, 241], [tx - 4.8, tz - 12.5, 8.2, 251]]
-  );
-  makeFoliageZone(
-    'AliaDistrictFoliage',
-    null,
-    215,
-    140,
-    260,
-    [[195, 132, 12.5, 137], [238, 146, 13.2, 149], [198, 94, 12.2, 155], [229, 95, 12.8, 163]],
-    [[192, 152, 8.6, 277], [184, 134, 7.6, 283], [228, 138, 8.2, 289], [230, 88, 7.9, 291]]
-  );
-  makeFoliageZone(
-    'CircuitHadisDistrictFoliage',
-    null,
-    -145,
-    -690,
-    480,
-    [[16, -540, 12.6, 161], [66, -540, 12.8, 167], [78, -650, 12.4, 169], [78, -700, 12.6, 175], [-277, -837, 12.2, 171], [-386, -885, 13.0, 179]],
+    [[tx + 9.5, tz + 16.0, 9.2, 239], [tx + 15.2, tz - 11.0, 8.6, 241], [tx - 4.8, tz - 12.5, 9.0, 251], [tx - 6.0, tz + 12.5, 9.2, 255]],
     [
-      [-388, -870, 9.2, 263], [-384, -928, 9.6, 265], [-264, -858, 8.8, 269], [-276, -834, 9.0, 273],
-      [15, -620, 9.4, 271], [-18, -565, 8.6, 275], [88, -555, 8.9, 279], [82, -625, 9.2, 285], [-22, -640, 8.8, 287],
+      [tx + 3.4, tz - 4.2, 0.46, 321], [tx + 3.4, tz + 4.2, 0.46, 322],
+      [tx - 3.8, tz - 4.5, 0.48, 323], [tx - 3.8, tz + 5.5, 0.50, 324],
+      [tx + 6.5, tz + 9.5, 0.54, 325], [tx + 8.5, tz - 9.2, 0.52, 326],
     ]
   );
-  makeFoliageZone(
-    'PtiDistrictFoliage',
-    null,
-    -304,
-    -57,
-    250,
-    [[-290, -45, 11.8, 173], [-318, -44, 12.4, 177], [-279, -68, 12.1, 181]],
-    [[-295, -75, 8.8, 281], [-322, -62, 8.5, 295], [-274, -40, 8.4, 299], [-322, -24, 8.7, 303]]
+
+  // Alia Madrasah & Model Mosque District
+  registerBotanicalZone(
+    [[195, 132, 12.5, 137], [238, 146, 13.2, 149], [198, 94, 12.2, 155], [229, 95, 12.8, 163]],
+    [[192, 152, 9.2, 277], [184, 134, 8.4, 283], [228, 138, 8.8, 289], [230, 88, 8.6, 291]],
+    [[199, 158, 0.55, 331], [199, 174, 0.55, 332], [188, 144, 0.52, 333], [214, 118, 0.58, 334]]
   );
-  makeFoliageZone(
-    'RupshaDistrictFoliage',
-    null,
-    1080,
-    320,
-    460,
-    [[1082, 38, 12.2, 185]],
-    [[1072, 608, 9.0, 293]]
+
+  // Shaheed Hadis Park, Boro Maath & Stadium Ring — dense lush swaying Circuit House Shade Trees, Norfolk Pines & Garden Bushes!
+  registerBotanicalZone(
+    [[16, -540, 12.6, 161], [66, -540, 12.8, 167], [78, -650, 12.4, 169], [78, -700, 12.6, 175], [-277, -837, 12.2, 171], [-386, -885, 13.0, 179]],
+    [
+      [-388, -870, 9.8, 263], [-384, -928, 10.2, 265], [-264, -858, 9.4, 269], [-276, -834, 9.6, 273],
+      [-310, -844, 9.5, 274], [-350, -844, 9.8, 276], [-368, -942, 9.6, 278], [-284, -942, 9.4, 280],
+      [15, -620, 9.8, 271], [-18, -565, 9.2, 275], [88, -555, 9.5, 279], [82, -625, 9.8, 285], [-22, -640, 9.4, 287],
+      [45, -534, 9.2, 288], [18, -714, 9.6, 290], [66, -714, 9.4, 292],
+    ],
+    [
+      [-295, -844, 0.56, 341], [-335, -844, 0.56, 342], [-362, -888, 0.60, 343], [-278, -892, 0.58, 344],
+      [30, -532, 0.56, 345], [58, -532, 0.56, 346], [85, -590, 0.60, 347], [-20, -600, 0.58, 348],
+    ]
+  );
+  botanicalFoliage.addNorfolkPine(-342, 0, -848, 0.72, 401);
+  botanicalFoliage.addNorfolkPine(-286, 0, -848, 0.70, 402);
+  botanicalFoliage.addNorfolkPine(36, 0, -536, 0.74, 403);
+  botanicalFoliage.addNorfolkPine(78, 0, -568, 0.72, 404);
+
+  // PTI More District
+  registerBotanicalZone(
+    [[-290, -45, 11.8, 173], [-318, -44, 12.4, 177], [-279, -68, 12.1, 181]],
+    [[-295, -75, 9.4, 281], [-322, -62, 9.0, 295], [-274, -40, 9.0, 299], [-322, -24, 9.2, 303]],
+    [[-288, -56, 0.54, 351], [-316, -54, 0.54, 352], [-298, -36, 0.52, 353]]
+  );
+
+  // Rupsha Strand Rd & Ferry Terminal District
+  registerBotanicalZone(
+    [[1082, 38, 12.2, 185], [1110, 120, 12.0, 187], [1145, 320, 12.4, 189]],
+    [[1072, 608, 9.6, 293], [1120, 480, 9.4, 294], [1095, 210, 9.2, 296]],
+    [[1088, 52, 0.56, 361], [1082, 598, 0.58, 362]]
   );
 
   const corridorHelpers = {
@@ -448,14 +425,20 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
       const mid = [(pA[0] + pB[0]) * 0.5, (pA[1] + pB[1]) * 0.5 - sag, (pA[2] + pB[2]) * 0.5];
       return createWire(targetG, [pA, mid, pB], radius, wireMat);
     },
-    addBroadleafTree(targetG, x, y, z, scale = 1.0, seed = 500) {
-      return createBroadleafTree(targetG || treesStaticGroup, [x, y, z], 7.8 * scale, seed, foliageMaterial);
+    addBroadleafTree(_targetG, x, y, z, scale = 1.0, seed = 500) {
+      return botanicalFoliage.addShadeTree(x, y, z, 0.78 * scale, seed, { withBushes: true });
     },
     finalizeTrees(targetG) {
       if (targetG) mergeStaticMeshes(targetG);
     },
-    addPalm(targetG, x, y, z, height = 7.2, _lean = 0, s = 0) {
-      return createPalm(targetG || detailsGroup, [x, y, z], height, Math.abs(Math.round((x + z) * 10 + s * 100)) + 17, m, animated);
+    addPalm(_targetG, x, y, z, height = 7.2, _lean = 0, s = 0) {
+      return botanicalFoliage.addPalm(x, y, z, height, Math.abs(Math.round((x + z) * 10 + s * 100)) + 17);
+    },
+    addBush(_targetG, x, y, z, scale = 0.55, seed = 600) {
+      return botanicalFoliage.addBush(x, y, z, scale, seed);
+    },
+    addNorfolkPine(_targetG, x, y, z, scale = 0.68, seed = 700) {
+      return botanicalFoliage.addNorfolkPine(x, y, z, scale, seed);
     },
   };
   const corridors = buildKhulnaCorridors(group, m, corridorHelpers);
@@ -501,6 +484,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     setQualityMode(qualityMode) {
       city.setQualityMode?.(qualityMode);
       landmarks.setQualityMode?.(qualityMode);
+      botanicalFoliage.setQualityMode?.(qualityMode);
       traffic.setVisible?.(true);
     },
     setFogBounds(near, far) {
@@ -510,6 +494,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
       const envDt = lastEnvUpdateTime === null ? 0.016 : THREE.MathUtils.clamp(time - lastEnvUpdateTime, 0.001, 0.05);
       lastEnvUpdateTime = time;
       m.setShaderTime?.(time);
+      botanicalFoliage.update(time);
       city.animateWater(time);
       city.updatePoles?.(envDt);
       landmarks.update(time, playerPos, skipSyncVisibility);
