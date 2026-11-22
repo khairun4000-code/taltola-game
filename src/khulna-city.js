@@ -515,11 +515,11 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
       const z0 = pts[i + 1];
       const x1 = pts[i + 2];
       const z1 = pts[i + 3];
-      // Skip ANY OSM road segment touching custom high-detail pitch-asphalt zones (ZERO Z-fighting!)
+      // Only skip a segment when BOTH endpoints are strictly inside a custom pitch-asphalt zone,
+      // so boundary segments tuck seamlessly beneath custom corridors (y=-0.001..-0.005 vs y=+0.002) with ZERO gaps!
       if (
         isInsideCustomPitchZone(x0, z0, r.n)
-        || isInsideCustomPitchZone(x1, z1, r.n)
-        || isInsideCustomPitchZone((x0 + x1) * 0.5, (z0 + z1) * 0.5, r.n)
+        && isInsideCustomPitchZone(x1, z1, r.n)
       ) continue;
       const dx = x1 - x0;
       const dz = z1 - z0;

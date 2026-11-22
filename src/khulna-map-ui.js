@@ -144,12 +144,22 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     if (!pts || pts.length < 4) continue;
     let prev = getOrAddNode(pts[0], pts[1]);
     for (let i = 2; i < pts.length; i += 2) {
-      const cur = getOrAddNode(pts[i], pts[i + 1]);
-      if (cur !== prev) {
-        const d = Math.hypot(roadNodes[cur][0] - roadNodes[prev][0], roadNodes[cur][1] - roadNodes[prev][1]);
-        roadAdj[prev].push([cur, d]);
-        roadAdj[cur].push([prev, d]);
-        prev = cur;
+      const x0 = pts[i - 2];
+      const z0 = pts[i - 1];
+      const x1 = pts[i];
+      const z1 = pts[i + 1];
+      const segLen = Math.hypot(x1 - x0, z1 - z0);
+      // Subdivide long segments every ~22m so T-junctions & crossing roads always snap into the GPS graph!
+      const steps = Math.max(1, Math.ceil(segLen / 22));
+      for (let s = 1; s <= steps; s++) {
+        const f = s / steps;
+        const cur = getOrAddNode(x0 + (x1 - x0) * f, z0 + (z1 - z0) * f);
+        if (cur !== prev) {
+          const d = Math.hypot(roadNodes[cur][0] - roadNodes[prev][0], roadNodes[cur][1] - roadNodes[prev][1]);
+          roadAdj[prev].push([cur, d]);
+          roadAdj[cur].push([prev, d]);
+          prev = cur;
+        }
       }
     }
   }
