@@ -990,7 +990,11 @@ export function buildSatrastaMoreDistrict(parent, m, botanicalFoliage = null) {
       // Terracotta potted plant flanking entrance veranda
       const potX = px - Math.sign(px) * 0.25;
       cylinder(shopStatic, 0.22, 0.16, 0.38, [potX, 0.33, hd + 0.72], terracottaMat, 10);
-      if (botanicalFoliage) { botanicalFoliage.addBush(x + ox, 0.25, z + oz, 0.34, Math.abs(x + z + ox)); continue; }
+      if (botanicalFoliage) {
+        const potW = toWorld(potX, hd + 0.72);
+        botanicalFoliage.addBush(potW.x, 0.56, potW.z, 0.34, Math.abs(potW.x + potW.z));
+        continue;
+      }
       const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.30, 1), panGreenMat);
       bush.position.set(potX, 0.66, hd + 0.72);
       shopStatic.add(bush);
