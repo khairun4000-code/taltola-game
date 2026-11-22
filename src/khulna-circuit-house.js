@@ -36,10 +36,10 @@ const GATE_OPEN_Z = 14.25;
 const GATE_CLOSED_Z = 11.20;
 
 const QUALITY_VIS_DIST = {
-  low: 260,
-  medium: 360,
-  high: 460,
-  ultra: 540,
+  low: 210,
+  medium: 310,
+  high: 420,
+  ultra: 520,
 };
 
 function localToWorld(lx, ly, lz, out = new THREE.Vector3()) {
@@ -122,12 +122,38 @@ export function buildKhulnaCircuitHouse(parent, m) {
     slidingGateNode: null,
     swayNodes: [],
     emissiveMats: [],
+    allMats: [],
+    allMeshes: [],
     nightFactor: 0,
     lastTime: 0,
     qualityMode: 'medium',
     visDistSq: QUALITY_VIS_DIST.medium * QUALITY_VIS_DIST.medium,
     nearPlayer: false,
   };
+
+  function applyQualityToLoadedAssets() {
+    const q = state.qualityMode;
+    const isLow = q === 'low';
+    const isMed = q === 'medium';
+    const aniso = isLow ? 1 : (isMed ? 2 : 4);
+    for (let i = 0; i < state.allMats.length; i++) {
+      const mat = state.allMats[i];
+      const wantNorm = isLow ? null : (mat.userData._origNormalMap || null);
+      const wantRough = (isLow || isMed) ? null : (mat.userData._origRoughnessMap || null);
+      let dirty = false;
+      if (mat.normalMap !== wantNorm) { mat.normalMap = wantNorm; dirty = true; }
+      if (mat.roughnessMap !== wantRough) { mat.roughnessMap = wantRough; dirty = true; }
+      mat.envMapIntensity = isLow ? 0.0 : (mat.userData._origEnvInt ?? 0.55);
+      if (mat.map && mat.map.anisotropy !== aniso) { mat.map.anisotropy = aniso; mat.map.needsUpdate = true; }
+      if (mat.normalMap && mat.normalMap.anisotropy !== aniso) { mat.normalMap.anisotropy = aniso; mat.normalMap.needsUpdate = true; }
+      if (dirty) mat.needsUpdate = true;
+    }
+    for (let i = 0; i < state.allMeshes.length; i++) {
+      const mesh = state.allMeshes[i];
+      mesh.castShadow = !isLow && Boolean(mesh.userData._canCastShadow);
+      mesh.receiveShadow = !isLow && Boolean(mesh.userData._canReceiveShadow);
+    }
+  }
 
   function applyEmissiveNightFactor() {
     const nf = state.nightFactor;
@@ -185,9 +211,10 @@ export function buildKhulnaCircuitHouse(parent, m) {
               }
               if (!seenMats.has(mat)) {
                 seenMats.add(mat);
-                if (mat.map) mat.map.anisotropy = 4;
-                if (mat.normalMap) mat.normalMap.anisotropy = 4;
-                mat.envMapIntensity = isFoliage ? 0.55 : 0.72;
+                mat.userData._origNormalMap = mat.normalMap || null;
+                mat.userData._origRoughnessMap = mat.roughnessMap || null;
+                mat.userData._origEnvInt = isFoliage ? 0.35 : 0.55;
+                state.allMats.push(mat);
                 if (mat.emissive && (mat.emissive.r > 0.05 || mat.emissive.g > 0.05 || mat.emissive.b > 0.05)) {
                   state.emissiveMats.push({
                     mat,
@@ -198,14 +225,14 @@ export function buildKhulnaCircuitHouse(parent, m) {
               }
             }
 
-            // Only large architectural exterior meshes cast shadows (skips foliage leaf cards, AO planes & tiny props!)
+            // Only major architectural exterior meshes cast shadows (skips foliage leaf cards, AO planes & interior/small props!)
             let largeEnough = false;
             if (!isAO && !isFoliage && obj.geometry) {
               if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
               if (obj.geometry.boundingBox) {
                 tmpBox.copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
                 tmpBox.getSize(tmpSize);
-                largeEnough = Math.max(tmpSize.x, tmpSize.y, tmpSize.z) >= 1.6;
+                largeEnough = Math.max(tmpSize.x, tmpSize.y, tmpSize.z) >= 3.2;
               }
             }
             obj.castShadow = largeEnough;
@@ -243,6 +270,14 @@ export function buildKhulnaCircuitHouse(parent, m) {
           });
         }
 
+        compound.traverse((obj) => {
+          if (obj.isMesh) {
+            obj.userData._canCastShadow = obj.castShadow;
+            obj.userData._canReceiveShadow = obj.receiveShadow;
+            state.allMeshes.push(obj);
+          }
+        });
+        applyQualityToLoadedAssets();
         applyEmissiveNightFactor();
         state.loaded = true;
         state.loading = false;
@@ -262,6 +297,7 @@ export function buildKhulnaCircuitHouse(parent, m) {
     state.qualityMode = q;
     const d = QUALITY_VIS_DIST[q] ?? QUALITY_VIS_DIST.medium;
     state.visDistSq = d * d;
+    if (state.loaded) applyQualityToLoadedAssets();
   }
 
   function syncVisibility(playerPos) {

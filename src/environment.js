@@ -512,7 +512,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
       m.setShaderTime?.(time);
       city.animateWater(time);
       city.updatePoles?.(envDt);
-      landmarks.update(time, playerPos);
+      landmarks.update(time, playerPos, skipSyncVisibility);
       if (!skipSyncVisibility) syncVisibility(playerPos);
       corridors.update(time, playerPos, true);
       traffic.update(time, playerPos);

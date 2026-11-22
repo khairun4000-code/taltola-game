@@ -1827,8 +1827,8 @@ export function buildKhulnaLandmarks(parent, m) {
       kjaCorridor.setNightFactor(nf);
       hajiKaborkhana.setNightFactor(nf);
     },
-    update(time, playerPos = null) {
-      if (playerPos) syncVisibility(playerPos);
+    update(time, playerPos = null, skipSyncVisibility = false) {
+      if (playerPos && !skipSyncVisibility) syncVisibility(playerPos);
       circuitHouse.update(time, playerPos);
       judgeCourt.update(time, playerPos);
       aliaMadrasah.update(time, playerPos);

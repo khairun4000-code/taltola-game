@@ -176,8 +176,9 @@ function applyTimeOfDay(nextId) {
     environment?.setNightFactor?.(preset.nightFactor);
   }
   const selectiveEnv = (quality === 'ultra' || quality === 'high') ? null : (skySystem?.getEnvTexture?.() || null);
-  sceneMaterials?.setEnvironmentMap?.(selectiveEnv);
-  environment?.tower?.setEnvironmentMap?.(selectiveEnv);
+  const staticEnv = quality === 'low' ? null : selectiveEnv;
+  sceneMaterials?.setEnvironmentMap?.(staticEnv);
+  environment?.tower?.setEnvironmentMap?.(staticEnv);
   if (Object.keys(characterActors).length) {
     for (const actor of Object.values(characterActors)) {
       actor?.setEnvironmentMap?.(selectiveEnv);
@@ -205,7 +206,7 @@ function renderActiveScene() {
     bloomPass && bloomPass.strength > 0.05
     && (timeOfDayId === 'sunset' || timeOfDayId === 'night')
   );
-  if (composer && !inStudio && !ultraFastMode && quality !== 'low' && needsBloom) {
+  if (composer && !inStudio && !ultraFastMode && (quality === 'high' || quality === 'ultra') && needsBloom) {
     composer.render();
   } else {
     renderer.render(scene, camera);
@@ -1306,7 +1307,7 @@ function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynam
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
   const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 1e-4 || Math.abs(snapZ - lastSunAnchorZ) > 1e-4;
-  const shadowCadenceMs = quality === 'low' ? 160 : (quality === 'medium' ? 105 : (quality === 'high' ? 80 : 70));
+  const shadowCadenceMs = quality === 'low' ? 180 : (quality === 'medium' ? 120 : (quality === 'high' ? 95 : 80));
   const elapsedSinceShadow = nowPerf - lastShadowUpdateAt;
   if (anchorMoved && (lastShadowUpdateAt === 0 || elapsedSinceShadow >= shadowCadenceMs)) {
     lastSunAnchorX = snapX;
@@ -1344,7 +1345,7 @@ function applyQuality(nextQuality) {
     high: Math.min(dpr, 1.35),
     ultra: Math.min(dpr, 1.65),
   };
-  const shadowSizes = { low: 1024, medium: 1024, high: 2048, ultra: 2048 };
+  const shadowSizes = { low: 1024, medium: 1024, high: 1536, ultra: 2048 };
   const useShadows = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : !isLow);
   const activeRatio = ratios[quality] ?? ratios.high;
 
@@ -1355,8 +1356,8 @@ function applyQuality(nextQuality) {
     composer.setPixelRatio(activeRatio);
     composer.setSize(window.innerWidth, window.innerHeight);
     bloomPass?.setSize?.(
-      Math.max(256, Math.floor(window.innerWidth * 0.35)),
-      Math.max(144, Math.floor(window.innerHeight * 0.35))
+      Math.max(256, Math.floor(window.innerWidth * 0.25)),
+      Math.max(144, Math.floor(window.innerHeight * 0.25))
     );
   }
   renderer.shadowMap.enabled = useShadows;
@@ -1370,37 +1371,41 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = isLow ? 135 : (quality === 'medium' ? 200 : (isUltra ? 340 : 270));
-    scene.fog.far = isLow ? 310 : (quality === 'medium' ? 490 : (isUltra ? 880 : 720));
-    camera.far = isLow ? 360 : (quality === 'medium' ? 560 : (isUltra ? 980 : 820));
+    scene.fog.near = isLow ? 130 : (quality === 'medium' ? 195 : (isUltra ? 330 : 260));
+    scene.fog.far = isLow ? 295 : (quality === 'medium' ? 470 : (isUltra ? 860 : 690));
+    camera.far = isLow ? 340 : (quality === 'medium' ? 540 : (isUltra ? 960 : 780));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
 
-  // Keep rich natural sunlight + PMREM IBL on every tier including Low so metals, cars & character skin look realistic!
+  // Eliminate extra directional & point lights on Smooth/Low for locked 60 FPS at full 1.0x resolution!
   const useExtraLights = !isLow || inStudio;
   if (studioKeyLight) studioKeyLight.visible = useExtraLights;
   if (fillDirLight) {
-    fillDirLight.visible = true;
-    fillDirLight.intensity = isLow && !inStudio ? 0.48 : (isUltra ? 0.72 : 0.56);
+    fillDirLight.visible = useExtraLights;
+    fillDirLight.intensity = isUltra ? 0.72 : 0.56;
+  }
+  if (indoorLight) {
+    indoorLight.visible = !isLow;
+    if (isLow) indoorLight.intensity = 0;
   }
   if (ambientLight) {
     ambientLight.visible = true;
-    ambientLight.intensity = isLow && !inStudio ? 0.40 : (isUltra ? 0.45 : 0.38);
+    ambientLight.intensity = isLow && !inStudio ? 0.52 : (isUltra ? 0.45 : 0.38);
   }
   if (hemisphereLight) {
     hemisphereLight.visible = true;
-    hemisphereLight.intensity = isLow && !inStudio ? 0.92 : (isUltra ? 0.92 : 0.86);
+    hemisphereLight.intensity = isLow && !inStudio ? 1.10 : (isUltra ? 0.92 : 0.86);
     hemisphereLight.color.setHex(0xbad9f7);
     hemisphereLight.groundColor.setHex(0x625645);
   }
   if (sun) {
     sun.visible = true;
-    sun.intensity = isUltra ? 2.25 : (isHigh ? 2.05 : (isLow ? 1.85 : 1.92));
+    sun.intensity = isUltra ? 2.25 : (isHigh ? 2.05 : 1.92);
     sun.castShadow = useShadows;
     if (useShadows) {
       const size = shadowSizes[quality] || 1536;
-      const radius = isUltra ? 34 : (isHigh ? 30 : (quality === 'medium' ? 25 : 20));
+      const radius = isUltra ? 30 : (isHigh ? 26 : (quality === 'medium' ? 22 : 18));
       sun.shadow.camera.left = -radius;
       sun.shadow.camera.right = radius;
       sun.shadow.camera.top = radius;
@@ -1422,6 +1427,26 @@ function applyQuality(nextQuality) {
       lastShadowUpdateAt = 0;
     }
   }
+
+  // Disable expensive dual-lobe clearcoat on MeshPhysicalMaterials in Smooth/Low mode (restores cleanly on Medium/High/Ultra!)
+  const seenPhysMats = new Set();
+  scene.traverse((obj) => {
+    if (!obj.isMesh || !obj.material) return;
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+    for (let i = 0; i < mats.length; i++) {
+      const mat = mats[i];
+      if (!mat || !mat.isMeshPhysicalMaterial || seenPhysMats.has(mat)) continue;
+      seenPhysMats.add(mat);
+      if (mat.userData._origClearcoat === undefined) {
+        mat.userData._origClearcoat = mat.clearcoat || 0;
+      }
+      const wantCC = isLow ? 0 : mat.userData._origClearcoat;
+      if (mat.clearcoat !== wantCC) {
+        mat.clearcoat = wantCC;
+        mat.needsUpdate = true;
+      }
+    }
+  });
 
   sceneMaterials?.setQualityMode?.(quality);
   environment?.setQualityMode?.(quality);

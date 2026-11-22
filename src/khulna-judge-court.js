@@ -34,10 +34,10 @@ const COS_R = Math.cos(ROT_Y); // 0
 const SIN_R = Math.sin(ROT_Y); // -1
 
 const QUALITY_VIS_DIST = {
-  low: 340,
-  medium: 500,
-  high: 660,
-  ultra: 820,
+  low: 220,
+  medium: 330,
+  high: 460,
+  ultra: 600,
 };
 
 function localToWorld(lx, ly, lz, out = new THREE.Vector3()) {
@@ -116,6 +116,7 @@ function resolveCircleAABBLocal(pt, r, minX, maxX, minZ, maxZ) {
 export function buildKhulnaJudgeCourt(parent, m) {
   const root = new THREE.Group();
   root.name = 'KhulnaJudgeCourt_RealGLB_District';
+  root.visible = false;
   parent.add(root);
 
   const compound = new THREE.Group();
@@ -165,11 +166,39 @@ export function buildKhulnaJudgeCourt(parent, m) {
 
     // Bloom-calibrated emissive materials (ZERO global PointLights -> zero Ultra Sunset bloom blow-out & high FPS!)
     emissiveMats: [],
+    allMats: [],
+    allMeshes: [],
+    lastDoorSlide: -1,
+    lastActiveFloor: -1,
     nightFactor: 0,
     lastTime: 0,
     qualityMode: 'medium',
     visDistSq: QUALITY_VIS_DIST.medium * QUALITY_VIS_DIST.medium,
   };
+
+  function applyQualityToLoadedAssets() {
+    const q = state.qualityMode;
+    const isLow = q === 'low';
+    const isMed = q === 'medium';
+    const aniso = isLow ? 1 : (isMed ? 2 : 4);
+    for (let i = 0; i < state.allMats.length; i++) {
+      const mat = state.allMats[i];
+      const wantNorm = isLow ? null : (mat.userData._origNormalMap || null);
+      const wantRough = (isLow || isMed) ? null : (mat.userData._origRoughnessMap || null);
+      let dirty = false;
+      if (mat.normalMap !== wantNorm) { mat.normalMap = wantNorm; dirty = true; }
+      if (mat.roughnessMap !== wantRough) { mat.roughnessMap = wantRough; dirty = true; }
+      mat.envMapIntensity = isLow ? 0.0 : (mat.userData._origEnvInt ?? 0.30);
+      if (mat.map && mat.map.anisotropy !== aniso) { mat.map.anisotropy = aniso; mat.map.needsUpdate = true; }
+      if (mat.normalMap && mat.normalMap.anisotropy !== aniso) { mat.normalMap.anisotropy = aniso; mat.normalMap.needsUpdate = true; }
+      if (dirty) mat.needsUpdate = true;
+    }
+    for (let i = 0; i < state.allMeshes.length; i++) {
+      const mesh = state.allMeshes[i];
+      mesh.castShadow = !isLow && Boolean(mesh.userData._canCastShadow);
+      mesh.receiveShadow = !isLow;
+    }
+  }
 
   function applyEmissiveNightFactor() {
     const nf = state.nightFactor;
@@ -262,9 +291,8 @@ export function buildKhulnaJudgeCourt(parent, m) {
               seenMats.add(mat);
 
               const mName = mat.name || '';
-              if (mat.map) mat.map.anisotropy = 4;
-              if (mat.normalMap) mat.normalMap.anisotropy = 4;
-              if (mat.roughnessMap) mat.roughnessMap.anisotropy = 4;
+              mat.userData._origNormalMap = mat.normalMap || null;
+              mat.userData._origRoughnessMap = mat.roughnessMap || null;
 
               // BLOOM-SAFE ULTRA EVENING / SUNSET CALIBRATION:
               // Keeps luminance cleanly below UnrealBloomPass threshold (0.86) in Golden Hour & Sunset!
@@ -291,7 +319,6 @@ export function buildKhulnaJudgeCourt(parent, m) {
                 mName.includes('Plaster') ||
                 mName.includes('Ceiling')
               ) {
-                // Soften bright plaster/concrete reflectance so golden/sunset direct sun never triggers harsh bloom!
                 mat.color.multiplyScalar(0.84);
                 mat.roughness = Math.max(mat.roughness || 0.75, 0.78);
                 mat.envMapIntensity = 0.24;
@@ -308,16 +335,18 @@ export function buildKhulnaJudgeCourt(parent, m) {
               } else {
                 mat.envMapIntensity = 0.36;
               }
+              mat.userData._origEnvInt = mat.envMapIntensity;
+              state.allMats.push(mat);
             }
 
-            // Only large architectural exterior meshes cast shadows (massive Ultra FPS boost + zero shimmer!)
+            // Only major exterior architectural shells cast shadows (cuts shadow-pass tris by 70%!)
             let largeEnough = false;
             if (obj.geometry) {
               if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
               if (obj.geometry.boundingBox) {
                 tmpBox.copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
                 tmpBox.getSize(tmpSize);
-                largeEnough = Math.max(tmpSize.x, tmpSize.y, tmpSize.z) >= 2.2;
+                largeEnough = Math.max(tmpSize.x, tmpSize.y, tmpSize.z) >= 4.2;
               }
             }
             obj.castShadow = largeEnough;
@@ -345,6 +374,13 @@ export function buildKhulnaJudgeCourt(parent, m) {
           });
         }
 
+        compound.traverse((obj) => {
+          if (obj.isMesh) {
+            obj.userData._canCastShadow = obj.castShadow;
+            state.allMeshes.push(obj);
+          }
+        });
+        applyQualityToLoadedAssets();
         applyEmissiveNightFactor();
         state.loaded = true;
         state.loading = false;
@@ -723,6 +759,7 @@ export function buildKhulnaJudgeCourt(parent, m) {
     state.qualityMode = q;
     const d = QUALITY_VIS_DIST[q] || QUALITY_VIS_DIST.medium;
     state.visDistSq = d * d;
+    if (state.loaded) applyQualityToLoadedAssets();
   }
 
   function syncVisibility(playerPos) {
@@ -800,16 +837,19 @@ export function buildKhulnaJudgeCourt(parent, m) {
     }
 
     const slide = state.liftDoorOpen * 0.68;
-    if (state.cabDoorL) state.cabDoorL.position.x = -0.38 - slide;
-    if (state.cabDoorR) state.cabDoorR.position.x = 0.38 + slide;
-
     const activeFloorNum = state.liftFloorIndex + 1;
-    for (let fl = 1; fl <= 10; fl++) {
-      const pair = state.landingDoors[fl];
-      if (!pair) continue;
-      const s = (fl === activeFloorNum && state.liftPhase !== 'moving') ? slide : 0;
-      if (pair.L) pair.L.position.x = -2.03 - s;
-      if (pair.R) pair.R.position.x = -1.27 + s;
+    if (Math.abs(slide - state.lastDoorSlide) > 0.001 || activeFloorNum !== state.lastActiveFloor) {
+      state.lastDoorSlide = slide;
+      state.lastActiveFloor = activeFloorNum;
+      if (state.cabDoorL) state.cabDoorL.position.x = -0.38 - slide;
+      if (state.cabDoorR) state.cabDoorR.position.x = 0.38 + slide;
+      for (let fl = 1; fl <= 10; fl++) {
+        const pair = state.landingDoors[fl];
+        if (!pair) continue;
+        const s = (fl === activeFloorNum && state.liftPhase !== 'moving') ? slide : 0;
+        if (pair.L) pair.L.position.x = -2.03 - s;
+        if (pair.R) pair.R.position.x = -1.27 + s;
+      }
     }
   }
 

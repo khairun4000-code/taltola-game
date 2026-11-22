@@ -414,12 +414,12 @@ export function createMaterials(renderer, manager) {
 
   materials.setQualityMode = (quality) => {
     const isLow = quality === 'low';
-    const nextAniso = isLow ? Math.min(4, anisotropy) : (quality === 'medium' ? Math.min(6, anisotropy) : anisotropy);
+    const nextAniso = isLow ? 1 : (quality === 'medium' ? 2 : (quality === 'high' ? 4 : Math.min(8, anisotropy)));
     for (const mat of allMaterials) {
       if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
       if (mat.userData && mat.userData.pbrNormalMap) {
-        const nextNorm = mat.userData.pbrNormalMap;
-        const nextRough = isLow ? null : mat.userData.pbrRoughnessMap;
+        const nextNorm = isLow ? null : mat.userData.pbrNormalMap;
+        const nextRough = (isLow || quality === 'medium') ? null : mat.userData.pbrRoughnessMap;
         if (mat.normalMap !== nextNorm || mat.roughnessMap !== nextRough) {
           mat.normalMap = nextNorm;
           mat.roughnessMap = nextRough;
