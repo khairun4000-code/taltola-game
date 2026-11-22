@@ -695,18 +695,22 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
     [206.0, 86.0],
   ], 3.4, mats.concreteRoad, 0.059, mats.curb, 0.35);
 
-  // Iconic Red-and-Green Pipe Railings along the straight Main Road approaching the Portico
-  addRedGreenRoadRailing(staticG, bank, 188.4, 134.0, 114.0);
-  addRedGreenRoadRailing(staticG, bank, 188.4, 106.0, 91.0);
+  // Iconic Red-and-Green Pipe Railings along BOTH Right (x=188.4) and Left (x=179.6) sides past the Pukurpar right-turn road (z=136.5)
+  for (const railX of [179.6, 188.4]) {
+    addRedGreenRoadRailing(staticG, bank, railX, 134.0, 114.0);
+    addRedGreenRoadRailing(staticG, bank, railX, 106.0, 91.0);
+  }
 
-  // Concrete Side Drains + Single Neat Row of Light Flowers along BOTH sides of the Main Road past the twin fields!
+  // Concrete Side Drains + Taller Slender Ornamental Trees & Flowering Plants along BOTH sides starting AFTER the Pukurpar right-turn road (z = 133.0 -> 92.0)
   const drainChanMat = new THREE.MeshStandardMaterial({ color: 0x3f474f, roughness: 0.92 });
-  const flowerLeafMat = new THREE.MeshStandardMaterial({ color: 0x22763a, roughness: 0.80 });
+  const slimTrunkMat = new THREE.MeshStandardMaterial({ color: 0x5b3d26, roughness: 0.92 });
+  const slenderLeafMat = new THREE.MeshStandardMaterial({ color: 0x1d6b34, roughness: 0.78 });
+  const flowerLeafMat = new THREE.MeshStandardMaterial({ color: 0x26823e, roughness: 0.78 });
   const flowerBloomMats = [
-    new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.55 }),
-    new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.55 }),
-    new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.55 }),
-    new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.55 }),
+    new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.52 }),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.52 }),
+    new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.52 }),
+    new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.52 }),
   ];
   for (const side of [-1, 1]) {
     const dx = 184.0 + side * 4.55;
@@ -714,18 +718,52 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
     box(staticG, [0.44, 0.08, 106.0], [dx, 0.02, 145.0], drainChanMat, { castShadow: false });
     box(staticG, [0.10, 0.16, 106.0], [dx - 0.24, 0.08, 145.0], mats.curb, { castShadow: false });
     box(staticG, [0.10, 0.16, 106.0], [dx + 0.24, 0.08, 145.0], mats.curb, { castShadow: false });
-    // Single neat row of light campus flowers bordering the fields beside the drain (z = 95..148)
-    const fx = 184.0 + side * 5.25;
-    for (let fz = 96.0; fz <= 146.0; fz += 3.8) {
-      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.24, 0), flowerLeafMat);
-      bush.position.set(fx, 0.22, fz);
-      staticG.add(bush);
-      const bMat = flowerBloomMats[Math.abs(Math.round(fz + side * 3)) % flowerBloomMats.length];
-      for (const [oxF, oyF, ozF] of [[-0.08, 0.38, 0.06], [0.09, 0.36, -0.05], [0.0, 0.42, 0.0]]) {
-        const fl = new THREE.Mesh(new THREE.SphereGeometry(0.065, 6, 5), bMat);
-        fl.position.set(fx + oxF, oyF, fz + ozF);
-        staticG.add(fl);
+
+    // Alternating Tall Slender Ornamental Trees (চিকন লম্বা গাছ) & Taller Flowering Plants (ফুল গাছ)
+    // Starts cleanly right AFTER the Pukurpar right-turn road (z = 136.5) -> z = 133.0 down to 92.0!
+    const fx = 184.0 + side * 5.35;
+    let idx = 0;
+    for (let fz = 133.0; fz >= 92.0; fz -= 2.8) {
+      // Leave clean open crossing gap matching the railing opening at z = 107..113
+      if (fz > 107.0 && fz < 113.0) { idx++; continue; }
+      const isSlimTree = (idx % 2 === 0);
+      if (isSlimTree) {
+        // Tall, slim columnar ornamental tree (~3.4m-3.9m tall, narrow & graceful)
+        const hBoost = (idx % 3) * 0.22;
+        cylinder(staticG, 0.055, 0.085, 1.25 + hBoost * 0.4, [fx, 0.62 + hBoost * 0.2, fz], slimTrunkMat, 6);
+        const tiers = [
+          [1.45 + hBoost * 0.4, 0.46, 0.95],
+          [2.10 + hBoost * 0.6, 0.38, 0.92],
+          [2.72 + hBoost * 0.8, 0.29, 0.85],
+          [3.25 + hBoost, 0.18, 0.72],
+        ];
+        for (const [ty, tr, th] of tiers) {
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(tr, th, 7), slenderLeafMat);
+          cone.position.set(fx, ty, fz);
+          staticG.add(cone);
+        }
+      } else {
+        // Taller, fuller flowering plant (~1.45m tall) with slim stem & vibrant blooms
+        cylinder(staticG, 0.032, 0.048, 0.78, [fx, 0.39, fz], slimTrunkMat, 6);
+        const lowerBush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.36, 0), flowerLeafMat);
+        lowerBush.scale.set(0.85, 1.15, 0.85);
+        lowerBush.position.set(fx, 0.88, fz);
+        staticG.add(lowerBush);
+        const upperBush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 0), flowerLeafMat);
+        upperBush.scale.set(0.82, 1.15, 0.82);
+        upperBush.position.set(fx, 1.24, fz);
+        staticG.add(upperBush);
+        const bMat = flowerBloomMats[Math.abs(idx + (side > 0 ? 1 : 0)) % flowerBloomMats.length];
+        for (const [oxF, oyF, ozF] of [
+          [-0.18, 1.05, 0.14], [0.19, 1.08, -0.12], [0.0, 1.46, 0.02],
+          [-0.12, 1.32, -0.14], [0.14, 1.28, 0.14],
+        ]) {
+          const fl = new THREE.Mesh(new THREE.SphereGeometry(0.085, 6, 5), bMat);
+          fl.position.set(fx + oxF, oyF, fz + ozF);
+          staticG.add(fl);
+        }
       }
+      idx++;
     }
   }
 

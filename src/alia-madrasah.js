@@ -1785,13 +1785,9 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
       const baseH = Math.max(0.1, size.y);
       const placements = [
-        // 1) Right roadside beside entrance road past the Darwan Guard Room (matching user video!)
-        { x: 198.2, z: 184.0, targetH: 8.6, rotY: Math.PI * 0.25 },
-        // 2) South-West Corner outside Big Playground (clear of road)
-        { x: 198.2, z: 132.5, targetH: 8.5, rotY: Math.PI * 0.45 },
-        // 3) North-West Corner outside Big Playground (clear of road)
-        { x: 198.2, z: 80.5, targetH: 8.4, rotY: Math.PI * 0.52 },
-        // 4) North-East Courtyard Corner near 6-Story Building
+        // 1) South-West Corner outside Big Playground (clear of road & flower avenue)
+        { x: 204.0, z: 132.5, targetH: 8.2, rotY: Math.PI * 0.45 },
+        // 2) North-East Courtyard Corner near 6-Story Building
         { x: 237.5, z: 78.0, targetH: 8.2, rotY: Math.PI * 0.85 },
       ];
 
@@ -1922,10 +1918,10 @@ export function buildAliaMadrasahDistrict(parent, m) {
     // 4) Khulna District Model Mosque 3D Collisions (delegated to khulna-model-mosque.js)
     applyModelMosqueCollisions(pos, radius, footY, isVehicle);
 
-    // 5) Krishnachura Tree Trunks inside Campus (4 clean spots off road & gate corner)
+    // 5) Krishnachura Tree Trunks inside Campus (clean corners well off main entrance axis)
     if (footY < 6.0) {
       for (const [tx, tz] of [
-        [198.2, 184.0], [198.2, 132.5], [198.2, 80.5], [237.5, 78.0],
+        [204.0, 132.5], [237.5, 78.0],
       ]) {
         resolveCircleAABB(pos, radius, tx - 0.42, tx + 0.42, tz - 0.42, tz + 0.42);
       }
