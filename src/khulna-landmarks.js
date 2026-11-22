@@ -10,6 +10,7 @@ import { buildSatrastaMoreDistrict } from './satrasta-more.js';
 import { buildKjaCorridorDistrict } from './kja-corridor.js';
 import { buildHajiKaborkhanaCorridor } from './haji-kaborkhana-corridor.js';
 import { buildKhulnaJudgeCourt } from './khulna-judge-court.js';
+import { buildKhulnaCircuitHouse } from './khulna-circuit-house.js';
 
 function makeSignTexture({
   title,
@@ -1066,156 +1067,9 @@ function buildCircuitHouseAndStadium(staticG, dynamicG, lm, m) {
     rotBox(dynamicG, [6.8, 3.4, 0.9], [fx, 34.5, fz], lm.floodGlow, yaw);
   }
 
-  // 2) KHULNA CIRCUIT HOUSE COMPLEX (খুলনা সার্কিট হাউজ — Heritage Red-Brick Colonial Bungalow + New 3-Story VIP Annex + Grand Gates & Compound)
-  const flagGreenMat = new THREE.MeshStandardMaterial({ color: 0x006a4e, roughness: 0.72, side: THREE.DoubleSide });
-  const flagRedMat = new THREE.MeshStandardMaterial({ color: 0xf42a41, roughness: 0.68, side: THREE.DoubleSide });
-  const courtBluePortico = new THREE.MeshStandardMaterial({ color: 0x7a96ab, roughness: 0.56, metalness: 0.14 });
+  // 2) KHULNA CIRCUIT HOUSE COMPLEX (খুলনা সার্কিট হাউজ)
+  // Legacy blockout replaced by full-fidelity enterable 3D GLB module in ./khulna-circuit-house.js!
   const courtBrickMat = new THREE.MeshStandardMaterial({ color: 0xa64b38, map: m.brick?.map || null, normalMap: m.brick?.normalMap || null, roughness: 0.86 });
-  const darkIronGate = new THREE.MeshStandardMaterial({ color: 0x161a20, roughness: 0.42, metalness: 0.72 });
-
-  // Helper: Bangladesh National Flagpole (জাতীয় পতাকা)
-  const addBdFlagPole = (fx, fz, h = 9.5) => {
-    box(staticG, [1.6, 0.36, 1.6], [fx, 0.18, fz], lm.whitePlaster);
-    box(staticG, [1.1, 0.30, 1.1], [fx, 0.50, fz], m.brick);
-    cylinder(staticG, 0.045, 0.085, h, [fx, 0.65 + h * 0.5, fz], lm.chromeMat, 10);
-    const fy = 0.65 + h - 0.68;
-    box(staticG, [2.1, 1.26, 0.04], [fx + 1.08, fy, fz], flagGreenMat);
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.055, 16), flagRedMat);
-    disc.rotation.x = Math.PI / 2;
-    disc.position.set(fx + 0.96, fy, fz);
-    staticG.add(disc);
-  };
-
-  // Circuit House Campus Grounds & Circular Paved Driveway (x = 84..128, z = -726..-642)
-  box(staticG, [44.0, 0.06, 84.0], [106.0, 0.02, -684.0], lm.moss, { castShadow: false });
-  box(staticG, [42.0, 0.09, 9.6], [106.0, 0.045, -684.0], m.brick, { castShadow: false, uvScale: 2.4 }); // Central E-W driveway
-  box(staticG, [12.0, 0.09, 54.0], [88.0, 0.045, -684.0], m.brick, { castShadow: false, uvScale: 2.4 }); // West forecourt apron
-
-  // Circuit House Perimeter Compound Wall (Red Brick Base + White Coping + Iron Grille)
-  // North & South Walls (x = 84..128)
-  for (const wz of [-726.0, -642.0]) {
-    box(staticG, [44.0, 1.15, 0.36], [106.0, 0.58, wz], courtBrickMat, { uvScale: 2.2 });
-    box(staticG, [44.2, 0.14, 0.46], [106.0, 1.22, wz], lm.whitePlaster);
-    addRailingSpan(staticG, lm, 84.2, wz, 127.8, wz, 12, 0.95, 1.28);
-  }
-  // East Wall facing Circuit House Rd (x = 128, leaving 10m Main Gate gap at z = -689..-679)
-  for (const [z0, z1] of [[-726.0, -689.5], [-678.5, -642.0]]) {
-    const len = z1 - z0;
-    const mid = (z0 + z1) * 0.5;
-    box(staticG, [0.36, 1.15, len], [128.0, 0.58, mid], courtBrickMat, { uvScale: 2.2 });
-    box(staticG, [0.46, 0.14, len + 0.2], [128.0, 1.22, mid], lm.whitePlaster);
-    addRailingSpan(staticG, lm, 128.0, z0, 128.0, z1, 10, 0.95, 1.28);
-  }
-  // West Wall facing Boro Maath (x = 84, leaving 10m Ceremonial Gate gap at z = -689..-679)
-  for (const [z0, z1] of [[-726.0, -689.5], [-678.5, -642.0]]) {
-    const len = z1 - z0;
-    const mid = (z0 + z1) * 0.5;
-    box(staticG, [0.36, 1.05, len], [84.0, 0.52, mid], courtBrickMat, { uvScale: 2.2 });
-    box(staticG, [0.46, 0.14, len + 0.2], [84.0, 1.10, mid], lm.whitePlaster);
-    addRailingSpan(staticG, lm, 84.0, z0, 84.0, z1, 10, 0.85, 1.16);
-  }
-
-  // Grand Circuit House Gates (East Main Gate at x = 128 facing Circuit House Rd & West Gate at x = 84 facing Boro Maath)
-  for (const [gx, signRot] of [[128.0, Math.PI * 0.5], [84.0, -Math.PI * 0.5]]) {
-    for (const gz of [-689.4, -678.6]) {
-      box(staticG, [1.35, 5.2, 1.35], [gx, 2.6, gz], lm.whitePlaster);
-      box(staticG, [1.55, 0.32, 1.55], [gx, 5.32, gz], courtBrickMat);
-      const globe = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 8), lm.bulbGlow);
-      globe.position.set(gx, 5.72, gz);
-      dynamicG.add(globe);
-    }
-    // Grand Overhead Gate Arch Beam + Bengali Signboard
-    box(staticG, [1.25, 1.15, 12.6], [gx, 5.45, -684.0], lm.whitePlaster);
-    box(staticG, [1.45, 0.28, 13.0], [gx, 6.12, -684.0], courtBrickMat);
-    addSignBoard(
-      dynamicG,
-      { title: 'খুলনা সার্কিট হাউজ', subtitle: 'KHULNA CIRCUIT HOUSE · VIP GUEST HOUSE & OFFICE', bg: '#7f1d1d', fg: '#ffffff', accent: '#fef08a', border: '#ffffff' },
-      [gx + (gx > 100 ? 0.70 : -0.70), 5.45, -684.0],
-      signRot,
-      9.4,
-      1.35
-    );
-    // Open Wrought-Iron Double Gate Leaves (swung inward so cars/player drive straight in!)
-    for (const side of [-1, 1]) {
-      const gzHinge = -684.0 + side * 4.8;
-      const inwardX = gx > 100 ? -2.2 : 2.2;
-      box(staticG, [4.2, 2.45, 0.10], [gx + inwardX, 1.32, gzHinge], darkIronGate);
-    }
-  }
-  // Security Guard Sentry Box just inside East Main Gate
-  box(staticG, [2.4, 2.7, 2.4], [124.8, 1.35, -675.2], lm.whitePlaster);
-  box(staticG, [2.9, 0.24, 2.9], [124.8, 2.82, -675.2], courtBrickMat);
-  box(staticG, [0.14, 1.1, 1.4], [126.02, 1.65, -675.2], lm.glass);
-
-  // 2A) CIRCUIT HOUSE 1 — Authentic British-Era Red-Brick & White-Trimmed Heritage Colonial Bungalow (cx = 104, cz = -661)
-  {
-    const cx = 104.0;
-    const cz = -661.0;
-    // Raised dark stone plinth + main exposed red-brick ground floor
-    box(staticG, [34.4, 0.56, 18.6], [cx, 0.28, cz], lm.darkConcrete);
-    box(staticG, [33.6, 5.2, 17.6], [cx, 3.16, cz], courtBrickMat, { uvScale: 2.2 });
-    // White plastered upper frieze spandrel band + crisp white roof parapet with red-brick coping
-    box(staticG, [33.8, 1.05, 17.8], [cx, 5.25, cz], lm.whitePlaster);
-    box(staticG, [34.4, 0.34, 18.4], [cx, 5.95, cz], courtBrickMat);
-    box(staticG, [34.0, 0.82, 18.0], [cx, 6.45, cz], lm.whitePlaster);
-    // Recessed 2nd-story red-brick heritage roof suite (matching real Khulna Circuit House photo!)
-    box(staticG, [20.0, 3.8, 11.4], [cx + 2.0, 8.2, cz], courtBrickMat, { uvScale: 2.2 });
-    box(staticG, [20.6, 0.36, 12.0], [cx + 2.0, 10.22, cz], lm.whitePlaster);
-
-    // Grand Central Projecting Arched Car Portico (West side facing Boro Maath & Lawn)
-    box(staticG, [6.4, 5.8, 8.6], [cx - 19.6, 3.45, cz], courtBrickMat, { uvScale: 2.2 });
-    box(staticG, [6.6, 1.15, 8.8], [cx - 19.6, 5.65, cz], lm.whitePlaster);
-    box(staticG, [6.8, 0.92, 9.0], [cx - 19.6, 6.72, cz], lm.whitePlaster); // Portico balustrade parapet
-    box(staticG, [4.6, 4.1, 5.2], [cx - 20.6, 2.45, cz], lm.cavityMat);     // Deep shaded arched entry opening
-    // Corner classical white pillar finials on portico roof
-    for (const [fx, fz] of [[-22.7, -4.2], [-22.7, 4.2], [-16.6, -4.2], [-16.6, 4.2]]) {
-      box(staticG, [0.52, 1.15, 0.52], [cx + fx, 7.15, cz + fz], lm.whitePlaster);
-    }
-
-    // Symmetrical Arched Veranda Bays with White Balustrade Railings along North, South & West Facades
-    for (let bx = -13.0; bx <= 13.0; bx += 5.2) {
-      for (const sideZ of [-1, 1]) {
-        const bz = cz + sideZ * 8.85;
-        box(staticG, [3.4, 3.4, 0.36], [cx + bx, 2.75, bz], lm.cavityMat);
-        box(staticG, [3.4, 0.92, 0.24], [cx + bx, 1.05, bz + sideZ * 0.08], lm.whitePlaster); // White veranda balustrade
-        box(staticG, [0.75, 5.2, 0.55], [cx + bx - 2.6, 3.16, bz], courtBrickMat);          // Brick pier between arches
-      }
-    }
-    addBdFlagPole(cx - 25.5, cz - 7.0, 9.5);
-    addParkLamp(staticG, dynamicG, lm, cx - 24.0, cz + 6.5, 4.2);
-  }
-
-  // 2B) CIRCUIT HOUSE 2 — Modern 3-Story VIP Guest House & Administrative Office Annex (cx = 107, cz = -706)
-  {
-    const cx = 107.0;
-    const cz = -706.0;
-    const h = 11.4;
-    box(staticG, [33.6, 0.52, 18.8], [cx, 0.26, cz], lm.stonePlinth);
-    box(staticG, [32.4, h, 17.6], [cx, 0.52 + h * 0.5, cz], lm.colonialCream);
-    box(staticG, [33.8, 0.65, 19.0], [cx, 0.52 + h + 0.32, cz], courtBrickMat);
-    // Floor cornice slabs & recessed VIP veranda balconies across 3 floors
-    for (let fl = 0; fl < 3; fl++) {
-      const fy = 0.52 + fl * 3.7;
-      box(staticG, [33.2, 0.24, 18.4], [cx, fy + 3.6, cz], lm.whitePlaster);
-      for (let bx = -12.0; bx <= 12.0; bx += 4.8) {
-        box(staticG, [3.4, 2.2, 0.32], [cx + bx, fy + 2.0, cz + 8.82], lm.glass);
-        box(staticG, [3.6, 0.95, 0.22], [cx + bx, fy + 0.58, cz + 9.15], lm.whitePlaster);
-        box(staticG, [3.4, 2.2, 0.32], [cx + bx, fy + 2.0, cz - 8.82], lm.glass);
-      }
-    }
-    // Projecting South-West Entry Portico facing central driveway
-    box(staticG, [8.4, 4.2, 5.2], [cx - 4.0, 2.5, cz + 11.2], lm.whitePlaster);
-    box(staticG, [8.8, 0.42, 5.6], [cx - 4.0, 4.75, cz + 11.2], courtBrickMat);
-    addSignBoard(
-      dynamicG,
-      { title: 'খুলনা সার্কিট হাউজ · নতুন ভবন (ভিআইপি)', subtitle: 'CIRCUIT HOUSE ANNEX · CONFERENCE & VIP SUITES', bg: '#0f3d2e', accent: '#fef08a' },
-      [cx - 4.0, 4.15, cz + 13.95],
-      0,
-      7.2,
-      1.05
-    );
-    addParkLamp(staticG, dynamicG, lm, cx - 19.5, cz + 8.0, 4.2);
-  }
 
   // 2C) GRAND KHULNA JUDGE COURT & CJM COURT COMPLEX is built as an ultra-high-quality, 100% enterable 9-story module in ./khulna-judge-court.js!
   // 2D) SOUTH COURT ANNEX / KHULNA DISTRICT BAR ASSOCIATION BUILDING (cx = 186, cz = -618, 4-story, 34m x 20m)
@@ -1848,6 +1702,7 @@ export function buildKhulnaLandmarks(parent, m) {
   const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -100, -700, 820);
 
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
+  const circuitHouse = buildKhulnaCircuitHouse(group, m);
   const judgeCourt = buildKhulnaJudgeCourt(group, m);
   const aliaMadrasah = buildAliaMadrasahDistrict(group, m);
   const royalMore = buildRoyalMoreDistrict(group, m);
@@ -1868,6 +1723,7 @@ export function buildKhulnaLandmarks(parent, m) {
       const want = dx * dx + dz * dz <= s.maxDistSq;
       if (s.root.visible !== want) s.root.visible = want;
     }
+    circuitHouse.syncVisibility(playerPos);
     judgeCourt.syncVisibility(playerPos);
     aliaMadrasah.syncVisibility(playerPos);
     royalMore.syncVisibility(playerPos);
@@ -1879,6 +1735,7 @@ export function buildKhulnaLandmarks(parent, m) {
 
   return {
     group,
+    circuitHouse,
     judgeCourt,
     aliaMadrasah,
     royalMore,
@@ -1915,6 +1772,7 @@ export function buildKhulnaLandmarks(parent, m) {
       }
       return Math.max(
         hadisY,
+        circuitHouse.getGroundHeight?.(pos) ?? 0,
         judgeCourt.getGroundHeight?.(pos) ?? 0,
         aliaMadrasah.getGroundHeight?.(pos) ?? 0,
         royalMore.getGroundHeight?.(pos) ?? 0,
@@ -1942,6 +1800,7 @@ export function buildKhulnaLandmarks(parent, m) {
         blockBox(-297.5, -292.5, -840.4, -839.6); // Main Gate locked double-leaf (Pocket Gate at -292.0..-290.4 stays OPEN!)
         blockBox(-334.5, -329.5, -958.4, -957.6); // Back Gate locked double-leaf (Pocket Gate at -336.6..-335.0 stays OPEN!)
       }
+      circuitHouse.applyCollisions?.(pos, radius, footY, isVehicle);
       judgeCourt.applyCollisions?.(pos, radius, footY, isVehicle);
       aliaMadrasah.applyCollisions?.(pos, radius, footY, isVehicle);
       royalMore.applyCollisions?.(pos, radius, footY);
@@ -1951,6 +1810,7 @@ export function buildKhulnaLandmarks(parent, m) {
       hajiKaborkhana.applyCollisions?.(pos, radius, footY);
     },
     setNightFactor(nf) {
+      circuitHouse.setNightFactor(nf);
       judgeCourt.setNightFactor(nf);
       aliaMadrasah.setNightFactor(nf);
       royalMore.setNightFactor(nf);
@@ -1961,6 +1821,7 @@ export function buildKhulnaLandmarks(parent, m) {
     },
     update(time, playerPos = null) {
       if (playerPos) syncVisibility(playerPos);
+      circuitHouse.update(time, playerPos);
       judgeCourt.update(time, playerPos);
       aliaMadrasah.update(time, playerPos);
       royalMore.update(time, playerPos);

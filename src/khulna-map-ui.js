@@ -79,9 +79,26 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
     },
     ...worldData.landmarks
       .filter((lm) => lm.id !== 'taltola_ward23')
-      .map((lm) => lm.id === 'pti_more'
-        ? { ...lm, c: 'hero', isPti: true, n: 'PTI More · Ahsan Ahmed Rd', bn: 'PTI More · Ahsan Ahmed Rd' }
-        : lm),
+      .map((lm) => {
+        if (lm.id === 'pti_more') {
+          return { ...lm, c: 'hero', isPti: true, n: 'PTI More · Ahsan Ahmed Rd', bn: 'PTI More · Ahsan Ahmed Rd' };
+        }
+        if (lm.id === 'circuit_house') {
+          return {
+            ...lm,
+            c: 'hero',
+            n: '🏛️ Khulna Circuit House · সার্কিট হাউজ',
+            bn: 'খুলনা সার্কিট হাউজ (কে.ডি. ঘোষ রোড · মেইন গেট)',
+            x: 115.5,
+            z: -677.5,
+            spawnX: 144.2,
+            spawnZ: -684.0,
+            lookX: 133.5,
+            lookZ: -684.5,
+          };
+        }
+        return lm;
+      }),
     {
       id: 'khulna_model_mosque',
       n: 'Khulna District Model Mosque',

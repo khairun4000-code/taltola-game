@@ -2507,9 +2507,15 @@ function handleDoorInteraction(allowClimbFallback = false) {
     return true;
   }
   const nearSeat = findNearestSeat(playerPos);
-  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.judgeCourt?.getPrompt?.(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house?.getPrompt(playerPos));
+  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.circuitHouse?.getPrompt?.(playerPos) || environment?.landmarks?.judgeCourt?.getPrompt?.(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house?.getPrompt(playerPos));
   if (nearSeat && (!hasDoorOrLiftPrompt || nearSeat.dist < 1.25)) {
     sitOnSeat(nearSeat);
+    return true;
+  }
+  const circuitRes = environment?.landmarks?.circuitHouse?.interact?.(playerPos);
+  if (circuitRes) {
+    if (circuitRes.message) gtaPhoneUI?.showToast?.(`🏛️ ${circuitRes.message}`);
+    syncHUDButtons(false, true);
     return true;
   }
   const judgeRes = environment?.landmarks?.judgeCourt?.interact?.(playerPos);
@@ -3150,27 +3156,10 @@ async function initialize() {
       updateHUDPrompt();
     },
   });
-  // Park all 16 vehicles neatly in a lineup on the opposite (West) side in front of Taltola House on startup; all 16 also spawn via [P] phone dial pad
+  // Spawn ONLY 1 bicycle right in front of Taltola House for maximum FPS; all 16 vehicles spawn on demand via the [P] iFruit Phone dial pad!
   cars = [];
   bmwCar = null;
-  const starterVehicleIds = [
-    'tata_2515',
-    'toyota_land_cruiser',
-    'toyota_corolla',
-    'toyota_prius',
-    'nissan_sunny',
-    'bmw_m3',
-    'toyota_fortuner',
-    'toyota_alphard',
-    'toyota_hiace',
-    'toyota_townace',
-    'bangladeshi_cng',
-    'bike_125cc',
-    'honda_nxr_bros',
-    'bangladeshi_rickshaw_taltola',
-    'bangladeshi_cargo_van',
-    'atlas_roadster_bicycle',
-  ];
+  const starterVehicleIds = ['atlas_roadster_bicycle'];
   const vehicleEnvStartup = skySystem?.getEnvTexture?.() || null;
   for (const vid of starterVehicleIds) {
     const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);
@@ -3179,7 +3168,6 @@ async function initialize() {
     starterVeh.setQualityMode?.(quality);
     starterVeh.setEnvironmentMap?.(vehicleEnvStartup);
     cars.push(starterVeh);
-    if (vid === 'bmw_m3') bmwCar = starterVeh;
   }
 
   await Promise.race([
@@ -3225,6 +3213,10 @@ async function initialize() {
   setStudioCameraPreset('full');
   const startInStudio = params.get('studio') === '1';
   setMode(startInStudio);
+  if (!startInStudio && spawnParam) {
+    const lm = khulnaMapUI?.landmarks?.find((l) => l.id === spawnParam);
+    if (lm) warpToLandmark(lm, false);
+  }
   if (!startInStudio) {
     autonomousPartner.relocateNearPlayer(playerPos, cars, environment, true);
   }
@@ -3645,6 +3637,11 @@ function warpToLandmark(lm, lockControls = false) {
     sz = -676.0;
     lx = 188.0;
     lz = -676.0;
+  } else if (lm.id === 'circuit_house') {
+    sx = 144.2;
+    sz = -684.0;
+    lx = 133.5;
+    lz = -684.5;
   }
 
   if (activeCar) {
@@ -4237,6 +4234,7 @@ window.addEventListener('keydown', (event) => {
       if (!environment?.altapoleGoli?.interact?.(activeCar.state.pos)) {
         environment?.altapoleGoli?.toggleAllDoors?.();
       }
+      environment?.landmarks?.circuitHouse?.toggleGate?.(activeCar.state.pos);
       environment?.landmarks?.aliaMadrasah?.toggleGate?.(activeCar.state.pos);
       environment?.landmarks?.ptiMore?.toggleGate?.(activeCar.state.pos);
       syncHUDButtons();
@@ -4323,6 +4321,7 @@ window.addEventListener('keydown', (event) => {
       if (!environment?.altapoleGoli?.interact?.(activeCar.state.pos)) {
         environment?.altapoleGoli?.toggleAllDoors?.();
       }
+      environment?.landmarks?.circuitHouse?.toggleGate?.(activeCar.state.pos);
       environment?.landmarks?.aliaMadrasah?.toggleGate?.(activeCar.state.pos);
       environment?.landmarks?.ptiMore?.toggleGate?.(activeCar.state.pos);
       syncHUDButtons();
@@ -5341,7 +5340,7 @@ function updateHUDPrompt(force = true) {
           ? '🔴 ON AIR · কথা বলুন (ইকো চালু) — [M] মাইক বন্ধ করুন'
           : '🎙️ [M] প্রিন্সিপালের মাইক অন করুন (পুরো আলিয়া মাদ্রাসায় ইকো শোনা যাবে)')
         : null;
-      const doorOrLiftPrompt = micPrompt || environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.judgeCourt?.getPrompt?.(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
+      const doorOrLiftPrompt = micPrompt || environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.circuitHouse?.getPrompt?.(playerPos) || environment?.landmarks?.judgeCourt?.getPrompt?.(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
       if (micPrompt) {
         promptText = micPrompt;
       } else if (carPrompt && !doorOrLiftPrompt && !nearSeat) {
@@ -5443,6 +5442,8 @@ function updateHUDPrompt(force = true) {
       zone = environment?.landmarks?.aliaMadrasah?.getModelMosqueZoneName?.(x, z, footY) || 'KHULNA DISTRICT MODEL MOSQUE · ALIA MADRASAH';
     } else if (x >= 144 && x <= 222 && z >= -524 && z <= -292) {
       zone = environment?.altapoleGoli?.getZoneName?.(x, z, footY) || environment?.altapoleTower?.getZoneName?.(x, z, footY) || environment?.altapole?.getZoneName?.(x, z) || 'ALTAPOLE LANE · KHULNA';
+    } else if (environment?.landmarks?.circuitHouse?.getZoneName?.(x, z, footY)) {
+      zone = environment.landmarks.circuitHouse.getZoneName(x, z, footY);
     } else if (environment?.landmarks?.judgeCourt?.getZoneName?.(x, z, footY)) {
       zone = environment.landmarks.judgeCourt.getZoneName(x, z, footY);
     } else if (environment?.landmarks?.satrastaMore?.getZoneName?.(x, z, footY)) {
@@ -6048,6 +6049,7 @@ function updateMovement(delta) {
     || Boolean(environment?.altapole?.isInsideAnyHouse?.(playerPos))
     || Boolean(environment?.altapoleTower?.isInsideAnyRoom?.(playerPos))
     || Boolean(environment?.altapoleGoli?.isInsideAnyRoom?.(playerPos))
+    || Boolean(environment?.landmarks?.circuitHouse?.isInsideBuilding?.(playerPos))
     || Boolean(environment?.landmarks?.judgeCourt?.isInsideBuilding?.(playerPos))
     || Boolean(environment?.landmarks?.aliaMadrasah?.isInsideModelMosque?.(playerPos))
     || Boolean(environment?.landmarks?.satrastaMore?.getZoneName?.(playerPos.x, playerPos.z, camFootY) && !environment?.landmarks?.satrastaMore?.getZoneName?.(playerPos.x, playerPos.z, camFootY)?.includes('KDA AVENUE'));
