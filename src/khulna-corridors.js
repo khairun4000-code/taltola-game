@@ -4,6 +4,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { attachDerivedPBRMaps, upgradeWetAsphaltMaterial } from './aaa-shaders.js';
 import { buildBanglaTruck, buildCNGAuto } from './khulna-vehicles.js';
 import { decorateCorridorPole, addBigNetaWallPoster } from './khulna-street-props.js';
+import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 
 function seeded(seed = 7731) {
   let s = seed >>> 0;
@@ -1371,25 +1372,27 @@ function buildRupshaWaterfrontCorridor(staticG, dynamicG, bank, m, helpers) {
 }
 
 function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, treesG = staticG) {
-  // Surrounds enterable 5-Story Taltola House at (420, 975) along Tootpara Taltola Hospital Cross Rd
-  const ox = 420.0;
-  const oz = 975.0;
+  // Surrounds enterable 5-Story Taltola House at TALTOLA_HOUSE_OFFSET along Tootpara Taltola Hospital Cross Rd
+  const ox = TALTOLA_HOUSE_OFFSET.x;
+  const oz = TALTOLA_HOUSE_OFFSET.z;
 
   // Restored Kawsar Bhai's original realistic Taltola House street (4.2m asphalt road, open concrete side drains with water, curbs, gate bridge slab & fallen leaves)
   const crossLanePts = [
-    [414.2, 922.0],
-    [416.8, 931.0],
+    [ox - 5.8, oz - 53.0],
+    [ox - 3.2, oz - 44.0],
     [ox, oz - 40.5],
     [ox, oz + 40.5],
-    [419.2, 1024.5],
-    [418.2, 1034.0],
+    [ox - 0.8, oz + 49.5],
+    [ox - 1.8, oz + 59.0],
   ];
   addBox(staticG, [4.2, 0.14, 82.0], [ox, -0.067, oz], m.road, { castShadow: false, uvScale: 5.5 });
 
-  // Seamless north, south & west lane connectors joining Kawsar's Taltola street to the Khulna road network
-  buildPavedSegmentRoad(staticG, crossLanePts.slice(0, 3), 4.6, -0.025, m.road, 5.5);
-  buildPavedSegmentRoad(staticG, crossLanePts.slice(3), 4.6, -0.025, m.road, 5.5);
-  buildPavedSegmentRoad(staticG, [[ox, 1013.2], [396.0, 1011.8]], 4.5, -0.026, m.road, 5.5);
+  // Seamless north, south & east/west modern paved road connectors joining Taltola street directly to Kaborkhana, Khan Jahan Ali Rd & Alia Madrasah!
+  buildPavedSegmentRoad(staticG, crossLanePts.slice(0, 3), 4.8, -0.025, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, crossLanePts.slice(3), 4.8, -0.025, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, [[ox, oz - 40.5], [ox, oz - 56.0], [18.0, 146.0], [-10.0, 111.2]], 6.8, -0.024, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, [[ox, oz - 40.5], [120.0, 184.0], [184.0, 216.0]], 7.2, -0.023, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, [[ox, oz + 38.2], [ox - 24.0, oz + 36.8]], 4.6, -0.026, m.road, 5.5);
 
   // Open concrete drains on BOTH sides with standing drain water & raised road-edge curbs (exact Kawsar Taltola street spec)
   for (const side of [-1, 1]) {
@@ -2420,7 +2423,7 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
 
   const hajiSlice = makeSlice('KhulnaSlice_HajiMohsin', 0, 0, 215);
   const rupshaSlice = makeSlice('KhulnaSlice_RupshaWaterfront', 1160, 320, 440);
-  const taltolaSlice = makeSlice('KhulnaSlice_TaltolaHouse', 420, 975, 260);
+  const taltolaSlice = makeSlice('KhulnaSlice_TaltolaHouse', TALTOLA_HOUSE_OFFSET.x, TALTOLA_HOUSE_OFFSET.z, 320);
   const altapoleSlice = makeSlice('KhulnaSlice_AltapoleLane', 166, -408, 250);
   const circuitRoadsSlice = makeSlice('KhulnaSlice_CircuitStadiumRoads', -95, -735, 660);
 

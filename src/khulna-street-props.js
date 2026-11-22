@@ -766,19 +766,22 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
         pos.x += nx * overlap;
         pos.z += nz * overlap;
 
-        // Trigger spring-damped pole wobble (away from impact!) that sways and recovers upright
-        const pushX = (Math.abs(dirX) + Math.abs(dirZ) > 0.05) ? dirX : -nx;
-        const pushZ = (Math.abs(dirX) + Math.abs(dirZ) > 0.05) ? dirZ : -nz;
-        const pLen = Math.hypot(pushX, pushZ) || 1;
-        const pxN = pushX / pLen;
-        const pzN = pushZ / pLen;
-        const strength = isVehicle
-          ? THREE.MathUtils.clamp(0.75 + impactSpeed * 0.14, 0.75, 2.35)
-          : THREE.MathUtils.clamp(0.32 + impactSpeed * 0.12, 0.32, 0.78);
-        // Rotation around X tilts +Z; rotation around -Z tilts +X
-        rec.st.velX = THREE.MathUtils.clamp(rec.st.velX + pzN * strength, -2.6, 2.6);
-        rec.st.velZ = THREE.MathUtils.clamp(rec.st.velZ - pxN * strength, -2.6, 2.6);
-        swayingPoles.add(rec);
+        // Trigger spring-damped pole wobble ONLY on slim/small poles (poleScaleXZ <= 0.65)!
+        // Thick heavy concrete poles stay 100% solid & rigid without swaying!
+        if (rec.poleScaleXZ <= 0.65) {
+          const pushX = (Math.abs(dirX) + Math.abs(dirZ) > 0.05) ? dirX : -nx;
+          const pushZ = (Math.abs(dirX) + Math.abs(dirZ) > 0.05) ? dirZ : -nz;
+          const pLen = Math.hypot(pushX, pushZ) || 1;
+          const pxN = pushX / pLen;
+          const pzN = pushZ / pLen;
+          const strength = isVehicle
+            ? THREE.MathUtils.clamp(0.75 + impactSpeed * 0.14, 0.75, 2.35)
+            : THREE.MathUtils.clamp(0.32 + impactSpeed * 0.12, 0.32, 0.78);
+          // Rotation around X tilts +Z; rotation around -Z tilts +X
+          rec.st.velX = THREE.MathUtils.clamp(rec.st.velX + pzN * strength, -2.6, 2.6);
+          rec.st.velZ = THREE.MathUtils.clamp(rec.st.velZ - pxN * strength, -2.6, 2.6);
+          swayingPoles.add(rec);
+        }
         hitRec = rec;
       }
     }

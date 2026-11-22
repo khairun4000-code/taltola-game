@@ -185,7 +185,8 @@ function applyTimeOfDay(nextId) {
   } else {
     playerCharacter?.setEnvironmentMap?.(selectiveEnv);
   }
-  for (const c of cars) c?.setEnvironmentMap?.(selectiveEnv);
+  const vehicleEnv = skySystem?.getEnvTexture?.() || null;
+  for (const c of cars) c?.setEnvironmentMap?.(vehicleEnv);
   if (timeToggleButton) {
     timeToggleButton.innerHTML = `TIME: ${preset.shortLabel} <span>[N]</span>`;
   }
@@ -2937,8 +2938,8 @@ async function initialize() {
         spawnHeading: heading,
       });
       spawnedCar.setQualityMode?.(quality);
-      const selectiveEnv = (quality === 'ultra' || quality === 'high') ? null : (skySystem?.getEnvTexture?.() || null);
-      spawnedCar.setEnvironmentMap?.(selectiveEnv);
+      const vehicleEnv = skySystem?.getEnvTexture?.() || null;
+      spawnedCar.setEnvironmentMap?.(vehicleEnv);
       cars.push(spawnedCar);
       cheatSpawnedCars.push(spawnedCar);
       syncCarHUD();
@@ -3144,13 +3145,13 @@ async function initialize() {
   cars = [];
   bmwCar = null;
   const starterVehicleIds = ['atlas_roadster_bicycle', 'bangladeshi_cng', 'bangladeshi_cargo_van'];
-  const selectiveEnvStartup = (quality === 'ultra' || quality === 'high') ? null : (skySystem?.getEnvTexture?.() || null);
+  const vehicleEnvStartup = skySystem?.getEnvTexture?.() || null;
   for (const vid of starterVehicleIds) {
     const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);
     if (!vCfg) continue;
     const starterVeh = createDrivableCar(scene, undefined, vCfg);
     starterVeh.setQualityMode?.(quality);
-    starterVeh.setEnvironmentMap?.(selectiveEnvStartup);
+    starterVeh.setEnvironmentMap?.(vehicleEnvStartup);
     cars.push(starterVeh);
   }
 

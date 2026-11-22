@@ -678,30 +678,31 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
    *    -> past Model Mosque (Left) & Covered Pukur Ghat (Right)
    *    -> straight North along Big Playground -> Main Alia Madrasah Portico!
    * ======================================================================== */
+  // Straight-ahead Concrete Main Road from Main Gate (184, 207.5) directly into Main Portico Building (184, 86.0)!
   addRoadRibbon(staticG, [
-    [179.5, 216.0],
+    [184.0, 217.0],
     [184.0, 207.5],
-    [191.5, 172.0],
-    [193.0, 140.0],
-    [193.5, 108.0],
-    [193.5, 74.5],
+    [184.0, 172.0],
+    [184.0, 136.0],
+    [184.0, 106.0],
+    [184.0, 86.0],
   ], 3.8, mats.concreteRoad, 0.060, mats.curb, 0.45);
 
-  // Concrete front promenade running West directly to the newly rotated Main Alia Madrasah Portico Building (x = 164, z = 74.5)!
+  // Concrete front promenade along the Main Alia Madrasah Portico Building (z = 86.0)
   addRoadRibbon(staticG, [
-    [193.5, 74.5],
-    [178.0, 74.5],
-    [156.0, 74.5],
+    [164.0, 86.0],
+    [184.0, 86.0],
+    [206.0, 86.0],
   ], 3.4, mats.concreteRoad, 0.059, mats.curb, 0.35);
 
-  // Iconic Red-and-Green Pipe Railings along the Main Road approaching the Portico (video 02:45-03:00!)
-  addRedGreenRoadRailing(staticG, bank, 197.4, 134.0, 114.0);
-  addRedGreenRoadRailing(staticG, bank, 197.4, 102.0, 82.0);
+  // Iconic Red-and-Green Pipe Railings along the straight Main Road approaching the Portico
+  addRedGreenRoadRailing(staticG, bank, 188.4, 134.0, 114.0);
+  addRedGreenRoadRailing(staticG, bank, 188.4, 106.0, 91.0);
 
   // Dusty weathered herringbone brick connector path along North/East edge of Playground -> NE & East Academic Campuses
   addRoadRibbon(staticG, [
-    [193.5, 74.0],
-    [216.0, 74.0],
+    [188.0, 86.0],
+    [216.0, 80.0],
     [240.0, 75.0],
     [240.0, 106.0],
     [239.0, 136.0],
@@ -709,13 +710,13 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
 
   // Dusty weathered brick connector path between Big Playground & Clean Pond -> Student Hostel & Teachers' Quarters
   addRoadRibbon(staticG, [
-    [193.0, 136.5],
+    [187.5, 136.5],
     [216.0, 136.5],
     [239.0, 136.0],
   ], 2.6, mats.dustyBrick, 0.056, mats.curb, 0.35);
 
-  // Dusty weathered interlocking paver forecourt in front of Model Mosque (matches concrete road cleanly!)
-  box(staticG, [10.0, 0.05, 20.0], [186.0, 0.025, 166.0], mats.dustyBrick, { castShadow: false, uvScale: 4.0 });
+  // Dusty weathered interlocking paver forecourt right in front of the relocated Model Mosque (left of Main Gate!)
+  box(staticG, [10.0, 0.05, 22.0], [176.5, 0.025, 188.0], mats.dustyBrick, { castShadow: false, uvScale: 4.0 });
 
   // Bigger Clean Central Play Ground (আলিয়া মাদ্রাসা বড় মাঠ — 100% open & free of benches!)
   const fx = 216.5;
@@ -741,14 +742,15 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
    * ======================================================================== */
   const gx = 184.0;
   const gz = 207.5;
+  // Aligned 0° straight North (-Z) directly facing the Main Portico Building & Principal's Office!
   const gateGroup = new THREE.Group();
   gateGroup.position.set(gx, 0, gz);
-  gateGroup.rotation.y = KJA_ANGLE;
+  gateGroup.rotation.y = 0;
   staticG.add(gateGroup);
 
   const gateDynGroup = new THREE.Group();
   gateDynGroup.position.set(gx, 0, gz);
-  gateDynGroup.rotation.y = KJA_ANGLE;
+  gateDynGroup.rotation.y = 0;
   dynamicG.add(gateDynGroup);
 
   for (const dx of [-4.4, 4.4]) {
