@@ -11,6 +11,7 @@ export default defineConfig({
         corollaPreview: resolve(__dirname, 'corolla-preview.html'),
         priusPreview: resolve(__dirname, 'prius-preview.html'),
         tata2515Preview: resolve(__dirname, 'tata-2515-preview.html'),
+        circuitHousePreview: resolve(__dirname, 'circuit-house-preview.html'),
       },
     },
   },
