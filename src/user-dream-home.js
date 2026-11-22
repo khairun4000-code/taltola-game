@@ -270,14 +270,14 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   const floors = 7; // GF (0) + 2F..7F (1..6) + Open Rooftop Garden (7) — Tall Realistic Cement Structure!
   const hw = W * 0.5; // 9.0
   const hd = D * 0.5; // 9.0
-  const gfBaseY = 0.85;
-  const gfH = 4.25;
-  const flH = 3.35;
+  const gfBaseY = 1.15;
+  const gfH = 4.55;
+  const flH = 3.55;
   const FLOOR_Y = [gfBaseY];
   for (let k = 1; k <= floors; k++) {
     FLOOR_Y.push(Number((gfBaseY + gfH + (k - 1) * flH).toFixed(2)));
   }
-  const roofY = FLOOR_Y[floors]; // 25.20m
+  const roofY = FLOOR_Y[floors]; // 27.00m
   const rH = 3.15;
   const upperRoofY = Number((roofY + rH).toFixed(2)); // 28.35m (walkable roof on top of rooftop room!)
   const tankStandY = Number((upperRoofY + 0.45).toFixed(2)); // 28.80m (very top 2 water tanks platform!)
@@ -300,12 +300,23 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     };
   };
 
-  // Shared Materials — Taltola House (Kawsar Bhai's House) Realistic Weathered Cement & Exposed Brick PBR Materials!
-  const softWhiteWall = m.plaster;
-  const gfCementWall = m.warmPlaster || m.plaster;
-  const cementSlabMat = m.concrete;
-  const cementTrimMat = m.trim || m.concrete;
-  const cementBandMat = m.whiteBand || shared.whiteBand;
+  // White-Grey Architectural Concrete PBR Materials (crisp white-grey tone over realistic concrete texture!)
+  const baseConcTex = m.concrete?.map || m.plaster?.map || null;
+  const baseConcNorm = m.concrete?.normalMap || m.plaster?.normalMap || null;
+  const baseConcRough = m.concrete?.roughnessMap || m.plaster?.roughnessMap || null;
+  const makeWhiteGreyConcrete = (hex, rough = 0.88) => new THREE.MeshStandardMaterial({
+    color: hex,
+    map: baseConcTex,
+    normalMap: baseConcNorm,
+    roughnessMap: baseConcRough,
+    roughness: rough,
+    metalness: 0.02,
+  });
+  const softWhiteWall = makeWhiteGreyConcrete(0xe6eaee, 0.86);
+  const gfCementWall = makeWhiteGreyConcrete(0xd4dae0, 0.88);
+  const cementSlabMat = makeWhiteGreyConcrete(0xc3cad2, 0.90);
+  const cementTrimMat = makeWhiteGreyConcrete(0xf0f3f6, 0.82);
+  const cementBandMat = makeWhiteGreyConcrete(0xf4f6f8, 0.80);
   const taltolaBrickMat = m.brick;
   const taltolaRailMat = m.rail || shinyStainlessSteel;
   const taltolaAlumMat = m.aluminum || shared.thaiFrame;
@@ -403,7 +414,7 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   const ENT_MIN_X = -1.90;
   const ENT_MAX_X = 1.90;
   const ENT_DOOR_H = 3.40;
-  const RAMP_LEN = 4.20;
+  const RAMP_LEN = 4.80;
 
   // Central Staircase & Corridor Core down the middle (lx ∈ [-1.75, +1.75])
   const CORR_MIN_X = -1.75;

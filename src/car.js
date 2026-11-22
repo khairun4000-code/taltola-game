@@ -2121,18 +2121,27 @@ export function createDrivableCar(scene, manager, config) {
       let cngProcWheelRearL = null;
       let cngProcWheelRearR = null;
       if (config.isCNG) {
-        // Level the slight left lean of the raw CNG body & windshield and replace lumpy scanned wheels with crisp symmetrical Bajaj RE 4.00-8 wheels!
+        // Perfectly center & level the CNG body/windshield so rear symmetry is dead-even, and mount symmetrical Bajaj RE 4.00-8 wheels!
         const cngBody = model.getObjectByName('CNG_Body');
         const cngGlass = model.getObjectByName('CNG_Windshield_Glass');
-        if (cngBody) cngBody.rotation.z = 0.020;
-        if (cngGlass) cngGlass.rotation.z = 0.020;
+        if (cngBody) {
+          cngBody.rotation.z = 0;
+          cngBody.updateMatrixWorld(true);
+          const bodyBox = new THREE.Box3().setFromObject(cngBody);
+          const bodyCenterX = (bodyBox.min.x + bodyBox.max.x) * 0.5;
+          if (Math.abs(bodyCenterX) > 0.002 && Math.abs(bodyCenterX) < 0.35) {
+            cngBody.position.x -= bodyCenterX;
+            if (cngGlass) cngGlass.position.x -= bodyCenterX;
+          }
+        }
+        if (cngGlass) cngGlass.rotation.z = 0;
         const fs = model.getObjectByName('CNG_Front_Steer');
         const wf = model.getObjectByName('Wheel_Front');
         const wrl = model.getObjectByName('Wheel_Rear_L');
         const wrr = model.getObjectByName('Wheel_Rear_R');
         if (fs) fs.position.x = 0;
 
-        // Hide the warped/lumpy raw GLB wheel meshes so our crisp procedural wheels define exact ground contact (y = 0.000) & spin with zero wobble
+        // Hide the warped/lumpy raw GLB wheel meshes so our crisp symmetrical procedural wheels define exact ground contact (y = 0.000) & spin cleanly
         for (const oldW of [wf, wrl, wrr]) {
           if (oldW) {
             oldW.visible = false;
@@ -2142,8 +2151,10 @@ export function createDrivableCar(scene, manager, config) {
 
         const cngR = 0.245;
         const rearZ = -0.82;
-        const rearLX = 0.45;
-        const rearRX = -0.63;
+        // Exact left-right symmetric rear track (0.54m each side from centerline X=0!)
+        const rearHalfTrack = 0.54;
+        const rearLX = rearHalfTrack;
+        const rearRX = -rearHalfTrack;
 
         if (fs) {
           cngProcWheelFront = buildRealisticCNGWheel(cngR, 0.125, true, 1);
@@ -2161,7 +2172,7 @@ export function createDrivableCar(scene, manager, config) {
         cngProcWheelRearR.position.set(rearRX, cngR, rearZ);
         model.add(cngProcWheelRearR);
 
-        // Solid dark-steel rear axle beam + transaxle differential housing + twin rear shock struts
+        // Symmetrical dark-steel rear axle beam + centered differential housing + twin rear shock struts
         const axleMat = new THREE.MeshStandardMaterial({
           name: 'CNG_Proc_Axle',
           color: 0x1b2026,
@@ -2169,17 +2180,16 @@ export function createDrivableCar(scene, manager, config) {
           metalness: 0.62,
         });
         axleMat.userData = { keepMaterial: true };
-        const axleSpan = Math.abs(rearLX - rearRX) - 0.06;
-        const axleMidX = (rearLX + rearRX) * 0.5;
+        const axleSpan = rearHalfTrack * 2 - 0.06;
         const axleTube = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, axleSpan, 12), axleMat);
         axleTube.rotation.z = Math.PI / 2;
-        axleTube.position.set(axleMidX, cngR, rearZ);
+        axleTube.position.set(0, cngR, rearZ);
         model.add(axleTube);
         const diffBox = new THREE.Mesh(new THREE.SphereGeometry(0.072, 12, 10), axleMat);
         diffBox.scale.set(1.15, 0.92, 1.05);
-        diffBox.position.set(axleMidX, cngR + 0.01, rearZ);
+        diffBox.position.set(0, cngR + 0.01, rearZ);
         model.add(diffBox);
-        for (const sx of [rearLX - 0.11, rearRX + 0.11]) {
+        for (const sx of [rearHalfTrack - 0.12, -(rearHalfTrack - 0.12)]) {
           const shock = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.26, 10), axleMat);
           shock.position.set(sx, cngR + 0.14, rearZ);
           model.add(shock);
@@ -2746,7 +2756,7 @@ export function createDrivableCar(scene, manager, config) {
             gripR.position.set(-0.22, 0.04, -0.16);
             handlebar.add(gripR);
           }
-          measuredWheelRadius = 0.255;
+          measuredWheelRadius = 0.245;
           cngParts = {
             frontSteer,
             wheelFront: cngProcWheelFront || wheelFront,
@@ -3822,15 +3832,16 @@ export function createDrivableCar(scene, manager, config) {
     const wheelRadius = measuredWheelRadius;
     state.wheelSpin += (state.speed / wheelRadius) * dt;
 
-    // Tire-to-road friction smoke on hard launch, hard braking, or handbrake drifting
+    // Tire-to-road friction smoke & grip feedback on launch, braking, cornering, or handbrake drifting
     if (!config.isRickshaw) {
       smokeCooldown = Math.max(0, smokeCooldown - dt);
-      const hardLaunch = throttle > 0 && boost > 1.0 && Math.abs(state.speed) < 6.5;
-      const hardBrake = (brake > 0 || handbrake) && Math.abs(state.speed) > 6.5;
-      if ((isDrifting || hardLaunch || hardBrake) && smokeCooldown <= 0) {
-        smokeCooldown = isDrifting ? 0.045 : 0.085;
-        const rearDist = state.halfLength * 0.62;
-        const trackHalf = state.halfWidth * 0.78;
+      const hardLaunch = throttle > 0 && (boost > 1.0 || (config.isCNG && Math.abs(state.speed) > 0.6 && Math.abs(state.speed) < 4.5)) && Math.abs(state.speed) < 6.5;
+      const hardBrake = (brake > 0 || handbrake) && Math.abs(state.speed) > (config.isCNG ? 3.8 : 6.5);
+      const cngCornerFriction = config.isCNG && Math.abs(state.speed) > 5.0 && Math.abs(state.steerAngle) > 0.28;
+      if ((isDrifting || hardLaunch || hardBrake || cngCornerFriction) && smokeCooldown <= 0) {
+        smokeCooldown = isDrifting ? 0.045 : (config.isCNG ? 0.075 : 0.085);
+        const rearDist = config.isCNG ? 0.82 : state.halfLength * 0.62;
+        const trackHalf = config.isCNG ? 0.54 : state.halfWidth * 0.78;
         for (const side of [-1, 1]) {
           spawnTireFrictionPuff(
             state.pos.x - fwd.x * rearDist + rgt.x * trackHalf * side,
