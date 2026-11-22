@@ -687,9 +687,7 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
   box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 1.30, 0.28, 0.82], [ENT_CX, doorTopY + 0.14, hd + 0.18], cementBandMat);
   box(exteriorStatic, [ENT_MAX_X - ENT_MIN_X + 1.34, 0.10, 0.86], [ENT_CX, doorTopY + 0.32, hd + 0.18], cementTrimMat);
   box(dynamicG, [2.70, 0.05, 0.22], [ENT_CX, doorTopY - 0.02, hd + 0.28], shared.liftLed, { castShadow: false });
-  const gateGlowLight = new THREE.PointLight(0xfff4d6, 2.8, 16.0, 1.35);
-  gateGlowLight.position.set(ENT_CX, doorTopY - 0.16, hd + 1.15);
-  dynamicG.add(gateGlowLight);
+  // Entrance glow handled by emissive LED bar above gate (zero global PointLight shader overhead)
 
   // Glowing Emerald & Steel Nameplate Signboard above Gate
   const signTex = makeNameplateTexture(nameBn, 'প্রতি তলায় ৪টি বড় ফ্ল্যাট · গ্যারেজ ও ছাদ বাগান [E]');

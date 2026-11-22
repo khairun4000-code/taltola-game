@@ -826,13 +826,7 @@ export function buildKhulnaModelMosque3D(outerStaticG, outerDynamicG, bank) {
       wrapper.position.set(175.0, MOSQUE_BASE_Y, 166.0);
       dynamicG.add(wrapper);
 
-      // Permanent warm interior lighting for the Grand Prayer Hall & Mihrab (never toggled visible/invisible -> zero lag!)
-      const hallLight = new THREE.PointLight(0xffe8bb, 1.35, 28, 1.6);
-      hallLight.position.set(168.4, 9.2, 166.0);
-      dynamicG.add(hallLight);
-      const mihrabLight = new THREE.PointLight(0xffdfb0, 0.85, 16, 1.7);
-      mihrabLight.position.set(162.8, 6.8, 166.0);
-      dynamicG.add(mihrabLight);
+      // Interior lighting handled by emissive chandelier/LED fixtures + main.js single pooled indoorLight (zero global PointLight shader overhead)
     },
     undefined,
     (err) => {
@@ -1452,19 +1446,7 @@ export function buildKhulnaModelMosque3D(outerStaticG, outerDynamicG, bank) {
   // GRAND 4-TIER BRASS & CRYSTAL CHANDELIER SUSPENDED UNDER THE CENTRAL DOME!
   addOrnateChandelier(staticG, dynamicG, mats, MX, Y_ROOF - 0.12, MZ, 1.08, 5.2);
 
-  // REAL WARM INTERIOR POINT LIGHTS (keep pl.visible=true permanently and modulate intensity=0 outside so Three.js NEVER recompiles shaders!)
-  const hallChandelierLight = new THREE.PointLight(0xffe7b3, 0, 28, 1.4);
-  hallChandelierLight.position.set(MX, Y2 + 0.4, MZ);
-  const mihrabWarmLight = new THREE.PointLight(0xffe0a0, 0, 16, 1.5);
-  mihrabWarmLight.position.set(X_WEST + 2.5, Y1 + 2.8, MZ);
-  const groundFoyerLight = new THREE.PointLight(0xfff0cc, 0, 18, 1.5);
-  groundFoyerLight.position.set(174.0, Y1 - 0.6, 166.0);
-  dynamicG.add(hallChandelierLight, mihrabWarmLight, groundFoyerLight);
-  mosqueState.pointLights.push(
-    { light: hallChandelierLight, day: 1.5, night: 4.8 },
-    { light: mihrabWarmLight, day: 1.1, night: 3.4 },
-    { light: groundFoyerLight, day: 1.0, night: 3.2 },
-  );
+  // Interior lighting handled by emissive ceiling LEDs/chandeliers + main.js single pooled indoorLight (zero global PointLight overhead)
 
   /* --------------------------------------------------------------------------
    * 7. PURE WHITE ROOF PARAPET, 4 SCULPTED RIBBED DOMES & 33m WHITE JAALI MINARET

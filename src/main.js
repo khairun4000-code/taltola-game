@@ -1306,7 +1306,7 @@ function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynam
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
   const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 1e-4 || Math.abs(snapZ - lastSunAnchorZ) > 1e-4;
-  const shadowCadenceMs = quality === 'low' ? 140 : (quality === 'medium' ? 85 : 66);
+  const shadowCadenceMs = quality === 'low' ? 160 : (quality === 'medium' ? 105 : (quality === 'high' ? 80 : 70));
   const elapsedSinceShadow = nowPerf - lastShadowUpdateAt;
   if (anchorMoved && (lastShadowUpdateAt === 0 || elapsedSinceShadow >= shadowCadenceMs)) {
     lastSunAnchorX = snapX;
@@ -1337,9 +1337,9 @@ function applyQuality(nextQuality) {
   const isLow = quality === 'low';
   const isUltra = quality === 'ultra';
   const isHigh = quality === 'high';
-  // Crisp full native PC pixel ratios (ZERO resolution drop — GTA V/VI sharpness with smooth 60-120 FPS!)
+  // Crisp full native PC pixel ratios (ZERO resolution drop across ALL tiers including Smooth/Low!)
   const ratios = {
-    low: Math.min(dpr, 0.85),
+    low: Math.min(dpr, 1.0),
     medium: Math.min(dpr, 1.0),
     high: Math.min(dpr, 1.35),
     ultra: Math.min(dpr, 1.65),
@@ -1370,9 +1370,9 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = isLow ? 150 : (quality === 'medium' ? 210 : (isUltra ? 340 : 280));
-    scene.fog.far = isLow ? 360 : (quality === 'medium' ? 540 : (isUltra ? 920 : 780));
-    camera.far = isLow ? 420 : (quality === 'medium' ? 620 : (isUltra ? 1050 : 880));
+    scene.fog.near = isLow ? 135 : (quality === 'medium' ? 200 : (isUltra ? 340 : 270));
+    scene.fog.far = isLow ? 310 : (quality === 'medium' ? 490 : (isUltra ? 880 : 720));
+    camera.far = isLow ? 360 : (quality === 'medium' ? 560 : (isUltra ? 980 : 820));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
@@ -1487,9 +1487,9 @@ function setupLighting() {
   fillDirLight.position.set(-8, 6, -6);
   scene.add(fillDirLight);
 
-  // Dynamic warm indoor point light that illuminates room furniture, PBR velvet/wood & ceramic tiles when indoors
-  indoorLight = new THREE.PointLight(0xfff3d8, 1.45, 11.5, 1.35);
-  indoorLight.visible = false;
+  // Single pooled warm indoor PointLight (permanently visible=true, intensity modulated so ZERO shader recompilation hitches!)
+  indoorLight = new THREE.PointLight(0xfff3d8, 0, 14.5, 1.35);
+  indoorLight.visible = true;
   scene.add(indoorLight);
 
   applyQuality(quality);
@@ -4235,6 +4235,7 @@ window.addEventListener('keydown', (event) => {
         environment?.altapoleGoli?.toggleAllDoors?.();
       }
       environment?.landmarks?.circuitHouse?.toggleGate?.(activeCar.state.pos);
+      environment?.landmarks?.judgeCourt?.toggleGate?.(activeCar.state.pos);
       environment?.landmarks?.aliaMadrasah?.toggleGate?.(activeCar.state.pos);
       environment?.landmarks?.ptiMore?.toggleGate?.(activeCar.state.pos);
       syncHUDButtons();
@@ -4322,6 +4323,7 @@ window.addEventListener('keydown', (event) => {
         environment?.altapoleGoli?.toggleAllDoors?.();
       }
       environment?.landmarks?.circuitHouse?.toggleGate?.(activeCar.state.pos);
+      environment?.landmarks?.judgeCourt?.toggleGate?.(activeCar.state.pos);
       environment?.landmarks?.aliaMadrasah?.toggleGate?.(activeCar.state.pos);
       environment?.landmarks?.ptiMore?.toggleGate?.(activeCar.state.pos);
       syncHUDButtons();
@@ -5785,8 +5787,9 @@ function updateMovement(delta) {
       }
 
       if (indoorLight) {
-        indoorLight.visible = quality !== 'low' && quality !== 'medium';
-        indoorLight.position.set(playerPos.x, playerPos.y + 0.65, playerPos.z);
+        const wantI = quality !== 'low' ? 1.55 : 0;
+        if (indoorLight.intensity !== wantI) indoorLight.intensity = wantI;
+        if (wantI > 0) indoorLight.position.set(playerPos.x, playerPos.y + 0.65, playerPos.z);
       }
       updateHUDPrompt();
       return;
@@ -6055,8 +6058,9 @@ function updateMovement(delta) {
     || Boolean(environment?.landmarks?.satrastaMore?.getZoneName?.(playerPos.x, playerPos.z, camFootY) && !environment?.landmarks?.satrastaMore?.getZoneName?.(playerPos.x, playerPos.z, camFootY)?.includes('KDA AVENUE'));
 
   if (indoorLight) {
-    indoorLight.visible = insideHouse && quality !== 'low' && quality !== 'medium';
-    if (indoorLight.visible) {
+    const wantI = (insideHouse && quality !== 'low') ? 1.55 : 0;
+    if (indoorLight.intensity !== wantI) indoorLight.intensity = wantI;
+    if (wantI > 0) {
       indoorLight.position.set(playerPos.x, playerPos.y + 0.55, playerPos.z);
     }
   }

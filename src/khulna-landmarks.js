@@ -1733,6 +1733,13 @@ export function buildKhulnaLandmarks(parent, m) {
     hajiKaborkhana.syncVisibility(playerPos);
   }
 
+  function setQualityMode(q = 'medium') {
+    const d = q === 'low' ? 340 : (q === 'medium' ? 480 : (q === 'high' ? 640 : 780));
+    circuitHadisSlice.maxDistSq = d * d;
+    circuitHouse.setQualityMode?.(q);
+    judgeCourt.setQualityMode?.(q);
+  }
+
   return {
     group,
     circuitHouse,
@@ -1743,6 +1750,7 @@ export function buildKhulnaLandmarks(parent, m) {
     satrastaMore,
     kjaCorridor,
     hajiKaborkhana,
+    setQualityMode,
     syncVisibility,
     getGroundHeight(pos) {
       let hadisY = 0;

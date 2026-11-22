@@ -500,6 +500,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     },
     setQualityMode(qualityMode) {
       city.setQualityMode?.(qualityMode);
+      landmarks.setQualityMode?.(qualityMode);
       traffic.setVisible?.(true);
     },
     setFogBounds(near, far) {
