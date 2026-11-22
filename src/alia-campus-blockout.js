@@ -28,7 +28,7 @@ import { attachDerivedPBRMaps } from './aaa-shaders.js';
  *     - Primary School (খুলনা আলিয়া প্রাইমারি স্কুল — video 03:23-03:34) & Girls' Wing (মহিলা শাখা — video 03:38-03:50)
  */
 
-const KJA_ANGLE = -0.528; // Exact angle of Khan Jahan Ali Road (-30.25° in XZ)
+const KJA_ANGLE = -0.504; // Exact angle of Khan Jahan Ali Road (-28.86° in XZ along [166.6,202.9]->[284.2,267.7])
 
 function seeded(seed = 195299) {
   let s = seed >>> 0;
@@ -678,10 +678,10 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
    *    -> past Model Mosque (Left) & Covered Pukur Ghat (Right)
    *    -> straight North along Big Playground -> Main Alia Madrasah Portico!
    * ======================================================================== */
-  // Straight-ahead Concrete Main Road from Main Gate (184, 207.5) directly into Main Portico Building (184, 86.0)!
+  // Straight-ahead Concrete Main Road joining Khan Jahan Ali Rd (z=213.5) cleanly through Main Gate (184, 201.5) into Main Portico (184, 86.0)!
   addRoadRibbon(staticG, [
-    [184.0, 217.0],
-    [184.0, 207.5],
+    [184.0, 213.5],
+    [184.0, 201.5],
     [184.0, 172.0],
     [184.0, 136.0],
     [184.0, 106.0],
@@ -805,11 +805,11 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, demoColliders);
 
   /* ==========================================================================
-   * 3. REAL-VIDEO MAIN GATE ON KHAN JAHAN ALI ROAD (gx = 184.0, gz = 207.5)
+   * 3. REAL-VIDEO MAIN GATE ON KHAN JAHAN ALI ROAD (gx = 184.0, gz = 201.5 — 100% clear of road & sidewalk!)
    *    White double metal gates + authentic white overhead Arabic/Bengali/English signboard!
    * ======================================================================== */
   const gx = 184.0;
-  const gz = 207.5;
+  const gz = 201.5;
   // Aligned 0° straight North (-Z) directly facing the Main Portico Building & Principal's Office!
   const gateGroup = new THREE.Group();
   gateGroup.position.set(gx, 0, gz);
@@ -820,21 +820,6 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   gateDynGroup.position.set(gx, 0, gz);
   gateDynGroup.rotation.y = 0;
   dynamicG.add(gateDynGroup);
-
-  // Exterior Alia Madrasah Boundary Wall & Tall White-Plaster Pillars along South Perimeter (outside campus!)
-  for (const seg of [
-    { x0: 136.0, x1: 178.8 },
-    { x0: 189.2, x1: 242.0 },
-  ]) {
-    const segW = seg.x1 - seg.x0;
-    const segCx = (seg.x0 + seg.x1) * 0.5;
-    box(staticG, [segW, 1.95, 0.32], [segCx, 0.98, gz], bank.whitePlaster);
-    box(staticG, [segW + 0.08, 0.14, 0.42], [segCx, 2.02, gz], bank.stonePlinth);
-    for (let px = seg.x0; px <= seg.x1 + 0.1; px += 4.8) {
-      box(staticG, [0.58, 2.65, 0.58], [px, 1.32, gz], bank.whitePlaster);
-      box(staticG, [0.70, 0.16, 0.70], [px, 2.72, gz], bank.stonePlinth);
-    }
-  }
 
   for (const dx of [-4.4, 4.4]) {
     box(gateGroup, [1.05, 5.2, 1.05], [dx, 2.6, 0], bank.whitePlaster);
@@ -872,23 +857,18 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   mkLeaf(rightLeaf, -1);
   gateDynGroup.add(leftLeaf, rightLeaf);
 
-  // SW Boundary Wall flush along Khan Jahan Ali Road
-  const cosA = Math.cos(KJA_ANGLE);
-  const sinA = Math.sin(KJA_ANGLE);
-  const gateLeftX = gx - 5.0 * cosA;
-  const gateLeftZ = gz + 5.0 * sinA;
-  const gateRightX = gx + 5.0 * cosA;
-  const gateRightZ = gz - 5.0 * sinA;
-  addWallSpan(staticG, demoColliders, 128.0, 175.0, gateLeftX, gateLeftZ, bank, 1.95);
-  addWallSpan(staticG, demoColliders, gateRightX, gateRightZ, 258.0, 236.0, bank, 1.95);
-  addWallSpan(staticG, demoColliders, 128.0, 175.0, 128.0, 52.0, bank, 1.95);
+  // SW Boundary Wall strictly along the North-East (campus) side of Khan Jahan Ali Road (8.4m+ clear of centerline — ZERO road encroachment!)
+  addWallSpan(staticG, demoColliders, 128.0, 171.2, gx - 5.0, gz, bank, 1.95);
+  addWallSpan(staticG, demoColliders, gx + 5.0, gz, gx + 5.0, gz + 4.0, bank, 1.95);
+  addWallSpan(staticG, demoColliders, gx + 5.0, gz + 4.0, 258.0, 243.5, bank, 1.95);
+  addWallSpan(staticG, demoColliders, 128.0, 171.2, 128.0, 52.0, bank, 1.95);
   addWallSpan(staticG, demoColliders, 128.0, 52.0, 258.0, 52.0, bank, 1.95);
-  addWallSpan(staticG, demoColliders, 258.0, 52.0, 258.0, 236.0, bank, 1.95);
+  addWallSpan(staticG, demoColliders, 258.0, 52.0, 258.0, 243.5, bank, 1.95);
 
-  /* ---- DARWAN GUARD ROOM / SECURITY POST RIGHT INSIDE RIGHT SIDE OF MAIN GATE (user video 02:40-03:20!) ---- */
+  /* ---- DARWAN GUARD ROOM / SECURITY POST RIGHT INSIDE RIGHT SIDE OF MAIN GATE (100% inside campus!) ---- */
   const drGroup = new THREE.Group();
-  drGroup.position.set(gx + 6.4 * cosA - 2.6 * sinA, 0, gz - 6.4 * sinA - 2.6 * cosA);
-  drGroup.rotation.y = KJA_ANGLE;
+  drGroup.position.set(191.2, 0, 198.2);
+  drGroup.rotation.y = 0;
   staticG.add(drGroup);
   // Concrete plinth + white plastered guard cabin (3.4m × 3.0m) with open doorway & grilled observation window
   box(drGroup, [3.6, 0.24, 3.2], [0, 0.12, 0], bank.stonePlinth);
@@ -913,11 +893,11 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   drSign.position.set(0, 2.85, 1.56);
   drGroup.add(drSign);
 
-  /* ---- WALKABLE 3-STORY OCHRE ETIMKHANA BUILDING (ভেতরে ঢোকা যাবে — user video 03:20-03:45!) ---- */
-  const etX = 164.5;
-  const etZ = 192.5;
-  const etW = 28.0;
-  const etD = 13.0;
+  /* ---- WALKABLE 3-STORY OCHRE ETIMKHANA BUILDING (set cleanly inside campus boundary — ZERO road overlap!) ---- */
+  const etX = 162.5;
+  const etZ = 181.5;
+  const etW = 24.0;
+  const etD = 11.0;
   const etGroup = new THREE.Group();
   etGroup.position.set(etX, 0, etZ);
   etGroup.rotation.y = KJA_ANGLE;
@@ -928,28 +908,28 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   box(etGroup, [etW, 3.2, 0.36], [0, 1.90,  etD * 0.5 - 0.18], mats.demoOchre); // South wall
   box(etGroup, [0.36, 3.2, etD], [-etW * 0.5 + 0.18, 1.90, 0], mats.demoOchre); // West wall
   // East wall facing main campus road: WIDE OPEN CENTER ENTRANCE (3.4m wide!)
-  box(etGroup, [0.36, 3.2, 4.6], [etW * 0.5 - 0.18, 1.90, -4.1], mats.demoOchre);
-  box(etGroup, [0.36, 3.2, 4.6], [etW * 0.5 - 0.18, 1.90,  4.1], mats.demoOchre);
-  box(etGroup, [0.36, 0.7, 3.8], [etW * 0.5 - 0.18, 3.15,  0.0], mats.demoOchre);
+  box(etGroup, [0.36, 3.2, 3.8], [etW * 0.5 - 0.18, 1.90, -3.6], mats.demoOchre);
+  box(etGroup, [0.36, 3.2, 3.8], [etW * 0.5 - 0.18, 1.90,  3.6], mats.demoOchre);
+  box(etGroup, [0.36, 0.7, 3.6], [etW * 0.5 - 0.18, 3.15,  0.0], mats.demoOchre);
   // Interior pillars & student beds/desks inside the walkable ground hall
-  for (const ix of [-8.0, 0.0, 8.0]) {
-    box(etGroup, [0.42, 3.2, 0.42], [ix, 1.90, -2.5], bank.whitePlaster);
-    box(etGroup, [0.42, 3.2, 0.42], [ix, 1.90,  2.5], bank.whitePlaster);
-    box(etGroup, [2.1, 0.55, 1.0], [ix - 2.4, 0.58, -4.6], bank.teakWood);
-    box(etGroup, [2.1, 0.55, 1.0], [ix - 2.4, 0.58,  4.6], bank.teakWood);
+  for (const ix of [-7.2, 0.0, 7.2]) {
+    box(etGroup, [0.42, 3.2, 0.42], [ix, 1.90, -2.2], bank.whitePlaster);
+    box(etGroup, [0.42, 3.2, 0.42], [ix, 1.90,  2.2], bank.whitePlaster);
+    box(etGroup, [2.1, 0.55, 1.0], [ix - 2.0, 0.58, -4.2], bank.teakWood);
+    box(etGroup, [2.1, 0.55, 1.0], [ix - 2.0, 0.58,  4.2], bank.teakWood);
   }
   // 2nd & 3rd floors above with balconies, terracotta trims & windows
   box(etGroup, [etW + 0.2, 0.26, etD + 0.2], [0, 3.55, 0], mats.demoBand);
   box(etGroup, [etW, 6.4, etD], [0, 6.85, 0], mats.demoOchre);
   box(etGroup, [etW + 0.35, 0.28, etD + 0.35], [0, 10.18, 0], mats.demoRedRoof);
   box(etGroup, [etW + 0.2, 0.14, etD + 0.2], [0, 6.85, 0], mats.demoBand);
-  for (let wx = -11.0; wx <= 11.0; wx += 4.4) {
+  for (let wx = -9.5; wx <= 9.6; wx += 4.75) {
     for (const wy of [5.2, 8.4]) {
       box(etGroup, [1.8, 1.5, 0.16], [wx, wy,  etD * 0.5 + 0.04], bank.glassCurtain, { castShadow: false });
       box(etGroup, [1.8, 1.5, 0.16], [wx, wy, -etD * 0.5 - 0.04], bank.glassCurtain, { castShadow: false });
     }
   }
-  const etSignTex = makeDemoLabelTex('খুলনা আলিয়া মাদ্রাসা এতিমখানা', 'ETIMKHANA (SALIMA BHABAN · WALKABLE)', '২৮মি × ১৩মি · ৩ তলা', '#78350f');
+  const etSignTex = makeDemoLabelTex('খুলনা আলিয়া মাদ্রাসা এতিমখানা', 'ETIMKHANA (SALIMA BHABAN · WALKABLE)', '২৪মি × ১১মি · ৩ তলা', '#78350f');
   const etSign = new THREE.Mesh(new THREE.PlaneGeometry(8.5, 2.2), new THREE.MeshBasicMaterial({ map: etSignTex, side: THREE.DoubleSide }));
   etSign.position.set(etW * 0.5 + 0.22, 5.2, 0);
   etSign.rotation.y = Math.PI * 0.5;
