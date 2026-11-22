@@ -1536,6 +1536,9 @@ function toggleRunMode() {
 }
 
 function getActiveLiftTower() {
+  if (environment?.landmarks?.judgeCourt?.isInTowerFootprint?.(playerPos, 6.0)) {
+    return environment.landmarks.judgeCourt;
+  }
   if (environment?.altapoleTower?.isInTowerFootprint?.(playerPos, 10.0)) {
     return environment.altapoleTower;
   }
@@ -2504,9 +2507,15 @@ function handleDoorInteraction(allowClimbFallback = false) {
     return true;
   }
   const nearSeat = findNearestSeat(playerPos);
-  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house?.getPrompt(playerPos));
+  const hasDoorOrLiftPrompt = Boolean(environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.judgeCourt?.getPrompt?.(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house?.getPrompt(playerPos));
   if (nearSeat && (!hasDoorOrLiftPrompt || nearSeat.dist < 1.25)) {
     sitOnSeat(nearSeat);
+    return true;
+  }
+  const judgeRes = environment?.landmarks?.judgeCourt?.interact?.(playerPos);
+  if (judgeRes) {
+    if (judgeRes === 'open_lift_keypad') openLiftKeypad();
+    syncHUDButtons(false, true);
     return true;
   }
   const towerRes = environment?.tower?.interact(playerPos);
@@ -3631,6 +3640,11 @@ function warpToLandmark(lm, lockControls = false) {
     sz = 166.0;
     lx = 171.0;
     lz = 166.0;
+  } else if (lm.id === 'khulna_judge_court') {
+    sx = 144.5;
+    sz = -676.0;
+    lx = 188.0;
+    lz = -676.0;
   }
 
   if (activeCar) {
@@ -4693,6 +4707,8 @@ function findNearestSeat(pos) {
   if (altSeat) return altSeat;
   const goliSeat = environment?.altapoleGoli?.findNearestSeat?.(pos);
   if (goliSeat) return goliSeat;
+  const judgeSeat = environment?.landmarks?.judgeCourt?.findNearestSeat?.(pos);
+  if (judgeSeat) return judgeSeat;
   const mosqueSeat = environment?.landmarks?.aliaMadrasah?.findNearestModelMosqueSeat?.(pos);
   if (mosqueSeat) return mosqueSeat;
   const satrastaSeat = environment?.landmarks?.satrastaMore?.findNearestSeat?.(pos);
@@ -4769,6 +4785,12 @@ function computeGroundHeight(pos, isGroundedOverride = grounded, velYOverride = 
   if (altTowerY !== null && altTowerY !== undefined) return altTowerY;
   const altGoliY = environment?.altapoleGoli?.computeGroundHeight?.(pos, isGroundedOverride, velYOverride);
   if (altGoliY !== null && altGoliY !== undefined) return altGoliY;
+
+  // --- KHULNA DISTRICT & SESSIONS JUDGE COURT WALKABLE INTERIORS (delegated to khulna-judge-court.js) ---
+  if (pos.x >= 149.0 && pos.x <= 206.0 && pos.z >= -716.0 && pos.z <= -632.0) {
+    const judgeY = environment?.landmarks?.judgeCourt?.getGroundHeight?.(pos, isGroundedOverride, velYOverride);
+    if (typeof judgeY === 'number' && judgeY > 0) return judgeY;
+  }
 
   // --- KHULNA ALIA KAMIL MADRASAH & MODEL MOSQUE WALKABLE INTERIORS (delegated to alia-madrasah.js) ---
   if (pos.x >= 156.0 && pos.x <= 196.0 && pos.z >= 74.0 && pos.z <= 184.0) {
@@ -5335,7 +5357,7 @@ function updateHUDPrompt(force = true) {
           ? '🔴 ON AIR · কথা বলুন (ইকো চালু) — [M] মাইক বন্ধ করুন'
           : '🎙️ [M] প্রিন্সিপালের মাইক অন করুন (পুরো আলিয়া মাদ্রাসায় ইকো শোনা যাবে)')
         : null;
-      const doorOrLiftPrompt = micPrompt || environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
+      const doorOrLiftPrompt = micPrompt || environment?.tower?.getPrompt(playerPos) || environment?.altapoleTower?.getPrompt(playerPos) || environment?.altapoleGoli?.getPrompt(playerPos) || environment?.landmarks?.judgeCourt?.getPrompt?.(playerPos) || environment?.landmarks?.aliaMadrasah?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.ptiMore?.getNearbyPrompt?.(playerPos) || environment?.landmarks?.satrastaMore?.getPrompt?.(playerPos) || environment?.altapole?.getPrompt(playerPos) || house.getPrompt(playerPos);
       if (micPrompt) {
         promptText = micPrompt;
       } else if (carPrompt && !doorOrLiftPrompt && !nearSeat) {
@@ -5437,6 +5459,8 @@ function updateHUDPrompt(force = true) {
       zone = environment?.landmarks?.aliaMadrasah?.getModelMosqueZoneName?.(x, z, footY) || 'KHULNA DISTRICT MODEL MOSQUE · ALIA MADRASAH';
     } else if (x >= 144 && x <= 222 && z >= -524 && z <= -292) {
       zone = environment?.altapoleGoli?.getZoneName?.(x, z, footY) || environment?.altapoleTower?.getZoneName?.(x, z, footY) || environment?.altapole?.getZoneName?.(x, z) || 'ALTAPOLE LANE · KHULNA';
+    } else if (environment?.landmarks?.judgeCourt?.getZoneName?.(x, z, footY)) {
+      zone = environment.landmarks.judgeCourt.getZoneName(x, z, footY);
     } else if (environment?.landmarks?.satrastaMore?.getZoneName?.(x, z, footY)) {
       zone = environment.landmarks.satrastaMore.getZoneName(x, z, footY);
     } else if (Math.abs(x) < 35 && Math.abs(z) < 42) {
@@ -6040,6 +6064,7 @@ function updateMovement(delta) {
     || Boolean(environment?.altapole?.isInsideAnyHouse?.(playerPos))
     || Boolean(environment?.altapoleTower?.isInsideAnyRoom?.(playerPos))
     || Boolean(environment?.altapoleGoli?.isInsideAnyRoom?.(playerPos))
+    || Boolean(environment?.landmarks?.judgeCourt?.isInsideBuilding?.(playerPos))
     || Boolean(environment?.landmarks?.aliaMadrasah?.isInsideModelMosque?.(playerPos))
     || Boolean(environment?.landmarks?.satrastaMore?.getZoneName?.(playerPos.x, playerPos.z, camFootY) && !environment?.landmarks?.satrastaMore?.getZoneName?.(playerPos.x, playerPos.z, camFootY)?.includes('KDA AVENUE'));
 

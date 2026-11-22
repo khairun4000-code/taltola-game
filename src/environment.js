@@ -251,7 +251,7 @@ function createWire(parent, points, radius, material) {
 }
 
 function buildRoad(parent, m) {
-  box(parent, [4.2, 0.14, 84], [0, -0.055, 0], m.road, { uvScale: 5.5, castShadow: false });
+  box(parent, [4.2, 0.14, 84], [0, -0.068, 0], m.road, { uvScale: 5.5, castShadow: false });
   box(parent, [34, 0.18, 86], [0, -0.39, 0], m.darkConcrete, { castShadow: false });
   for (const side of [-1, 1]) {
     const x = side * 2.36;
@@ -342,7 +342,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
   mergeStaticMeshes(wiresStaticGroup);
   mergeStaticMeshes(taltolaWiresGroup);
 
-  const city = buildKhulnaCity(group, renderer, skySystem, m.shaderUniforms);
+  const city = buildKhulnaCity(group, renderer, skySystem, m.shaderUniforms, m.road);
   const landmarks = buildKhulnaLandmarks(group, m);
   const tower = buildHajiMohsinRoad(group, m);
   const wildlife = buildKhulnaWildlife(group);
@@ -511,7 +511,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
       m.setShaderTime?.(time);
       city.animateWater(time);
       city.updatePoles?.(envDt);
-      landmarks.update(time);
+      landmarks.update(time, playerPos);
       if (!skipSyncVisibility) syncVisibility(playerPos);
       corridors.update(time, playerPos, true);
       traffic.update(time, playerPos);

@@ -77,6 +77,14 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       x: 154.0,
       z: 156.0,
     },
+    {
+      id: 'khulna_judge_court',
+      n: 'Khulna District Judge Court',
+      bn: 'খুলনা জেলা ও দায়রা জজ আদালত (কে.ডি. ঘোষ রোড)',
+      c: 'hero',
+      x: 188.0,
+      z: -676.0,
+    },
   ];
   const ptiIdx = visibleLandmarks.findIndex((lm) => lm.id === 'pti_more');
   if (ptiIdx > 0) {

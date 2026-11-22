@@ -9,6 +9,7 @@ import { buildAliaMadrasahDistrict } from './alia-madrasah.js';
 import { buildSatrastaMoreDistrict } from './satrasta-more.js';
 import { buildKjaCorridorDistrict } from './kja-corridor.js';
 import { buildHajiKaborkhanaCorridor } from './haji-kaborkhana-corridor.js';
+import { buildKhulnaJudgeCourt } from './khulna-judge-court.js';
 
 function makeSignTexture({
   title,
@@ -1216,127 +1217,14 @@ function buildCircuitHouseAndStadium(staticG, dynamicG, lm, m) {
     addParkLamp(staticG, dynamicG, lm, cx - 19.5, cz + 8.0, 4.2);
   }
 
-  // 2C) GRAND KHULNA JUDGE COURT & CJM COURT COMPLEX (খুলনা জেলা ও দায়রা জজ আদালত — Directly Opposite Circuit House across Circuit House Rd!)
-  // Massive 8-story judicial landmark (66m long x 26m wide x 27.5m tall — much larger than Altapole Lane 6-story tower!)
+  // 2C) GRAND KHULNA JUDGE COURT & CJM COURT COMPLEX is built as an ultra-high-quality, 100% enterable 9-story module in ./khulna-judge-court.js!
+  // 2D) SOUTH COURT ANNEX / KHULNA DISTRICT BAR ASSOCIATION BUILDING (cx = 186, cz = -618, 4-story, 34m x 20m)
   {
-    const courtX = 188.0;
-    const courtZ = -676.0;
-    const courtW = 26.0; // X depth
-    const courtL = 66.0; // Z length (66 meters long!)
-    const floors = 8;
-    const flH = 3.35;
-    const totalH = floors * flH; // 26.8m + roof parapet = ~28.5m tall!
-
-    // Spacious Paved Court Forecourt & Driveway Plaza (x = 152..204, z = -714..-598)
-    box(staticG, [56.0, 0.08, 118.0], [178.0, 0.025, -656.0], lm.stonePlinth, { castShadow: false, uvScale: 3.4 });
-    box(staticG, [24.0, 0.09, 108.0], [163.0, 0.035, -656.0], m.brick, { castShadow: false, uvScale: 2.6 });
-
-    // Court Perimeter Wall along West Frontage (x = 151.5 facing Circuit House Rd, wide 14m Main Gate gap at z = -683..-669)
-    for (const [z0, z1] of [[-714.0, -683.5], [-668.5, -598.0]]) {
-      const len = z1 - z0;
-      const mid = (z0 + z1) * 0.5;
-      box(staticG, [0.42, 1.35, len], [151.5, 0.68, mid], courtBrickMat, { uvScale: 2.2 });
-      box(staticG, [0.54, 0.16, len + 0.2], [151.5, 1.42, mid], lm.whitePlaster);
-      addRailingSpan(staticG, lm, 151.5, z0, 151.5, z1, Math.max(6, Math.floor(len / 4)), 1.05, 1.50);
-    }
-
-    // Grand Khulna Judge Court Main Entrance Gate facing Circuit House Rd (x = 151.5, z = -676)
-    for (const gz of [-683.2, -668.8]) {
-      box(staticG, [1.65, 6.2, 1.65], [151.5, 3.1, gz], lm.whitePlaster);
-      box(staticG, [1.85, 0.36, 1.85], [151.5, 6.35, gz], courtBrickMat);
-      const globe = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), lm.bulbGlow);
-      globe.position.set(151.5, 6.82, gz);
-      dynamicG.add(globe);
-    }
-    box(staticG, [1.5, 1.45, 16.4], [151.5, 6.45, -676.0], courtBluePortico);
-    box(staticG, [1.7, 0.28, 16.8], [151.5, 7.28, -676.0], lm.whitePlaster);
-    addSignBoard(
-      dynamicG,
-      { title: 'খুলনা জেলা ও দায়রা জজ আদালত', subtitle: 'KHULNA DISTRICT & SESSIONS JUDGE COURT · MAIN GATE', bg: '#1e3a5f', fg: '#ffffff', accent: '#fef08a', border: '#ffffff' },
-      [150.65, 6.45, -676.0],
-      -Math.PI * 0.5,
-      12.8,
-      1.65
-    );
-    addBdFlagPole(161.0, -686.0, 11.0);
-    addParkLamp(staticG, dynamicG, lm, 156.0, -684.0, 4.6);
-    addParkLamp(staticG, dynamicG, lm, 156.0, -668.0, 4.6);
-    addParkLamp(staticG, dynamicG, lm, 156.0, -636.0, 4.6);
+    box(staticG, [54.0, 0.08, 36.0], [178.0, 0.024, -616.0], lm.stonePlinth, { castShadow: false, uvScale: 3.4 });
+    box(staticG, [0.42, 1.35, 36.0], [151.5, 0.68, -616.0], courtBrickMat, { uvScale: 2.2 });
+    box(staticG, [0.54, 0.16, 36.2], [151.5, 1.42, -616.0], lm.whitePlaster);
+    addRailingSpan(staticG, lm, 151.5, -634.0, 151.5, -598.0, 9, 1.05, 1.50);
     addParkLamp(staticG, dynamicG, lm, 156.0, -612.0, 4.6);
-
-    // MASSIVE 8-STORY MAIN JUDICIAL BUILDING (Authentic Red-Brick Pilasters + White Baluster Verandas + Slate-Blue Portico!)
-    box(staticG, [courtW + 1.4, 0.85, courtL + 1.4], [courtX, 0.425, courtZ], lm.stonePlinth);
-    box(staticG, [courtW, totalH, courtL], [courtX, 0.85 + totalH * 0.5, courtZ], lm.whitePlaster);
-    // Slightly taller central 3-bay judicial tower crest + rooftop stairhead & water tanks
-    box(staticG, [courtW + 0.8, 3.2, 22.0], [courtX, 0.85 + totalH + 1.6, courtZ], lm.whitePlaster);
-    box(staticG, [courtW + 1.4, 0.48, 22.8], [courtX, 0.85 + totalH + 3.3, courtZ], courtBrickMat);
-    box(staticG, [courtW + 1.0, 0.85, courtL + 1.0], [courtX, 0.85 + totalH + 0.42, courtZ], courtBrickMat);
-
-    // 10 Exposed Red-Brick Vertical Structural Pilaster Columns running all 8 stories on BOTH West & East facades!
-    const numBays = 10;
-    const baySpan = (courtL - 2.0) / numBays;
-    for (let i = 0; i <= numBays; i++) {
-      const bz = courtZ - (courtL - 2.0) * 0.5 + i * baySpan;
-      const pilW = (i === 0 || i === numBays || i === 3 || i === 7) ? 1.35 : 0.92;
-      box(staticG, [0.95, totalH + 0.6, pilW], [courtX - courtW * 0.5 - 0.12, 0.85 + totalH * 0.5, bz], courtBrickMat, { uvScale: 2.4 });
-      box(staticG, [0.95, totalH + 0.6, pilW], [courtX + courtW * 0.5 + 0.12, 0.85 + totalH * 0.5, bz], courtBrickMat, { uvScale: 2.4 });
-    }
-
-    // 8 Floors of Recessed Shaded Verandas, White Slatted Balustrade Railings & Glazed Courtroom Windows!
-    for (let fl = 0; fl < floors; fl++) {
-      const fy = 0.85 + fl * flH;
-      // Continuous horizontal floor slab projection
-      box(staticG, [courtW + 0.9, 0.28, courtL + 0.6], [courtX, fy + flH, courtZ], lm.whitePlaster);
-      for (let b = 0; b < numBays; b++) {
-        const bz = courtZ - (courtL - 2.0) * 0.5 + (b + 0.5) * baySpan;
-        const openW = baySpan - 1.15;
-        // Dark recessed veranda cavity + glass courtroom window behind
-        box(staticG, [0.35, flH - 0.55, openW], [courtX - courtW * 0.5 + 0.10, fy + flH * 0.52, bz], lm.cavityMat);
-        box(staticG, [0.22, flH - 0.70, openW], [courtX + courtW * 0.5 - 0.05, fy + flH * 0.52, bz], lm.glass);
-        // White baluster veranda railing on upper floors (floors 1..7)
-        if (fl > 0) {
-          box(staticG, [0.28, 0.96, openW + 0.1], [courtX - courtW * 0.5 - 0.22, fy + 0.56, bz], lm.whitePlaster);
-          box(staticG, [0.28, 0.96, openW + 0.1], [courtX + courtW * 0.5 + 0.22, fy + 0.56, bz], lm.whitePlaster);
-        }
-        // Signature arched top-floor (8th floor) header band matching real Khulna CJM Court photo!
-        if (fl === floors - 1) {
-          box(staticG, [0.42, 0.52, openW + 0.1], [courtX - courtW * 0.5 - 0.18, fy + flH - 0.32, bz], courtBrickMat);
-        }
-      }
-    }
-
-    // ICONIC SLATE-BLUE CANTILEVERED GRAND ENTRANCE PORTICO (Exact match to real Khulna Court photo!)
-    const portX = courtX - courtW * 0.5 - 4.8; // x ~ 170.2
-    const portW = 9.8;
-    const portL = 17.2;
-    box(staticG, [portW, 0.36, portL], [portX, 0.18, courtZ], lm.stonePlinth);
-    // Tall white rectangular portico support columns
-    for (const pz of [-portL * 0.44, -portL * 0.16, portL * 0.16, portL * 0.44]) {
-      box(staticG, [0.95, 5.2, 0.95], [portX - portW * 0.42, 2.75, courtZ + pz], lm.whitePlaster);
-    }
-    // Signature Slate-Blue Portico Roof Fascia + Red-Brick Underside Band
-    box(staticG, [portW + 0.8, 1.95, portL + 0.8], [portX, 6.25, courtZ], courtBluePortico);
-    box(staticG, [portW + 0.4, 0.48, portL + 0.4], [portX, 5.15, courtZ], courtBrickMat);
-    // Bold Bengali Signboard on Slate-Blue Portico Fascia
-    addSignBoard(
-      dynamicG,
-      { title: 'চীফ জুডিসিয়াল ম্যাজিস্ট্রেট ও জেলা জজ আদালত, খুলনা', subtitle: 'KHULNA DISTRICT & SESSIONS JUDGE COURT COMPLEX', bg: '#5a768a', fg: '#ffffff', accent: '#fef08a', border: '#e2e8f0' },
-      [portX - portW * 0.5 - 0.46, 6.25, courtZ],
-      -Math.PI * 0.5,
-      15.2,
-      1.75
-    );
-    // High-visibility Roofline Judicial Signboard across the upper facade
-    addSignBoard(
-      dynamicG,
-      { title: 'খুলনা জেলা ও দায়রা জজ আদালত ভবন', subtitle: 'JUDICIAL COURT COMPLEX · KHULNA', bg: '#0f172a', fg: '#ffffff', accent: '#facc15', border: '#a64b38' },
-      [courtX - courtW * 0.5 - 0.55, 0.85 + totalH + 1.65, courtZ],
-      -Math.PI * 0.5,
-      18.5,
-      2.35
-    );
-
-    // 2D) SOUTH COURT ANNEX / KHULNA DISTRICT BAR ASSOCIATION BUILDING (cx = 186, cz = -618, 4-story, 34m x 20m)
     const barX = 186.0;
     const barZ = -618.0;
     const barH = 13.8;
@@ -1960,6 +1848,7 @@ export function buildKhulnaLandmarks(parent, m) {
   const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -100, -700, 820);
 
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
+  const judgeCourt = buildKhulnaJudgeCourt(group, m);
   const aliaMadrasah = buildAliaMadrasahDistrict(group, m);
   const royalMore = buildRoyalMoreDistrict(group, m);
   const ptiMore = buildPtiMoreDistrict(group, m);
@@ -1979,6 +1868,7 @@ export function buildKhulnaLandmarks(parent, m) {
       const want = dx * dx + dz * dz <= s.maxDistSq;
       if (s.root.visible !== want) s.root.visible = want;
     }
+    judgeCourt.syncVisibility(playerPos);
     aliaMadrasah.syncVisibility(playerPos);
     royalMore.syncVisibility(playerPos);
     ptiMore.syncVisibility(playerPos);
@@ -1989,6 +1879,7 @@ export function buildKhulnaLandmarks(parent, m) {
 
   return {
     group,
+    judgeCourt,
     aliaMadrasah,
     royalMore,
     ptiMore,
@@ -2024,6 +1915,7 @@ export function buildKhulnaLandmarks(parent, m) {
       }
       return Math.max(
         hadisY,
+        judgeCourt.getGroundHeight?.(pos) ?? 0,
         aliaMadrasah.getGroundHeight?.(pos) ?? 0,
         royalMore.getGroundHeight?.(pos) ?? 0,
         ptiMore.getGroundHeight?.(pos) ?? 0,
@@ -2050,6 +1942,7 @@ export function buildKhulnaLandmarks(parent, m) {
         blockBox(-297.5, -292.5, -840.4, -839.6); // Main Gate locked double-leaf (Pocket Gate at -292.0..-290.4 stays OPEN!)
         blockBox(-334.5, -329.5, -958.4, -957.6); // Back Gate locked double-leaf (Pocket Gate at -336.6..-335.0 stays OPEN!)
       }
+      judgeCourt.applyCollisions?.(pos, radius, footY, isVehicle);
       aliaMadrasah.applyCollisions?.(pos, radius, footY, isVehicle);
       royalMore.applyCollisions?.(pos, radius, footY);
       ptiMore.applyCollisions?.(pos, radius, footY);
@@ -2058,6 +1951,7 @@ export function buildKhulnaLandmarks(parent, m) {
       hajiKaborkhana.applyCollisions?.(pos, radius, footY);
     },
     setNightFactor(nf) {
+      judgeCourt.setNightFactor(nf);
       aliaMadrasah.setNightFactor(nf);
       royalMore.setNightFactor(nf);
       ptiMore.setNightFactor(nf);
@@ -2067,6 +1961,7 @@ export function buildKhulnaLandmarks(parent, m) {
     },
     update(time, playerPos = null) {
       if (playerPos) syncVisibility(playerPos);
+      judgeCourt.update(time, playerPos);
       aliaMadrasah.update(time, playerPos);
       royalMore.update(time, playerPos);
       ptiMore.update(time, playerPos);
