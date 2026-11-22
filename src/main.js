@@ -128,7 +128,17 @@ let composer = null;
 let bloomPass = null;
 
 function setupPostProcessing() {
-  composer = new EffectComposer(renderer);
+  // WebGL2 MSAA (4x multisampled HalfFloat render target) keeps Night & Sunset RAZOR-SHARP at full native resolution!
+  const isWebGL2 = Boolean(renderer.capabilities?.isWebGL2);
+  const composerRT = new THREE.WebGLRenderTarget(
+    Math.max(1, window.innerWidth),
+    Math.max(1, window.innerHeight),
+    {
+      type: THREE.HalfFloatType,
+      samples: isWebGL2 ? 4 : 0,
+    }
+  );
+  composer = new EffectComposer(renderer, composerRT);
   composer.addPass(new RenderPass(scene, camera));
   bloomPass = new UnrealBloomPass(
     new THREE.Vector2(
@@ -206,7 +216,7 @@ function renderActiveScene() {
     bloomPass && bloomPass.strength > 0.05
     && (timeOfDayId === 'sunset' || timeOfDayId === 'night')
   );
-  if (composer && !inStudio && !ultraFastMode && (quality === 'high' || quality === 'ultra') && needsBloom) {
+  if (composer && !inStudio && !ultraFastMode && quality !== 'low' && needsBloom) {
     composer.render();
   } else {
     renderer.render(scene, camera);
@@ -1298,7 +1308,7 @@ function setUltraFastPerf(enabled) {
 
 function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynamic = false) {
   if (!sun || inStudio) return;
-  const radius = quality === 'ultra' ? 34 : (quality === 'high' ? 30 : (quality === 'medium' ? 25 : 20));
+  const radius = quality === 'ultra' ? 30 : (quality === 'high' ? 26 : (quality === 'medium' ? 22 : 18));
   const mapSize = sun.shadow.mapSize.x || 1024;
   const worldUnitsPerTexel = (radius * 2) / mapSize;
 
@@ -1306,8 +1316,8 @@ function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynam
   const snapX = Math.round(focusPos.x / worldUnitsPerTexel) * worldUnitsPerTexel;
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
-  const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 1e-4 || Math.abs(snapZ - lastSunAnchorZ) > 1e-4;
-  const shadowCadenceMs = quality === 'low' ? 180 : (quality === 'medium' ? 120 : (quality === 'high' ? 95 : 80));
+  const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 0.12 || Math.abs(snapZ - lastSunAnchorZ) > 0.12;
+  const shadowCadenceMs = quality === 'low' ? 180 : (quality === 'medium' ? 130 : (quality === 'high' ? 115 : 110));
   const elapsedSinceShadow = nowPerf - lastShadowUpdateAt;
   if (anchorMoved && (lastShadowUpdateAt === 0 || elapsedSinceShadow >= shadowCadenceMs)) {
     lastSunAnchorX = snapX;
@@ -1356,8 +1366,8 @@ function applyQuality(nextQuality) {
     composer.setPixelRatio(activeRatio);
     composer.setSize(window.innerWidth, window.innerHeight);
     bloomPass?.setSize?.(
-      Math.max(256, Math.floor(window.innerWidth * 0.25)),
-      Math.max(144, Math.floor(window.innerHeight * 0.25))
+      Math.max(256, Math.floor(window.innerWidth * 0.5)),
+      Math.max(144, Math.floor(window.innerHeight * 0.5))
     );
   }
   renderer.shadowMap.enabled = useShadows;
@@ -1428,10 +1438,10 @@ function applyQuality(nextQuality) {
     }
   }
 
-  // Disable expensive dual-lobe clearcoat on MeshPhysicalMaterials in Smooth/Low mode (restores cleanly on Medium/High/Ultra!)
+  // Disable expensive dual-lobe clearcoat on world MeshPhysicalMaterials in Smooth/Low mode (NEVER touch character meshes!)
   const seenPhysMats = new Set();
   scene.traverse((obj) => {
-    if (!obj.isMesh || !obj.material) return;
+    if (!obj.isMesh || !obj.material || obj.userData?._isCharacterMesh) return;
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
     for (let i = 0; i < mats.length; i++) {
       const mat = mats[i];
@@ -3140,7 +3150,7 @@ async function initialize() {
         playerCharacter.state.facingYaw = targetYaw;
         playerCharacter.setPhoneInHand?.(Boolean(busyScenario?.phone));
       }
-      syncSceneVisibility();
+      syncSceneVisibility(true);
       if (sun?.castShadow) {
         lastSunAnchorX = Math.round(playerPos.x / 4) * 4;
         lastSunAnchorZ = Math.round(playerPos.z / 4) * 4;
@@ -3293,7 +3303,7 @@ async function initialize() {
     setQuality: applyQuality,
     setTimeOfDay: applyTimeOfDay,
     measureSceneStats() {
-      syncSceneVisibility();
+      syncSceneVisibility(true);
       renderer.render(scene, camera);
       const r = renderer.info.render;
       const m = renderer.info.memory;
@@ -3559,7 +3569,19 @@ canvas.addEventListener('wheel', (event) => {
   studioOrbit.targetLookY = THREE.MathUtils.lerp(1.54, 0.86, zoomT);
 }, { passive: false });
 
-function syncSceneVisibility() {
+let lastVisSyncAt = 0;
+let lastVisSyncX = 1e9;
+let lastVisSyncZ = 1e9;
+let lastVisSyncResult = { nearTaltolaVis: true, deepInTowerUpper: false, isLow: false };
+function syncSceneVisibility(force = false) {
+  const nowVis = performance.now();
+  const movedVis = Math.abs(playerPos.x - lastVisSyncX) > 1.4 || Math.abs(playerPos.z - lastVisSyncZ) > 1.4;
+  if (!force && !movedVis && (nowVis - lastVisSyncAt) < 140) {
+    return lastVisSyncResult;
+  }
+  lastVisSyncAt = nowVis;
+  lastVisSyncX = playerPos.x;
+  lastVisSyncZ = playerPos.z;
   const isLow = quality === 'low';
   const fyNow = playerPos.y - EYE_HEIGHT;
   const distHouseSq = (playerPos.x - TALTOLA_HOUSE_OFFSET.x) ** 2 + (playerPos.z - TALTOLA_HOUSE_OFFSET.z) ** 2;
@@ -3623,7 +3645,8 @@ function syncSceneVisibility() {
     }
   }
   environment?.syncVisibility?.(playerPos);
-  return { nearTaltolaVis, deepInTowerUpper, isLow };
+  lastVisSyncResult = { nearTaltolaVis, deepInTowerUpper, isLow };
+  return lastVisSyncResult;
 }
 
 function warpToLandmark(lm, lockControls = false) {
@@ -3711,7 +3734,7 @@ function warpToLandmark(lm, lockControls = false) {
     horizontalVelocity.set(0, 0);
     verticalVelocity = 0;
     grounded = true;
-    syncSceneVisibility();
+    syncSceneVisibility(true);
     if (sun?.castShadow) {
       lastSunAnchorX = Math.round(bestX / 4) * 4;
       lastSunAnchorZ = Math.round(bestZ / 4) * 4;
@@ -3764,7 +3787,7 @@ function warpToLandmark(lm, lockControls = false) {
   environment?.city?.refreshActiveChunks?.(playerPos.x, playerPos.z, quality);
   const groundY = computeGroundHeight(playerPos);
   playerPos.y = groundY + EYE_HEIGHT;
-  syncSceneVisibility();
+  syncSceneVisibility(true);
   if (sun?.castShadow) {
     lastSunAnchorX = Math.round(playerPos.x / 4) * 4;
     lastSunAnchorZ = Math.round(playerPos.z / 4) * 4;
@@ -4797,7 +4820,7 @@ function computeGroundHeight(pos, isGroundedOverride = grounded, velYOverride = 
   if (altGoliY !== null && altGoliY !== undefined) return altGoliY;
 
   // --- KHULNA DISTRICT & SESSIONS JUDGE COURT WALKABLE INTERIORS (delegated to khulna-judge-court.js) ---
-  if (pos.x >= 148.0 && pos.x <= 206.0 && pos.z >= -728.0 && pos.z <= -632.0) {
+  if (pos.x >= 146.5 && pos.x <= 206.0 && pos.z >= -728.0 && pos.z <= -632.0) {
     const judgeY = environment?.landmarks?.judgeCourt?.getGroundHeight?.(pos, isGroundedOverride, velYOverride);
     if (typeof judgeY === 'number' && judgeY > 0) return judgeY;
   }
@@ -6227,8 +6250,8 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer?.setSize(window.innerWidth, window.innerHeight);
   bloomPass?.setSize?.(
-    Math.max(256, Math.floor(window.innerWidth * 0.35)),
-    Math.max(144, Math.floor(window.innerHeight * 0.35))
+    Math.max(256, Math.floor(window.innerWidth * 0.5)),
+    Math.max(144, Math.floor(window.innerHeight * 0.5))
   );
 });
 
@@ -6317,7 +6340,7 @@ function animate() {
     if (khulnaMapUI && khulnaMapUI.isOpen && nowPerf - lastFullMapUpdate > 45) {
       lastFullMapUpdate = nowPerf;
       khulnaMapUI.renderFullMap(mapPos, liveYaw);
-    } else if (khulnaMapUI && !khulnaMapUI.isOpen && nowPerf - lastMinimapUpdate > 85) {
+    } else if (khulnaMapUI && !khulnaMapUI.isOpen && nowPerf - lastMinimapUpdate > 140) {
       lastMinimapUpdate = nowPerf;
       const info = environment?.city?.findNearestRoadAndDistrict?.(mapPos.x, mapPos.z);
       khulnaMapUI.renderMinimap(mapPos, liveYaw, info);

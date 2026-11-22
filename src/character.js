@@ -615,11 +615,12 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   let pendingEnvMap = null;
   function applyMeshQuality(quality) {
     currentQuality = quality || 'high';
+    // NEVER compromise character detailing, PBR textures, normal maps, or material quality on ANY tier!
     const cast = currentQuality !== 'low';
     contactShadowMesh.visible = !cast;
     for (const entry of meshEntries) {
-      entry.mesh.castShadow = cast && !entry.skipShadowCast;
-      entry.mesh.receiveShadow = cast;
+      entry.mesh.castShadow = !entry.skipShadowCast;
+      entry.mesh.receiveShadow = true;
       entry.mesh.material = entry.pbrMat;
     }
   }
@@ -699,11 +700,20 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       if (options.id === 'kurta_blue' && 'metalness' in srcMat) {
         srcMat.metalness = 0.0;
       }
+      obj.userData._isCharacterMesh = true;
       if (srcMat.map) {
-        srcMat.map.anisotropy = 4;
+        srcMat.map.anisotropy = 8;
         srcMat.map.minFilter = THREE.LinearMipmapLinearFilter;
         srcMat.map.magFilter = THREE.LinearFilter;
         srcMat.map.needsUpdate = true;
+      }
+      if (srcMat.normalMap) {
+        srcMat.normalMap.anisotropy = 8;
+        srcMat.normalMap.needsUpdate = true;
+      }
+      if (srcMat.roughnessMap) {
+        srcMat.roughnessMap.anisotropy = 8;
+        srcMat.roughnessMap.needsUpdate = true;
       }
       if ((isAlphaDetail || isEyeBall || isInnerMouth || isTeeth || isTongue) && 'envMapIntensity' in srcMat) {
         srcMat.envMapIntensity = isInnerMouth ? 0.16 : isTongue ? 0.24 : isTeeth ? 0.32 : isEyeBall ? 0.85 : 0.55;

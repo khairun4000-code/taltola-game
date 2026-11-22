@@ -459,13 +459,15 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
         const nearTaltola = Math.abs(px - tOx) < 38 && Math.abs(pz - tOz) < 62;
         const inAliaCampus = px > 124 && px < 264 && pz > 46 && pz < 246;
         const inAltapole = px > 152 && px < 214 && pz > -525 && pz < -290;
+        const inJudgeCourt = px > 142 && px < 208 && pz > -728 && pz < -632;
+        const inCircuitHouse = px > 82 && px < 142 && pz > -718 && pz < -638;
         const inNewStadium = (((px - 78.0) / 86.0) ** 2 + ((pz + 834.0) / 98.0) ** 2) <= 1.0;
         const nearMajorJunction = (
           ((px + 716.8) ** 2 + (pz + 291.8) ** 2 < 46 * 46) // Royal More
           || ((px + 920.0) ** 2 + (pz + 292.0) ** 2 < 46 * 46) // Satrasta More
           || ((px + 304.3) ** 2 + (pz + 56.7) ** 2 < 46 * 46) // PTI More
         );
-        if (!nearHaji && !nearTaltola && !inAliaCampus && !inAltapole && !inNewStadium && !nearMajorJunction && !isInsideAnyRoad(px, pz)) {
+        if (!nearHaji && !nearTaltola && !inAliaCampus && !inAltapole && !inJudgeCourt && !inCircuitHouse && !inNewStadium && !nearMajorJunction && !isInsideAnyRoad(px, pz)) {
           const cx = Math.floor(px / chunkSize);
           const cz = Math.floor(pz / chunkSize);
           const key = `${cx},${cz}`;

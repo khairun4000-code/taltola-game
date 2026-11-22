@@ -114,6 +114,8 @@ export function buildKhulnaCircuitHouse(parent, m) {
   apronBridge.matrixAutoUpdate = false;
   apronBridge.updateMatrix();
   compound.add(apronBridge);
+  compound.matrixAutoUpdate = false;
+  compound.updateMatrix();
 
   const state = {
     loaded: false,
@@ -262,13 +264,13 @@ export function buildKhulnaCircuitHouse(parent, m) {
           mergeStaticMeshes(model);
         } catch (mergeErr) {
           console.warn('[KhulnaCircuitHouse] Static batching fallback:', mergeErr);
-          model.traverse((obj) => {
-            if (obj.isMesh) {
-              obj.matrixAutoUpdate = false;
-              obj.updateMatrix();
-            }
-          });
         }
+        model.traverse((obj) => {
+          if (obj.isMesh) {
+            obj.matrixAutoUpdate = false;
+            obj.updateMatrix();
+          }
+        });
 
         compound.traverse((obj) => {
           if (obj.isMesh) {
@@ -535,9 +537,20 @@ export function buildKhulnaCircuitHouse(parent, m) {
     }
   }
 
+  // Non-blocking background preload so warping to Circuit House via Map is instant (stays hidden until in range!)
+  const scheduleBgPreload = () => {
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(() => ensureLoaded(), { timeout: 3500 });
+    } else {
+      ensureLoaded();
+    }
+  };
+  setTimeout(scheduleBgPreload, 1800);
+
   return {
     root,
     compound,
+    preload: ensureLoaded,
     setQualityMode,
     syncVisibility,
     setNightFactor,

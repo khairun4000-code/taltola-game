@@ -126,19 +126,26 @@ export function buildKhulnaJudgeCourt(parent, m) {
   compound.scale.setScalar(SCALE);
   root.add(compound);
 
-  // Flush concrete threshold apron bridging East asphalt edge of Circuit House Rd smoothly into Main Gate
+  // Flush concrete threshold apron bridging East asphalt edge of Circuit House Rd smoothly into Gate_Apron (zero Z-fighting!)
   const apronMat = new THREE.MeshStandardMaterial({
     color: 0x7d7a72,
     map: m?.concrete?.map || null,
     roughness: 0.92,
     metalness: 0.0,
     envMapIntensity: 0.25,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
   });
-  const apron = new THREE.Mesh(new THREE.BoxGeometry(10.0, 0.03, 2.2), apronMat);
+  const apron = new THREE.Mesh(new THREE.BoxGeometry(10.0, 0.025, 1.75), apronMat);
   apron.name = 'JudgeCourt_RoadToGateApron';
-  apron.position.set(0, 0.015, 25.4);
+  apron.position.set(0, 0.0125, 25.92);
   apron.receiveShadow = true;
+  apron.matrixAutoUpdate = false;
+  apron.updateMatrix();
   compound.add(apron);
+  compound.matrixAutoUpdate = false;
+  compound.updateMatrix();
 
   const state = {
     loaded: false,
@@ -202,8 +209,8 @@ export function buildKhulnaJudgeCourt(parent, m) {
 
   function applyEmissiveNightFactor() {
     const nf = state.nightFactor;
-    // Use squared night curve so afternoon / golden / sunset stay crisp & bloom-free, while night glows softly!
-    const nightGlow = nf * nf;
+    // Smooth evening-to-night curve: warm gentle glow in Sunset dusk, rich crisp glow at Night (zero blow-out!)
+    const nightGlow = Math.pow(nf, 1.45);
     for (let i = 0; i < state.emissiveMats.length; i++) {
       const e = state.emissiveMats[i];
       e.mat.emissiveIntensity = e.day + (e.night - e.day) * nightGlow;
@@ -294,24 +301,24 @@ export function buildKhulnaJudgeCourt(parent, m) {
               mat.userData._origNormalMap = mat.normalMap || null;
               mat.userData._origRoughnessMap = mat.roughnessMap || null;
 
-              // BLOOM-SAFE ULTRA EVENING / SUNSET CALIBRATION:
-              // Keeps luminance cleanly below UnrealBloomPass threshold (0.86) in Golden Hour & Sunset!
+              // BLOOM-SAFE ULTRA EVENING / NIGHT CALIBRATION:
+              // Crisp in Daylight/Golden Hour, warm tasteful glow in Sunset dusk & Night!
               if (mName === 'Gate_Frosted_Globe_Lamp') {
-                mat.color.setHex(0xded7c6);
-                mat.roughness = 0.45;
-                mat.envMapIntensity = 0.18;
-                state.emissiveMats.push({ mat, day: 0.04, night: 0.46 });
-              } else if (mName === 'Interior_LED_Panel') {
-                mat.color.setHex(0xe2dfd6);
-                mat.roughness = 0.50;
-                mat.envMapIntensity = 0.15;
-                state.emissiveMats.push({ mat, day: 0.12, night: 0.42 });
-              } else if (mName === 'Clock_Tower_Dial') {
+                mat.color.setHex(0xe8e0cc);
+                mat.roughness = 0.42;
                 mat.envMapIntensity = 0.20;
-                state.emissiveMats.push({ mat, day: 0.02, night: 0.34 });
+                state.emissiveMats.push({ mat, day: 0.04, night: 0.78 });
+              } else if (mName === 'Interior_LED_Panel') {
+                mat.color.setHex(0xe6e3da);
+                mat.roughness = 0.48;
+                mat.envMapIntensity = 0.16;
+                state.emissiveMats.push({ mat, day: 0.12, night: 0.66 });
+              } else if (mName === 'Clock_Tower_Dial') {
+                mat.envMapIntensity = 0.22;
+                state.emissiveMats.push({ mat, day: 0.02, night: 0.56 });
               } else if (mName === 'Lift_LED_Display') {
-                mat.envMapIntensity = 0.15;
-                state.emissiveMats.push({ mat, day: 0.24, night: 0.42 });
+                mat.envMapIntensity = 0.16;
+                state.emissiveMats.push({ mat, day: 0.24, night: 0.54 });
               } else if (
                 mName.includes('White_Concrete') ||
                 mName.includes('Concrete_CJM') ||
@@ -339,14 +346,16 @@ export function buildKhulnaJudgeCourt(parent, m) {
               state.allMats.push(mat);
             }
 
-            // Only major exterior architectural shells cast shadows (cuts shadow-pass tris by 70%!)
+            // Only major exterior architectural shells cast shadows (cuts Ultra 2048 shadow-pass tris dramatically with zero visual change!)
+            const oName = obj.name || '';
+            const skipShadow = /Interior|LED|Glass|Chair|Bench|Desk|Stair|Rail|Sign|Floor|Footpath|Apron|Driveway|Curb/i.test(oName);
             let largeEnough = false;
-            if (obj.geometry) {
+            if (!skipShadow && obj.geometry) {
               if (!obj.geometry.boundingBox) obj.geometry.computeBoundingBox();
               if (obj.geometry.boundingBox) {
                 tmpBox.copy(obj.geometry.boundingBox).applyMatrix4(obj.matrixWorld);
                 tmpBox.getSize(tmpSize);
-                largeEnough = Math.max(tmpSize.x, tmpSize.y, tmpSize.z) >= 4.2;
+                largeEnough = Math.max(tmpSize.x, tmpSize.y, tmpSize.z) >= 5.8;
               }
             }
             obj.castShadow = largeEnough;
@@ -366,13 +375,13 @@ export function buildKhulnaJudgeCourt(parent, m) {
           mergeStaticMeshes(model);
         } catch (mergeErr) {
           console.warn('[KhulnaJudgeCourt] Static batching fallback:', mergeErr);
-          model.traverse((obj) => {
-            if (obj.isMesh) {
-              obj.matrixAutoUpdate = false;
-              obj.updateMatrix();
-            }
-          });
         }
+        model.traverse((obj) => {
+          if (obj.isMesh) {
+            obj.matrixAutoUpdate = false;
+            obj.updateMatrix();
+          }
+        });
 
         compound.traverse((obj) => {
           if (obj.isMesh) {
@@ -466,14 +475,20 @@ export function buildKhulnaJudgeCourt(parent, m) {
   function getGroundHeight(pos, grounded = true, verticalVelocity = 0) {
     if (!pos) return 0;
     const { lx, lz } = worldToLocalXZ(pos.x, pos.z);
-    // Clean cutoff right at outer road curb (lz > 24.95 stays on flat asphalt road y = 0!)
-    if (lx < -55.8 || lx > 45.2 || lz < -21.0 || lz > 25.0) return 0;
+    // Clean cutoff right at outer edge of road-to-gate apron (lz > 26.8 stays on flat asphalt road y = 0!)
+    if (lx < -55.8 || lx > 45.2 || lz < -21.0 || lz > 26.8) return 0;
+    if (lz > 25.05 && Math.abs(lx) > 5.1) return 0;
 
     const footLocalY = (pos.y - 1.68 - COMPOUND_Y) / SCALE;
     const maxStepUp = (grounded ? 0.65 : (verticalVelocity > 0 ? 0.08 : 0.42)) / SCALE;
 
-    // Smooth entry ramp from asphalt road (lz = 25.0 -> 24.1) up onto courtyard pavers (0.06m)
-    let bestLY = lz > 24.1 ? THREE.MathUtils.clamp((25.0 - lz) / 0.9, 0, 1) * 0.06 : 0.06;
+    // Exact GLB-matched smooth entry ramp: asphalt (lz=26.8, 0m) -> Gate_Apron (lz=25.05..22.15, 0.065m) -> Main_Courtyard_Driveway (0.06m)
+    let bestLY = 0.06;
+    if (lz > 25.05) {
+      bestLY = THREE.MathUtils.clamp((26.8 - lz) / 1.75, 0, 1) * 0.065;
+    } else if (lz > 22.15 && Math.abs(lx) <= 4.75) {
+      bestLY = 0.065;
+    }
     const tryLY = (ly) => {
       if (ly <= footLocalY + maxStepUp && ly > bestLY) bestLY = ly;
     };
@@ -483,11 +498,12 @@ export function buildKhulnaJudgeCourt(parent, m) {
       return state.liftY;
     }
 
-    // Raised Striped Footpath outside gate (smooth curb bevel so character never snags/pops!)
-    if (lz >= 22.35 && lz <= 24.85 && Math.abs(lx) > 4.45) {
-      const edgeT = THREE.MathUtils.clamp((Math.abs(lx) - 4.45) / 0.45, 0, 1);
-      const curbT = THREE.MathUtils.clamp((24.85 - lz) / 0.25, 0, 1);
-      tryLY(0.06 + 0.10 * edgeT * curbT);
+    // Raised Striped Footpath outside gate (exact GLB top 0.16m with smooth curb & gate-edge bevels!)
+    if (lz >= 22.30 && lz <= 24.90 && Math.abs(lx) > 4.55) {
+      const edgeT = THREE.MathUtils.clamp((Math.abs(lx) - 4.55) / 0.45, 0, 1);
+      const outerCurbT = THREE.MathUtils.clamp((24.90 - lz) / 0.30, 0, 1);
+      const innerCurbT = THREE.MathUtils.clamp((lz - 22.30) / 0.25, 0, 1);
+      tryLY(0.06 + 0.10 * edgeT * Math.min(outerCurbT, innerCurbT));
     }
 
     // Front Portico Granite Steps rising smoothly to Ground Floor Marble Top (0.53m)
@@ -566,12 +582,17 @@ export function buildKhulnaJudgeCourt(parent, m) {
       if (resolveCircleAABBLocal(pt, r, x0, x1, z0, z1)) moved = true;
     };
 
-    // 1) Perimeter Boundary Wall & Workable Main Gate (ground level)
+    // 1) Perimeter Boundary Wall & Workable Main + Pedestrian Gates (ground level)
     if (footLY < 3.4) {
-      block(-55.2, -3.85, 21.6, 22.35);
-      block(3.85, 44.8, 21.6, 22.35);
+      // Leave Main Gate (-3.85..+3.85) AND both Pedestrian Gates (-7.35..-5.75, +5.75..+7.35) cleanly walkable when open!
+      block(-55.2, -7.35, 21.6, 22.35);
+      block(-5.75, -3.85, 21.6, 22.35);
+      block(3.85, 5.75, 21.6, 22.35);
+      block(7.35, 44.8, 21.6, 22.35);
       if (!state.mainGateOpen) {
         block(-3.85, 3.85, 21.65, 22.15);
+        block(-7.35, -5.75, 21.65, 22.15);
+        block(5.75, 7.35, 21.65, 22.15);
       }
       block(-55.4, -54.6, -20.2, 22.2);
       block(44.1, 44.9, -20.2, 22.2);
@@ -723,11 +744,10 @@ export function buildKhulnaJudgeCourt(parent, m) {
     if (!pos) return false;
     const { lx, lz } = worldToLocalXZ(pos.x, pos.z);
     const footLY = (pos.y - 1.68 - COMPOUND_Y) / SCALE;
-    // Include covered Portico overhang so 3rd-person camera smoothly adjusts under the canopy without clipping/flicker!
-    const underPortico = Math.abs(lx) <= 7.4 && lz >= 5.5 && lz <= 12.6 && footLY < 4.2;
-    const inCJM = lx >= -24.0 && lx <= 24.0 && lz >= -12.0 && lz <= 6.0 && footLY < LOCAL_FLOOR_YS[10] - 0.6;
+    // Only enclosed interiors trigger indoor camera pull-in (open-air portico stays smooth without sudden zoom snap!)
+    const inCJM = lx >= -24.0 && lx <= 24.0 && lz >= -12.0 && lz <= 5.6 && footLY < LOCAL_FLOOR_YS[10] - 0.6;
     const inHist = lx >= -54.0 && lx <= -27.0 && lz >= -12.0 && lz <= 4.8 && footLY < 5.5;
-    return underPortico || inCJM || inHist;
+    return inCJM || inHist;
   }
 
   function getZoneName(wx, wz, footY = 0) {
@@ -853,6 +873,16 @@ export function buildKhulnaJudgeCourt(parent, m) {
     }
   }
 
+  // Non-blocking background preload so warping to Judge Court via Map is 100% instant (stays hidden until in range!)
+  const scheduleBgPreload = () => {
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      window.requestIdleCallback(() => ensureLoaded(), { timeout: 2500 });
+    } else {
+      ensureLoaded();
+    }
+  };
+  setTimeout(scheduleBgPreload, 900);
+
   return {
     group: root,
     eyebrowTitle: 'KHULNA CJM & DISTRICT JUDGE COURT',
@@ -860,6 +890,7 @@ export function buildKhulnaJudgeCourt(parent, m) {
     state,
     liftCabinCenter: { x: LIFT_CENTER_WORLD.x, z: LIFT_CENTER_WORLD.z },
     liftExitPos: { x: LIFT_EXIT_WORLD.x, z: LIFT_EXIT_WORLD.z },
+    preload: ensureLoaded,
     isInTowerFootprint,
     isInsideLift,
     isNearLiftLobby,
