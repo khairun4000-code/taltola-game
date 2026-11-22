@@ -2324,7 +2324,8 @@ export function createDrivableCar(scene, manager, config) {
     } catch {}
   }
 
-  let screechOsc = null;
+  let screechNoiseSrc = null;
+  let screechFilter = null;
   let screechGain = null;
 
   function updateEngineAudio(active, rpm, throttle, slip = 0) {
@@ -2412,31 +2413,39 @@ export function createDrivableCar(scene, manager, config) {
       engineGain.gain.setTargetAtTime(0.028 + throttle * 0.034, now, 0.08);
     }
 
-    // GTA VI Tire Screech Synthesis during drifting, high-G cornering & hard braking
-    if (slip > 0.16) {
-      if (!screechOsc) {
+    // Realistic filtered-noise rubber tire skid ONLY during true handbrake drift / extreme slides (ZERO chirping on normal steering!)
+    if (slip > 0.45) {
+      if (!screechNoiseSrc) {
         try {
-          screechOsc = audioCtx.createOscillator();
-          const sFilt = audioCtx.createBiquadFilter();
+          const nLen = Math.floor(audioCtx.sampleRate * 1.2);
+          const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+          const ch = nBuf.getChannelData(0);
+          for (let i = 0; i < nLen; i++) ch[i] = (Math.random() * 2 - 1) * 0.55;
+          screechNoiseSrc = audioCtx.createBufferSource();
+          screechNoiseSrc.buffer = nBuf;
+          screechNoiseSrc.loop = true;
+          screechFilter = audioCtx.createBiquadFilter();
+          screechFilter.type = 'bandpass';
+          screechFilter.frequency.value = 1050;
+          screechFilter.Q.value = 1.15;
+          const sLow = audioCtx.createBiquadFilter();
+          sLow.type = 'lowpass';
+          sLow.frequency.value = 2400;
           screechGain = audioCtx.createGain();
-          screechOsc.type = 'sawtooth';
-          screechOsc.frequency.value = 1120;
-          sFilt.type = 'bandpass';
-          sFilt.frequency.value = 1480;
-          sFilt.Q.value = 5.5;
           screechGain.gain.value = 0.0;
-          screechOsc.connect(sFilt);
-          sFilt.connect(screechGain);
+          screechNoiseSrc.connect(screechFilter);
+          screechFilter.connect(sLow);
+          sLow.connect(screechGain);
           screechGain.connect(audioCtx.destination);
-          screechOsc.start();
+          screechNoiseSrc.start();
         } catch {}
       }
-      if (screechOsc && screechGain) {
-        screechOsc.frequency.setTargetAtTime(980 + slip * 460, now, 0.04);
-        screechGain.gain.setTargetAtTime(Math.min(0.048, (slip - 0.16) * 0.062), now, 0.04);
+      if (screechFilter && screechGain) {
+        screechFilter.frequency.setTargetAtTime(920 + slip * 360, now, 0.08);
+        screechGain.gain.setTargetAtTime(Math.min(0.032, (slip - 0.45) * 0.055), now, 0.08);
       }
     } else if (screechGain) {
-      screechGain.gain.setTargetAtTime(0.0, now, 0.06);
+      screechGain.gain.setTargetAtTime(0.0, now, 0.08);
     }
   }
 
@@ -4930,13 +4939,14 @@ export function createDrivableCar(scene, manager, config) {
       try { osc3?.stop?.(); } catch {}
       try { lfoOsc?.stop?.(); } catch {}
       try { pedalNoiseSrc?.stop?.(); } catch {}
-      try { screechOsc?.stop?.(); } catch {}
+      try { screechNoiseSrc?.stop?.(); } catch {}
       osc1 = null;
       osc2 = null;
       osc3 = null;
       lfoOsc = null;
       pedalNoiseSrc = null;
-      screechOsc = null;
+      screechNoiseSrc = null;
+      screechFilter = null;
       if (audioCtx) {
         try { audioCtx.close?.(); } catch {}
         audioCtx = null;
