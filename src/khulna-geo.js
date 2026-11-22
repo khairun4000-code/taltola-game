@@ -7,8 +7,8 @@ export const METERS_PER_LON = 111320.0 * Math.cos((KHULNA_ORIGIN_LAT * Math.PI) 
 // 1) 35 Haji Mohsin Rd (SK Arshan Alif Tower + Fakir Bari Lane) sits directly at world origin (0, 0..28)
 export const HAJI_MOHSIN_OFFSET = { x: 0.0, y: 0.0, z: 0.0 };
 
-// 2) 5-Story Taltola House (তালতলার বাসা) sits ~1.06 km SE at real Tootpara Taltola Hospital Cross Rd (22.79881° N, 89.57337° E)
-export const TALTOLA_HOUSE_OFFSET = { x: 420.0, y: 0.0, z: 975.0 };
+// 2) 5-Story Taltola House (তালতলার বাসা) — compact Khulna layout right near Haji Mohsin Rd, Kaborkhana & Alia Madrasah!
+export const TALTOLA_HOUSE_OFFSET = { x: 64.0, y: 0.0, z: 222.0 };
 
 export function latLonToWorldXZ(lat, lon) {
   return {

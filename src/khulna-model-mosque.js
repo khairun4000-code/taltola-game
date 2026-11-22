@@ -27,10 +27,13 @@ import { attachDerivedPBRMaps } from './aaa-shaders.js';
  *    distance-culled for locked 60–120 FPS at full native resolution.
  */
 
-export const MODEL_MOSQUE_POS = { x: 171.0, z: 166.0 };
+// Relocated right to the LEFT side upon entering Alia Madrasah Main Gate (gx=184, gz=207.5)!
+const MOSQUE_SHIFT_X = -17.0;
+const MOSQUE_SHIFT_Z = 22.0;
+export const MODEL_MOSQUE_POS = { x: 171.0 + MOSQUE_SHIFT_X, z: 166.0 + MOSQUE_SHIFT_Z };
 
-const MX = MODEL_MOSQUE_POS.x; // 171.0
-const MZ = MODEL_MOSQUE_POS.z; // 166.0
+const MX = 171.0; // Local pre-shift center X
+const MZ = 166.0; // Local pre-shift center Z
 const W = 22.0; // X: 160.0 .. 182.0
 const D = 24.0; // Z: 154.0 .. 178.0
 const X_WEST = MX - W * 0.5; // 160.0
@@ -749,9 +752,17 @@ function addMosqueSignPlaque(dynamicG, tex, pos, rotY, w, h, backlit = true, emi
  * MAIN BUILDER: HIGH-QUALITY WHITE MODEL MOSQUE (EXTERIOR + FULL INTERIOR)
  * ========================================================================== */
 
-export function buildKhulnaModelMosque3D(staticG, dynamicG, bank) {
+export function buildKhulnaModelMosque3D(outerStaticG, outerDynamicG, bank) {
   mosqueState.fans.length = 0;
   mosqueState.pointLights.length = 0;
+  const staticG = new THREE.Group();
+  staticG.name = 'ModelMosque_ShiftedStatic';
+  staticG.position.set(MOSQUE_SHIFT_X, 0, MOSQUE_SHIFT_Z);
+  outerStaticG.add(staticG);
+  const dynamicG = new THREE.Group();
+  dynamicG.name = 'ModelMosque_ShiftedDynamic';
+  dynamicG.position.set(MOSQUE_SHIFT_X, 0, MOSQUE_SHIFT_Z);
+  outerDynamicG.add(dynamicG);
 
   // Load the user's new repaired & textured Tripo 3D Khulna District Model Mosque exterior
   // Positioned at the exact Khulna District Model Mosque plaza (cx = 175.0, cz = 166.0) facing East (+X) toward the courtyard!
@@ -1628,11 +1639,13 @@ function mosqueLocalToWorld(bx, by) {
 
 export function getModelMosqueGroundHeight(pos, grounded = true, verticalVelocity = 0) {
   if (!pos) return 0.0;
-  if (pos.x < 156.0 || pos.x > 199.0 || pos.z < 146.0 || pos.z > 186.0) {
+  const lx = pos.x - MOSQUE_SHIFT_X;
+  const lz = pos.z - MOSQUE_SHIFT_Z;
+  if (lx < 156.0 || lx > 199.0 || lz < 146.0 || lz > 186.0) {
     return 0.0;
   }
 
-  const { bx, by } = worldToMosqueLocal(pos.x, pos.z);
+  const { bx, by } = worldToMosqueLocal(lx, lz);
   const footY = pos.y - 1.68;
   const maxStepUp = grounded ? 0.72 : (verticalVelocity > 0 ? 0.08 : 0.45);
   const S = MOSQUE_AAA_SCALE;
@@ -1732,11 +1745,17 @@ function resolveLocalBox(pos, radius, bxMin, bxMax, byMin, byMax) {
   resolveCircleAABB(pos, radius, Math.min(w0.wx, w1.wx), Math.max(w0.wx, w1.wx), Math.min(w0.wz, w1.wz), Math.max(w0.wz, w1.wz));
 }
 
-export function applyModelMosqueCollisions(pos, radius = 0.34, footY = 0) {
+const _mosqueLocalPos = new THREE.Vector3();
+export function applyModelMosqueCollisions(pos, radius = 0.34, footY = 0, isVehicle = false) {
   if (!pos) return;
-  if (pos.x < 156.0 || pos.x > 199.0 || pos.z < 146.0 || pos.z > 186.0) {
+  const lx = pos.x - MOSQUE_SHIFT_X;
+  const lz = pos.z - MOSQUE_SHIFT_Z;
+  if (lx < 156.0 || lx > 199.0 || lz < 146.0 || lz > 186.0) {
     return;
   }
+  _mosqueLocalPos.set(lx, pos.y, lz);
+  const origPos = pos;
+  pos = _mosqueLocalPos;
 
   // 1) Ground Level Podium Rooms & Minaret Shaft (footY < 3.6m)
   if (footY < 3.6) {
@@ -1759,6 +1778,15 @@ export function applyModelMosqueCollisions(pos, radius = 0.34, footY = 0) {
     resolveLocalBox(pos, radius,  15.2,  15.6, -13.1, -1.5); // Outer-right terrace rail
     // Central grass planter cutout guard
     resolveLocalBox(pos, radius, -1.55, 1.55, -9.4, -5.0);
+  }
+
+  // 2b) Vehicle Entry Blocker: Vehicles can drive up the front stairs onto the marble terrace,
+  //     but are strictly blocked at every mosque doorway & main hall footprint!
+  if (isVehicle) {
+    resolveLocalBox(pos, radius, -11.8, 11.8, -1.80, 13.80);
+    origPos.x = pos.x + MOSQUE_SHIFT_X;
+    origPos.z = pos.z + MOSQUE_SHIFT_Z;
+    return;
   }
 
   // 3) Main Hollow Mosque Perimeter Walls (by = -1.5, +13.5, bx = -11.5, +11.5) with OPEN DOORWAYS!
@@ -1809,38 +1837,46 @@ export function applyModelMosqueCollisions(pos, radius = 0.34, footY = 0) {
       resolveLocalBox(pos, radius,  4.45,  4.75,  1.80, 10.40);
     }
   }
+  origPos.x = pos.x + MOSQUE_SHIFT_X;
+  origPos.z = pos.z + MOSQUE_SHIFT_Z;
 }
 
 export function isInsideModelMosque(pos) {
   if (!pos) return false;
-  return pos.x >= X_WEST && pos.x <= X_EAST && pos.z >= Z_NORTH && pos.z <= Z_SOUTH && pos.y - 1.68 < Y_ROOF;
+  const lx = pos.x - MOSQUE_SHIFT_X;
+  const lz = pos.z - MOSQUE_SHIFT_Z;
+  return lx >= X_WEST && lx <= X_EAST && lz >= Z_NORTH && lz <= Z_SOUTH && pos.y - 1.68 < Y_ROOF;
 }
 
 export function isInModelMosqueZone(pos) {
   if (!pos) return false;
-  const inMainOrVeranda = pos.x >= X_WEST - 0.3 && pos.x <= X_VERANDA + 0.3 && pos.z >= Z_NORTH - 0.3 && pos.z <= Z_SOUTH + 0.3;
-  const onFrontStairs = pos.x >= FRONT_STAIR_X0 - 0.2 && pos.x <= FRONT_STAIR_X1 + 0.4 && pos.z >= FRONT_STAIR_Z0 - 0.5 && pos.z <= FRONT_STAIR_Z1 + 0.5;
+  const lx = pos.x - MOSQUE_SHIFT_X;
+  const lz = pos.z - MOSQUE_SHIFT_Z;
+  const inMainOrVeranda = lx >= X_WEST - 0.3 && lx <= X_VERANDA + 0.3 && lz >= Z_NORTH - 0.3 && lz <= Z_SOUTH + 0.3;
+  const onFrontStairs = lx >= FRONT_STAIR_X0 - 0.2 && lx <= FRONT_STAIR_X1 + 0.4 && lz >= FRONT_STAIR_Z0 - 0.5 && lz <= FRONT_STAIR_Z1 + 0.5;
   return inMainOrVeranda || onFrontStairs;
 }
 
 export function getModelMosqueZoneName(x, z, footY = 0) {
-  if (x < X_WEST - 1.5 || x > FRONT_STAIR_X1 + 2.0 || z < Z_NORTH - 2.0 || z > Z_SOUTH + 2.0) {
+  const lx = x - MOSQUE_SHIFT_X;
+  const lz = z - MOSQUE_SHIFT_Z;
+  if (lx < X_WEST - 1.5 || lx > FRONT_STAIR_X1 + 2.0 || lz < Z_NORTH - 2.0 || lz > Z_SOUTH + 2.0) {
     return null;
   }
   if (footY >= Y2 - 0.6) {
     return 'KHULNA DISTRICT MODEL MOSQUE · 3RD FLOOR UPPER PRAYER GALLERY';
   }
   if (footY >= Y1 - 0.6) {
-    if (x > X_EAST) return 'KHULNA DISTRICT MODEL MOSQUE · 2ND FLOOR MARBLE VERANDA';
+    if (lx > X_EAST) return 'KHULNA DISTRICT MODEL MOSQUE · 2ND FLOOR MARBLE VERANDA';
     return 'KHULNA DISTRICT MODEL MOSQUE · 2ND FLOOR MAIN PRAYER HALL';
   }
-  if (x >= 160.0 && x <= 174.5 && z >= 154.0 && z <= 163.8) {
+  if (lx >= 160.0 && lx <= 174.5 && lz >= 154.0 && lz <= 163.8) {
     return 'KHULNA DISTRICT MODEL MOSQUE · QURAN & HIFZ ROOM';
   }
-  if (x >= 169.4 && x <= 176.2 && z >= 167.8 && z <= 178.0) {
+  if (lx >= 169.4 && lx <= 176.2 && lz >= 167.8 && lz <= 178.0) {
     return 'KHULNA DISTRICT MODEL MOSQUE · OZU KHANA';
   }
-  if (x >= X_WEST && x <= X_EAST && z >= Z_NORTH && z <= Z_SOUTH) {
+  if (lx >= X_WEST && lx <= X_EAST && lz >= Z_NORTH && lz <= Z_SOUTH) {
     return 'KHULNA DISTRICT MODEL MOSQUE · GROUND FOYER';
   }
   return 'KHULNA DISTRICT MODEL MOSQUE · COURTYARD PLAZA';
@@ -1848,8 +1884,10 @@ export function getModelMosqueZoneName(x, z, footY = 0) {
 
 export function getModelMosquePrompt(pos) {
   if (!pos) return null;
+  const lx = pos.x - MOSQUE_SHIFT_X;
+  const lz = pos.z - MOSQUE_SHIFT_Z;
   const footY = pos.y - 1.68;
-  if (Math.abs(footY - Y1) < 1.2 && Math.hypot(pos.x - X_EAST, pos.z - MZ) < 3.6) {
+  if (Math.abs(footY - Y1) < 1.2 && Math.hypot(lx - X_EAST, lz - MZ) < 3.6) {
     return mosqueState.mainHallOpen
       ? '[E] Close Model Mosque Main Door'
       : '[E] Open Model Mosque Main Door';
@@ -1859,8 +1897,10 @@ export function getModelMosquePrompt(pos) {
 
 export function toggleModelMosqueDoor(pos) {
   if (!pos) return false;
+  const lx = pos.x - MOSQUE_SHIFT_X;
+  const lz = pos.z - MOSQUE_SHIFT_Z;
   const footY = pos.y - 1.68;
-  if (Math.abs(footY - Y1) < 1.2 && Math.hypot(pos.x - X_EAST, pos.z - MZ) < 3.8) {
+  if (Math.abs(footY - Y1) < 1.2 && Math.hypot(lx - X_EAST, lz - MZ) < 3.8) {
     mosqueState.mainHallOpen = !mosqueState.mainHallOpen;
     return true;
   }
@@ -1886,7 +1926,7 @@ export function updateModelMosque(dt = 0.016, playerPos = null) {
   }
 
   // Distance check so fans stay active nearby and point lights modulate intensity without toggling visible (prevents WebGL shader recompilation freeze!)
-  const nearMosque = !playerPos || ((playerPos.x - MX) ** 2 + (playerPos.z - MZ) ** 2 < 65 * 65);
+  const nearMosque = !playerPos || ((playerPos.x - MODEL_MOSQUE_POS.x) ** 2 + (playerPos.z - MODEL_MOSQUE_POS.z) ** 2 < 65 * 65);
   const insideMosque = Boolean(playerPos && isInsideModelMosque(playerPos));
   const nf = mosqueState.nightFactor || 0;
   for (let i = 0; i < mosqueState.pointLights.length; i++) {
@@ -1906,9 +1946,11 @@ export function updateModelMosque(dt = 0.016, playerPos = null) {
 
 export function findNearestModelMosqueSeat(pos) {
   if (!pos) return null;
+  const lx = pos.x - MOSQUE_SHIFT_X;
+  const lz = pos.z - MOSQUE_SHIFT_Z;
   const footY = pos.y - 1.68;
   if (Math.abs(footY - Y0) > 1.0) return null;
-  if (pos.x < 161.0 || pos.x > 175.0 || pos.z < 155.0 || pos.z > 177.5) return null;
+  if (lx < 161.0 || lx > 175.0 || lz < 155.0 || lz > 177.5) return null;
 
   const seats = [];
   for (const tx of [164.6, 170.2]) {
@@ -1930,10 +1972,10 @@ export function findNearestModelMosqueSeat(pos) {
   let best = null;
   let bestDist = 1.45;
   for (const s of seats) {
-    const d = Math.hypot(pos.x - s.seatX, pos.z - s.seatZ);
+    const d = Math.hypot(lx - s.seatX, lz - s.seatZ);
     if (d < bestDist) {
       bestDist = d;
-      best = { ...s, dist: d };
+      best = { ...s, seatX: s.seatX + MOSQUE_SHIFT_X, seatZ: s.seatZ + MOSQUE_SHIFT_Z, dist: d };
     }
   }
   return best;

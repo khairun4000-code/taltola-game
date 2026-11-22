@@ -1957,7 +1957,7 @@ export function buildKhulnaLandmarks(parent, m) {
   }
 
   // Keep only the top high-detail Khulna showcase landmarks (Alia Madrasah & Model Mosque, Circuit House, Judge Court, Stadium, Boro Maath, Shaheed Hadis Park, Royal More, PTI More)
-  const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -100, -700, 580);
+  const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -100, -700, 820);
 
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
   const aliaMadrasah = buildAliaMadrasahDistrict(group, m);
@@ -2032,7 +2032,7 @@ export function buildKhulnaLandmarks(parent, m) {
         hajiKaborkhana.getGroundHeight?.(pos) ?? 0,
       );
     },
-    applyCollisions(pos, radius, footY = 0) {
+    applyCollisions(pos, radius, footY = 0, isVehicle = false) {
       // Solid closed Main Black Gate & Back Black Gate leaves at Shaheed Hadis Park (leaving BOTH pedestrian pocket gates 100% open & walkable!)
       if (pos && footY < 3.0 && pos.x >= -378 && pos.x <= -268 && pos.z >= -962 && pos.z <= -836) {
         const blockBox = (minX, maxX, minZ, maxZ) => {
@@ -2050,7 +2050,7 @@ export function buildKhulnaLandmarks(parent, m) {
         blockBox(-297.5, -292.5, -840.4, -839.6); // Main Gate locked double-leaf (Pocket Gate at -292.0..-290.4 stays OPEN!)
         blockBox(-334.5, -329.5, -958.4, -957.6); // Back Gate locked double-leaf (Pocket Gate at -336.6..-335.0 stays OPEN!)
       }
-      aliaMadrasah.applyCollisions?.(pos, radius, footY);
+      aliaMadrasah.applyCollisions?.(pos, radius, footY, isVehicle);
       royalMore.applyCollisions?.(pos, radius, footY);
       ptiMore.applyCollisions?.(pos, radius, footY);
       satrastaMore.applyCollisions?.(pos, radius, footY);

@@ -1141,9 +1141,9 @@ function addAliaClassroomFurniture(staticG, dynamicG, bank, cx, cz, fy, roomName
 
 const MAIN_OLD_CX = 183.5;
 const MAIN_OLD_CZ = 108.0;
-// Relocated 90° clockwise (-Math.PI * 0.5) to the North-West slot LEFT of the 6-Story Building, facing SOUTH (+Z)!
-const MAIN_NEW_CX = 164.0;
-const MAIN_NEW_CZ = 61.5;
+// Aligned directly STRAIGHT AHEAD of the Main Gate (gx = 184.0, gz = 207.5), facing SOUTH (+Z)!
+const MAIN_NEW_CX = 184.0;
+const MAIN_NEW_CZ = 76.0;
 
 function mainLocalToWorldXZ(oldX, oldZ) {
   return {
@@ -1721,21 +1721,21 @@ export function buildAliaMadrasahDistrict(parent, m) {
   mainGate.leftLeaf.rotation.y = gateRatio * (Math.PI * 0.46);
   mainGate.rightLeaf.rotation.y = -gateRatio * (Math.PI * 0.46);
 
-  // 6) Stone Foundation Plaque & Flagpole placed cleanly on the lawn south of the Main Portico concrete promenade (road stays 100% clear!)
-  box(staticG, [2.2, 1.05, 1.0], [156.0, 0.52, 79.5], bank.stonePlinth);
+  // 6) Stone Foundation Plaque & Flagpole placed cleanly in front of the Main Portico (flanking the straight gate axis x=184!)
+  box(staticG, [2.2, 1.05, 1.0], [176.0, 0.52, 92.0], bank.stonePlinth);
   addSignBox(
     dynamicG,
     bank,
     { title: 'খুলনা আলিয়া কামিল মাদ্রাসা', subtitle: 'স্থাপিত: ২ এপ্রিল ১৯৫২ · খুলনা', bg: '#e5e7eb', fg: '#111827', accent: '#b94a38', border: '#475569' },
-    [156.0, 1.08, 80.12],
+    [176.0, 1.08, 92.62],
     0,
     2.0,
     0.70,
     false
   );
 
-  const flX = 172.0;
-  const flZ = 79.5;
+  const flX = 192.0;
+  const flZ = 92.0;
   box(staticG, [2.6, 0.26, 2.6], [flX, 0.13, flZ], bank.marbleWhite);
   box(staticG, [1.8, 0.24, 1.8], [flX, 0.38, flZ], bank.terracotta);
   cylinder(staticG, 0.06, 0.085, 9.6, [flX, 5.2, flZ], bank.chromeMat, 10);
@@ -1869,7 +1869,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
     return 0.0;
   }
 
-  function applyCollisions(pos, radius = 0.34, footY = 0) {
+  function applyCollisions(pos, radius = 0.34, footY = 0, isVehicle = false) {
     if (!pos) return;
     const dx = pos.x - ALIA_CAMPUS_CENTER.x;
     const dz = pos.z - ALIA_CAMPUS_CENTER.z;
@@ -1920,7 +1920,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
     }
 
     // 4) Khulna District Model Mosque 3D Collisions (delegated to khulna-model-mosque.js)
-    applyModelMosqueCollisions(pos, radius, footY);
+    applyModelMosqueCollisions(pos, radius, footY, isVehicle);
 
     // 5) Krishnachura Tree Trunks inside Campus (4 clean spots off road & gate corner)
     if (footY < 6.0) {

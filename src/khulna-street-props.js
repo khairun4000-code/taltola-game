@@ -465,7 +465,16 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
   group.add(poleInst, armInst, lampInst, coilInst, ...posterInsts, ...baseNetaInsts, wireLines);
 
   const dummy = new THREE.Object3D();
+  const swayEuler = new THREE.Euler(0, 0, 0, 'XZY');
+  const swayQuat = new THREE.Quaternion();
+  const baseYawQuat = new THREE.Quaternion();
+  const armYawQuat = new THREE.Quaternion();
+  const tmpOffset = new THREE.Vector3();
+  const yAxis = new THREE.Vector3(0, 1, 0);
   let lastChunkKey = '';
+  let activePoleRecords = [];
+  const swayingPoles = new Set();
+  const poleStateById = new Map();
 
   function addCatenaryWire(buf, pinBuf, x0, y0, z0, x1, y1, z1, sag, segs = 4, swayX = 0, swayZ = 0) {
     for (let s = 0; s < segs; s++) {
@@ -509,6 +518,8 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
     }
 
     const activeById = new Map();
+    activePoleRecords = [];
+    swayingPoles.clear();
     let pCnt = 0;
     let coilCnt = 0;
     const postCnts = new Array(POSTER_KIND_COUNT).fill(0);
@@ -523,6 +534,22 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
       // Dramatic, unmistakable thick vs slim poles: slim steel (0.42x), medium (1.05x), thick heavy concrete (1.85x)!
       const thickRoll = hashRand(p.id * 11.7 + 2.3);
       const poleScaleXZ = thickRoll < 0.40 ? 0.42 : (thickRoll < 0.62 ? 1.05 : 1.85);
+      let st = poleStateById.get(p.id);
+      if (!st) {
+        st = { swayX: 0, swayZ: 0, velX: 0, velZ: 0 };
+        poleStateById.set(p.id, st);
+      }
+      const rec = {
+        pole: p,
+        instIdx: pCnt,
+        poleScaleXZ,
+        radius: Math.max(0.24, 0.21 * poleScaleXZ),
+        st,
+      };
+      activePoleRecords.push(rec);
+      if (Math.abs(st.swayX) > 1e-4 || Math.abs(st.swayZ) > 1e-4 || Math.abs(st.velX) > 1e-4 || Math.abs(st.velZ) > 1e-4) {
+        swayingPoles.add(rec);
+      }
 
       // 1. Utility Pole
       dummy.position.set(p.x, 0, p.z);
@@ -688,6 +715,106 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
     wireGeom.computeBoundingSphere();
   }
 
+  function writeSwayingPoleMatrices(rec) {
+    const p = rec.pole;
+    const { swayX, swayZ } = rec.st;
+    swayEuler.set(swayX, 0, swayZ, 'XZY');
+    swayQuat.setFromEuler(swayEuler);
+    baseYawQuat.setFromAxisAngle(yAxis, p.yaw);
+    armYawQuat.setFromAxisAngle(yAxis, p.yaw + Math.PI * 0.5);
+
+    // 1. Utility Pole pivoted cleanly at ground base (y=0)
+    dummy.position.set(p.x, 0, p.z);
+    dummy.quaternion.copy(swayQuat).multiply(baseYawQuat);
+    dummy.scale.set(rec.poleScaleXZ, 1, rec.poleScaleXZ);
+    dummy.updateMatrix();
+    poleInst.setMatrixAt(rec.instIdx, dummy.matrix);
+
+    // 2. Top Cross-arm follows tilted pole top
+    tmpOffset.set(0, 7.35, 0).applyQuaternion(swayQuat);
+    dummy.position.set(p.x + tmpOffset.x, tmpOffset.y, p.z + tmpOffset.z);
+    dummy.quaternion.copy(swayQuat).multiply(armYawQuat);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    armInst.setMatrixAt(rec.instIdx, dummy.matrix);
+
+    // 3. Streetlamp cobra head follows tilted pole top
+    tmpOffset.set(-p.nx * p.side * 0.85, 8.05, -p.nz * p.side * 0.85).applyQuaternion(swayQuat);
+    dummy.position.set(p.x + tmpOffset.x, tmpOffset.y, p.z + tmpOffset.z);
+    dummy.quaternion.copy(swayQuat).multiply(baseYawQuat);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    lampInst.setMatrixAt(rec.instIdx, dummy.matrix);
+  }
+
+  function applyPoleCollisions(pos, radius = 0.34, { impactSpeed = 0, isVehicle = false, dirX = 0, dirZ = 0 } = {}) {
+    if (!pos || !activePoleRecords.length) return null;
+    let hitRec = null;
+    for (let i = 0; i < activePoleRecords.length; i++) {
+      const rec = activePoleRecords[i];
+      const p = rec.pole;
+      const minR = radius + rec.radius;
+      const dx = pos.x - p.x;
+      const dz = pos.z - p.z;
+      if (Math.abs(dx) >= minR || Math.abs(dz) >= minR) continue;
+      const dSq = dx * dx + dz * dz;
+      if (dSq < minR * minR) {
+        const d = Math.sqrt(Math.max(dSq, 1e-6));
+        const nx = dx / d;
+        const nz = dz / d;
+        const overlap = minR - d;
+        pos.x += nx * overlap;
+        pos.z += nz * overlap;
+
+        // Trigger spring-damped pole wobble (away from impact!) that sways and recovers upright
+        const pushX = (Math.abs(dirX) + Math.abs(dirZ) > 0.05) ? dirX : -nx;
+        const pushZ = (Math.abs(dirX) + Math.abs(dirZ) > 0.05) ? dirZ : -nz;
+        const pLen = Math.hypot(pushX, pushZ) || 1;
+        const pxN = pushX / pLen;
+        const pzN = pushZ / pLen;
+        const strength = isVehicle
+          ? THREE.MathUtils.clamp(0.75 + impactSpeed * 0.14, 0.75, 2.35)
+          : THREE.MathUtils.clamp(0.32 + impactSpeed * 0.12, 0.32, 0.78);
+        // Rotation around X tilts +Z; rotation around -Z tilts +X
+        rec.st.velX = THREE.MathUtils.clamp(rec.st.velX + pzN * strength, -2.6, 2.6);
+        rec.st.velZ = THREE.MathUtils.clamp(rec.st.velZ - pxN * strength, -2.6, 2.6);
+        swayingPoles.add(rec);
+        hitRec = rec;
+      }
+    }
+    return hitRec ? { hit: true, pole: hitRec.pole } : null;
+  }
+
+  function updatePoles(dt = 0.016) {
+    if (swayingPoles.size === 0) return;
+    const stepDt = Math.min(Math.max(dt, 0.001), 0.05);
+    const stiffness = 34.0;
+    const damping = 4.2;
+    const maxTilt = 0.21; // ~12 degrees max realistic elastic pole sway
+    const settled = [];
+    for (const rec of swayingPoles) {
+      const st = rec.st;
+      const accX = -stiffness * st.swayX - damping * st.velX;
+      const accZ = -stiffness * st.swayZ - damping * st.velZ;
+      st.velX += accX * stepDt;
+      st.velZ += accZ * stepDt;
+      st.swayX = THREE.MathUtils.clamp(st.swayX + st.velX * stepDt, -maxTilt, maxTilt);
+      st.swayZ = THREE.MathUtils.clamp(st.swayZ + st.velZ * stepDt, -maxTilt, maxTilt);
+      if (Math.abs(st.swayX) < 0.0008 && Math.abs(st.swayZ) < 0.0008 && Math.abs(st.velX) < 0.004 && Math.abs(st.velZ) < 0.004) {
+        st.swayX = 0;
+        st.swayZ = 0;
+        st.velX = 0;
+        st.velZ = 0;
+        settled.push(rec);
+      }
+      writeSwayingPoleMatrices(rec);
+    }
+    for (const rec of settled) swayingPoles.delete(rec);
+    poleInst.instanceMatrix.needsUpdate = true;
+    armInst.instanceMatrix.needsUpdate = true;
+    lampInst.instanceMatrix.needsUpdate = true;
+  }
+
   function setNightFactor(nightFactor = 0) {
     assets.lampGlowMat.emissiveIntensity = 0.28 + nightFactor * 2.6;
   }
@@ -699,6 +826,8 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
   return {
     group,
     refreshActiveChunks,
+    applyPoleCollisions,
+    updatePoles,
     setNightFactor,
     setVisible,
   };

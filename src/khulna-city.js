@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import worldData from './data/khulna-world-data.json';
-import { clampToKhulnaBounds, worldXZToLatLon } from './khulna-geo.js';
+import { clampToKhulnaBounds, worldXZToLatLon, TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { createKhulnaStreetPropsSystem } from './khulna-street-props.js';
 import {
   generateNormalAndRoughnessMaps,
@@ -841,7 +841,7 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
   }
 
   // Initialize around Taltola House cleanly on frame 0
-  refreshActiveChunks(420, 975, 'high');
+  refreshActiveChunks(TALTOLA_HOUSE_OFFSET.x, TALTOLA_HOUSE_OFFSET.z, 'high');
 
   function applyCityCollisions(pos, radius) {
     clampToKhulnaBounds(pos, worldData.meta.bounds);
@@ -962,6 +962,8 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
     data: worldData,
     refreshActiveChunks,
     applyCityCollisions,
+    applyPoleCollisions: (pos, radius, opts) => streetProps.applyPoleCollisions(pos, radius, opts),
+    updatePoles: (dt) => streetProps.updatePoles(dt),
     isInWater,
     findNearestRoadAndDistrict,
     animateWater,

@@ -463,6 +463,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
   const altapoleTower = buildAltapoleHeadTower(group, m);
   const altapoleGoli = buildAltapoleOppositeGoli(group, m, corridorHelpers);
   const traffic = createKhulnaTraffic(group);
+  let lastEnvUpdateTime = null;
 
   function syncVisibility(playerPos = null) {
     if (!playerPos) return;
@@ -505,8 +506,11 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
       city.setFogBounds?.(near, far);
     },
     update(time, playerPos = null, isLow = false, skipSyncVisibility = false) {
+      const envDt = lastEnvUpdateTime === null ? 0.016 : THREE.MathUtils.clamp(time - lastEnvUpdateTime, 0.001, 0.05);
+      lastEnvUpdateTime = time;
       m.setShaderTime?.(time);
       city.animateWater(time);
+      city.updatePoles?.(envDt);
       landmarks.update(time);
       if (!skipSyncVisibility) syncVisibility(playerPos);
       corridors.update(time, playerPos, true);

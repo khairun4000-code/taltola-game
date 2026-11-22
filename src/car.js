@@ -43,6 +43,15 @@ export const COROLLA_PAINT_PRESETS = [
   { name: 'Slate Gray', hex: '#4b535e' },
 ];
 
+export const NISSAN_SUNNY_PAINT_PRESETS = [
+  { name: 'Classic Silver Metallic', hex: '#b4bcc6' },
+  { name: 'Pearl White', hex: '#eef2f6' },
+  { name: 'Midnight Black', hex: '#181a20' },
+  { name: 'Sapphire Blue', hex: '#1b3f7a' },
+  { name: 'Ruby Red', hex: '#9e1622' },
+  { name: 'Champagne Gold', hex: '#c8b694' },
+];
+
 export const FORTUNER_PAINT_PRESETS = [
   { name: 'Attitude Black', hex: '#14171c' },
   { name: 'Platinum White', hex: '#f0f3f7' },
@@ -257,6 +266,44 @@ export const CAR_FLEET_CONFIGS = [
       FR: /door_FR|doorglass_FR/i,
       RL: /door_RL|doorglass_RL/i,
       RR: /door_RR|doorglass_RR/i,
+    },
+  },
+  {
+    id: 'nissan_sunny',
+    name: 'Nissan Sunny (N16) 2000',
+    badge: 'NISSAN SUNNY N16 2000',
+    assetUrl: './assets/nissan_sunny_game_ready.glb',
+    targetLength: 4.50,
+    width: 1.76,
+    rotateY: Math.PI, // Game-ready GLB faces -Z; rotate 180 deg Y so it faces +Z in-game
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 0.35, 0.01, TALTOLA_HOUSE_OFFSET.z + 23.4],
+    spawnHeading: 0.0,
+    paintPresets: NISSAN_SUNNY_PAINT_PRESETS,
+    bodyPaintMats: ['Nissan_Metallic_Paint'],
+    glassMats: ['Window_Tinted_Glass'],
+    tailMats: ['emit_taillight', 'emit_brake'],
+    headlightMats: ['emit_headlight', 'emit_fog'],
+    chromeMats: ['Chrome_Polished'],
+    dashGlowMats: ['tex_gauges', 'tex_console'],
+    hasBuiltInSteeringWheel: true,
+    wheelNameRegex: /^Wheel_(FL|FR|RL|RR)$/i,
+    gearCount: 5,
+    maxSpeed: 31.0,
+    boostMaxSpeed: 42.5,
+    engineForce: 17.0,
+    engineBaseFreq: 35,
+    engineRangeFreq: 138,
+    hornFreqs: [430, 540],
+    camBack: 5.4,
+    camHeight: 2.12,
+    hoodHeight: 1.24,
+    hoodForward: 0.72,
+    isBMW: false,
+    doorRegexMap: {
+      FL: /^Door_FL$/i,
+      FR: /^Door_FR$/i,
+      RL: /^Door_RL$/i,
+      RR: /^Door_RR$/i,
     },
   },
   {
@@ -1509,6 +1556,9 @@ export function createDrivableCar(scene, manager, config) {
     headlightsMode: 0, // 0 = OFF, 1 = LOW BEAM, 2 = HIGH BEAM
     lastImpactIntensity: 0,
     crashCooldown: 0,
+    poleHitCooldown: 0,
+    health: 100,
+    maxHealth: 100,
     slipIntensity: 0,
     lastGear: 'N',
   };
@@ -1647,6 +1697,7 @@ export function createDrivableCar(scene, manager, config) {
     const seatPresets = {
       bmw_m3:          { x:  0.33, y: 0.34, z:  0.04, wy: 0.30, wz: 0.42 },
       toyota_corolla:  { x:  0.32, y: 0.40, z:  0.14, wy: 0.32, wz: 0.42 },
+      nissan_sunny:    { x:  0.36, y: 0.42, z:  0.14, wy: 0.32, wz: 0.42 },
       toyota_fortuner: { x:  0.34, y: 0.56, z:  0.18, wy: 0.32, wz: 0.44 },
       toyota_alphard:  { x:  0.34, y: 0.60, z:  0.46, wy: 0.32, wz: 0.44 },
       toyota_hiace:    { x:  0.34, y: 0.62, z:  0.88, wy: 0.32, wz: 0.44 },
@@ -3157,11 +3208,28 @@ export function createDrivableCar(scene, manager, config) {
     const altGoliRes = envRef?.altapoleGoli?.applyCarCollisions?.(p, state);
     if (altGoliRes?.hitWall) hitWall = true;
 
-    // 3c. Solid Landmark Collisions for Cars (Royal More, PTI More, Kaborkhana More & Ahsan Ahmed Rd)
+    // 3c. Solid Landmark Collisions for Cars (Royal More, PTI More, Kaborkhana More, Ahsan Ahmed Rd & Model Mosque Door Blocker)
     const preX = p.x;
     const preZ = p.z;
-    envRef?.landmarks?.applyCollisions?.(p, Math.max(state.halfWidth, 0.95), Math.max(0, p.y));
+    envRef?.landmarks?.applyCollisions?.(p, Math.max(state.halfWidth, 0.95), Math.max(0, p.y), true);
     if (Math.abs(p.x - preX) > 0.005 || Math.abs(p.z - preZ) > 0.005) hitWall = true;
+
+    // 3d. Solid Roadside Utility Poles — pole sways & recovers + slight vehicle damage (invisible 100% health system)
+    const impactSpdForPole = Math.hypot(state.speed, state.lateralVel);
+    const poleHit = envRef?.city?.applyPoleCollisions?.(p, Math.max(state.halfWidth, 0.72), {
+      impactSpeed: impactSpdForPole,
+      isVehicle: true,
+      dirX: Math.sin(state.heading) * Math.sign(state.speed || 1),
+      dirZ: Math.cos(state.heading) * Math.sign(state.speed || 1),
+    });
+    if (poleHit?.hit) {
+      hitWall = true;
+      if (state.poleHitCooldown <= 0 && impactSpdForPole > 0.8) {
+        const slightDamage = THREE.MathUtils.clamp(0.8 + impactSpdForPole * 0.16, 0.8, 4.0);
+        state.health = Math.max(0, Number((state.health - slightDamage).toFixed(1)));
+        state.poleHitCooldown = 0.45;
+      }
+    }
 
     // 4. Prevent driving into Khulna lakes/ponds/river water
     if (envRef?.city?.isInWater?.(p.x, p.z)) {
@@ -3714,6 +3782,7 @@ export function createDrivableCar(scene, manager, config) {
     }
 
     if (state.crashCooldown > 0) state.crashCooldown = Math.max(0, state.crashCooldown - dt);
+    if (state.poleHitCooldown > 0) state.poleHitCooldown = Math.max(0, state.poleHitCooldown - dt);
     if (state.lastImpactIntensity > 0) state.lastImpactIntensity = Math.max(0, state.lastImpactIntensity - dt * 3.4);
 
     // GTA VI Speed-Sensitive Progressive Steering + Self-Centering Return Torque
@@ -3939,6 +4008,8 @@ export function createDrivableCar(scene, manager, config) {
       state.rearSuspVel = 0;
       state.lastImpactIntensity = 0;
       state.crashCooldown = 0;
+      state.poleHitCooldown = 0;
+      state.health = state.maxHealth;
       state.slipIntensity = 0;
       syncTransform();
     },

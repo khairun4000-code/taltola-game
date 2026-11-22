@@ -47,6 +47,9 @@ const carGearEl = document.querySelector('#car-gear');
 const carRpmFill = document.querySelector('#car-rpm-fill');
 const forzaTachoCanvas = document.querySelector('#forza-tacho-canvas');
 const forzaTachoCtx = forzaTachoCanvas ? forzaTachoCanvas.getContext('2d') : null;
+const carDamageWrapEl = document.querySelector('#car-damage-wrap');
+const carDamageFillEl = document.querySelector('#car-damage-fill');
+const carDamagePctEl = document.querySelector('#car-damage-pct');
 const carSeatBtn = document.querySelector('#car-seat-btn');
 const carSeatLabelEl = document.querySelector('#car-seat-label');
 const carPaintBtn = document.querySelector('#car-paint-btn');
@@ -1366,9 +1369,9 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = isLow ? 115 : (quality === 'medium' ? 160 : (isUltra ? 220 : 195));
-    scene.fog.far = isLow ? 280 : (quality === 'medium' ? 410 : (isUltra ? 580 : 520));
-    camera.far = isLow ? 330 : (quality === 'medium' ? 470 : (isUltra ? 680 : 590));
+    scene.fog.near = isLow ? 150 : (quality === 'medium' ? 210 : (isUltra ? 340 : 280));
+    scene.fog.far = isLow ? 360 : (quality === 'medium' ? 540 : (isUltra ? 920 : 780));
+    camera.far = isLow ? 420 : (quality === 'medium' ? 620 : (isUltra ? 1050 : 880));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
@@ -2076,6 +2079,15 @@ function syncCarHUD() {
       if (nextPaint !== lastCarPaintText) {
         lastCarPaintText = nextPaint;
         carPaintNameEl.textContent = nextPaint;
+      }
+    }
+    if (carDamageWrapEl) {
+      const hp = Math.round(activeCar.state.health ?? 100);
+      const hpStr = String(hp);
+      if (carDamageWrapEl.dataset.health !== hpStr) {
+        carDamageWrapEl.dataset.health = hpStr;
+        if (carDamageFillEl) carDamageFillEl.style.width = `${hp}%`;
+        if (carDamagePctEl) carDamagePctEl.textContent = `${hp}%`;
       }
     }
   }
@@ -4865,6 +4877,10 @@ function computeGroundHeight(pos, isGroundedOverride = grounded, velYOverride = 
 
 function applyWorldCollisions(pos) {
   environment?.city?.applyCityCollisions?.(pos, PLAYER_RADIUS);
+  environment?.city?.applyPoleCollisions?.(pos, PLAYER_RADIUS, {
+    impactSpeed: horizontalVelocity.length(),
+    isVehicle: false,
+  });
 
   const footY = pos.y - EYE_HEIGHT;
   // Solid showcase landmark colliders (Chingri Chattar, Royal More buildings, buses & medians)
