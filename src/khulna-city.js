@@ -482,6 +482,10 @@ function buildMergedRoadGeometry(roadList, tierPredicate, yHeight, extraWidth = 
     ) return true;
     // 5) Alia Madrasah Campus interior: skip old diagonal OSM Approach Road so it never cuts across Etimkhana/Ponds/Playground
     if (roadName === 'Alia Madrasah Approach Road') return true;
+    // 6) Relocated Khulna District Stadium footprint (sx=78, sz=-834): skip old OSM roads so none cut across the pitch/stands!
+    const stDx = (x - 78.0) / 84.0;
+    const stDz = (z + 834.0) / 96.0;
+    if (stDx * stDx + stDz * stDz <= 1.0) return true;
     return false;
   };
 

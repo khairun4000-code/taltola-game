@@ -878,9 +878,9 @@ function createProTurfMaterial(seedVal = 4099, stripeCount = 12, repeatX = 1, re
 }
 
 function buildCircuitHouseAndStadium(staticG, dynamicG, lm, m) {
-  // 1) KHULNA DISTRICT STADIUM (sx = -60, sz = -740) — Professional Broadcast-Grade Turf, Track, Goalposts & Scoreboard
-  const sx = -60.0;
-  const sz = -740.0;
+  // 1) KHULNA DISTRICT STADIUM (sx = 78, sz = -834) — North of Circuit House (left when exiting Circuit House, opposite Court side)
+  const sx = 78.0;
+  const sz = -834.0;
 
   const stadiumTurfMat = createProTurfMaterial(4099, 14, 1.0, 1.0);
   const trackMat = new THREE.MeshStandardMaterial({ color: 0xb04832, roughness: 0.86, metalness: 0.02 });
@@ -986,8 +986,8 @@ function buildCircuitHouseAndStadium(staticG, dynamicG, lm, m) {
   const segs = 28;
   for (let i = 0; i < segs; i++) {
     const a = (i / segs) * Math.PI * 2;
-    // Leave clean SE grand portal gap around a ~ 0.85..1.10 rad facing Boro Maath!
-    if (a > 0.72 && a < 1.18) continue;
+    // Leave clean SSE grand portal gap around a ~ 1.05..1.35 rad facing the small road between Circuit House & Stadium!
+    if (a > 0.98 && a < 1.42) continue;
     const rx = 74.0;
     const rz = 86.0;
     const yaw = -a;
@@ -1027,8 +1027,8 @@ function buildCircuitHouseAndStadium(staticG, dynamicG, lm, m) {
     5.2
   );
 
-  // South-East Stadium Grand Portal Archway facing Boro Maath (around sx + 48, sz + 64)
-  const gateAng = 0.95;
+  // South-Southeast Stadium Grand Portal Archway facing the small road between Circuit House & Stadium (around x = 105.5, z = -752)
+  const gateAng = 1.20;
   const gx = sx + Math.cos(gateAng) * 76.0;
   const gz = sz + Math.sin(gateAng) * 88.0;
   const gYaw = -gateAng;

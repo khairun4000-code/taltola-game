@@ -2238,39 +2238,47 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [204, -862],
   ], 6.6, { withPoles: true, poleSide: 1, poleStep: 36 });
 
-  // 3) North-East Connector behind Circuit House & North of Boro Maath -> Stadium North-East corner
+  // 3) Small Connecting Road right between Circuit House (z=-726) & Khulna District Stadium (z=-741)
+  //    Runs from Circuit House Rd past Stadium Gate No. 1 all the way West to the Stadium West Side Road
   buildPitchStyledRoad([
     [156, -727],
-    [132, -778],
-    [99, -824],
-    [28, -843],
-    [14, -788],
-  ], 6.0, { withPoles: true, poleSide: -1, poleStep: 38 });
+    [142, -733.5],
+    [105.5, -733.5],
+    [60, -733.5],
+    [16, -733.5],
+    [-14, -733.5],
+  ], 5.2, { withPoles: true, poleSide: -1, poleStep: 36 });
 
-  // 4) West Road alongside Boro Maath -> Stadium SE Grand Portal Gate (Fire Brigade Rd link)
+  // Short paved approach apron from the small road straight into Stadium Grand Portal Gate No. 1 (105.5, -752)
+  addPitchRoadAlongPolyline(staticG, [[105.5, -733.5], [105.5, -754.0]], 4.2, m.road, 0.002);
+
+  // 4) West Road alongside Boro Maath & wrapping cleanly along the West side of Khulna District Stadium
   buildPitchStyledRoad([
     [-38, -516],
     [-27, -551],
     [-37, -610],
     [-24, -652],
-    [-4, -688],
-    [14, -745],
-    [14, -788],
-  ], 6.0, { withPoles: true, poleSide: -1, poleStep: 36 });
+    [-14, -695],
+    [-14, -733.5],
+    [-14, -834],
+    [-14, -938],
+  ], 6.0, { withPoles: true, poleSide: -1, poleStep: 38 });
 
-  // 5) North Stadium Perimeter Road (wrapping North of Khulna District Stadium directly into Shaheed Hadis Park East Rd!)
+  // 5) North Stadium Perimeter Road (wrapping North of relocated Stadium from Circuit House Rd -> Shaheed Hadis Park East Rd!)
   buildPitchStyledRoad([
-    [28, -843],
-    [1, -859],
-    [-51, -870],
-    [-89, -879],
-    [-140, -897],
-    [-188, -895],
+    [204, -862],
+    [196, -915],
+    [155, -940],
+    [78, -942],
+    [-14, -938],
+    [-110, -936],
+    [-188, -935],
     [-261, -935],
   ], 6.2, { withPoles: true, poleSide: -1, poleStep: 38 });
 
-  // 6) West Stadium Perimeter Road (wrapping West VIP Pavilion side of Stadium down to Shamsur Rahman Rd)
+  // 6) West Link Road connecting North Stadium/Hadis corridor down to Shamsur Rahman Rd
   buildPitchStyledRoad([
+    [-188, -935],
     [-188, -895],
     [-176, -825],
     [-166, -750],
@@ -2279,7 +2287,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [-165, -515],
   ], 6.2, { withPoles: true, poleSide: 1, poleStep: 38 });
 
-  // 7) South-West Stadium Front Link connecting West Stadium Perimeter Road directly to Boro Maath West Road
+  // 7) South-West Link connecting West Link Road directly to Boro Maath West Road
   buildPitchStyledRoad([
     [-166, -635],
     [-118, -616],
@@ -2287,7 +2295,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [-37, -610],
   ], 5.8, { withPoles: true, poleSide: 1, poleStep: 38 });
 
-  // 8) Shaheed Hadis Park South Front Road (Main Gate Road -> links straight into Stadium West Road!)
+  // 8) Shaheed Hadis Park South Front Road (Main Gate Road -> links straight into West Link Road!)
   buildPitchStyledRoad([
     [-384, -831],
     [-332, -831],
@@ -2319,16 +2327,18 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [-384, -831],
   ], 6.0, { withPoles: true, poleSide: -1, poleStep: 40 });
 
-  // Smooth Circular Bangladeshi Pitch Junction Pads at all 16 road mouths & intersections (zero jagged corners / zero Z-fighting!)
+  // Smooth Circular Bangladeshi Pitch Junction Pads at all road mouths & intersections (zero jagged corners / zero Z-fighting!)
   for (const [jx, jz, jr] of [
     [-165, -515, 5.4],
     [-38, -516, 5.2],
     [109, -521, 5.6],
     [166, -519, 5.2],
     [156, -727, 5.4],
-    [28, -843, 5.0],
-    [14, -788, 4.8],
-    [-188, -895, 5.2],
+    [105.5, -733.5, 4.4],
+    [-14, -733.5, 4.8],
+    [-14, -938, 5.0],
+    [204, -862, 5.2],
+    [-188, -935, 5.2],
     [-166, -635, 4.8],
     [-37, -610, 4.6],
     [-176, -825, 5.2],
@@ -2355,7 +2365,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
   for (const [dx, dz, yaw] of [
     [-280, -834.1, Math.PI * 0.5], [-318, -834.1, Math.PI * 0.5], [-264.1, -885, 0],
     [18, -525.1, Math.PI * 0.5], [78, -524.5, Math.PI * 0.5], [134, -636, 0.22],
-    [-88, -875.5, 1.35], [-162.5, -720, 0.02],
+    [88, -731.0, Math.PI * 0.5], [-162.5, -720, 0.02],
   ]) {
     addBox(staticG, [0.52, 0.04, 0.84], [dx, 0.062, dz], bank.darkSlate, { rotY: yaw, castShadow: false });
   }
@@ -2381,7 +2391,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
   for (const [sx, sz, srot, title, subtitle] of [
     [-264.5, -835.2, 0, 'শহীদ হাদিস পার্ক রোড · পিসি রায় রোড', 'SHAHEED HADIS PARK · STADIUM LINK'],
     [104.5, -525.2, 0, 'সার্কিট হাউজ ও খুলনা জজ কোর্ট রোড', 'CIRCUIT HOUSE · BORO MAATH · JUDGE COURT'],
-    [-172.0, -829.5, Math.PI * 0.5, 'খুলনা জেলা স্টেডিয়াম রোড', 'KHULNA DISTRICT STADIUM RING ROAD'],
+    [146.0, -729.5, 0, 'খুলনা জেলা স্টেডিয়াম রোড', 'KHULNA DISTRICT STADIUM · CIRCUIT HOUSE LINK'],
   ]) {
     addCyl(staticG, 0.06, 0.08, 3.6, [sx, 1.8, sz], bank.darkMetal, 8);
     addIlluminatedSign(dynamicG, bank, { title, subtitle, bg: '#0f3d2e', accent: '#fde047' }, [sx, 3.42, sz], srot, 3.8, 1.05);
@@ -2389,8 +2399,8 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
 
   // Roadside Shade Trees & Palms framing Circuit House Rd, Stadium Ring & Hadis Park Frontage
   for (const [tx, tz, isPalm] of [
-    [126, -590, false], [148, -675, true], [172, -775, false],
-    [72, -834, true], [-58, -878, false], [-152, -892, true],
+    [126, -590, false], [148, -675, true], [174, -775, false],
+    [192, -845, true], [78, -948, false], [-22, -834, true],
     [-174, -765, false], [-174, -640, true], [-102, -605, false],
     [-253, -860, false], [-253, -915, true], [-315, -822, false], [-360, -822, true],
   ]) {

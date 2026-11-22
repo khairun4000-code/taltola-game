@@ -171,11 +171,11 @@ const CROW_SPOTS = [
   // Khulna District Stadium (1 flock of birds)
   {
     name: 'KhulnaStadium',
-    center: [-60, -740],
+    center: [78, -834],
     radius: 62,
     cruiseY: 26.0,
     isCrow: false,
-    perches: [[-134.0, 12.6, -740.0], [-60.0, 11.4, -654.0], [-60.0, 17.8, -829.5]],
+    perches: [[4.0, 12.6, -834.0], [78.0, 11.4, -748.0], [78.0, 17.8, -923.5]],
     phase: 7.8,
     initState: 'FLYING',
   },

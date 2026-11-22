@@ -396,12 +396,15 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
     // Altapole Lane + East Side Lane
     [166, -519, 157, -296, 4.4],
     [169, -404, 209, -404, 4.0],
-    // Hadis Park & Stadium perimeter roads
+    // Hadis Park & Stadium perimeter roads + small road between Circuit House & Stadium
     [-384, -831, -176, -825, 5.2],
     [-261, -831, -261, -967, 5.0],
     [-384, -967, -261, -967, 4.8],
     [-384, -967, -384, -831, 4.8],
     [-165, -515, 166, -519, 5.4],
+    [156, -727, -14, -733.5, 4.8],
+    [-14, -733.5, -14, -938, 5.0],
+    [196, -915, -261, -935, 5.2],
   ]) {
     roadSegs.push({
       ax, az, bx, bz, rw,
@@ -456,12 +459,13 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
         const nearTaltola = Math.abs(px - tOx) < 38 && Math.abs(pz - tOz) < 62;
         const inAliaCampus = px > 124 && px < 264 && pz > 46 && pz < 246;
         const inAltapole = px > 152 && px < 214 && pz > -525 && pz < -290;
+        const inNewStadium = (((px - 78.0) / 86.0) ** 2 + ((pz + 834.0) / 98.0) ** 2) <= 1.0;
         const nearMajorJunction = (
           ((px + 716.8) ** 2 + (pz + 291.8) ** 2 < 46 * 46) // Royal More
           || ((px + 920.0) ** 2 + (pz + 292.0) ** 2 < 46 * 46) // Satrasta More
           || ((px + 304.3) ** 2 + (pz + 56.7) ** 2 < 46 * 46) // PTI More
         );
-        if (!nearHaji && !nearTaltola && !inAliaCampus && !inAltapole && !nearMajorJunction && !isInsideAnyRoad(px, pz)) {
+        if (!nearHaji && !nearTaltola && !inAliaCampus && !inAltapole && !inNewStadium && !nearMajorJunction && !isInsideAnyRoad(px, pz)) {
           const cx = Math.floor(px / chunkSize);
           const cz = Math.floor(pz / chunkSize);
           const key = `${cx},${cz}`;
