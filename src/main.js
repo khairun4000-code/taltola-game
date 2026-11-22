@@ -4191,8 +4191,8 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  // GTA V Special Ability Toggle ([CapsLock] anytime, [Z] on foot only — while driving [Z] is Left Indicator!)
-  if ((event.code === 'CapsLock' || (event.code === 'KeyZ' && !getDrivingCar())) && !event.repeat) {
+  // GTA V Special Ability Toggle ([CapsLock] or [Z])
+  if ((event.code === 'CapsLock' || event.code === 'KeyZ') && !event.repeat) {
     event.preventDefault();
     controls.getHorizontalVectors(forwardVec, rightVec);
     specialAbility?.toggle({
@@ -4281,22 +4281,6 @@ window.addEventListener('keydown', (event) => {
       event.preventDefault();
       toggleCarDriving();
       return;
-    }
-    // Vehicle Turn Signal / Hazard Indicators ([Z] Left, [X] Both/Hazard, [C] Right; [Shift+C] is Free Cam)
-    if (!event.shiftKey && !event.repeat && (event.code === 'KeyZ' || event.code === 'KeyX' || event.code === 'KeyC')) {
-      if (!activeCar.state.isRickshaw && !activeCar.state.isBicycle) {
-        event.preventDefault();
-        const req = event.code === 'KeyZ' ? 'left' : (event.code === 'KeyX' ? 'hazard' : 'right');
-        const nextMode = activeCar.toggleIndicator?.(req) ?? 'off';
-        const indLabels = {
-          left: '⬅️ Left Indicator ON [Z]',
-          right: '➡️ Right Indicator ON [C]',
-          hazard: '⚠️ Hazard Indicators ON (Both) [X]',
-          off: '💡 Indicators OFF',
-        };
-        gtaPhoneUI?.showToast?.(indLabels[nextMode] || indLabels.off);
-        return;
-      }
     }
     if (event.code === 'KeyL' && !event.repeat) {
       event.preventDefault();

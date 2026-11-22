@@ -300,7 +300,6 @@ export const CAR_FLEET_CONFIGS = [
     headlightMats: ['Headlight', 'Head_light.001'],
     reverseMats: ['Reverse.005'],
     chromeMats: ['Mirror.002', 'guong_trong.002'],
-    indicatorCoords: { front: [0.72, 0.76, 1.92], rear: [0.72, 0.94, -2.02] },
     dashGlowMats: ['Interiorbadge1Mtl'],
     khulnaPlateText: ['খুলনা মেট্রো-গ', '১৫-২০১২'],
     hasBuiltInSteeringWheel: true,
@@ -344,7 +343,6 @@ export const CAR_FLEET_CONFIGS = [
     glassMats: ['Window_Tinted_Glass'],
     tailMats: ['emit_taillight', 'emit_brake'],
     headlightMats: ['emit_headlight', 'emit_fog'],
-    indicatorCoords: { front: [0.70, 0.64, 2.02], rear: [0.68, 0.84, -2.08] },
     chromeMats: ['Chrome_Polished'],
     dashGlowMats: ['tex_gauges', 'tex_console'],
     hasBuiltInSteeringWheel: true,
@@ -389,7 +387,6 @@ export const CAR_FLEET_CONFIGS = [
     headlightMats: ['SpotLight', 'LC300_Headlight_LED'],
     reverseMats: ['Light_White_Back'],
     chromeMats: ['Chrome', 'Mirror'],
-    indicatorCoords: { front: [0.82, 1.07, 2.22], rear: [0.80, 1.12, -2.26] },
     dashGlowMats: ['Screens', 'Buttons'],
     wheelNameRegex: /^Wheel_(FL|FR|RL|RR)$/i,
     hasNativeDoors: true,
@@ -1746,7 +1743,6 @@ export function createDrivableCar(scene, manager, config) {
     hoodForward: config.hoodForward || 0.65,
     gearCount: config.gearCount || 6,
     headlightsMode: 0, // 0 = OFF, 1 = LOW BEAM, 2 = HIGH BEAM
-    indicatorMode: 'off', // 'off' | 'left' | 'right' | 'hazard'
     lastImpactIntensity: 0,
     crashCooldown: 0,
     poleHitCooldown: 0,
@@ -2134,8 +2130,6 @@ export function createDrivableCar(scene, manager, config) {
   let tailMats = [];
   let drlMats = [];
   let reverseMats = [];
-  let universalIndicators = null;
-  let lastIndicatorBlink = false;
   let currentQuality = 'high';
   let shadowInRange = true;
   let activeEnvMap = null;
@@ -3394,78 +3388,8 @@ export function createDrivableCar(scene, manager, config) {
         builtInSteeringWheel = model.getObjectByName(config.builtInSteeringNode) || null;
       }
 
-      // Universal amber LED turn-signal & hazard indicators for every motorized vehicle (Z = Left, X = Hazard, C = Right)
-      if (!config.isRickshaw && !config.isBicycle && !corollaParts && !tataTruckApi) {
-        orientedWrapper.updateMatrixWorld(true);
-        const indBox = new THREE.Box3().setFromObject(orientedWrapper);
-        const indSz = indBox.getSize(new THREE.Vector3());
-        const customInd = config.indicatorCoords || null;
-        let fx, fy, fz, rx, ry, rz;
-        if (customInd) {
-          [fx, fy, fz] = customInd.front;
-          [rx, ry, rz] = customInd.rear;
-        } else if (config.isBike) {
-          fx = 0.19; fy = 0.92; fz = 0.52;
-          rx = 0.15; ry = 0.86; rz = -0.86;
-        } else {
-          fx = Math.max(0.32, indSz.x * 0.39);
-          fy = indBox.min.y + indSz.y * 0.44;
-          fz = indBox.max.z - 0.06;
-          rx = Math.max(0.32, indSz.x * 0.39);
-          ry = indBox.min.y + indSz.y * 0.52;
-          rz = indBox.min.z + 0.06;
-        }
-        const indGroup = new THREE.Group();
-        indGroup.name = 'UniversalIndicators';
-        const bulbScale = config.isBike ? 0.55 : 1.0;
-        const bulbGeo = new THREE.BoxGeometry(0.11 * bulbScale, 0.055 * bulbScale, 0.045 * bulbScale);
-        const haloGeo = new THREE.SphereGeometry(0.095 * bulbScale, 10, 8);
-        const makeIndMat = () => new THREE.MeshStandardMaterial({
-          color: 0xffa000,
-          emissive: 0xff8c00,
-          emissiveIntensity: 8.5,
-          roughness: 0.18,
-          metalness: 0.1,
-        });
-        const makeHaloMat = () => new THREE.MeshBasicMaterial({
-          color: 0xffaa00,
-          transparent: true,
-          opacity: 0.58,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        });
-        const leftMat = makeIndMat();
-        const rightMat = makeIndMat();
-        const leftHaloMat = makeHaloMat();
-        const rightHaloMat = makeHaloMat();
-        const leftObjs = [];
-        const rightObjs = [];
-        const addPod = (arr, mat, hMat, x, y, z) => {
-          const pod = new THREE.Group();
-          pod.position.set(x, y, z);
-          const bulb = new THREE.Mesh(bulbGeo, mat);
-          const halo = new THREE.Mesh(haloGeo, hMat);
-          halo.scale.set(1.35, 0.9, 0.8);
-          pod.add(bulb, halo);
-          pod.visible = false;
-          indGroup.add(pod);
-          arr.push(pod);
-        };
-        addPod(leftObjs, leftMat, leftHaloMat, fx, fy, fz);
-        addPod(leftObjs, leftMat, leftHaloMat, rx, ry, rz);
-        addPod(rightObjs, rightMat, rightHaloMat, -fx, fy, fz);
-        addPod(rightObjs, rightMat, rightHaloMat, -rx, ry, rz);
-        orientedWrapper.add(indGroup);
-        universalIndicators = { group: indGroup, left: leftObjs, right: rightObjs };
-      }
-
       // Batch all static chassis/interior child meshes by material (cuts 4,098 Alphard draw calls down to ~35!)
       const dynamicNodes = new Set();
-      if (universalIndicators?.group) {
-        universalIndicators.group.traverse((o) => {
-          if (o.isMesh) dynamicNodes.add(o);
-        });
-      }
       if (builtInSteeringWheel) {
         builtInSteeringWheel.traverse((o) => {
           if (o.isMesh) dynamicNodes.add(o);
@@ -3864,24 +3788,21 @@ export function createDrivableCar(scene, manager, config) {
       if (tataTruckApi.steeringWheel) tataTruckApi.steeringWheel.rotation.z = -state.steerAngle * 4.5;
       if (carDoors.FL?.pivot) carDoors.FL.pivot.rotation.y = carDoors.FL.current * carDoors.FL.openSign;
       if (carDoors.FR?.pivot) carDoors.FR.pivot.rotation.y = carDoors.FR.current * carDoors.FR.openSign;
-      const blinkOn = Math.floor(performance.now() / 420) % 2 === 0;
-      const indL = state.indicatorMode === 'left' || state.indicatorMode === 'hazard';
-      const indR = state.indicatorMode === 'right' || state.indicatorMode === 'hazard';
       tataTruckApi.applyLights({
         headlights: state.headlightsMode > 0,
         highBeam: state.headlightsMode >= 2,
         brake: state.driving && (state.isBraking || state.speed < -0.05 || state.lastImpactIntensity > 0.08),
         reverse: state.gear === 'R' || state.speed < -0.25,
-        indLeft: indL,
-        indRight: indR,
-        hazard: state.indicatorMode === 'hazard',
-        blinkOn,
+        indLeft: false,
+        indRight: false,
+        hazard: false,
+        blinkOn: false,
         cabinLight: state.headlightsMode > 0 || state.driving,
       });
       return;
     }
 
-    syncIndicatorAndReverseLights();
+    syncReverseAndBrakeLights();
 
     if (cngParts) {
       if (cngParts.frontSteer) cngParts.frontSteer.rotation.y = state.steerAngle;
@@ -3902,21 +3823,18 @@ export function createDrivableCar(scene, manager, config) {
       if (corollaParts.wheelFLSteer) corollaParts.wheelFLSteer.rotation.y = state.steerAngle;
       if (corollaParts.wheelFRSteer) corollaParts.wheelFRSteer.rotation.y = state.steerAngle;
       if (corollaParts.steeringWheel) corollaParts.steeringWheel.rotation.z = state.steerAngle * 5.2;
-      // Sync all workable bulbs (headlights, fog, taillights, brake, reverse, indicators, dome, dash)
+      // Sync workable bulbs (headlights, fog, taillights, brake, reverse, dome, dash)
       const engineOn = Boolean(state.driving || state.aiDriving);
       const hlOn = state.headlightsMode > 0;
       const hlHigh = state.headlightsMode === 2;
       const anyDoorOpen = Object.values(carDoors).some((d) => d.current > 0.06);
-      const blinkOn = Math.floor(performance.now() / 420) % 2 === 0;
-      const indL = state.indicatorMode === 'left' || state.indicatorMode === 'hazard';
-      const indR = state.indicatorMode === 'right' || state.indicatorMode === 'hazard';
       for (const obj of corollaParts.headlights) obj.visible = hlOn;
       for (const obj of corollaParts.fogLights) obj.visible = hlHigh;
       for (const obj of corollaParts.taillights) obj.visible = engineOn || hlOn;
       for (const obj of corollaParts.brakeLights) obj.visible = Boolean(state.isBraking);
       for (const obj of corollaParts.reverseLights) obj.visible = engineOn && (state.gear === 'R' || state.speed < -0.25);
-      for (const obj of corollaParts.indLeft) obj.visible = indL && blinkOn;
-      for (const obj of corollaParts.indRight) obj.visible = indR && blinkOn;
+      for (const obj of corollaParts.indLeft) obj.visible = false;
+      for (const obj of corollaParts.indRight) obj.visible = false;
       if (corollaParts.dashLight) corollaParts.dashLight.visible = engineOn || hlOn;
       if (corollaParts.domeLight) corollaParts.domeLight.visible = anyDoorOpen;
       return;
@@ -4347,41 +4265,7 @@ export function createDrivableCar(scene, manager, config) {
     return state.headlightsMode;
   }
 
-  function playIndicatorTick(isOn = true) {
-    if (!state.driving) return;
-    ensureAudio();
-    if (!audioCtx) return;
-    try {
-      const now = audioCtx.currentTime;
-      const g = audioCtx.createGain();
-      const o = audioCtx.createOscillator();
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(isOn ? 1180 : 860, now);
-      g.gain.setValueAtTime(0.001, now);
-      g.gain.exponentialRampToValueAtTime(0.045, now + 0.003);
-      g.gain.exponentialRampToValueAtTime(0.001, now + 0.022);
-      o.connect(g);
-      g.connect(audioCtx.destination);
-      o.start(now);
-      o.stop(now + 0.028);
-    } catch {}
-  }
-
-  function syncIndicatorAndReverseLights() {
-    const isIndActive = state.indicatorMode !== 'off';
-    const blinkOn = isIndActive && (Math.floor(performance.now() / 420) % 2 === 0);
-    if (isIndActive && blinkOn !== lastIndicatorBlink) {
-      lastIndicatorBlink = blinkOn;
-      playIndicatorTick(blinkOn);
-    } else if (!isIndActive) {
-      lastIndicatorBlink = false;
-    }
-    const leftLit = (state.indicatorMode === 'left' || state.indicatorMode === 'hazard') && blinkOn;
-    const rightLit = (state.indicatorMode === 'right' || state.indicatorMode === 'hazard') && blinkOn;
-    if (universalIndicators) {
-      for (const obj of universalIndicators.left) obj.visible = leftLit;
-      for (const obj of universalIndicators.right) obj.visible = rightLit;
-    }
+  function syncReverseAndBrakeLights() {
     if (reverseMats.length) {
       const revOn = Boolean(state.driving || state.aiDriving) && (state.gear === 'R' || state.speed < -0.25);
       for (const m of reverseMats) m.emissiveIntensity = revOn ? 4.8 : 0.0;
@@ -4391,18 +4275,6 @@ export function createDrivableCar(scene, manager, config) {
       const targetTail = state.isBraking ? Math.max(baseTail + 3.2, 6.2) : baseTail;
       for (const m of tailMats) m.emissiveIntensity = targetTail;
     }
-  }
-
-  function toggleIndicator(mode) {
-    if (config.isRickshaw || config.isBicycle) return 'off';
-    if (!mode || mode === 'off' || state.indicatorMode === mode) {
-      state.indicatorMode = 'off';
-    } else {
-      state.indicatorMode = mode;
-    }
-    playIndicatorTick(state.indicatorMode !== 'off');
-    syncTransform();
-    return state.indicatorMode;
   }
 
   let aiControlInput = null;
@@ -4596,7 +4468,7 @@ export function createDrivableCar(scene, manager, config) {
         moved = true;
       }
       updateEngineAudio(false, 920, 0);
-      if (moved || doorMoved || isPassengerSitting || state.indicatorMode !== 'off') syncTransform();
+      if (moved || doorMoved || isPassengerSitting) syncTransform();
       return;
     }
 
@@ -4891,7 +4763,6 @@ export function createDrivableCar(scene, manager, config) {
     getDoorStates,
     getInteriorCameraPose,
     toggleHeadlights,
-    toggleIndicator,
     playHorn,
     playDoorSound,
     playSeatbeltSound,
