@@ -438,11 +438,23 @@ export function buildKhulnaCircuitHouse(parent, m, renderer = null) {
   function getGroundHeight(pos) {
     if (!pos) return 0;
     const { lx, lz } = worldToLocalXZ(pos.x, pos.z);
-    if (lx < -27 || lx > 37 || lz < -35 || lz > 35) return 0;
+    // Smooth cutoff right at outer edge of road-to-footpath apron (lx < -30.8 stays on flat asphalt road y = 0!)
+    if (lx < -30.85 || lx > 37 || lz < -35 || lz > 35) return 0;
+    if (lx < -26.2 && (lz < 7.6 || lz > 14.9)) return 0;
 
+    const COMPOUND_Y = 0.015;
     let ly = 0.04;
+    if (lx < -25.6) {
+      // Smooth ramp up from asphalt road (lx = -30.85, 0m) onto Gate_Footpath_Entrance_Apron (lx = -25.6, 0.08m)
+      const t = THREE.MathUtils.clamp((lx - (-30.85)) / 5.25, 0, 1);
+      return t * (COMPOUND_Y + 0.08 * SCALE);
+    }
+    if (lx >= -25.6 && lx <= -21.9 && lz >= 8.0 && lz <= 14.5) {
+      ly = Math.max(ly, 0.08);
+    }
     if (lx >= -25.6 && lx <= -22.4 && (lz <= 8.0 || lz >= 14.5)) {
-      ly = Math.max(ly, 0.16);
+      const curbT = THREE.MathUtils.clamp((lx - (-25.6)) / 0.35, 0, 1);
+      ly = Math.max(ly, 0.04 + 0.12 * curbT);
     }
     if (lx >= -2.2 && lx <= 6.2 && lz >= -15.8 && lz <= -7.7) {
       ly = Math.max(ly, 0.16);
@@ -477,7 +489,7 @@ export function buildKhulnaCircuitHouse(parent, m, renderer = null) {
     if (lx >= -21.0 && lx <= -18.8 && lz >= 2.2 && lz <= 4.5) {
       ly = Math.max(ly, 0.14);
     }
-    return ly * SCALE;
+    return COMPOUND_Y + ly * SCALE;
   }
 
   function applyCollisions(pos, radius = 0.34, footY = 0, isVehicle = false) {

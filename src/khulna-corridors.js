@@ -2148,7 +2148,7 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
  * zero Z-fighting), smooth circular pitch junction pads, red-brick footpaths & cream curbs.
  */
 function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, treesG = staticG) {
-  function buildPitchStyledRoad(pts, roadWidth = 6.2, { withPoles = true, poleSide = 1, poleStep = 38 } = {}) {
+  function buildPitchStyledRoad(pts, roadWidth = 6.2, { withPoles = true, poleSide = 1, poleStep = 38, skipSidewalkZRange = null } = {}) {
     // 1) Continuous mitered Taltola House wet-asphalt carriageway (flush at y = 0.002 — ZERO wheel/foot sinking!)
     addPitchRoadAlongPolyline(staticG, pts, roadWidth * 0.5, m.road, 0.002);
 
@@ -2169,37 +2169,43 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
       const mx = (x0 + x1) * 0.5;
       const mz = (z0 + z1) * 0.5;
 
-      // 2) Continuous Red-Brick Footpaths + Cream Concrete Curbs on BOTH sides (micro-staggered so joints never Z-fight)
-      const swOffset = roadWidth * 0.5 + 0.78;
-      const curbOffset = roadWidth * 0.5 + 0.08;
-      const segH = 0.14 + (i % 2) * 0.002;
-      for (const side of [-1, 1]) {
-        addBox(
-          staticG,
-          [1.42, segH, segLen + 0.45],
-          [mx + nx * side * swOffset, segH * 0.5, mz + nz * side * swOffset],
-          bank.redBrickFootpath,
-          { rotY: yaw, castShadow: false, uvScale: 1.8 }
-        );
-        addBox(
-          staticG,
-          [0.16, segH + 0.02, segLen + 0.48],
-          [mx + nx * side * curbOffset, (segH + 0.02) * 0.5, mz + nz * side * curbOffset],
-          bank.creamTrim,
-          { rotY: yaw, castShadow: false }
-        );
+      // Skip procedural 16cm raised brick footpaths where real 3D GLB landmarks (Circuit House & Judge Court) provide their own footpaths!
+      const inSkipZone = skipSidewalkZRange && mz >= skipSidewalkZRange[0] && mz <= skipSidewalkZRange[1];
+      if (!inSkipZone) {
+        // 2) Continuous Red-Brick Footpaths + Cream Concrete Curbs on BOTH sides (micro-staggered so joints never Z-fight)
+        const swOffset = roadWidth * 0.5 + 0.78;
+        const curbOffset = roadWidth * 0.5 + 0.08;
+        const segH = 0.14 + (i % 2) * 0.002;
+        for (const side of [-1, 1]) {
+          addBox(
+            staticG,
+            [1.42, segH, segLen + 0.45],
+            [mx + nx * side * swOffset, segH * 0.5, mz + nz * side * swOffset],
+            bank.redBrickFootpath,
+            { rotY: yaw, castShadow: false, uvScale: 1.8 }
+          );
+          addBox(
+            staticG,
+            [0.16, segH + 0.02, segLen + 0.48],
+            [mx + nx * side * curbOffset, (segH + 0.02) * 0.5, mz + nz * side * curbOffset],
+            bank.creamTrim,
+            { rotY: yaw, castShadow: false }
+          );
+        }
       }
 
-      // 3) Utility Poles with LED Cobra Streetlamps along one footpath edge
+      // 3) Utility Poles with LED Cobra Streetlamps along one footpath edge (skipping gate frontages!)
       if (withPoles) {
         let d = accumPole;
         while (d < segLen) {
           const t = d / segLen;
           const px = x0 + dx * t + nx * poleSide * (roadWidth * 0.5 + 1.05);
           const pz = z0 + dz * t + nz * poleSide * (roadWidth * 0.5 + 1.05);
-          const armDir = -Math.sign(nx * poleSide || 1);
-          const tier = (poleCoords.length % 2 === 0) ? 2 : 0;
-          addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDir, false, poleCoords, tier);
+          if (!(skipSidewalkZRange && pz >= skipSidewalkZRange[0] && pz <= skipSidewalkZRange[1])) {
+            const armDir = -Math.sign(nx * poleSide || 1);
+            const tier = (poleCoords.length % 2 === 0) ? 2 : 0;
+            addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDir, false, poleCoords, tier);
+          }
           d += poleStep;
         }
         accumPole = d - segLen;
@@ -2226,7 +2232,8 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [166, -519],
   ], 6.8, { withPoles: true, poleSide: -1, poleStep: 36 });
 
-  // 2) East Road behind Circuit House 1 & 2 & in front of Khulna Judge Court (সার্কিট হাউজ রোড)
+  // 2) East Road between Khulna Circuit House (West) & Khulna Judge Court (East) (সার্কিট হাউজ রোড)
+  // Skip procedural 16cm double-sidewalks along z = [-730, -640] so characters NEVER sink/pop between road & real 3D GLB footpaths!
   buildPitchStyledRoad([
     [109, -521],
     [118, -567],
@@ -2236,7 +2243,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [166, -760],
     [184, -814],
     [204, -862],
-  ], 6.6, { withPoles: true, poleSide: 1, poleStep: 36 });
+  ], 7.4, { withPoles: true, poleSide: 1, poleStep: 36, skipSidewalkZRange: [-730, -640] });
 
   // 3) Small Connecting Road right between Circuit House (z=-726) & Khulna District Stadium (z=-741)
   //    Runs from Circuit House Rd past Stadium Gate No. 1 all the way West to the Stadium West Side Road
@@ -2351,14 +2358,14 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     addPitchJunctionDisc(staticG, jx, jz, jr, m.road, 0.003);
   }
 
-  // Authentic Khulna Asphalt Speed Breakers (স্পিড ব্রেকার) near Hadis Park Main Gate, Boro Maath Gate & Judge Court Gate
+  // Authentic Khulna Asphalt Speed Breakers (স্পিড ব্রেকার) — low-profile flush bumps so shoes never clip through!
   for (const [bx, bz, w, yaw] of [
     [-295.0, -831.0, 6.4, Math.PI * 0.5],
     [40.0, -522.0, 6.6, Math.PI * 0.5],
-    [143.0, -684.0, 6.4, 0.22],
+    [139.0, -658.0, 6.8, 0.16],
   ]) {
-    addBox(staticG, [w, 0.09, 0.72], [bx, 0.028, bz], bank.dampPlinth, { rotY: yaw, castShadow: false });
-    addBox(staticG, [w * 0.96, 0.04, 0.34], [bx, 0.068, bz], bank.darkSlate, { rotY: yaw, castShadow: false });
+    addBox(staticG, [w, 0.036, 0.72], [bx, 0.018, bz], bank.dampPlinth, { rotY: yaw, castShadow: false });
+    addBox(staticG, [w * 0.96, 0.018, 0.34], [bx, 0.030, bz], bank.darkSlate, { rotY: yaw, castShadow: false });
   }
 
   // Roadside Cast-Iron Storm-Drain Grates along curbs (merged into staticG — zero extra draw calls!)
