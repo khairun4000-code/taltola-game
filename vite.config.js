@@ -9,6 +9,7 @@ export default defineConfig({
         main: resolve(__dirname, 'index.html'),
         royalHotelPreview: resolve(__dirname, 'royal-hotel-preview.html'),
         corollaPreview: resolve(__dirname, 'corolla-preview.html'),
+        tata2515Preview: resolve(__dirname, 'tata-2515-preview.html'),
       },
     },
   },
