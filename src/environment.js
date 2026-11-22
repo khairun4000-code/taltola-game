@@ -504,12 +504,12 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     setFogBounds(near, far) {
       city.setFogBounds?.(near, far);
     },
-    update(time, playerPos = null, isLow = false) {
+    update(time, playerPos = null, isLow = false, skipSyncVisibility = false) {
       m.setShaderTime?.(time);
       city.animateWater(time);
       landmarks.update(time);
-      syncVisibility(playerPos);
-      corridors.update(time, playerPos);
+      if (!skipSyncVisibility) syncVisibility(playerPos);
+      corridors.update(time, playerPos, true);
       traffic.update(time, playerPos);
       wildlife.update(time, playerPos);
       if (!isLow) {

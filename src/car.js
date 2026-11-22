@@ -2698,10 +2698,10 @@ export function createDrivableCar(scene, manager, config) {
           measuredWheelRadius = 0.255;
           cngParts = {
             frontSteer,
-            wheelFront,
+            wheelFront: cngProcWheelFront || wheelFront,
             handlebar,
-            wheelRearL,
-            wheelRearR,
+            wheelRearL: cngProcWheelRearL || wheelRearL,
+            wheelRearR: cngProcWheelRearR || wheelRearR,
             gripL,
             gripR,
           };
@@ -3945,11 +3945,32 @@ export function createDrivableCar(scene, manager, config) {
     destroy() {
       state.driving = false;
       updateEngineAudio(false, 920, 0);
+      try { osc1?.stop?.(); } catch {}
+      try { osc2?.stop?.(); } catch {}
+      try { screechOsc?.stop?.(); } catch {}
+      osc1 = null;
+      osc2 = null;
+      screechOsc = null;
+      if (audioCtx) {
+        try { audioCtx.close?.(); } catch {}
+        audioCtx = null;
+      }
       for (const p of tireSmokePuffs) {
         scene.remove(p.mesh);
+        p.mesh.geometry?.dispose?.();
         p.mesh.material?.dispose?.();
       }
       tireSmokePuffs.length = 0;
+      smokeTex?.dispose?.();
+      root.traverse((obj) => {
+        if (!obj.isMesh) return;
+        obj.geometry?.dispose?.();
+        if (Array.isArray(obj.material)) {
+          for (const m of obj.material) m?.dispose?.();
+        } else {
+          obj.material?.dispose?.();
+        }
+      });
       if (root.parent) root.parent.remove(root);
     },
     setVisibilityAndShadow,

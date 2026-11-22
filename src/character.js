@@ -1077,11 +1077,14 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       const coBlend = localT > 0.65 ? ((localT - 0.65) / 0.35) : 0;
       const sBlend = coBlend * coBlend * (3 - 2 * coBlend);
 
-      const usedKeys = new Set([...Object.keys(curPose), ...Object.keys(nxtPose)]);
-      for (const k of usedKeys) {
+      for (const k in curPose) {
         const v0 = curPose[k] || 0;
         const v1 = nxtPose[k] || 0;
         m[k] = v0 + (v1 - v0) * sBlend;
+      }
+      for (const k in nxtPose) {
+        if (k in curPose) continue;
+        m[k] = (nxtPose[k] || 0) * sBlend;
       }
       speechStress = curStress + (nxtStress - curStress) * sBlend;
       const browPulse = speechStress * (0.22 + 0.14 * Math.sin(talkClock * 2.1));
@@ -2049,9 +2052,11 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       }
     }
 
-    applyProceduralHeadAndFace(dt, Boolean(isRidingRickshaw || isRidingBike || isDrivingCar || isVehicleAnim || holdingPhoneNow));
-    if ((isRidingRickshaw && !rickshawRide.isBicycle) || isDrivingCar || isVehicleAnim) {
-      lockHeadAndNeckStraight();
+    if (root.visible) {
+      applyProceduralHeadAndFace(dt, Boolean(isRidingRickshaw || isRidingBike || isDrivingCar || isVehicleAnim || holdingPhoneNow));
+      if ((isRidingRickshaw && !rickshawRide.isBicycle) || isDrivingCar || isVehicleAnim) {
+        lockHeadAndNeckStraight();
+      }
     }
   }
 

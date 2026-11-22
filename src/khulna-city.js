@@ -634,6 +634,18 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
     new THREE.Vector2(minX - 250, -(maxZ + 250)),
   ]);
 
+  function computeFlatPolyBounds(flat) {
+    let bMinX = Infinity, bMaxX = -Infinity, bMinZ = Infinity, bMaxZ = -Infinity;
+    for (let i = 0; i < flat.length; i += 2) {
+      const px = flat[i], pz = flat[i + 1];
+      if (px < bMinX) bMinX = px;
+      if (px > bMaxX) bMaxX = px;
+      if (pz < bMinZ) bMinZ = pz;
+      if (pz > bMaxZ) bMaxZ = pz;
+    }
+    return { flat, minX: bMinX, maxX: bMaxX, minZ: bMinZ, maxZ: bMaxZ };
+  }
+
   const riverPolys = [];
   const waterMeshes = [];
   const waterLowMat = new THREE.MeshLambertMaterial({
@@ -653,7 +665,7 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
   const pondWaters = worldData.waters.filter((w) => w.k !== 'river');
 
   for (const w of riverWaters) {
-    riverPolys.push(w.p);
+    riverPolys.push(computeFlatPolyBounds(w.p));
     const hole = new THREE.Path();
     for (let i = 0; i < w.p.length; i += 2) {
       const vx = w.p[i];
@@ -701,7 +713,7 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
   const pondGeos = [];
   const pondPolys = [];
   for (const pw of pondWaters) {
-    pondPolys.push(pw.p);
+    pondPolys.push(computeFlatPolyBounds(pw.p));
     const s = buildFlatPolygonShape(pw.p);
     if (s) {
       const g = new THREE.ShapeGeometry(s).toNonIndexed();
@@ -842,17 +854,27 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
 
   function isInWater(x, z) {
     for (let i = 0; i < pondPolys.length; i++) {
-      if (pointInFlatPoly(x, z, pondPolys[i])) return true;
+      const p = pondPolys[i];
+      if (x < p.minX || x > p.maxX || z < p.minZ || z > p.maxZ) continue;
+      if (pointInFlatPoly(x, z, p.flat)) return true;
     }
     if (x > 960 || z < -780) {
       for (let i = 0; i < riverPolys.length; i++) {
-        if (pointInFlatPoly(x, z, riverPolys[i])) return true;
+        const r = riverPolys[i];
+        if (x < r.minX || x > r.maxX || z < r.minZ || z > r.maxZ) continue;
+        if (pointInFlatPoly(x, z, r.flat)) return true;
       }
     }
     return false;
   }
 
+  let cachedRoadCellKey = '';
+  let cachedRoadResult = null;
   function findNearestRoadAndDistrict(x, z) {
+    const cellKey = `${Math.round(x * 0.25)},${Math.round(z * 0.25)}`;
+    if (cellKey === cachedRoadCellKey && cachedRoadResult) {
+      return cachedRoadResult;
+    }
     let bestRoad = null;
     let bestD2 = 2400; // within ~49m
     for (const r of worldData.roads) {
@@ -886,13 +908,15 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
     else district = 'HAJI MOHSIN RD · TOOTPARA';
 
     const { lat, lon } = worldXZToLatLon(x, z);
-    return {
+    cachedRoadCellKey = cellKey;
+    cachedRoadResult = {
       district,
       road: bestRoad,
       poi: bestPoi?.bn || bestPoi?.n || null,
       lat,
       lon,
     };
+    return cachedRoadResult;
   }
 
   function animateWater(time) {

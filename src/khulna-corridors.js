@@ -2456,8 +2456,8 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
         e.mat.emissiveIntensity = e.day + (e.night - e.day) * nf;
       }
     },
-    update(time, playerPos = null) {
-      if (playerPos) syncVisibility(playerPos);
+    update(time, playerPos = null, skipSyncVisibility = false) {
+      if (playerPos && !skipSyncVisibility) syncVisibility(playerPos);
       if (rupshaSlice.root.visible) {
         for (const v of riverVessels) {
           v.obj.position.y = v.baseY + Math.sin(time * v.speed + v.phase) * v.amp;

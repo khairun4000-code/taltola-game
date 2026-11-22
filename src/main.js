@@ -1302,7 +1302,7 @@ function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynam
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
   const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 1e-4 || Math.abs(snapZ - lastSunAnchorZ) > 1e-4;
-  const shadowCadenceMs = quality === 'low' ? 140 : (quality === 'medium' ? 85 : 45);
+  const shadowCadenceMs = quality === 'low' ? 140 : (quality === 'medium' ? 85 : 66);
   const elapsedSinceShadow = nowPerf - lastShadowUpdateAt;
   if (anchorMoved && (lastShadowUpdateAt === 0 || elapsedSinceShadow >= shadowCadenceMs)) {
     lastSunAnchorX = snapX;
@@ -1351,8 +1351,8 @@ function applyQuality(nextQuality) {
     composer.setPixelRatio(activeRatio);
     composer.setSize(window.innerWidth, window.innerHeight);
     bloomPass?.setSize?.(
-      Math.max(256, Math.floor(window.innerWidth * 0.5)),
-      Math.max(144, Math.floor(window.innerHeight * 0.5))
+      Math.max(256, Math.floor(window.innerWidth * 0.35)),
+      Math.max(144, Math.floor(window.innerHeight * 0.35))
     );
   }
   renderer.shadowMap.enabled = useShadows;
@@ -1540,11 +1540,15 @@ function getActiveLiftTower() {
   return environment?.tower || null;
 }
 
+let lastLiftKeypadUiKey = '';
 function syncLiftKeypadUI() {
   const tower = getActiveLiftTower();
   if (!tower || !liftKeypad) return;
   const st = tower.state;
   const stops = tower.stops || [];
+  const uiKey = `${tower.eyebrowTitle || ''}|${st.liftFloorIndex}|${st.liftTargetIndex}|${st.liftPhase}|${st.liftDirection}|${st.liftDoorOpen >= 0.85 ? 2 : (st.liftDoorOpen > 0.6 ? 1 : 0)}|${stops.length}`;
+  if (uiKey === lastLiftKeypadUiKey) return;
+  lastLiftKeypadUiKey = uiKey;
   const curStop = stops[st.liftFloorIndex] || { code: 'GF', label: 'Ground Lobby' };
   const tgtStop = stops[st.liftTargetIndex] || curStop;
   const isMoving = st.liftPhase === 'moving' || st.liftPhase === 'closing';
@@ -1711,6 +1715,7 @@ function sitOnSeat(seat) {
   return true;
 }
 
+let lastWallProbeAt = 0;
 function probeWallAhead() {
   if (!started || inStudio || sittingState.active || climbState.active) return false;
   controls.getHorizontalVectors(forwardVec, rightVec);
@@ -1808,16 +1813,20 @@ function getTargetCarForDoors() {
   return null;
 }
 
+let lastCarDoorUiKey = '';
 function syncCarDoorUI() {
   const driving = getDrivingCar();
   const nearCar = (!driving && started && !inStudio) ? findNearestEnterableCar(playerPos) : null;
   const showNearbyPanel = Boolean(nearCar && !nearCar.state.isRickshaw && !liftKeypadOpen && !khulnaMapUI?.isOpen);
+  const targetCar = (driving && !driving.state.isRickshaw) ? driving : (showNearbyPanel ? nearCar : null);
+  const ds = targetCar?.getDoorStates?.() || { FL: false, FR: false, RL: false, RR: false, anyOpen: false, allOpen: false };
+  const uiKey = `${showNearbyPanel ? 1 : 0}|${nearCar?.state?.name || ''}|${ds.FL ? 1 : 0}${ds.FR ? 1 : 0}${ds.RL ? 1 : 0}${ds.RR ? 1 : 0}${ds.allOpen ? 1 : 0}`;
+  if (uiKey === lastCarDoorUiKey) return;
+  lastCarDoorUiKey = uiKey;
   carDoorPanel?.classList.toggle('hidden', !showNearbyPanel);
   if (showNearbyPanel && carDoorTitle) {
     carDoorTitle.textContent = `${nearCar.state.name} · Doors`;
   }
-  const targetCar = (driving && !driving.state.isRickshaw) ? driving : (showNearbyPanel ? nearCar : null);
-  const ds = targetCar?.getDoorStates?.() || { FL: false, FR: false, RL: false, RR: false, anyOpen: false, allOpen: false };
   for (const btn of carDoorButtons) {
     const key = btn.dataset.carDoor;
     if (key === 'ALL') btn.classList.toggle('open', Boolean(ds.allOpen));
@@ -1829,17 +1838,38 @@ function syncCarDoorUI() {
   }
 }
 
+let lastCarToggleHtml = '';
+let lastCarDrivingFlag = null;
+let lastCarBadgeText = '';
+let lastCarSpeedText = '';
+let lastCarGearText = '';
+let lastCarRpmWidth = '';
+let lastCarCamLabelText = '';
+let lastCarSeatLabelText = '';
+let lastCarPaintText = '';
+let lastTachoKey = '';
+let lastTachoDrawAt = 0;
+let cachedTachoGradCar = null;
+let cachedTachoGradRick = null;
+
 function syncCarHUD() {
   if (!cars.length) return;
   const activeCar = getDrivingCar();
   const driving = Boolean(activeCar);
   if (carToggleButton) {
-    carToggleButton.innerHTML = driving
+    const nextToggleHtml = driving
       ? (activeCar.state.isVan ? 'EXIT VAN <span>[T]</span>' : (activeCar.state.isBicycle ? 'EXIT BICYCLE <span>[T]</span>' : (activeCar.state.isRickshaw ? 'EXIT RICKSHAW <span>[T]</span>' : (activeCar.state.isBike ? 'EXIT BIKE <span>[T]</span>' : 'EXIT CAR <span>[T]</span>'))))
       : 'DRIVE CAR <span>[T]</span>';
+    if (nextToggleHtml !== lastCarToggleHtml) {
+      lastCarToggleHtml = nextToggleHtml;
+      carToggleButton.innerHTML = nextToggleHtml;
+    }
   }
-  carHud?.classList.toggle('hidden', !driving);
-  emoteBar?.classList.toggle('hidden', driving);
+  if (driving !== lastCarDrivingFlag) {
+    lastCarDrivingFlag = driving;
+    carHud?.classList.toggle('hidden', !driving);
+    emoteBar?.classList.toggle('hidden', driving);
+  }
   if (driving && activeCar) {
     const isRick = Boolean(activeCar.state.isRickshaw);
     const isBicycle = Boolean(activeCar.state.isBicycle);
@@ -1847,10 +1877,11 @@ function syncCarHUD() {
     const isBike = Boolean(activeCar.state.isBike);
     const isPass = isRick && activeCar.state.rideSeat === 'passenger';
     if (carBadgeEl) {
+      let nextBadge = '';
       if (isRick) {
         const stR = activeCar.state;
         const pedLabel = isVan ? 'CARGO VAN' : (isBicycle ? 'ATLAS BICYCLE' : 'RICKSHAW');
-        carBadgeEl.textContent = isPass
+        nextBadge = isPass
           ? (isVan ? `CARGO VAN · BACK SEAT (${stR.passengerSeatIndex + 1}/4)` : (isBicycle ? 'ATLAS BICYCLE · BACK SEAT' : 'RICKSHAW · PASSENGER SEAT'))
           : (stR.boostCooldown > 0
             ? `${pedLabel} · COOLDOWN (${Math.ceil(stR.boostCooldown)}s)`
@@ -1858,19 +1889,31 @@ function syncCarHUD() {
               ? `${pedLabel} · STANDING SPRINT (${Math.ceil(stR.boostStamina)}s)`
               : `${pedLabel} · SPRINT READY [SHIFT]`));
       } else {
-        carBadgeEl.textContent = activeCar.state.badge;
+        nextBadge = activeCar.state.badge;
+      }
+      if (nextBadge !== lastCarBadgeText) {
+        lastCarBadgeText = nextBadge;
+        carBadgeEl.textContent = nextBadge;
       }
     }
     if (carSeatBtn) carSeatBtn.classList.toggle('hidden', !isRick);
     if (carHudDoorsEl) carHudDoorsEl.classList.toggle('hidden', isRick || isBike);
     if (carSeatLabelEl && isRick) {
-      carSeatLabelEl.textContent = isPass
+      const nextSeatLabel = isPass
         ? (isVan ? `CORNER ${activeCar.state.passengerSeatIndex + 1}/4` : (isBicycle ? 'RIDER SEAT' : 'DRIVER SEAT'))
         : (isVan ? 'BACK SEATS (4)' : (isBicycle ? 'BACK SEAT' : 'PASSENGER SEAT'));
+      if (nextSeatLabel !== lastCarSeatLabelText) {
+        lastCarSeatLabelText = nextSeatLabel;
+        carSeatLabelEl.textContent = nextSeatLabel;
+      }
     }
     if (carCamLabelEl) {
       const camNames = { chase: '3RD PERSON', hood: 'HOOD CAM', pov: 'POV SPEEDO', front: 'FRONT CAM' };
-      carCamLabelEl.textContent = isRick ? 'CAMERA' : (camNames[activeCar.state.cameraMode] || '3RD PERSON');
+      const nextCamLabel = isRick ? 'CAMERA' : (camNames[activeCar.state.cameraMode] || '3RD PERSON');
+      if (nextCamLabel !== lastCarCamLabelText) {
+        lastCarCamLabelText = nextCamLabel;
+        carCamLabelEl.textContent = nextCamLabel;
+      }
     }
     carPovBtn?.classList.remove('active');
     const liveKmh = Math.round(Math.abs(activeCar.state.speed) * 3.6);
@@ -1880,10 +1923,25 @@ function syncCarHUD() {
         ? THREE.MathUtils.clamp((20 - activeCar.state.boostCooldown) / 20, 0.02, 1)
         : THREE.MathUtils.clamp(activeCar.state.boostStamina / 10, 0.02, 1))
       : THREE.MathUtils.clamp((activeCar.state.rpm - 800) / 7200, 0.02, 1);
-    if (carSpeedEl) carSpeedEl.textContent = String(liveKmh);
-    if (carGearEl) carGearEl.textContent = liveGear;
-    if (carRpmFill) carRpmFill.style.width = `${(rpmPct * 100).toFixed(1)}%`;
-    if (forzaTachoCtx && forzaTachoCanvas) {
+    const liveKmhStr = String(liveKmh);
+    if (carSpeedEl && liveKmhStr !== lastCarSpeedText) {
+      lastCarSpeedText = liveKmhStr;
+      carSpeedEl.textContent = liveKmhStr;
+    }
+    if (carGearEl && liveGear !== lastCarGearText) {
+      lastCarGearText = liveGear;
+      carGearEl.textContent = liveGear;
+    }
+    const nextRpmWidth = `${(rpmPct * 100).toFixed(1)}%`;
+    if (carRpmFill && nextRpmWidth !== lastCarRpmWidth) {
+      lastCarRpmWidth = nextRpmWidth;
+      carRpmFill.style.width = nextRpmWidth;
+    }
+    const nowTacho = performance.now();
+    const tachoKey = `${liveKmh}|${liveGear}|${Math.round(rpmPct * 120)}|${isRick ? 1 : 0}`;
+    if (forzaTachoCtx && forzaTachoCanvas && tachoKey !== lastTachoKey && (nowTacho - lastTachoDrawAt >= 32 || lastTachoDrawAt === 0)) {
+      lastTachoKey = tachoKey;
+      lastTachoDrawAt = nowTacho;
       const ctx = forzaTachoCtx;
       const W = forzaTachoCanvas.width;
       const H = forzaTachoCanvas.height;
@@ -1918,16 +1976,17 @@ function syncCarHUD() {
         ctx.stroke();
       }
 
-      const grad = ctx.createLinearGradient(cx - rOuter, cy, cx + rOuter, cy);
-      if (isRick) {
-        grad.addColorStop(0, '#22c55e');
-        grad.addColorStop(1, '#facc15');
-      } else {
-        grad.addColorStop(0, '#38bdf8');
-        grad.addColorStop(0.65, '#f8fafc');
-        grad.addColorStop(0.84, '#f97316');
-        grad.addColorStop(1, '#ef4444');
+      if (!cachedTachoGradCar) {
+        cachedTachoGradCar = ctx.createLinearGradient(cx - rOuter, cy, cx + rOuter, cy);
+        cachedTachoGradCar.addColorStop(0, '#38bdf8');
+        cachedTachoGradCar.addColorStop(0.65, '#f8fafc');
+        cachedTachoGradCar.addColorStop(0.84, '#f97316');
+        cachedTachoGradCar.addColorStop(1, '#ef4444');
+        cachedTachoGradRick = ctx.createLinearGradient(cx - rOuter, cy, cx + rOuter, cy);
+        cachedTachoGradRick.addColorStop(0, '#22c55e');
+        cachedTachoGradRick.addColorStop(1, '#facc15');
       }
+      const grad = isRick ? cachedTachoGradRick : cachedTachoGradCar;
       ctx.beginPath();
       ctx.arc(cx, cy, rOuter - 4, startA, valA);
       ctx.strokeStyle = grad;
@@ -2013,7 +2072,11 @@ function syncCarHUD() {
       ctx.restore();
     }
     if (carPaintNameEl) {
-      carPaintNameEl.textContent = activeCar.state.paintName.split(' ').pop();
+      const nextPaint = activeCar.state.paintName.split(' ').pop();
+      if (nextPaint !== lastCarPaintText) {
+        lastCarPaintText = nextPaint;
+        carPaintNameEl.textContent = nextPaint;
+      }
     }
   }
   syncCarDoorUI();
@@ -2862,7 +2925,7 @@ async function initialize() {
         spawnHeading: heading,
       });
       spawnedCar.setQualityMode?.(quality);
-      const selectiveEnv = quality === 'ultra' ? null : (skySystem?.getEnvTexture?.() || null);
+      const selectiveEnv = (quality === 'ultra' || quality === 'high') ? null : (skySystem?.getEnvTexture?.() || null);
       spawnedCar.setEnvironmentMap?.(selectiveEnv);
       cars.push(spawnedCar);
       cheatSpawnedCars.push(spawnedCar);
@@ -5199,8 +5262,12 @@ function applyWorldCollisions(pos) {
 
 const FLOOR_NAMES_EN = ['1st Floor (Ground)', '2nd Floor', '3rd Floor', '4th Floor', '5th Floor', 'Rooftop'];
 
-function updateHUDPrompt() {
+let lastHudPromptUpdateAt = 0;
+function updateHUDPrompt(force = true) {
   if (!house || !interactPrompt) return;
+  const nowHud = performance.now();
+  if (!force && nowHud - lastHudPromptUpdateAt < 65) return;
+  lastHudPromptUpdateAt = nowHud;
   syncCarDoorUI();
   let promptText = null;
   if (controls.isLocked || liftKeypadOpen) {
@@ -5597,16 +5664,9 @@ function updateMovement(delta) {
       }
 
       syncCarHUD();
-      updateHUDPrompt();
+      updateHUDPrompt(false);
       return;
     }
-  }
-
-  const turnInput = Number(keys.has('KeyQ'));
-  if (turnInput !== 0) {
-    controls.euler.setFromQuaternion(camera.quaternion, 'YXZ');
-    controls.euler.y += turnInput * 1.8 * delta;
-    camera.quaternion.setFromEuler(controls.euler);
   }
 
   const forwardInput = Number(keys.has('KeyW') || keys.has('ArrowUp')) - Number(keys.has('KeyS') || keys.has('ArrowDown'));
@@ -5806,8 +5866,16 @@ function updateMovement(delta) {
   const overWaterPoly = Boolean(environment?.city?.isInWater?.(playerPos.x, playerPos.z));
   inWater = overWaterPoly && groundY <= 0.22 && !climbState.active && playerPos.y <= EYE_HEIGHT + 0.35;
 
-  // Probe wall ahead for interactive Wall Climb ([SPACE] against wall or [F] Wall Climb)
-  wallAhead = !inWater && !climbState.active && probeWallAhead();
+  // Probe wall ahead for interactive Wall Climb ([SPACE] against wall or [F] Wall Climb) — throttled to ~20Hz
+  if (inWater || climbState.active) {
+    wallAhead = false;
+  } else {
+    const nowWallProbe = performance.now();
+    if (nowWallProbe - lastWallProbeAt >= 50) {
+      lastWallProbeAt = nowWallProbe;
+      wallAhead = probeWallAhead();
+    }
+  }
 
   if (grounded || inWater) coyoteTimer = 0.16;
   else coyoteTimer = Math.max(0, coyoteTimer - delta);
@@ -6060,7 +6128,7 @@ function updateMovement(delta) {
     syncEmoteUI(playerCharacter.state.emote);
   }
 
-  updateHUDPrompt();
+  updateHUDPrompt(false);
 }
 
 window.addEventListener('resize', () => {
@@ -6069,8 +6137,8 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer?.setSize(window.innerWidth, window.innerHeight);
   bloomPass?.setSize?.(
-    Math.max(256, Math.floor(window.innerWidth * 0.5)),
-    Math.max(144, Math.floor(window.innerHeight * 0.5))
+    Math.max(256, Math.floor(window.innerWidth * 0.35)),
+    Math.max(144, Math.floor(window.innerHeight * 0.35))
   );
 });
 
@@ -6140,7 +6208,6 @@ function animate() {
       || Math.abs(verticalVelocity) > 0.05
       || Boolean(activeCar && Math.abs(activeCar.state.speed) > 0.08)
       || Boolean(playerCharacter?.state?.emote || playerCharacter?.state?.attackTimer > 0)
-      || Boolean(partnerLive && Math.hypot(partnerLive.x - playerPos.x, partnerLive.z - playerPos.z) < 28)
     );
     if (sun?.castShadow) {
       updateSunShadowTarget(activeCar ? activeCar.state.pos : playerPos, nowPerf, isShadowSceneDynamic);
@@ -6153,7 +6220,7 @@ function animate() {
     if (environment?.altapoleTower && !deepInTowerUpper) environment.altapoleTower.update(delta, playerPos, isLow);
     if (environment?.altapoleGoli && !deepInTowerUpper) environment.altapoleGoli.update(delta, playerPos, isLow);
     if (skySystem) skySystem.update(elapsed, camera.position);
-    if (environment && !deepInTowerUpper) environment.update(elapsed, playerPos, isLow);
+    if (environment && !deepInTowerUpper) environment.update(elapsed, playerPos, isLow, true);
 
     const liveYaw = getLiveMapHeadingYaw();
     const mapPos = getLiveMapPos();

@@ -94,7 +94,15 @@ export function mergeStaticMeshes(root) {
     bucket.geometries.push(geometry);
   });
   for (const bucket of buckets.values()) {
-    if (bucket.meshes.length < 2) continue;
+    if (bucket.meshes.length < 2) {
+      for (const g of bucket.geometries) g.dispose();
+      const single = bucket.meshes[0];
+      if (single) {
+        single.matrixAutoUpdate = false;
+        single.updateMatrix();
+      }
+      continue;
+    }
     let geoms = bucket.geometries;
     const hasIndexed = geoms.some((g) => Boolean(g.index));
     const hasNonIndexed = geoms.some((g) => !g.index);
