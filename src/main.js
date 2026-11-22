@@ -4187,8 +4187,8 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  // [Shift + C] Dedicated Free Cam Toggle (works both on foot & while driving!)
-  if (event.shiftKey && event.code === 'KeyC' && !event.repeat && !khulnaMapUI?.isOpen && !gtaPhoneUI?.isOpen) {
+  // [C] (or [Shift + C]) Dedicated Free Cam Toggle (works both on foot & while driving!)
+  if (event.code === 'KeyC' && !event.repeat && !khulnaMapUI?.isOpen && !gtaPhoneUI?.isOpen) {
     event.preventDefault();
     toggleFreeCam();
     return;
