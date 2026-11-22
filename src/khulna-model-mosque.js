@@ -27,9 +27,10 @@ import { attachDerivedPBRMaps } from './aaa-shaders.js';
  *    distance-culled for locked 60–120 FPS at full native resolution.
  */
 
-// Relocated right to the LEFT side upon entering Alia Madrasah Main Gate (gx=184, gz=207.5)!
+// Relocated cleanly further INSIDE Alia Madrasah Campus on the LEFT side upon entering Main Gate (gx=184, gz=204.0),
+// with a generous 6.8m open gap north of Etimkhana (zero overlap!) and directly opposite Pukur Par & Cycle Garage!
 const MOSQUE_SHIFT_X = -17.0;
-const MOSQUE_SHIFT_Z = 22.0;
+const MOSQUE_SHIFT_Z = -10.0;
 export const MODEL_MOSQUE_POS = { x: 171.0 + MOSQUE_SHIFT_X, z: 166.0 + MOSQUE_SHIFT_Z };
 
 const MX = 171.0; // Local pre-shift center X

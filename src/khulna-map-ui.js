@@ -74,8 +74,8 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       n: 'Khulna District Model Mosque',
       bn: 'খুলনা জেলা মডেল মসজিদ (আলিয়া মাদ্রাসা ক্যাম্পাস)',
       c: 'mosque',
-      x: 194.0,
-      z: 166.0,
+      x: 154.0,
+      z: 156.0,
     },
   ];
   const ptiIdx = visibleLandmarks.findIndex((lm) => lm.id === 'pti_more');

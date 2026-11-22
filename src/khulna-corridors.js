@@ -1387,11 +1387,9 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   ];
   addBox(staticG, [4.2, 0.14, 82.0], [ox, -0.067, oz], m.road, { castShadow: false, uvScale: 5.5 });
 
-  // Seamless north, south & east/west modern paved road connectors joining Taltola street directly to Kaborkhana, Khan Jahan Ali Rd & Alia Madrasah!
-  buildPavedSegmentRoad(staticG, crossLanePts.slice(0, 3), 4.8, -0.025, m.road, 5.5);
-  buildPavedSegmentRoad(staticG, crossLanePts.slice(3), 4.8, -0.025, m.road, 5.5);
-  buildPavedSegmentRoad(staticG, [[ox, oz - 40.5], [ox, oz - 56.0], [18.0, 146.0], [-10.0, 111.2]], 6.8, -0.024, m.road, 5.5);
-  buildPavedSegmentRoad(staticG, [[ox, oz - 40.5], [120.0, 184.0], [184.0, 216.0]], 7.2, -0.023, m.road, 5.5);
+  // Seamless north & south modern paved road connectors joining Taltola street cleanly to Khan Jahan Ali Rd (zero building/footpath overlap!)
+  buildPavedSegmentRoad(staticG, [[ox, oz - 40.5], [ox, 152.4]], 5.4, -0.024, m.road, 5.5);
+  buildPavedSegmentRoad(staticG, crossLanePts.slice(3), 4.6, -0.025, m.road, 5.5);
   buildPavedSegmentRoad(staticG, [[ox, oz + 38.2], [ox - 24.0, oz + 36.8]], 4.6, -0.026, m.road, 5.5);
 
   // Open concrete drains on BOTH sides with standing drain water & raised road-edge curbs (exact Kawsar Taltola street spec)

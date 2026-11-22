@@ -699,6 +699,36 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   addRedGreenRoadRailing(staticG, bank, 188.4, 134.0, 114.0);
   addRedGreenRoadRailing(staticG, bank, 188.4, 106.0, 91.0);
 
+  // Concrete Side Drains + Single Neat Row of Light Flowers along BOTH sides of the Main Road past the twin fields!
+  const drainChanMat = new THREE.MeshStandardMaterial({ color: 0x3f474f, roughness: 0.92 });
+  const flowerLeafMat = new THREE.MeshStandardMaterial({ color: 0x22763a, roughness: 0.80 });
+  const flowerBloomMats = [
+    new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.55 }),
+    new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.55 }),
+    new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.55 }),
+    new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.55 }),
+  ];
+  for (const side of [-1, 1]) {
+    const dx = 184.0 + side * 4.55;
+    // Concrete open side drain running cleanly beside the main road (z = 92..198)
+    box(staticG, [0.44, 0.08, 106.0], [dx, 0.02, 145.0], drainChanMat, { castShadow: false });
+    box(staticG, [0.10, 0.16, 106.0], [dx - 0.24, 0.08, 145.0], mats.curb, { castShadow: false });
+    box(staticG, [0.10, 0.16, 106.0], [dx + 0.24, 0.08, 145.0], mats.curb, { castShadow: false });
+    // Single neat row of light campus flowers bordering the fields beside the drain (z = 95..148)
+    const fx = 184.0 + side * 5.25;
+    for (let fz = 96.0; fz <= 146.0; fz += 3.8) {
+      const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.24, 0), flowerLeafMat);
+      bush.position.set(fx, 0.22, fz);
+      staticG.add(bush);
+      const bMat = flowerBloomMats[Math.abs(Math.round(fz + side * 3)) % flowerBloomMats.length];
+      for (const [oxF, oyF, ozF] of [[-0.08, 0.38, 0.06], [0.09, 0.36, -0.05], [0.0, 0.42, 0.0]]) {
+        const fl = new THREE.Mesh(new THREE.SphereGeometry(0.065, 6, 5), bMat);
+        fl.position.set(fx + oxF, oyF, fz + ozF);
+        staticG.add(fl);
+      }
+    }
+  }
+
   // Dusty weathered herringbone brick connector path along North/East edge of Playground -> NE & East Academic Campuses
   addRoadRibbon(staticG, [
     [188.0, 86.0],
@@ -715,8 +745,8 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
     [239.0, 136.0],
   ], 2.6, mats.dustyBrick, 0.056, mats.curb, 0.35);
 
-  // Dusty weathered interlocking paver forecourt right in front of the relocated Model Mosque (left of Main Gate!)
-  box(staticG, [10.0, 0.05, 22.0], [176.5, 0.025, 188.0], mats.dustyBrick, { castShadow: false, uvScale: 4.0 });
+  // Dusty weathered interlocking paver forecourt right in front of Model Mosque inside campus (left of Main Road!)
+  box(staticG, [8.5, 0.05, 22.0], [176.0, 0.025, 162.0], mats.dustyBrick, { castShadow: false, uvScale: 4.0 });
 
   // Bigger Clean Central Play Ground (আলিয়া মাদ্রাসা বড় মাঠ — 100% open & free of benches!)
   const fx = 216.5;
@@ -752,6 +782,21 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   gateDynGroup.position.set(gx, 0, gz);
   gateDynGroup.rotation.y = 0;
   dynamicG.add(gateDynGroup);
+
+  // Exterior Alia Madrasah Boundary Wall & Tall White-Plaster Pillars along South Perimeter (outside campus!)
+  for (const seg of [
+    { x0: 136.0, x1: 178.8 },
+    { x0: 189.2, x1: 242.0 },
+  ]) {
+    const segW = seg.x1 - seg.x0;
+    const segCx = (seg.x0 + seg.x1) * 0.5;
+    box(staticG, [segW, 1.95, 0.32], [segCx, 0.98, gz], bank.whitePlaster);
+    box(staticG, [segW + 0.08, 0.14, 0.42], [segCx, 2.02, gz], bank.stonePlinth);
+    for (let px = seg.x0; px <= seg.x1 + 0.1; px += 4.8) {
+      box(staticG, [0.58, 2.65, 0.58], [px, 1.32, gz], bank.whitePlaster);
+      box(staticG, [0.70, 0.16, 0.70], [px, 2.72, gz], bank.stonePlinth);
+    }
+  }
 
   for (const dx of [-4.4, 4.4]) {
     box(gateGroup, [1.05, 5.2, 1.05], [dx, 2.6, 0], bank.whitePlaster);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { applyWireWindShader } from './aaa-shaders.js';
+import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 
 function createPolePosterTexture(kind) {
   const c = document.createElement('canvas');
@@ -366,13 +367,71 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
   const polesByChunk = new Map();
   const allPoles = [];
 
+  // Precompute all road segments (with generous roadside clearance) so NO pole ever spawns inside ANY road or intersection!
+  const roadSegs = [];
+  for (let rIdx = 0; rIdx < worldData.roads.length; rIdx++) {
+    const r = worldData.roads[rIdx];
+    if (!r.p || r.p.length < 4) continue;
+    if (r.n === 'Alia Madrasah Approach Road') continue;
+    const rw = (r.w || 6.0) * 0.5 + 0.95;
+    const pts = r.p;
+    for (let i = 0; i < pts.length - 2; i += 2) {
+      const ax = pts[i], az = pts[i + 1], bx = pts[i + 2], bz = pts[i + 3];
+      roadSegs.push({
+        ax, az, bx, bz, rw,
+        minX: Math.min(ax, bx) - rw, maxX: Math.max(ax, bx) + rw,
+        minZ: Math.min(az, bz) - rw, maxZ: Math.max(az, bz) + rw,
+      });
+    }
+  }
+  const tOx = TALTOLA_HOUSE_OFFSET.x;
+  const tOz = TALTOLA_HOUSE_OFFSET.z;
+  for (const [ax, az, bx, bz, rw] of [
+    // Taltola House street + straight north connector to Khan Jahan Ali Rd
+    [tOx, 150.0, tOx, tOz + 60.0, 4.6],
+    [tOx, tOz + 38.2, tOx - 26.0, tOz + 36.8, 4.2],
+    // Haji Mohsin north/south corridor
+    [0, -40, 21.5, -142, 4.6],
+    [0, 40, -15.2, 140, 4.6],
+    // Altapole Lane + East Side Lane
+    [166, -519, 157, -296, 4.4],
+    [169, -404, 209, -404, 4.0],
+    // Hadis Park & Stadium perimeter roads
+    [-384, -831, -176, -825, 5.2],
+    [-261, -831, -261, -967, 5.0],
+    [-384, -967, -261, -967, 4.8],
+    [-384, -967, -384, -831, 4.8],
+    [-165, -515, 166, -519, 5.4],
+  ]) {
+    roadSegs.push({
+      ax, az, bx, bz, rw,
+      minX: Math.min(ax, bx) - rw, maxX: Math.max(ax, bx) + rw,
+      minZ: Math.min(az, bz) - rw, maxZ: Math.max(az, bz) + rw,
+    });
+  }
+
+  function isInsideAnyRoad(px, pz) {
+    for (let i = 0; i < roadSegs.length; i++) {
+      const s = roadSegs[i];
+      if (px < s.minX || px > s.maxX || pz < s.minZ || pz > s.maxZ) continue;
+      const vx = s.bx - s.ax, vz = s.bz - s.az;
+      const l2 = vx * vx + vz * vz;
+      const t = l2 > 1e-6 ? Math.max(0, Math.min(1, ((px - s.ax) * vx + (pz - s.az) * vz) / l2)) : 0;
+      const cx = s.ax + vx * t, cz = s.az + vz * t;
+      const dx = px - cx, dz = pz - cz;
+      if (dx * dx + dz * dz < s.rw * s.rw) return true;
+    }
+    return false;
+  }
+
   let poleSerial = 0;
   for (let rIdx = 0; rIdx < worldData.roads.length; rIdx++) {
     const r = worldData.roads[rIdx];
     const pts = r.p;
     if (!pts || pts.length < 4) continue;
+    if (r.n === 'Alia Madrasah Approach Road') continue;
     const step = r.t <= 2 ? 32 : (r.t === 3 ? 38 : 48);
-    const halfW = (r.w || 6.0) * 0.5 + 0.95;
+    const halfW = (r.w || 6.0) * 0.5 + 1.35;
     let carry = (rIdx * 11) % step;
 
     for (let i = 0; i < pts.length - 2; i += 2) {
@@ -393,9 +452,16 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
         const px = x0 + dx * t + nx * halfW * side;
         const pz = z0 + dz * t + nz * halfW * side;
 
-        const nearHaji = Math.abs(px) < 34 && Math.abs(pz) < 38;
-        const nearTaltola = Math.abs(px - 420) < 26 && Math.abs(pz - 975) < 30;
-        if (!nearHaji && !nearTaltola) {
+        const nearHaji = Math.abs(px) < 34 && Math.abs(pz) < 142;
+        const nearTaltola = Math.abs(px - tOx) < 38 && Math.abs(pz - tOz) < 62;
+        const inAliaCampus = px > 124 && px < 264 && pz > 46 && pz < 246;
+        const inAltapole = px > 152 && px < 214 && pz > -525 && pz < -290;
+        const nearMajorJunction = (
+          ((px + 716.8) ** 2 + (pz + 291.8) ** 2 < 46 * 46) // Royal More
+          || ((px + 920.0) ** 2 + (pz + 292.0) ** 2 < 46 * 46) // Satrasta More
+          || ((px + 304.3) ** 2 + (pz + 56.7) ** 2 < 46 * 46) // PTI More
+        );
+        if (!nearHaji && !nearTaltola && !inAliaCampus && !inAltapole && !nearMajorJunction && !isInsideAnyRoad(px, pz)) {
           const cx = Math.floor(px / chunkSize);
           const cz = Math.floor(pz / chunkSize);
           const key = `${cx},${cz}`;

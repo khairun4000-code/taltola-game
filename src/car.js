@@ -179,15 +179,15 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.35,
     width: 1.88,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z + 8.6],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.18, 0.01, TALTOLA_HOUSE_OFFSET.z - 10.3],
     spawnHeading: 0.0,
     paintPresets: BMW_PAINT_PRESETS,
     gearCount: 8,
-    maxSpeed: 36.0,
-    boostMaxSpeed: 54.0,
-    engineForce: 20.5,
-    engineBaseFreq: 32,
-    engineRangeFreq: 155,
+    maxSpeed: 80.6,
+    boostMaxSpeed: 86.1,
+    engineForce: 24.5,
+    engineBaseFreq: 44,
+    engineRangeFreq: 165,
     hornFreqs: [415, 520],
     camBack: 5.4,
     camHeight: 2.15,
@@ -200,6 +200,7 @@ export const CAR_FLEET_CONFIGS = [
       { key: 'RL', side: 1, minAbsX: 0.62, minY: 0.30, maxY: 1.32, minZ: -1.02, maxZ: -0.10 },
       { key: 'RR', side: -1, minAbsX: 0.62, minY: 0.30, maxY: 1.32, minZ: -1.02, maxZ: -0.10 },
     ],
+    soundProfile: 'sports_i6',
   },
   {
     id: 'toyota_alphard',
@@ -209,7 +210,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.92,
     width: 1.92,
     rotateY: -Math.PI / 2, // Raw Alphard faces +X; rotate -90 deg Y so it faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z - 8.8],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.15, 0.01, TALTOLA_HOUSE_OFFSET.z - 22.0],
     spawnHeading: 0.0,
     paintPresets: ALPHARD_PAINT_PRESETS,
     bodyPaintMats: ['C_089'],
@@ -218,11 +219,11 @@ export const CAR_FLEET_CONFIGS = [
     headlightMats: ['C_13TR01__headlight_3'],
     wheelMatRegex: /^C_tire$/i,
     gearCount: 7,
-    maxSpeed: 31.0,
-    boostMaxSpeed: 43.0,
-    engineForce: 17.2,
-    engineBaseFreq: 28,
-    engineRangeFreq: 120,
+    maxSpeed: 50.0,
+    boostMaxSpeed: 53.5,
+    engineForce: 16.5,
+    engineBaseFreq: 34,
+    engineRangeFreq: 118,
     hornFreqs: [370, 466],
     camBack: 5.9,
     camHeight: 2.48,
@@ -237,6 +238,7 @@ export const CAR_FLEET_CONFIGS = [
       { key: 'RL', side: 1, minAbsX: 0.68, minY: 0.34, maxY: 1.86, minZ: -0.96, maxZ: 0.38, sliding: true },
       { key: 'RR', side: -1, minAbsX: 0.68, minY: 0.34, maxY: 1.86, minZ: -0.96, maxZ: 0.38, sliding: true },
     ],
+    soundProfile: 'luxury_v6',
   },
   {
     id: 'toyota_corolla',
@@ -246,7 +248,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.55,
     width: 1.82,
     rotateY: Math.PI, // Game-ready GLB faces -Z; rotate 180deg so front faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z + 3.2],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.18, 0.01, TALTOLA_HOUSE_OFFSET.z + 6.4],
     spawnHeading: 0.0,
     paintPresets: COROLLA_PAINT_PRESETS,
     bodyPaintMats: ['body'],
@@ -262,11 +264,11 @@ export const CAR_FLEET_CONFIGS = [
     exhaustTip: [-0.54, 0.27, -2.18],
     wheelNameRegex: /wheel|brakedisc/i,
     gearCount: 6,
-    maxSpeed: 32.0,
-    boostMaxSpeed: 44.0,
+    maxSpeed: 52.8,
+    boostMaxSpeed: 56.5,
     engineForce: 17.5,
-    engineBaseFreq: 36,
-    engineRangeFreq: 140,
+    engineBaseFreq: 38,
+    engineRangeFreq: 135,
     hornFreqs: [440, 554],
     camBack: 5.5,
     camHeight: 2.15,
@@ -279,6 +281,7 @@ export const CAR_FLEET_CONFIGS = [
       RL: /door_RL|doorglass_RL/i,
       RR: /door_RR|doorglass_RR/i,
     },
+    soundProfile: 'sedan_i4',
   },
   {
     id: 'toyota_prius',
@@ -288,7 +291,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.48,
     width: 1.76,
     rotateY: Math.PI, // Game-ready GLB faces -Z; rotate 180deg so front faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z - 3.2],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.18, 0.01, TALTOLA_HOUSE_OFFSET.z + 0.8],
     spawnHeading: 0.0,
     paintPresets: PRIUS_PAINT_PRESETS,
     bodyPaintMats: ['Color.002'],
@@ -304,11 +307,11 @@ export const CAR_FLEET_CONFIGS = [
     isGameReadyPrius: true,
     exhaustTip: [-0.46, 0.24, -2.10],
     gearCount: 6,
-    maxSpeed: 31.5,
-    boostMaxSpeed: 42.0,
-    engineForce: 17.0,
-    engineBaseFreq: 34,
-    engineRangeFreq: 132,
+    maxSpeed: 50.0,
+    boostMaxSpeed: 53.0,
+    engineForce: 16.8,
+    engineBaseFreq: 35,
+    engineRangeFreq: 105,
     hornFreqs: [440, 554],
     camBack: 5.4,
     camHeight: 2.12,
@@ -321,6 +324,7 @@ export const CAR_FLEET_CONFIGS = [
       RL: /^Door_RL$/i,
       RR: /^Door_RR$/i,
     },
+    soundProfile: 'hybrid_ecvt',
   },
   {
     id: 'nissan_sunny',
@@ -330,7 +334,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.50,
     width: 1.76,
     rotateY: Math.PI, // Game-ready GLB faces -Z; rotate 180 deg Y so it faces +Z in-game
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z + 14.0],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.18, 0.01, TALTOLA_HOUSE_OFFSET.z - 4.8],
     spawnHeading: 0.0,
     groundOffset: 0.0,
     exhaustTip: [-0.447, 0.253, -2.145],
@@ -346,11 +350,11 @@ export const CAR_FLEET_CONFIGS = [
     hasBuiltInSteeringWheel: true,
     wheelNameRegex: /^Wheel_(FL|FR|RL|RR)$/i,
     gearCount: 5,
-    maxSpeed: 31.0,
-    boostMaxSpeed: 42.5,
-    engineForce: 17.0,
-    engineBaseFreq: 35,
-    engineRangeFreq: 138,
+    maxSpeed: 48.6,
+    boostMaxSpeed: 51.5,
+    engineForce: 15.8,
+    engineBaseFreq: 40,
+    engineRangeFreq: 132,
     hornFreqs: [430, 540],
     camBack: 5.4,
     camHeight: 2.12,
@@ -364,6 +368,7 @@ export const CAR_FLEET_CONFIGS = [
       RL: /^Door_RL$/i,
       RR: /^Door_RR$/i,
     },
+    soundProfile: 'compact_i4',
   },
   {
     id: 'toyota_land_cruiser',
@@ -373,7 +378,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 5.00,
     width: 2.10,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 4.4, 0.01, TALTOLA_HOUSE_OFFSET.z + 11.5],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.12, 0.01, TALTOLA_HOUSE_OFFSET.z + 12.2],
     spawnHeading: 0.0,
     groundOffset: 0.0,
     exhaustTip: [-0.62, 0.30, -2.42],
@@ -388,12 +393,12 @@ export const CAR_FLEET_CONFIGS = [
     dashGlowMats: ['Screens', 'Buttons'],
     wheelNameRegex: /^Wheel_(FL|FR|RL|RR)$/i,
     hasNativeDoors: true,
-    gearCount: 6,
-    maxSpeed: 37.5,
-    boostMaxSpeed: 49.0,
+    gearCount: 7,
+    maxSpeed: 58.3,
+    boostMaxSpeed: 62.5,
     engineForce: 20.5,
-    engineBaseFreq: 32,
-    engineRangeFreq: 132,
+    engineBaseFreq: 30,
+    engineRangeFreq: 122,
     hornFreqs: [360, 450],
     camBack: 6.1,
     camHeight: 2.55,
@@ -406,6 +411,7 @@ export const CAR_FLEET_CONFIGS = [
       RL: /^Door_RL$/i,
       RR: /^Door_RR$/i,
     },
+    soundProfile: 'suv_v6',
   },
   {
     id: 'toyota_fortuner',
@@ -415,7 +421,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.80,
     width: 1.90,
     rotateY: 0, // Raw Fortuner already faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x + 0.80, 0.01, TALTOLA_HOUSE_OFFSET.z - 14.5],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.15, 0.01, TALTOLA_HOUSE_OFFSET.z - 16.0],
     spawnHeading: 0.0,
     paintPresets: FORTUNER_PAINT_PRESETS,
     bodyPaintMats: ['carpaint'],
@@ -423,12 +429,12 @@ export const CAR_FLEET_CONFIGS = [
     tailMats: ['r_tailight', 'ind_tailighjt'],
     headlightMats: ['indicator_signal', 'indicator_arrow'],
     wheelNameRegex: /^WHEEL_(LF|RF|LR|RR)$/i,
-    gearCount: 7,
-    maxSpeed: 31.0,
-    boostMaxSpeed: 43.5,
-    engineForce: 17.5,
-    engineBaseFreq: 26,
-    engineRangeFreq: 115,
+    gearCount: 6,
+    maxSpeed: 51.4,
+    boostMaxSpeed: 55.0,
+    engineForce: 17.8,
+    engineBaseFreq: 28,
+    engineRangeFreq: 110,
     hornFreqs: [360, 450],
     camBack: 5.8,
     camHeight: 2.42,
@@ -442,6 +448,7 @@ export const CAR_FLEET_CONFIGS = [
       RL: 'Dummy005',
       RR: 'Dummy004',
     },
+    soundProfile: 'suv_diesel',
   },
   {
     id: 'toyota_hiace',
@@ -451,7 +458,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.85,
     width: 1.88,
     rotateY: -Math.PI / 2, // Raw HiAce grill faces +X; rotate -90 deg Y so it faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 10.2],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.15, 0.01, TALTOLA_HOUSE_OFFSET.z - 28.0],
     spawnHeading: 0.0,
     paintPresets: HIACE_PAINT_PRESETS,
     bodyPaintMats: ['paint'],
@@ -459,12 +466,12 @@ export const CAR_FLEET_CONFIGS = [
     tailMats: [],
     headlightMats: [],
     wheelNameRegex: /hiace_wheel/i,
-    gearCount: 6,
-    maxSpeed: 27.5,
-    boostMaxSpeed: 37.5,
-    engineForce: 15.6,
+    gearCount: 5,
+    maxSpeed: 41.7,
+    boostMaxSpeed: 44.5,
+    engineForce: 14.5,
     engineBaseFreq: 30,
-    engineRangeFreq: 110,
+    engineRangeFreq: 102,
     hornFreqs: [390, 490],
     camBack: 6.1,
     camHeight: 2.55,
@@ -477,6 +484,7 @@ export const CAR_FLEET_CONFIGS = [
       { key: 'RL', side: 1, minAbsX: 0.66, minY: 0.32, maxY: 1.92, minZ: -0.82, maxZ: 0.72, sliding: true },
       { key: 'RR', side: -1, minAbsX: 0.66, minY: 0.32, maxY: 1.92, minZ: -0.82, maxZ: 0.72, sliding: true },
     ],
+    soundProfile: 'van_diesel',
   },
   {
     id: 'toyota_townace',
@@ -486,7 +494,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 4.50,
     width: 1.78,
     rotateY: 0, // Raw TownAce already faces +Z
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z - 10.2],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.18, 0.01, TALTOLA_HOUSE_OFFSET.z - 33.8],
     spawnHeading: 0.0,
     paintPresets: TOWNACE_PAINT_PRESETS,
     bodyPaintMats: ['Material'],
@@ -500,18 +508,19 @@ export const CAR_FLEET_CONFIGS = [
     khulnaPlateText: ['খুলনা মেট্রো-চ', '১১-৩২৯০'],
     hasBuiltInSteeringWheel: false,
     wheelNameRegex: /^Cylinder(\.?\d+)?$/i,
-    gearCount: 6,
-    maxSpeed: 27.0,
-    boostMaxSpeed: 36.5,
-    engineForce: 15.2,
-    engineBaseFreq: 32,
-    engineRangeFreq: 112,
+    gearCount: 5,
+    maxSpeed: 40.3,
+    boostMaxSpeed: 43.0,
+    engineForce: 14.0,
+    engineBaseFreq: 34,
+    engineRangeFreq: 108,
     hornFreqs: [400, 505],
     camBack: 5.8,
     camHeight: 2.42,
     hoodHeight: 1.52,
     hoodForward: 1.15,
     isBMW: false,
+    soundProfile: 'van_petrol',
   },
   {
     id: 'bangladeshi_rickshaw_taltola',
@@ -521,11 +530,11 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 2.44,
     width: 1.04,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 0.6],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.40, 0.01, TALTOLA_HOUSE_OFFSET.z - 48.2],
     spawnHeading: 0.0,
     paintPresets: RICKSHAW_PAINT_PRESETS,
-    maxSpeed: 7.8,
-    boostMaxSpeed: 11.8,
+    maxSpeed: 7.2,
+    boostMaxSpeed: 9.5,
     engineForce: 9.2,
     camBack: 3.45,
     camHeight: 2.02,
@@ -533,6 +542,7 @@ export const CAR_FLEET_CONFIGS = [
     hoodForward: 0.14,
     isBMW: false,
     isRickshaw: true,
+    soundProfile: 'pedal_rickshaw',
   },
   {
     id: 'bangladeshi_rickshaw_haji',
@@ -545,8 +555,8 @@ export const CAR_FLEET_CONFIGS = [
     spawnPos: [1.05, 0.01, 1.8],
     spawnHeading: 0.0,
     paintPresets: RICKSHAW_PAINT_PRESETS,
-    maxSpeed: 7.8,
-    boostMaxSpeed: 11.8,
+    maxSpeed: 7.2,
+    boostMaxSpeed: 9.5,
     engineForce: 9.2,
     camBack: 3.45,
     camHeight: 2.02,
@@ -554,6 +564,7 @@ export const CAR_FLEET_CONFIGS = [
     hoodForward: 0.14,
     isBMW: false,
     isRickshaw: true,
+    soundProfile: 'pedal_rickshaw',
   },
   {
     id: 'bike_125cc',
@@ -565,14 +576,14 @@ export const CAR_FLEET_CONFIGS = [
     rotateY: 0,
     rotateX: 0.071,
     hideMats: ['ground'],
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 3.2],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.45, 0.01, TALTOLA_HOUSE_OFFSET.z - 41.8],
     spawnHeading: 0.0,
     paintPresets: BIKE_PAINT_PRESETS,
-    maxSpeed: 29.0,
-    boostMaxSpeed: 40.5,
-    engineForce: 19.5,
-    engineBaseFreq: 56,
-    engineRangeFreq: 215,
+    maxSpeed: 31.9,
+    boostMaxSpeed: 35.0,
+    engineForce: 18.5,
+    engineBaseFreq: 58,
+    engineRangeFreq: 210,
     hornFreqs: [520, 660],
     camBack: 3.35,
     camHeight: 1.72,
@@ -593,6 +604,8 @@ export const CAR_FLEET_CONFIGS = [
       povEye: [0, 1.54, -0.20],
       povLook: [0, 1.32, 2.4],
     },
+    gearCount: 5,
+    soundProfile: 'bike_sport',
   },
   {
     id: 'honda_nxr_bros',
@@ -602,15 +615,15 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 2.12,
     width: 0.82,
     rotateY: Math.PI,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z - 6.8],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.45, 0.01, TALTOLA_HOUSE_OFFSET.z - 44.9],
     spawnHeading: 0.0,
     paintPresets: BIKE_PAINT_PRESETS,
     bodyPaintMats: ['FairingGasTank'],
-    maxSpeed: 27.5,
-    boostMaxSpeed: 38.0,
-    engineForce: 18.2,
-    engineBaseFreq: 48,
-    engineRangeFreq: 190,
+    maxSpeed: 30.6,
+    boostMaxSpeed: 33.5,
+    engineForce: 17.2,
+    engineBaseFreq: 50,
+    engineRangeFreq: 185,
     hornFreqs: [480, 610],
     camBack: 3.45,
     camHeight: 1.78,
@@ -631,6 +644,8 @@ export const CAR_FLEET_CONFIGS = [
       povEye: [0, 1.58, -0.20],
       povLook: [0, 1.36, 2.4],
     },
+    gearCount: 5,
+    soundProfile: 'bike_dirt',
   },
   {
     id: 'bangladeshi_cng',
@@ -640,17 +655,17 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 2.65,
     width: 1.32,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z + 5.6],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.35, 0.01, TALTOLA_HOUSE_OFFSET.z - 38.4],
     spawnHeading: 0.0,
     paintPresets: CNG_PAINT_PRESETS,
     glassMats: ['CNG_Glass'],
     hasBuiltInSteeringWheel: true,
     gearCount: 4,
-    maxSpeed: 19.5,
-    boostMaxSpeed: 26.5,
-    engineForce: 14.5,
-    engineBaseFreq: 44,
-    engineRangeFreq: 165,
+    maxSpeed: 17.5,
+    boostMaxSpeed: 19.2,
+    engineForce: 12.8,
+    engineBaseFreq: 42,
+    engineRangeFreq: 95,
     hornFreqs: [460, 580],
     camBack: 3.65,
     camHeight: 1.92,
@@ -658,6 +673,7 @@ export const CAR_FLEET_CONFIGS = [
     hoodForward: 0.36,
     isBMW: false,
     isCNG: true,
+    soundProfile: 'cng_putput',
   },
   {
     id: 'atlas_roadster_bicycle',
@@ -667,13 +683,13 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 1.88,
     width: 0.63,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z - 1.8],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.50, 0.01, TALTOLA_HOUSE_OFFSET.z - 54.7],
     spawnHeading: 0.0,
     paintPresets: BICYCLE_PAINT_PRESETS,
     bodyPaintMats: ['Atlas_Frame_Black'],
-    maxSpeed: 9.8,
-    boostMaxSpeed: 14.5,
-    engineForce: 11.2,
+    maxSpeed: 8.9,
+    boostMaxSpeed: 11.5,
+    engineForce: 10.5,
     camBack: 2.95,
     camHeight: 1.72,
     hoodHeight: 1.42,
@@ -681,6 +697,7 @@ export const CAR_FLEET_CONFIGS = [
     isBMW: false,
     isRickshaw: true,
     isBicycle: true,
+    soundProfile: 'pedal_bicycle',
   },
   {
     id: 'bangladeshi_cargo_van',
@@ -690,12 +707,12 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 2.395,
     width: 1.042,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.55, 0.01, TALTOLA_HOUSE_OFFSET.z - 4.4],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.40, 0.01, TALTOLA_HOUSE_OFFSET.z - 51.6],
     spawnHeading: 0.0,
     paintPresets: VAN_PAINT_PRESETS,
-    maxSpeed: 8.2,
-    boostMaxSpeed: 12.2,
-    engineForce: 9.6,
+    maxSpeed: 6.7,
+    boostMaxSpeed: 8.8,
+    engineForce: 9.0,
     camBack: 3.55,
     camHeight: 2.02,
     hoodHeight: 1.62,
@@ -703,6 +720,7 @@ export const CAR_FLEET_CONFIGS = [
     isBMW: false,
     isRickshaw: true,
     isVan: true,
+    soundProfile: 'pedal_van',
   },
   {
     id: 'tata_2515',
@@ -712,7 +730,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 8.92,
     width: 2.45,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.5, 0.01, TALTOLA_HOUSE_OFFSET.z + 11.5],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.00, 0.01, TALTOLA_HOUSE_OFFSET.z + 20.5],
     spawnHeading: 0.0,
     paintPresets: [
       { name: 'BD Highway Red', hex: '#b91c1c', trailerHex: '#1e3a8a' },
@@ -723,11 +741,11 @@ export const CAR_FLEET_CONFIGS = [
     ],
     hasBuiltInSteeringWheel: true,
     gearCount: 6,
-    maxSpeed: 22.0,
-    boostMaxSpeed: 30.0,
-    engineForce: 15.5,
-    engineBaseFreq: 34,
-    engineRangeFreq: 115,
+    maxSpeed: 24.4,
+    boostMaxSpeed: 26.5,
+    engineForce: 13.5,
+    engineBaseFreq: 24,
+    engineRangeFreq: 64,
     hornFreqs: [215, 275],
     camBack: 11.2,
     camHeight: 4.35,
@@ -735,6 +753,7 @@ export const CAR_FLEET_CONFIGS = [
     hoodForward: 3.15,
     isBMW: false,
     isTata2515: true,
+    soundProfile: 'truck_diesel',
   },
 ];
 
@@ -2121,11 +2140,31 @@ export function createDrivableCar(scene, manager, config) {
   let shadowInRange = true;
   let activeEnvMap = null;
 
-  // Web Audio Engine + Horn
+  // Multi-Profile Realistic Web Audio Synthesizer (distinct voice per vehicle class, zero harsh limiter bounce!)
+  const soundProfile = config.soundProfile || (
+    config.isTata2515 ? 'truck_diesel'
+      : (config.isCNG ? 'cng_putput'
+        : (config.isBicycle ? 'pedal_bicycle'
+          : (config.isVan ? 'pedal_van'
+            : (config.isRickshaw ? 'pedal_rickshaw'
+              : (config.isBMW ? 'sports_i6'
+                : (config.isGameReadyPrius ? 'hybrid_ecvt'
+                  : (config.isBike ? 'bike_sport' : 'sedan_i4')))))))
+  );
+  const isPedalProfile = soundProfile.startsWith('pedal_');
+
   let audioCtx = null;
   let osc1 = null;
   let osc2 = null;
+  let osc3 = null;
+  let lfoOsc = null;
+  let lfoGain = null;
+  let engineFilter = null;
   let engineGain = null;
+  let pedalNoiseSrc = null;
+  let pedalFilter = null;
+  let pedalGain = null;
+  let lastPedalTickPhase = 0;
 
   function ensureAudio() {
     if (audioCtx) {
@@ -2136,27 +2175,152 @@ export function createDrivableCar(scene, manager, config) {
     if (!AudioContextClass) return;
     try {
       audioCtx = new AudioContextClass();
+
+      if (isPedalProfile) {
+        // Mechanical chain-whir noise buffer + bandpass filter for realistic Bicycle / Rickshaw / Cargo Van pedaling!
+        const bufLen = audioCtx.sampleRate * 1.5;
+        const nBuf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+        const ch = nBuf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) ch[i] = (Math.random() * 2 - 1) * 0.45;
+        pedalNoiseSrc = audioCtx.createBufferSource();
+        pedalNoiseSrc.buffer = nBuf;
+        pedalNoiseSrc.loop = true;
+
+        pedalFilter = audioCtx.createBiquadFilter();
+        pedalFilter.type = 'bandpass';
+        pedalFilter.frequency.value = soundProfile === 'pedal_bicycle' ? 1450 : (soundProfile === 'pedal_van' ? 760 : 980);
+        pedalFilter.Q.value = 3.2;
+
+        pedalGain = audioCtx.createGain();
+        pedalGain.gain.value = 0.0;
+
+        pedalNoiseSrc.connect(pedalFilter);
+        pedalFilter.connect(pedalGain);
+        pedalGain.connect(audioCtx.destination);
+        pedalNoiseSrc.start();
+        return;
+      }
+
       osc1 = audioCtx.createOscillator();
       osc2 = audioCtx.createOscillator();
-      const filter = audioCtx.createBiquadFilter();
+      osc3 = audioCtx.createOscillator();
+      engineFilter = audioCtx.createBiquadFilter();
       engineGain = audioCtx.createGain();
-
-      osc1.type = 'sawtooth';
-      osc2.type = 'triangle';
-      osc1.frequency.value = 52;
-      osc2.frequency.value = 78;
-
-      filter.type = 'lowpass';
-      filter.frequency.value = 320;
       engineGain.gain.value = 0.0;
 
-      osc1.connect(filter);
-      osc2.connect(filter);
-      filter.connect(engineGain);
+      if (soundProfile === 'cng_putput') {
+        // Authentic Bangladeshi Bajaj RE CNG: rhythmic single-cylinder "put-put-put-put" pulse!
+        osc1.type = 'sawtooth';
+        osc2.type = 'square';
+        osc3.type = 'triangle';
+        engineFilter.type = 'bandpass';
+        engineFilter.frequency.value = 260;
+        engineFilter.Q.value = 1.9;
+
+        lfoOsc = audioCtx.createOscillator();
+        lfoOsc.type = 'sine';
+        lfoOsc.frequency.value = 11.5;
+        lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 0.022;
+        lfoOsc.connect(lfoGain);
+        lfoGain.connect(engineGain.gain);
+        lfoOsc.start();
+      } else if (soundProfile === 'truck_diesel') {
+        // Heavy 6.7L Tata 2515 Diesel: deep throaty sub-bass rumble + low cylinder chug + subtle turbo whistle
+        osc1.type = 'sawtooth';
+        osc2.type = 'triangle';
+        osc3.type = 'sine';
+        engineFilter.type = 'lowpass';
+        engineFilter.frequency.value = 195;
+        engineFilter.Q.value = 2.2;
+
+        lfoOsc = audioCtx.createOscillator();
+        lfoOsc.type = 'sine';
+        lfoOsc.frequency.value = 9.0;
+        lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 0.012;
+        lfoOsc.connect(lfoGain);
+        lfoGain.connect(engineGain.gain);
+        lfoOsc.start();
+      } else if (soundProfile === 'hybrid_ecvt') {
+        // Toyota Prius Hybrid: silky quiet electric inverter whine + gentle refined 4-cyl hum
+        osc1.type = 'sine';
+        osc2.type = 'triangle';
+        osc3.type = 'sine';
+        engineFilter.type = 'lowpass';
+        engineFilter.frequency.value = 520;
+        engineFilter.Q.value = 0.9;
+      } else if (soundProfile === 'sports_i6') {
+        // BMW M3 Competition: rich smooth twin-turbo inline-6 harmonics
+        osc1.type = 'sawtooth';
+        osc2.type = 'sawtooth';
+        osc3.type = 'triangle';
+        engineFilter.type = 'lowpass';
+        engineFilter.frequency.value = 460;
+        engineFilter.Q.value = 1.4;
+      } else if (soundProfile === 'suv_v6' || soundProfile === 'suv_diesel' || soundProfile === 'luxury_v6') {
+        // Muscular V6 / Turbo-Diesel SUV / Executive MPV
+        osc1.type = 'sawtooth';
+        osc2.type = 'triangle';
+        osc3.type = 'sine';
+        engineFilter.type = 'lowpass';
+        engineFilter.frequency.value = soundProfile === 'suv_diesel' ? 245 : 310;
+        engineFilter.Q.value = 1.5;
+      } else if (soundProfile === 'bike_sport' || soundProfile === 'bike_dirt') {
+        // Crisp single-cylinder motorcycle revving note
+        osc1.type = 'sawtooth';
+        osc2.type = 'square';
+        osc3.type = 'triangle';
+        engineFilter.type = 'lowpass';
+        engineFilter.frequency.value = soundProfile === 'bike_sport' ? 540 : 380;
+        engineFilter.Q.value = 1.6;
+      } else {
+        // Crisp Japanese 4-cylinder sedan / commercial van
+        osc1.type = 'sawtooth';
+        osc2.type = 'triangle';
+        osc3.type = 'sine';
+        engineFilter.type = 'lowpass';
+        engineFilter.frequency.value = soundProfile === 'van_diesel' ? 240 : 350;
+        engineFilter.Q.value = 1.1;
+      }
+
+      const g1 = audioCtx.createGain();
+      const g2 = audioCtx.createGain();
+      const g3 = audioCtx.createGain();
+      g1.gain.value = soundProfile === 'hybrid_ecvt' ? 0.35 : 0.55;
+      g2.gain.value = soundProfile === 'cng_putput' ? 0.30 : 0.32;
+      g3.gain.value = soundProfile === 'truck_diesel' ? 0.25 : (soundProfile === 'hybrid_ecvt' ? 0.28 : 0.16);
+
+      osc1.connect(g1); g1.connect(engineFilter);
+      osc2.connect(g2); g2.connect(engineFilter);
+      osc3.connect(g3); g3.connect(engineFilter);
+      engineFilter.connect(engineGain);
       engineGain.connect(audioCtx.destination);
 
       osc1.start();
       osc2.start();
+      osc3.start();
+    } catch {}
+  }
+
+  function playPedalClick(isCoasting = false) {
+    if (!audioCtx || !state.driving) return;
+    try {
+      const now = audioCtx.currentTime;
+      const g = audioCtx.createGain();
+      const o = audioCtx.createOscillator();
+      o.type = isCoasting ? 'triangle' : 'sine';
+      const basePitch = soundProfile === 'pedal_bicycle' ? (isCoasting ? 2350 : 1250) : (soundProfile === 'pedal_van' ? 680 : 920);
+      o.frequency.setValueAtTime(basePitch, now);
+      o.frequency.exponentialRampToValueAtTime(basePitch * 0.45, now + 0.022);
+      const peak = isCoasting ? 0.016 : 0.022;
+      g.gain.setValueAtTime(0.0008, now);
+      g.gain.exponentialRampToValueAtTime(peak, now + 0.003);
+      g.gain.exponentialRampToValueAtTime(0.0005, now + 0.024);
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      o.start(now);
+      o.stop(now + 0.028);
     } catch {}
   }
 
@@ -2164,19 +2328,89 @@ export function createDrivableCar(scene, manager, config) {
   let screechGain = null;
 
   function updateEngineAudio(active, rpm, throttle, slip = 0) {
-    if (config.isRickshaw) return;
-    if (!audioCtx || !engineGain || !osc1 || !osc2) return;
+    if (!audioCtx) return;
     const now = audioCtx.currentTime;
+
+    if (isPedalProfile) {
+      if (!pedalGain || !pedalFilter) return;
+      const spd = Math.abs(state.speed);
+      if (!active || spd < 0.12) {
+        pedalGain.gain.setTargetAtTime(0.0, now, 0.08);
+        return;
+      }
+      const isPedaling = throttle > 0.05;
+      const chainVol = isPedaling
+        ? THREE.MathUtils.clamp(0.012 + (spd / 10.0) * 0.028, 0.012, 0.042)
+        : THREE.MathUtils.clamp((spd / 10.0) * 0.012, 0.004, 0.014);
+      const centerF = (soundProfile === 'pedal_bicycle' ? 1200 : (soundProfile === 'pedal_van' ? 620 : 840)) + spd * 75;
+      pedalFilter.frequency.setTargetAtTime(centerF, now, 0.06);
+      pedalGain.gain.setTargetAtTime(chainVol, now, 0.06);
+
+      // Rhythmic pedal-stroke / freewheel ratchet clicks
+      const stepRad = isPedaling ? Math.PI : 0.72;
+      const phaseMetric = isPedaling ? state.pedalPhase : state.wheelSpin;
+      if (Math.abs(phaseMetric - lastPedalTickPhase) >= stepRad) {
+        lastPedalTickPhase = phaseMetric;
+        playPedalClick(!isPedaling);
+      }
+      return;
+    }
+
+    if (!engineGain || !osc1 || !osc2 || !osc3 || !engineFilter) return;
     if (!active) {
-      engineGain.gain.setTargetAtTime(0.0, now, 0.08);
+      engineGain.gain.setTargetAtTime(0.0, now, 0.09);
+      if (lfoGain) lfoGain.gain.setTargetAtTime(0.0, now, 0.09);
       if (screechGain) screechGain.gain.setTargetAtTime(0.0, now, 0.05);
       return;
     }
-    const baseFreq = (config.engineBaseFreq || 32) + (rpm / 7500) * (config.engineRangeFreq || 150);
-    osc1.frequency.setTargetAtTime(baseFreq, now, 0.04);
-    osc2.frequency.setTargetAtTime(baseFreq * 1.5, now, 0.04);
-    const targetGain = 0.030 + throttle * 0.045;
-    engineGain.gain.setTargetAtTime(targetGain, now, 0.06);
+
+    const rpmNorm = THREE.MathUtils.clamp((rpm - 800) / 6200, 0, 1);
+    const baseFreq = (config.engineBaseFreq || 34) + rpmNorm * (config.engineRangeFreq || 130);
+
+    if (soundProfile === 'cng_putput') {
+      // Rhythmic put-put-put-put single-cylinder Bajaj RE CNG chug!
+      osc1.frequency.setTargetAtTime(baseFreq, now, 0.05);
+      osc2.frequency.setTargetAtTime(baseFreq * 2.0, now, 0.05);
+      osc3.frequency.setTargetAtTime(baseFreq * 0.5, now, 0.05);
+      engineFilter.frequency.setTargetAtTime(210 + rpmNorm * 420 + throttle * 90, now, 0.06);
+      const putRate = 10.5 + rpmNorm * 22.0; // 10.5 Hz idle put-put -> 32 Hz cruising chug
+      if (lfoOsc) lfoOsc.frequency.setTargetAtTime(putRate, now, 0.05);
+      if (lfoGain) lfoGain.gain.setTargetAtTime(0.018 + throttle * 0.014, now, 0.06);
+      engineGain.gain.setTargetAtTime(0.030 + throttle * 0.026, now, 0.07);
+    } else if (soundProfile === 'truck_diesel') {
+      // Deep, heavy, throaty Tata 2515 6.7L diesel + subtle turbocharger whistle under load
+      osc1.frequency.setTargetAtTime(baseFreq, now, 0.07);
+      osc2.frequency.setTargetAtTime(baseFreq * 1.5, now, 0.07);
+      osc3.frequency.setTargetAtTime(340 + rpmNorm * 580, now, 0.09); // gentle turbo whistle
+      engineFilter.frequency.setTargetAtTime(145 + rpmNorm * 210 + throttle * 65, now, 0.08);
+      if (lfoOsc) lfoOsc.frequency.setTargetAtTime(7.5 + rpmNorm * 14.0, now, 0.07);
+      if (lfoGain) lfoGain.gain.setTargetAtTime(0.010 + throttle * 0.008, now, 0.08);
+      engineGain.gain.setTargetAtTime(0.044 + throttle * 0.036, now, 0.08);
+    } else if (soundProfile === 'hybrid_ecvt') {
+      // Silky quiet Prius electric motor whir + smooth low-volume petrol hum at higher speeds
+      osc1.frequency.setTargetAtTime(baseFreq, now, 0.08);
+      osc2.frequency.setTargetAtTime(baseFreq * 1.5, now, 0.08);
+      osc3.frequency.setTargetAtTime(220 + rpmNorm * 460, now, 0.08); // soft EV inverter hum
+      engineFilter.frequency.setTargetAtTime(280 + rpmNorm * 360, now, 0.09);
+      engineGain.gain.setTargetAtTime(0.018 + throttle * 0.020, now, 0.09);
+    } else if (soundProfile === 'sports_i6') {
+      // Smooth, rich twin-turbo BMW M3 inline-6 growl (silky at 290 km/h, zero limiter stutter!)
+      osc1.frequency.setTargetAtTime(baseFreq, now, 0.06);
+      osc2.frequency.setTargetAtTime(baseFreq * 1.5, now, 0.06);
+      osc3.frequency.setTargetAtTime(baseFreq * 2.0, now, 0.06);
+      engineFilter.frequency.setTargetAtTime(280 + rpmNorm * 680 + throttle * 140, now, 0.07);
+      engineGain.gain.setTargetAtTime(0.034 + throttle * 0.040, now, 0.08);
+    } else {
+      // Smooth, distinct vehicle-specific engine voices (SUV V6, Diesel SUV, Sedan I4, Vans, Bikes)
+      const h2 = (soundProfile === 'bike_sport' || soundProfile === 'bike_dirt') ? 2.0 : 1.5;
+      const h3 = (soundProfile === 'suv_v6' || soundProfile === 'luxury_v6') ? 0.5 : 2.0;
+      osc1.frequency.setTargetAtTime(baseFreq, now, 0.06);
+      osc2.frequency.setTargetAtTime(baseFreq * h2, now, 0.06);
+      osc3.frequency.setTargetAtTime(baseFreq * h3, now, 0.06);
+      const fBase = (soundProfile === 'suv_diesel' || soundProfile === 'van_diesel') ? 190 : 250;
+      engineFilter.frequency.setTargetAtTime(fBase + rpmNorm * 440 + throttle * 100, now, 0.07);
+      engineGain.gain.setTargetAtTime(0.028 + throttle * 0.034, now, 0.08);
+    }
 
     // GTA VI Tire Screech Synthesis during drifting, high-G cornering & hard braking
     if (slip > 0.16) {
@@ -2229,22 +2463,7 @@ export function createDrivableCar(scene, manager, config) {
   }
 
   function playGearShiftPop() {
-    if (!state.driving || config.isRickshaw || config.isCNG || !audioCtx) return;
-    try {
-      const now = audioCtx.currentTime;
-      const g = audioCtx.createGain();
-      g.gain.setValueAtTime(0.001, now);
-      g.gain.exponentialRampToValueAtTime(config.isBMW ? 0.072 : 0.030, now + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.001, now + 0.085);
-      g.connect(audioCtx.destination);
-      const o = audioCtx.createOscillator();
-      o.type = 'sawtooth';
-      o.frequency.setValueAtTime(150, now);
-      o.frequency.exponentialRampToValueAtTime(46, now + 0.08);
-      o.connect(g);
-      o.start(now);
-      o.stop(now + 0.09);
-    } catch {}
+    // Smooth, refined automatic/manual shift without harsh rev-limiter "pew-pew" stutter
   }
 
   function playHorn() {
@@ -4410,14 +4629,18 @@ export function createDrivableCar(scene, manager, config) {
     }
 
     const maxForwardSpeed = boost > 1 ? (config.boostMaxSpeed || 35.0) : (config.maxSpeed || 25.0);
-    // Realistic progressive gear torque curve (punchy low-end 1st/2nd gear launch, smooth top-end pull)
+    // Realistic progressive torque curve + proportional aerodynamic drag so EVERY vehicle smoothly climbs through ALL gears to its true top speed!
     const speedFrac = THREE.MathUtils.clamp(Math.abs(state.speed) / Math.max(1, maxForwardSpeed), 0, 1);
-    const torqueCurve = config.isRickshaw ? 1.0 : (1.26 - 0.36 * speedFrac * speedFrac);
+    const torqueCurve = config.isRickshaw ? 1.0 : (1.18 - 0.28 * speedFrac * speedFrac);
     state.shiftDipTimer = Math.max(0, (state.shiftDipTimer || 0) - dt);
-    const shiftMult = state.shiftDipTimer > 0 ? 0.45 : 1.0;
-    const engineForce = (config.engineForce || 14.5) * boost * torqueCurve * shiftMult;
-    const brakeForce = config.isBike ? 26.5 : 25.5;
-    const drag = 0.0115 * state.speed * Math.abs(state.speed) + 0.52 * state.speed;
+    const shiftMult = state.shiftDipTimer > 0 ? 0.86 : 1.0;
+    const baseEngineF = (config.engineForce || 14.5) * (boost > 1 ? 1.18 : 1.0);
+    const engineForce = baseEngineF * torqueCurve * shiftMult;
+    const brakeForce = config.isBike ? 26.5 : (config.isTata2515 ? 20.5 : 25.5);
+    // Aerodynamic drag reaches equilibrium smoothly right at maxForwardSpeed (zero wall-bounce or 3rd-gear stall!)
+    const rollingDrag = (config.isRickshaw ? 0.42 : 0.28) * state.speed;
+    const aeroDrag = (baseEngineF * 0.86) * Math.pow(speedFrac, 1.9) * Math.sign(state.speed);
+    const drag = throttle > 0 ? aeroDrag : (rollingDrag + aeroDrag * 0.35);
 
     let accel = 0;
     if (throttle > 0) accel += engineForce;
@@ -4539,32 +4762,41 @@ export function createDrivableCar(scene, manager, config) {
 
     const absKmh = Math.abs(state.speed) * 3.6;
     const totalGears = state.gearCount || 6;
-    const topKmh = Math.max(120, (config.boostMaxSpeed || 38.0) * 3.6);
+    // Scale gear thresholds to each vehicle's true maxSpeed so normal full-throttle driving cleanly shifts 1 -> 2 -> ... -> top gear!
+    const topKmh = Math.max(25, (config.maxSpeed || 30.0) * 3.6);
     const gearThresholds = [0];
     for (let i = 1; i <= totalGears; i++) {
-      gearThresholds.push(Math.round((topKmh * Math.pow(i / totalGears, 1.08))));
+      gearThresholds.push(topKmh * Math.pow(i / totalGears, 1.18));
     }
     let g = 1;
     for (let i = 1; i <= totalGears; i++) {
       if (absKmh >= gearThresholds[i - 1]) g = i;
     }
+    // Smooth gear hysteresis prevents rapid upshift/downshift chatter
+    const prevG = typeof state.lastGear === 'number' ? state.lastGear : 1;
+    if (g < prevG && absKmh > gearThresholds[prevG - 1] - Math.max(3.5, topKmh * 0.035)) {
+      g = prevG;
+    }
     state.gear = state.speed < -0.4 ? 'R' : (absKmh < 1 ? 'N' : g);
     if (typeof state.gear === 'number' && typeof state.lastGear === 'number' && state.gear > state.lastGear && throttle > 0) {
-      playGearShiftPop();
       if (!config.isRickshaw) {
-        state.shiftDipTimer = 0.12;
-        state.dynPitchVel -= config.isBike ? 0.12 : 0.08;
+        state.shiftDipTimer = 0.07;
+        state.dynPitchVel -= config.isBike ? 0.08 : 0.045;
       }
     }
     state.lastGear = state.gear;
 
-    const gMin = gearThresholds[(typeof g === 'number' ? g : 1) - 1] || 0;
-    const gMax = gearThresholds[(typeof g === 'number' ? g : 1)] || 30;
-    const gearProgress = (absKmh - gMin) / Math.max(1, gMax - gMin);
+    const gIdx = typeof g === 'number' ? g : 1;
+    const gMin = gearThresholds[gIdx - 1] || 0;
+    const gMax = gearThresholds[gIdx] || topKmh;
+    const gearProgress = THREE.MathUtils.clamp((absKmh - gMin) / Math.max(1, gMax - gMin), 0, 1);
+    const maxRpm = config.isTata2515 ? 2550 : (config.isBMW ? 7200 : (config.isCNG ? 5200 : 6200));
+    const idleRpm = config.isTata2515 ? 650 : 880;
+    // Smooth, steady top-gear highway cruise RPM (never bounces off a rev limiter!)
     const targetRpm = absKmh < 1
-      ? 920 + throttle * 3800
-      : THREE.MathUtils.clamp(2000 + gearProgress * 5400, 1100, 7800);
-    state.rpm = THREE.MathUtils.lerp(state.rpm, targetRpm, Math.min(1, dt * 12));
+      ? idleRpm + throttle * (config.isTata2515 ? 950 : 2200)
+      : THREE.MathUtils.clamp(idleRpm + 900 + gearProgress * (maxRpm - idleRpm - 1100) + (gIdx === totalGears ? throttle * 220 : 0), idleRpm, maxRpm);
+    state.rpm = THREE.MathUtils.lerp(state.rpm, targetRpm, Math.min(1, dt * 6.5));
 
     state.isBraking = Boolean(brake > 0 || handbrake);
     if (config.isGameReadyCorolla) {
@@ -4695,9 +4927,15 @@ export function createDrivableCar(scene, manager, config) {
       updateEngineAudio(false, 920, 0);
       try { osc1?.stop?.(); } catch {}
       try { osc2?.stop?.(); } catch {}
+      try { osc3?.stop?.(); } catch {}
+      try { lfoOsc?.stop?.(); } catch {}
+      try { pedalNoiseSrc?.stop?.(); } catch {}
       try { screechOsc?.stop?.(); } catch {}
       osc1 = null;
       osc2 = null;
+      osc3 = null;
+      lfoOsc = null;
+      pedalNoiseSrc = null;
       screechOsc = null;
       if (audioCtx) {
         try { audioCtx.close?.(); } catch {}

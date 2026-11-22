@@ -3141,10 +3141,27 @@ async function initialize() {
       updateHUDPrompt();
     },
   });
-  // Park Toyota Corolla, Toyota Prius, Atlas Bicycle, CNG, Cargo Van & Tata 2515 right outside Taltola House on startup; all 16 vehicles also spawn via [P] phone dial pad
+  // Park all 16 vehicles neatly in a lineup on the opposite (West) side in front of Taltola House on startup; all 16 also spawn via [P] phone dial pad
   cars = [];
   bmwCar = null;
-  const starterVehicleIds = ['toyota_corolla', 'toyota_prius', 'atlas_roadster_bicycle', 'bangladeshi_cng', 'bangladeshi_cargo_van', 'tata_2515'];
+  const starterVehicleIds = [
+    'tata_2515',
+    'toyota_land_cruiser',
+    'toyota_corolla',
+    'toyota_prius',
+    'nissan_sunny',
+    'bmw_m3',
+    'toyota_fortuner',
+    'toyota_alphard',
+    'toyota_hiace',
+    'toyota_townace',
+    'bangladeshi_cng',
+    'bike_125cc',
+    'honda_nxr_bros',
+    'bangladeshi_rickshaw_taltola',
+    'bangladeshi_cargo_van',
+    'atlas_roadster_bicycle',
+  ];
   const vehicleEnvStartup = skySystem?.getEnvTexture?.() || null;
   for (const vid of starterVehicleIds) {
     const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);
@@ -3153,6 +3170,7 @@ async function initialize() {
     starterVeh.setQualityMode?.(quality);
     starterVeh.setEnvironmentMap?.(vehicleEnvStartup);
     cars.push(starterVeh);
+    if (vid === 'bmw_m3') bmwCar = starterVeh;
   }
 
   await Promise.race([
