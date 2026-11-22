@@ -526,6 +526,7 @@ let specialAbility = null;
 let healthSystem = null;
 let selfiePrevCamMode = null;
 let lastMinimapUpdate = 0;
+let lastUnlockMapOpenAt = 0;
 let lastSunAnchorX = 0;
 let lastSunAnchorZ = 0;
 let lastShadowUpdateAt = 0;
@@ -4047,6 +4048,7 @@ controls.addEventListener('unlock', () => {
   if (!inStudio && started && !referenceModal.open) {
     // GTA-style [ESC]: unlocking pointer opens the Khulna City Map directly instead of a pause screen!
     pause.classList.add('hidden');
+    lastUnlockMapOpenAt = performance.now();
     khulnaMapUI?.openMap(getLiveMapPos(), getLiveMapHeadingYaw());
     syncCursorVisibility();
     return;
@@ -4187,6 +4189,23 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
+  // GTA-style [ESC] & [M]: ALWAYS opens & closes the Khulna City Map (works while walking, driving, AND inside [C] Free Cam!)
+  if ((event.code === 'Escape' || (event.code === 'KeyM' && !isTypingField)) && !event.repeat) {
+    event.preventDefault();
+    if (khulnaMapUI?.isOpen) {
+      // Guard against browser firing pointerlockchange->unlock->openMap AND Escape keydown in the same press!
+      if (event.code === 'Escape' && (performance.now() - lastUnlockMapOpenAt) < 300) return;
+      khulnaMapUI.closeMap();
+      if (!inStudio && started) controls.lock();
+    } else if (!liftKeypadOpen) {
+      if (freeCam.active) toggleFreeCam();
+      khulnaMapUI?.openMap(getLiveMapPos(), getLiveMapHeadingYaw());
+      if (controls.isLocked) controls.unlock();
+    }
+    return;
+  }
+  if (khulnaMapUI?.isOpen) return;
+
   // [C] (or [Shift + C]) Dedicated Free Cam Toggle (works both on foot & while driving!)
   if (event.code === 'KeyC' && !event.repeat && !khulnaMapUI?.isOpen && !gtaPhoneUI?.isOpen) {
     event.preventDefault();
@@ -4217,20 +4236,6 @@ window.addEventListener('keydown', (event) => {
   if (gtaPhoneUI?.isOpen && gtaPhoneUI.handleKeyDown(event)) {
     return;
   }
-
-  // GTA-style [ESC]: opens & closes the Khulna City Map directly on the very first press!
-  if (event.code === 'Escape' && !event.repeat) {
-    event.preventDefault();
-    if (khulnaMapUI?.isOpen) {
-      khulnaMapUI.closeMap();
-      if (!inStudio && started) controls.lock();
-    } else if (!liftKeypadOpen) {
-      khulnaMapUI?.openMap(getLiveMapPos(), getLiveMapHeadingYaw());
-      if (controls.isLocked) controls.unlock();
-    }
-    return;
-  }
-  if (khulnaMapUI?.isOpen) return;
 
   if (event.code === 'KeyN' && !event.repeat) {
     event.preventDefault();
