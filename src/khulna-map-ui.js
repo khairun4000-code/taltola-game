@@ -64,6 +64,19 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
   const [minX, maxX, minZ, maxZ] = worldData.meta.bounds;
 
   const visibleLandmarks = [
+    {
+      id: 'khulna_judge_court',
+      n: '⚖️ Khulna Judge Court · জজ কোর্ট',
+      bn: 'খুলনা জেলা ও দায়রা জজ আদালত (কে.ডি. ঘোষ রোড)',
+      c: 'hero',
+      isJudgeCourt: true,
+      x: 188.0,
+      z: -676.0,
+      spawnX: 144.5,
+      spawnZ: -676.0,
+      lookX: 188.0,
+      lookZ: -676.0,
+    },
     ...worldData.landmarks
       .filter((lm) => lm.id !== 'taltola_ward23')
       .map((lm) => lm.id === 'pti_more'
@@ -76,20 +89,16 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       c: 'mosque',
       x: 154.0,
       z: 156.0,
-    },
-    {
-      id: 'khulna_judge_court',
-      n: 'Khulna District Judge Court',
-      bn: 'খুলনা জেলা ও দায়রা জজ আদালত (কে.ডি. ঘোষ রোড)',
-      c: 'hero',
-      x: 188.0,
-      z: -676.0,
+      spawnX: 195.5,
+      spawnZ: 166.0,
+      lookX: 171.0,
+      lookZ: 166.0,
     },
   ];
   const ptiIdx = visibleLandmarks.findIndex((lm) => lm.id === 'pti_more');
-  if (ptiIdx > 0) {
+  if (ptiIdx > 1) {
     const [ptiLm] = visibleLandmarks.splice(ptiIdx, 1);
-    visibleLandmarks.unshift(ptiLm);
+    visibleLandmarks.splice(1, 0, ptiLm);
   }
 
   let isOpen = false;
@@ -336,13 +345,18 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = `city-lm-btn ${lm.c === 'hero' ? 'is-hero' : ''}`;
-      if (lm.isPti) {
+      if (lm.isJudgeCourt) {
+        btn.style.borderColor = '#fbbf24';
+        btn.style.background = 'rgba(245, 158, 11, 0.24)';
+        btn.style.boxShadow = '0 0 12px rgba(251, 191, 36, 0.32)';
+      } else if (lm.isPti) {
         btn.style.borderColor = '#4ade80';
         btn.style.background = 'rgba(34, 197, 94, 0.24)';
         btn.style.boxShadow = '0 0 12px rgba(74, 222, 128, 0.30)';
       }
+      const nameColor = lm.isJudgeCourt ? ' style="color:#fde68a"' : (lm.isPti ? ' style="color:#86efac"' : '');
       btn.innerHTML = `
-        <span class="lm-name"${lm.isPti ? ' style="color:#86efac"' : ''}>${lm.n}</span>
+        <span class="lm-name"${nameColor}>${lm.n}</span>
         <small class="lm-meta">${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E · ${distM}m away</small>
       `;
       btn.addEventListener('click', (e) => {
