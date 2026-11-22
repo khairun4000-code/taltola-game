@@ -14,10 +14,10 @@ button, select { font: inherit; }
 button { color: inherit; }
 button:focus-visible, select:focus-visible { outline: 2px solid var(--lime); outline-offset: 4px; }
 #scene { position: fixed; inset: 0; display: block; width: 100%; height: 100%; }
+html.gta-cursor-hidden,
+html.gta-cursor-hidden *,
 body.gta-cursor-hidden,
-body.gta-cursor-hidden #scene,
-body.gta-cursor-hidden #walk-hud,
-body.gta-cursor-hidden #walk-hud * {
+body.gta-cursor-hidden * {
   cursor: none !important;
 }
 .hidden { display: none !important; }

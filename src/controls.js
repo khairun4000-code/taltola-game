@@ -7,6 +7,7 @@ export class FirstPersonControls extends EventTarget {
     this.domElement = domElement;
     this.isLocked = false;
     this.pointerLocked = false;
+    this.wantPointerLock = false;
     this.fallback = false;
     this.dragging = false;
     this.freeMoveHover = false;
@@ -22,7 +23,9 @@ export class FirstPersonControls extends EventTarget {
     this.onPointerUp = this.onPointerUp.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
-    document.addEventListener('pointerlockerror', () => this.enableFallback());
+    document.addEventListener('pointerlockerror', () => {
+      if (!this.isLocked) this.enableFallback();
+    });
     document.addEventListener('mousemove', this.onMouseMove);
     document.addEventListener('pointermove', this.onMouseMove);
     document.addEventListener('pointerup', this.onPointerUp);
@@ -54,10 +57,18 @@ export class FirstPersonControls extends EventTarget {
   }
 
   async lock() {
+    this.wantPointerLock = true;
     // Activate immediately in fallback mode first so WASD & UI start with zero delay,
-    // then upgrade to full pointer lock if the browser grants it.
+    // then upgrade to full hardware 360° pointer lock if the browser grants it.
     if (!this.isLocked) {
       this.enableFallback();
+    }
+    if (document.pointerLockElement === this.domElement) {
+      this.fallback = false;
+      this.wantPointerLock = false;
+      this.hasLastPos = false;
+      this.activate(true);
+      return;
     }
     try {
       if (!this.domElement.requestPointerLock) {
@@ -68,6 +79,7 @@ export class FirstPersonControls extends EventTarget {
         await request;
         if (document.pointerLockElement === this.domElement) {
           this.fallback = false;
+          this.wantPointerLock = false;
           this.hasLastPos = false;
           this.activate(true);
         }
@@ -92,12 +104,17 @@ export class FirstPersonControls extends EventTarget {
   }
 
   unlock() {
-    if (!this.isLocked) return;
+    this.wantPointerLock = false;
+    if (!this.isLocked && document.pointerLockElement !== this.domElement) return;
     this.isLocked = false;
     this.pointerLocked = false;
     this.dragging = false;
     this.hasLastPos = false;
-    if (document.pointerLockElement === this.domElement) document.exitPointerLock();
+    if (document.pointerLockElement === this.domElement) {
+      try {
+        document.exitPointerLock();
+      } catch {}
+    }
     this.dispatchEvent(new Event('unlock'));
   }
 
@@ -105,6 +122,7 @@ export class FirstPersonControls extends EventTarget {
     this.hasLastPos = false;
     if (document.pointerLockElement === this.domElement) {
       this.fallback = false;
+      this.wantPointerLock = false;
       this.activate(true);
     } else if (this.pointerLocked) {
       this.pointerLocked = false;
@@ -115,6 +133,9 @@ export class FirstPersonControls extends EventTarget {
 
   onPointerDown(event) {
     if (!this.isLocked || !this.fallback) return;
+    if (this.wantPointerLock && event.button === 0 && document.pointerLockElement !== this.domElement) {
+      this.lock();
+    }
     this.dragging = true;
     this.lastX = event.clientX;
     this.lastY = event.clientY;
@@ -134,16 +155,29 @@ export class FirstPersonControls extends EventTarget {
   updateEdgeTurn(delta) {
     if (!this.isLocked || !this.fallback || !this.freeMoveHover || !this.hasLastPos) return;
     const vw = window.innerWidth || 1280;
-    const margin = 52;
-    let turnRate = 0;
-    if (this.lastX <= margin) {
-      turnRate = ((margin - this.lastX) / margin) * 1.85;
-    } else if (this.lastX >= vw - margin) {
-      turnRate = -((this.lastX - (vw - margin)) / margin) * 1.85;
+    const vh = window.innerHeight || 720;
+    const marginX = 96;
+    const marginY = 48;
+    let turnYaw = 0;
+    let turnPitch = 0;
+    if (this.lastX <= marginX) {
+      turnYaw = ((marginX - this.lastX) / marginX) * 2.25;
+    } else if (this.lastX >= vw - marginX) {
+      turnYaw = -((this.lastX - (vw - marginX)) / marginX) * 2.25;
     }
-    if (Math.abs(turnRate) > 0.001) {
+    if (this.lastY <= marginY) {
+      turnPitch = ((marginY - this.lastY) / marginY) * 1.15;
+    } else if (this.lastY >= vh - marginY) {
+      turnPitch = -((this.lastY - (vh - marginY)) / marginY) * 1.15;
+    }
+    if (Math.abs(turnYaw) > 0.001 || Math.abs(turnPitch) > 0.001) {
       this.euler.setFromQuaternion(this.camera.quaternion, 'YXZ');
-      this.euler.y += turnRate * this.sensitivity * delta;
+      this.euler.y += turnYaw * this.sensitivity * delta;
+      this.euler.x = THREE.MathUtils.clamp(
+        this.euler.x + turnPitch * this.sensitivity * delta,
+        -Math.PI / 2 + 0.05,
+        Math.PI / 2 - 0.05,
+      );
       this.camera.quaternion.setFromEuler(this.euler);
     }
   }
@@ -166,14 +200,16 @@ export class FirstPersonControls extends EventTarget {
         this.hasLastPos = true;
         return;
       }
-      movementX = event.clientX - this.lastX;
-      movementY = event.clientY - this.lastY;
+      const dxClient = event.clientX - this.lastX;
+      const dyClient = event.clientY - this.lastY;
+      movementX = (dxClient !== 0 || dyClient !== 0) ? dxClient : (event.movementX || 0);
+      movementY = (dxClient !== 0 || dyClient !== 0) ? dyClient : (event.movementY || 0);
       this.lastX = event.clientX;
       this.lastY = event.clientY;
       this.hasLastPos = true;
     } else {
-      movementX = event.movementX;
-      movementY = event.movementY;
+      movementX = event.movementX || 0;
+      movementY = event.movementY || 0;
     }
     if (Math.abs(movementX) > 260 || Math.abs(movementY) > 260) return;
     const scale = 0.0022 * this.sensitivity;

@@ -401,6 +401,7 @@ function syncCursorVisibility() {
     || (pause && !pause.classList.contains('hidden'))
   );
   const hideCursor = !hasModalOpen;
+  document.documentElement.classList.toggle('gta-cursor-hidden', hideCursor);
   document.body.classList.toggle('gta-cursor-hidden', hideCursor);
   controls.setFreeMoveHover?.(hideCursor);
 }
@@ -408,7 +409,11 @@ function syncCursorVisibility() {
 function toggleFreeCursorMode() {
   if (inStudio || !started || khulnaMapUI?.isOpen || liftKeypadOpen || referenceModal?.open) return;
   if (gtaPhoneUI?.isOpen) return;
-  if (freeCursorMode || carDoorCursorMode) {
+  if (document.activeElement && document.activeElement !== document.body) {
+    document.activeElement.blur?.();
+  }
+  // If cursor is currently shown OR browser hasn't engaged true pointer lock yet, pressing [?] locks & hides cursor for 360° look!
+  if (freeCursorMode || carDoorCursorMode || !controls.pointerLocked) {
     freeCursorMode = false;
     carDoorCursorMode = false;
     controls.lock();
@@ -3494,20 +3499,39 @@ canvas.addEventListener('pointerdown', (event) => {
   }
 });
 
+let lastWinLookX = null;
+let lastWinLookY = null;
 window.addEventListener('mousemove', (event) => {
   if (inStudio || !started) return;
   if (gtaCharacterSwitch?.handleMouseMove(event)) return;
   const canFreeLook = controls.pointerLocked || (controls.isLocked && !freeCursorMode && !carDoorCursorMode);
-  if (!canFreeLook) return;
-  if (Math.abs(event.movementX) > 260 || Math.abs(event.movementY) > 260) return;
+  if (!canFreeLook) {
+    lastWinLookX = null;
+    lastWinLookY = null;
+    return;
+  }
+  let mx = event.movementX || 0;
+  let my = event.movementY || 0;
+  if (!controls.pointerLocked) {
+    if (lastWinLookX !== null && (mx === 0 && my === 0)) {
+      mx = event.clientX - lastWinLookX;
+      my = event.clientY - lastWinLookY;
+    }
+    lastWinLookX = event.clientX;
+    lastWinLookY = event.clientY;
+  } else {
+    lastWinLookX = null;
+    lastWinLookY = null;
+  }
+  if (Math.abs(mx) > 260 || Math.abs(my) > 260) return;
   if (freeCam.active) {
-    freeCam.euler.y -= event.movementX * 0.0024 * mouseSensitivity;
-    freeCam.euler.x = THREE.MathUtils.clamp(freeCam.euler.x - event.movementY * 0.0024 * mouseSensitivity, -Math.PI * 0.48, Math.PI * 0.48);
+    freeCam.euler.y -= mx * 0.0024 * mouseSensitivity;
+    freeCam.euler.x = THREE.MathUtils.clamp(freeCam.euler.x - my * 0.0024 * mouseSensitivity, -Math.PI * 0.48, Math.PI * 0.48);
     return;
   }
   if (!getDrivingCar()) return;
-  carOrbitYaw -= event.movementX * 0.0034 * mouseSensitivity;
-  carOrbitPitch = THREE.MathUtils.clamp(carOrbitPitch + event.movementY * 0.0026 * mouseSensitivity, 0.04, 0.78);
+  carOrbitYaw -= mx * 0.0034 * mouseSensitivity;
+  carOrbitPitch = THREE.MathUtils.clamp(carOrbitPitch + my * 0.0026 * mouseSensitivity, 0.04, 0.78);
   carOrbitLastMove = performance.now();
 });
 
@@ -4170,8 +4194,8 @@ window.addEventListener('keydown', (event) => {
 
   // [?] / [/] GTA V-style Mouse Cursor Toggle (hidden by default in Free Move)
   const activeTag = document.activeElement?.tagName;
-  const isTypingField = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
-  if (!isTypingField && !event.repeat && (event.code === 'Slash' || event.key === '?' || event.key === '/')) {
+  const isTypingField = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || Boolean(document.activeElement?.isContentEditable);
+  if (!isTypingField && !event.repeat && (event.code === 'Slash' || event.code === 'NumpadDivide' || event.key === '?' || event.key === '/')) {
     event.preventDefault();
     toggleFreeCursorMode();
     return;
