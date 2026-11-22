@@ -1678,7 +1678,7 @@ function buildTaltolaLaneWard23(staticG, dynamicG, lm) {
   );
 }
 
-export function buildKhulnaLandmarks(parent, m) {
+export function buildKhulnaLandmarks(parent, m, renderer = null) {
   const group = new THREE.Group();
   group.name = 'KhulnaCityLandmarks';
   parent.add(group);
@@ -1702,8 +1702,8 @@ export function buildKhulnaLandmarks(parent, m) {
   const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -100, -700, 820);
 
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
-  const circuitHouse = buildKhulnaCircuitHouse(group, m);
-  const judgeCourt = buildKhulnaJudgeCourt(group, m);
+  const circuitHouse = buildKhulnaCircuitHouse(group, m, renderer);
+  const judgeCourt = buildKhulnaJudgeCourt(group, m, renderer);
   const aliaMadrasah = buildAliaMadrasahDistrict(group, m);
   const royalMore = buildRoyalMoreDistrict(group, m);
   const ptiMore = buildPtiMoreDistrict(group, m);
@@ -1829,8 +1829,8 @@ export function buildKhulnaLandmarks(parent, m) {
     },
     update(time, playerPos = null, skipSyncVisibility = false) {
       if (playerPos && !skipSyncVisibility) syncVisibility(playerPos);
-      circuitHouse.update(time, playerPos);
-      judgeCourt.update(time, playerPos);
+      circuitHouse.update(time, playerPos, skipSyncVisibility);
+      judgeCourt.update(time, playerPos, skipSyncVisibility);
       aliaMadrasah.update(time, playerPos);
       royalMore.update(time, playerPos);
       ptiMore.update(time, playerPos);

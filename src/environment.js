@@ -343,7 +343,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
   mergeStaticMeshes(taltolaWiresGroup);
 
   const city = buildKhulnaCity(group, renderer, skySystem, m.shaderUniforms, m.road);
-  const landmarks = buildKhulnaLandmarks(group, m);
+  const landmarks = buildKhulnaLandmarks(group, m, renderer);
   const tower = buildHajiMohsinRoad(group, m);
   const wildlife = buildKhulnaWildlife(group);
 

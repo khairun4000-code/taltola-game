@@ -97,6 +97,8 @@ const qualityInputs = [
 ];
 const referenceModal = document.querySelector('#reference-modal');
 const fpsLabel = document.querySelector('#fps');
+const cornerFpsEl = document.querySelector('#corner-fps');
+const cornerFpsValEl = document.querySelector('#corner-fps-val');
 const crosshairEl = document.querySelector('.crosshair');
 const brandTitle = document.querySelector('#brand-title');
 const brandSubtitle = document.querySelector('#brand-subtitle');
@@ -135,7 +137,7 @@ function setupPostProcessing() {
     Math.max(1, window.innerHeight),
     {
       type: THREE.HalfFloatType,
-      samples: isWebGL2 ? 4 : 0,
+      samples: isWebGL2 ? 2 : 0,
     }
   );
   composer = new EffectComposer(renderer, composerRT);
@@ -1316,8 +1318,8 @@ function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynam
   const snapX = Math.round(focusPos.x / worldUnitsPerTexel) * worldUnitsPerTexel;
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
-  const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 0.12 || Math.abs(snapZ - lastSunAnchorZ) > 0.12;
-  const shadowCadenceMs = quality === 'low' ? 180 : (quality === 'medium' ? 130 : (quality === 'high' ? 115 : 110));
+  const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 0.25 || Math.abs(snapZ - lastSunAnchorZ) > 0.25;
+  const shadowCadenceMs = quality === 'low' ? 180 : (quality === 'medium' ? 135 : (quality === 'high' ? 125 : 125));
   const elapsedSinceShadow = nowPerf - lastShadowUpdateAt;
   if (anchorMoved && (lastShadowUpdateAt === 0 || elapsedSinceShadow >= shadowCadenceMs)) {
     lastSunAnchorX = snapX;
@@ -1381,19 +1383,19 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = isLow ? 130 : (quality === 'medium' ? 195 : (isUltra ? 330 : 260));
-    scene.fog.far = isLow ? 295 : (quality === 'medium' ? 470 : (isUltra ? 860 : 690));
-    camera.far = isLow ? 340 : (quality === 'medium' ? 540 : (isUltra ? 960 : 780));
+    scene.fog.near = isLow ? 130 : (quality === 'medium' ? 195 : (isUltra ? 310 : 250));
+    scene.fog.far = isLow ? 295 : (quality === 'medium' ? 470 : (isUltra ? 780 : 650));
+    camera.far = isLow ? 340 : (quality === 'medium' ? 540 : (isUltra ? 820 : 700));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
 
-  // Eliminate extra directional & point lights on Smooth/Low for locked 60 FPS at full 1.0x resolution!
+  // Keep studioKeyLight strictly in Character Studio (saves a full directional PBR light pass on every pixel outdoors!)
   const useExtraLights = !isLow || inStudio;
-  if (studioKeyLight) studioKeyLight.visible = useExtraLights;
+  if (studioKeyLight) studioKeyLight.visible = inStudio;
   if (fillDirLight) {
     fillDirLight.visible = useExtraLights;
-    fillDirLight.intensity = isUltra ? 0.72 : 0.56;
+    fillDirLight.intensity = isUltra ? 0.76 : 0.60;
   }
   if (indoorLight) {
     indoorLight.visible = !isLow;
@@ -1401,17 +1403,17 @@ function applyQuality(nextQuality) {
   }
   if (ambientLight) {
     ambientLight.visible = true;
-    ambientLight.intensity = isLow && !inStudio ? 0.52 : (isUltra ? 0.45 : 0.38);
+    ambientLight.intensity = isLow && !inStudio ? 0.52 : (isUltra ? 0.46 : 0.39);
   }
   if (hemisphereLight) {
     hemisphereLight.visible = true;
-    hemisphereLight.intensity = isLow && !inStudio ? 1.10 : (isUltra ? 0.92 : 0.86);
+    hemisphereLight.intensity = isLow && !inStudio ? 1.10 : (isUltra ? 0.94 : 0.88);
     hemisphereLight.color.setHex(0xbad9f7);
     hemisphereLight.groundColor.setHex(0x625645);
   }
   if (sun) {
     sun.visible = true;
-    sun.intensity = isUltra ? 2.25 : (isHigh ? 2.05 : 1.92);
+    sun.intensity = isUltra ? 2.38 : (isHigh ? 2.18 : 2.02);
     sun.castShadow = useShadows;
     if (useShadows) {
       const size = shadowSizes[quality] || 1536;
@@ -6370,9 +6372,15 @@ function animate() {
 
   fpsFrames++;
   const now = performance.now();
-  if (now - fpsTime > 800) {
+  if (now - fpsTime > 450) {
     const currentFps = Math.round((fpsFrames * 1000) / (now - fpsTime));
-    fpsLabel.textContent = `${currentFps} FPS`;
+    const fpsText = `${currentFps} FPS`;
+    if (fpsLabel) fpsLabel.textContent = fpsText;
+    if (cornerFpsValEl) cornerFpsValEl.textContent = fpsText;
+    if (cornerFpsEl) {
+      cornerFpsEl.classList.toggle('fps-mid', currentFps >= 35 && currentFps < 50);
+      cornerFpsEl.classList.toggle('fps-low', currentFps < 35);
+    }
     // Smooth GPU/UI perf adaptation ONLY when user has NOT manually locked quality & after shader warmup
     const manualQualityLock = Boolean(localStorage.getItem('taltola_quality_manual'));
     if (ready && !inStudio && !manualQualityLock && elapsed > 6.0) {

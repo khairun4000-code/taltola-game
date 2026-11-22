@@ -34,10 +34,10 @@ const COS_R = Math.cos(ROT_Y); // 0
 const SIN_R = Math.sin(ROT_Y); // -1
 
 const QUALITY_VIS_DIST = {
-  low: 220,
-  medium: 330,
-  high: 460,
-  ultra: 600,
+  low: 210,
+  medium: 300,
+  high: 400,
+  ultra: 480,
 };
 
 function localToWorld(lx, ly, lz, out = new THREE.Vector3()) {
@@ -113,10 +113,12 @@ function resolveCircleAABBLocal(pt, r, minX, maxX, minZ, maxZ) {
   return false;
 }
 
-export function buildKhulnaJudgeCourt(parent, m) {
+export function buildKhulnaJudgeCourt(parent, m, renderer = null) {
   const root = new THREE.Group();
   root.name = 'KhulnaJudgeCourt_RealGLB_District';
   root.visible = false;
+  root.matrixAutoUpdate = false;
+  root.updateMatrix();
   parent.add(root);
 
   const compound = new THREE.Group();
@@ -393,6 +395,28 @@ export function buildKhulnaJudgeCourt(parent, m) {
         applyEmissiveNightFactor();
         state.loaded = true;
         state.loading = false;
+
+        // Pre-upload all GLB textures to GPU VRAM in tiny non-blocking batches so warping to Judge Court is 100% INSTANT!
+        if (renderer && typeof renderer.initTexture === 'function') {
+          const texList = [];
+          const seenTex = new Set();
+          for (let i = 0; i < state.allMats.length; i++) {
+            const mat = state.allMats[i];
+            for (const t of [mat.map, mat.normalMap, mat.roughnessMap, mat.metalnessMap, mat.emissiveMap]) {
+              if (t && !seenTex.has(t)) {
+                seenTex.add(t);
+                texList.push(t);
+              }
+            }
+          }
+          let idx = 0;
+          const warmBatch = () => {
+            const end = Math.min(idx + 4, texList.length);
+            for (; idx < end; idx++) { try { renderer.initTexture(texList[idx]); } catch {} }
+            if (idx < texList.length) requestAnimationFrame(warmBatch);
+          };
+          requestAnimationFrame(warmBatch);
+        }
       },
       undefined,
       (err) => {
@@ -797,12 +821,12 @@ export function buildKhulnaJudgeCourt(parent, m) {
     applyEmissiveNightFactor();
   }
 
-  function update(time, playerPos = null) {
+  function update(time, playerPos = null, skipSyncVisibility = false) {
     const dt = state.lastTime > 0 ? THREE.MathUtils.clamp(time - state.lastTime, 0.001, 0.05) : 0.016;
     state.lastTime = time;
 
     if (playerPos) {
-      syncVisibility(playerPos);
+      if (!skipSyncVisibility) syncVisibility(playerPos);
       if (time >= state.manualHoldUntil) {
         const distToGate = Math.hypot(playerPos.x - GATE_WORLD.x, playerPos.z - GATE_WORLD.z);
         if (!state.mainGateOpen && distToGate <= 8.5) {
@@ -873,15 +897,8 @@ export function buildKhulnaJudgeCourt(parent, m) {
     }
   }
 
-  // Non-blocking background preload so warping to Judge Court via Map is 100% instant (stays hidden until in range!)
-  const scheduleBgPreload = () => {
-    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
-      window.requestIdleCallback(() => ensureLoaded(), { timeout: 2500 });
-    } else {
-      ensureLoaded();
-    }
-  };
-  setTimeout(scheduleBgPreload, 900);
+  // Immediate non-blocking background preload + GPU texture warm-up so Judge Court appears INSTANTLY on warp/spawn!
+  setTimeout(() => ensureLoaded(), 60);
 
   return {
     group: root,

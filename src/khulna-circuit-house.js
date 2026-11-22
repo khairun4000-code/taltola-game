@@ -36,10 +36,10 @@ const GATE_OPEN_Z = 14.25;
 const GATE_CLOSED_Z = 11.20;
 
 const QUALITY_VIS_DIST = {
-  low: 210,
-  medium: 310,
-  high: 420,
-  ultra: 520,
+  low: 200,
+  medium: 280,
+  high: 370,
+  ultra: 440,
 };
 
 function localToWorld(lx, ly, lz, out = new THREE.Vector3()) {
@@ -87,10 +87,12 @@ function resolveCircleAABBLocal(pt, r, minX, maxX, minZ, maxZ) {
   return false;
 }
 
-export function buildKhulnaCircuitHouse(parent, m) {
+export function buildKhulnaCircuitHouse(parent, m, renderer = null) {
   const root = new THREE.Group();
   root.name = 'KhulnaCircuitHouse_RealGLB_District';
   root.visible = false;
+  root.matrixAutoUpdate = false;
+  root.updateMatrix();
   parent.add(root);
 
   const compound = new THREE.Group();
@@ -283,6 +285,28 @@ export function buildKhulnaCircuitHouse(parent, m) {
         applyEmissiveNightFactor();
         state.loaded = true;
         state.loading = false;
+
+        // Pre-upload all GLB textures to GPU VRAM in tiny non-blocking batches so warping to Circuit House is instant!
+        if (renderer && typeof renderer.initTexture === 'function') {
+          const texList = [];
+          const seenTex = new Set();
+          for (let i = 0; i < state.allMats.length; i++) {
+            const mat = state.allMats[i];
+            for (const t of [mat.map, mat.normalMap, mat.roughnessMap, mat.metalnessMap, mat.emissiveMap]) {
+              if (t && !seenTex.has(t)) {
+                seenTex.add(t);
+                texList.push(t);
+              }
+            }
+          }
+          let idx = 0;
+          const warmBatch = () => {
+            const end = Math.min(idx + 4, texList.length);
+            for (; idx < end; idx++) { try { renderer.initTexture(texList[idx]); } catch {} }
+            if (idx < texList.length) requestAnimationFrame(warmBatch);
+          };
+          requestAnimationFrame(warmBatch);
+        }
       },
       undefined,
       (err) => {
@@ -320,11 +344,11 @@ export function buildKhulnaCircuitHouse(parent, m) {
     applyEmissiveNightFactor();
   }
 
-  function update(time, playerPos = null) {
+  function update(time, playerPos = null, skipSyncVisibility = false) {
     const dt = state.lastTime > 0 ? Math.min(Math.max(time - state.lastTime, 0.001), 0.05) : 0.016;
     state.lastTime = time;
 
-    if (playerPos) syncVisibility(playerPos);
+    if (playerPos && !skipSyncVisibility) syncVisibility(playerPos);
     if (!root.visible || !state.loaded) return;
 
     // Smooth mechanical sliding gate glide along steel floor track!
@@ -537,15 +561,8 @@ export function buildKhulnaCircuitHouse(parent, m) {
     }
   }
 
-  // Non-blocking background preload so warping to Circuit House via Map is instant (stays hidden until in range!)
-  const scheduleBgPreload = () => {
-    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
-      window.requestIdleCallback(() => ensureLoaded(), { timeout: 3500 });
-    } else {
-      ensureLoaded();
-    }
-  };
-  setTimeout(scheduleBgPreload, 1800);
+  // Fast non-blocking background preload + GPU texture warm-up so Circuit House appears instantly on warp!
+  setTimeout(() => ensureLoaded(), 280);
 
   return {
     root,
