@@ -259,7 +259,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   const restHipsQ = new THREE.Quaternion();
   const restHipsPos = new THREE.Vector3();
   const _hipsParentQuat = new THREE.Quaternion();
-  const _hipsUpLocal = new THREE.Vector3(0, 1, 0);
+  const restHipsUpLocal = new THREE.Vector3(0, 1, 0);
   const _hipsDelta = new THREE.Vector3();
   const restSpineQ = new THREE.Quaternion();
   const restSpine1Q = new THREE.Quaternion();
@@ -815,10 +815,15 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     playClip('Idle', { fade: 0.01 });
     mixer.update(0);
 
-    // Snapshot exact clean straight-ahead Idle rest quaternions so IK & head lock NEVER drift or spin!
+    // Snapshot exact clean straight-ahead Idle rest quaternions & upright armature up-axis so IK, head lock & root-motion stripping NEVER drift or sink into the ground!
     if (hipsBone) {
       restHipsQ.copy(hipsBone.quaternion);
       restHipsPos.copy(hipsBone.position);
+      if (hipsBone.parent) {
+        root.updateMatrixWorld(true);
+        hipsBone.parent.getWorldQuaternion(_hipsParentQuat).invert();
+        restHipsUpLocal.set(0, 1, 0).applyQuaternion(_hipsParentQuat).normalize();
+      }
     }
     if (spineBone) restSpineQ.copy(spineBone.quaternion);
     if (spine1Bone) restSpine1Q.copy(spine1Bone.quaternion);
@@ -1784,8 +1789,11 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       root.rotation.y = studioYaw || 0;
     }
 
-    // Smooth vertical holder offset for horizontal swimming so head & swimming arms sit cleanly on the water surface
-    const targetHolderY = (!inStudio && isSwimming) ? (baseGroundY - 0.42) : baseGroundY;
+    // Smooth vertical holder offset for swimming + subtle shoe-clearance lift during sprint forward-lean / corner banking
+    const tiltLift = (!inStudio && grounded && !isSwimming)
+      ? (Math.sin(Math.abs(modelHolder.rotation.x)) * 0.08 + Math.sin(Math.abs(modelHolder.rotation.z)) * 0.09)
+      : 0;
+    const targetHolderY = (!inStudio && isSwimming) ? (baseGroundY - 0.42) : (baseGroundY + tiltLift);
     modelHolder.position.y += (targetHolderY - modelHolder.position.y) * Math.min(1, dt * 10.0);
 
     if (state.attackTimer > 0) {
@@ -1826,8 +1834,8 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         state.facingYaw += yawDiff * Math.min(1, dt * 12.0);
         // GTA VI Euphoria-style natural sprint corner banking & forward momentum lean!
         const speedFrac = THREE.MathUtils.clamp((horizSpeed - 1.5) / 6.0, 0, 1);
-        const targetBank = THREE.MathUtils.clamp(-yawDiff * 0.34 * speedFrac, -0.22, 0.22);
-        const targetFwdLean = (isSprinting ? 0.085 : 0.025) * speedFrac;
+        const targetBank = THREE.MathUtils.clamp(-yawDiff * 0.28 * speedFrac, -0.16, 0.16);
+        const targetFwdLean = (isSprinting ? 0.065 : 0.020) * speedFrac;
         modelHolder.rotation.z = THREE.MathUtils.lerp(modelHolder.rotation.z, targetBank, Math.min(1, dt * 9.0));
         modelHolder.rotation.x = THREE.MathUtils.lerp(modelHolder.rotation.x, targetFwdLean, Math.min(1, dt * 8.0));
       } else if (state.emote && state.emote !== 'sit' && state.cameraMode === 'back') {
@@ -1988,13 +1996,11 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         activeAction.timeScale = targetScale;
       }
       mixer.update(dt);
-      // Lock root horizontal drift (world X/Z) in-place while preserving vertical motion for Jump/Sit/Flip
+      // Lock root horizontal drift in armature upright space (ignoring dynamic sprint lean/bank tilt) so sprinting/turning NEVER sinks the character into the ground!
       if (hipsBone && hipsBone.parent && !isVehicleAnim && !isRidingRickshaw && !isRidingBike && !isDrivingCar) {
-        hipsBone.parent.getWorldQuaternion(_hipsParentQuat).invert();
-        _hipsUpLocal.set(0, 1, 0).applyQuaternion(_hipsParentQuat).normalize();
         _hipsDelta.copy(hipsBone.position).sub(restHipsPos);
-        const vert = _hipsDelta.dot(_hipsUpLocal);
-        hipsBone.position.copy(restHipsPos).addScaledVector(_hipsUpLocal, vert);
+        const vert = _hipsDelta.dot(restHipsUpLocal);
+        hipsBone.position.copy(restHipsPos).addScaledVector(restHipsUpLocal, vert);
       }
     }
 

@@ -680,7 +680,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 1.88,
     width: 0.63,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.50, 0.01, TALTOLA_HOUSE_OFFSET.z - 54.7],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.50, 0.003, TALTOLA_HOUSE_OFFSET.z + 2.4],
     spawnHeading: 0.0,
     paintPresets: BICYCLE_PAINT_PRESETS,
     bodyPaintMats: ['Atlas_Frame_Black'],
