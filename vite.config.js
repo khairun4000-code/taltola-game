@@ -14,6 +14,7 @@ export default defineConfig({
         circuitHousePreview: resolve(__dirname, 'circuit-house-preview.html'),
         whitePalacePreview: resolve(__dirname, 'white-heritage-palace-preview.html'),
         rupshaMapPreview: resolve(__dirname, 'rupsha-map-preview.html'),
+        rupshaParkPreview: resolve(__dirname, 'rupsha-park-preview.html'),
       },
     },
   },
