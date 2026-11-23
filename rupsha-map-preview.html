@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>খুলনা রূপসা, রূপসা ঘাট ও রূপসা পার্ক — AAA 3D Open-World Map</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #070d1d;
+      font-family: "Manrope", "Noto Sans Bengali", system-ui, sans-serif;
+      color: #f8fafc;
+    }
+    #canvas-wrap { position: fixed; inset: 0; }
+
+    #hud {
+      position: fixed; top: 14px; left: 14px; z-index: 20;
+      background: rgba(10, 16, 30, 0.84);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(250, 204, 21, 0.42);
+      border-radius: 16px;
+      padding: 14px 16px;
+      width: 365px;
+      max-height: calc(100vh - 28px);
+      overflow-y: auto;
+      box-shadow: 0 16px 42px rgba(0, 0, 0, 0.56);
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    #hud.hidden { transform: translateX(-390px); opacity: 0; pointer-events: none; }
+
+    .badge-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .badge {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+      background: linear-gradient(135deg, #f59e0b, #ea580c);
+      color: #0f172a; padding: 3px 8px; border-radius: 999px;
+    }
+    .fps-pill {
+      font-size: 11px; font-weight: 700; color: #4ade80;
+      background: rgba(20, 83, 45, 0.55); border: 1px solid rgba(74, 222, 128, 0.35);
+      padding: 2px 8px; border-radius: 999px;
+    }
+    #hud h1 { font-size: 16.5px; font-weight: 800; color: #facc15; margin-bottom: 4px; }
+    #hud p { font-size: 11.8px; color: #cbd5e1; line-height: 1.48; margin-bottom: 10px; }
+
+    .section-title {
+      font-size: 10.5px; font-weight: 700; color: #94a3b8;
+      letter-spacing: 0.06em; margin: 8px 0 6px;
+    }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+    button {
+      cursor: pointer;
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      background: rgba(30, 41, 59, 0.88);
+      color: #f8fafc;
+      padding: 7px 8px;
+      border-radius: 9px;
+      font-size: 11.5px;
+      font-weight: 600;
+      transition: all 0.16s ease;
+    }
+    button:hover { background: rgba(51, 65, 85, 0.96); border-color: #facc15; transform: translateY(-1px); }
+    button.active { background: #eab308; color: #0f172a; border-color: #fef08a; font-weight: 800; }
+    button.primary {
+      width: 100%;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      border-color: #4ade80;
+      color: #ffffff;
+      padding: 9px;
+      font-size: 12.5px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    button.primary:hover { filter: brightness(1.1); }
+
+    #toggle-hud-btn {
+      position: fixed; top: 14px; right: 14px; z-index: 25;
+      background: rgba(15, 23, 42, 0.84); backdrop-filter: blur(12px);
+      border: 1px solid rgba(250, 204, 21, 0.45);
+      color: #facc15; padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 700;
+    }
+
+    #minimap-wrap {
+      position: fixed; right: 14px; bottom: 14px; z-index: 20;
+      background: rgba(10, 16, 30, 0.84); backdrop-filter: blur(12px);
+      border: 1px solid rgba(250, 204, 21, 0.42);
+      border-radius: 14px; padding: 8px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.52);
+    }
+    #minimap-title { font-size: 10.5px; font-weight: 700; color: #facc15; text-align: center; margin-bottom: 5px; }
+    #minimap { display: block; border-radius: 8px; background: #0c192c; cursor: pointer; }
+
+    #status { font-size: 11px; color: #94a3b8; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div id="canvas-wrap"></div>
+  <button id="toggle-hud-btn">UI লুকান (H)</button>
+
+  <div id="hud">
+    <div class="badge-row">
+      <span class="badge">AAA ULTRA · KHULNA 3D</span>
+      <span id="fps-pill" class="fps-pill">60 FPS</span>
+    </div>
+    <h1>রূপসা, রূপসা ঘাট ও রূপসা পার্ক (3D ম্যাপ)</h1>
+    <p>মাউস ড্র্যাগ করে ঘোরান, স্ক্রল করে জুম করুন, অথবা <b>W A S D / Q E</b> (+ <b>Shift</b> স্প্রিন্ট) চেপে পুরো রূপসা এলাকা ঘুরে দেখুন।</p>
+
+    <div class="section-title">লোকেশন ও ক্যামেরা ভিউ</div>
+    <div class="btn-grid">
+      <button id="btn-aerial" class="active">পুরো ম্যাপ (এরিয়াল)</button>
+      <button id="btn-ghat">রূপসা ফেরি ও লঞ্চ ঘাট</button>
+      <button id="btn-park">রূপসা পার্ক ও ফাউন্টেন</button>
+      <button id="btn-cafe">সানসেট ক্যাফে ডেক</button>
+      <button id="btn-traffic">রূপসা ট্রাফিক মোড়</button>
+      <button id="btn-fish">পাইকারি মৎস্য বাজার</button>
+      <button id="btn-river">নদী থেকে ভিউ (বোট)</button>
+      <button id="btn-drone">ড্রোন ট্যুর: বন্ধ</button>
+    </div>
+
+    <div class="section-title">আবহাওয়া, আলো ও গ্রাফিক্স</div>
+    <div class="btn-grid">
+      <button id="btn-tod">আলো: সোনালী বিকেল</button>
+      <button id="btn-rain">বৃষ্টি: বন্ধ</button>
+      <button id="btn-bloom" class="active">HDR ব্লুম: চালু</button>
+      <button id="btn-reset">রিসেট ভিউ</button>
+    </div>
+
+    <button id="btn-glb" class="primary">ডাউনলোড ফুল .GLB থ্রিডি মডেল</button>
+    <div id="status">লোড সম্পন্ন · PBR + GLSL নদী + HDR IBL + লাইভ ট্রাফিক চালু</div>
+  </div>
+
+  <div id="minimap-wrap">
+    <div id="minimap-title">রূপসা রাডার ম্যাপ (ক্লিক করে যান)</div>
+    <canvas id="minimap" width="188" height="172"></canvas>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+    import { createAtmosphericSkyAndPMREM } from './src/aaa-shaders.js';
+    import { buildRupshaMap3D } from './src/rupsha-map-standalone.js';
+
+    const wrap = document.getElementById('canvas-wrap');
+    const statusEl = document.getElementById('status');
+    const fpsEl = document.getElementById('fps-pill');
+    const hudEl = document.getElementById('hud');
+    const toggleHudBtn = document.getElementById('toggle-hud-btn');
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.06;
+    wrap.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0xdccbb6, 0.0016);
+
+    const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.25, 900);
+    camera.position.set(-48, 62, 138);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.065;
+    controls.maxPolarAngle = Math.PI * 0.495;
+    controls.maxDistance = 360;
+    controls.target.set(8, 4, 24);
+
+    // HDR Post-Processing Composer (GTA-style UnrealBloom + ACES Output)
+    const composer = new EffectComposer(renderer);
+    const renderPass = new RenderPass(scene, camera);
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.26, // strength
+      0.45, // radius
+      0.84, // threshold
+    );
+    const outputPass = new OutputPass();
+    composer.addPass(renderPass);
+    composer.addPass(bloomPass);
+    composer.addPass(outputPass);
+    let bloomEnabled = true;
+
+    // Atmospheric Sky Dome + Real-time PMREM HDR Reflections
+    const skySystem = createAtmosphericSkyAndPMREM(scene, renderer);
+
+    const hemiLight = new THREE.HemisphereLight(0x9ec8f2, 0x5c4f3d, 1.05);
+    scene.add(hemiLight);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.24);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffd199, 2.55);
+    sunLight.position.set(110, 72, -85);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.near = 10;
+    sunLight.shadow.camera.far = 360;
+    sunLight.shadow.camera.left = -150;
+    sunLight.shadow.camera.right = 150;
+    sunLight.shadow.camera.top = 150;
+    sunLight.shadow.camera.bottom = -150;
+    sunLight.shadow.bias = -0.00045;
+    sunLight.shadow.normalBias = 0.03;
+    scene.add(sunLight);
+
+    // Warm Local Point Lights for Ghat, Park Cafe, Fountain, Traffic Mor (boosted at sunset/night)
+    const nightLights = [];
+    const localLightSpecs = [
+      [-85, 8, -12, 0xffd28a, 45],  // Rupsha Traffic Mor
+      [14, 9, -10, 0xffcc7a, 52],   // Rupsha Ghat Forecourt
+      [50, 8, -16, 0xffe4a8, 40],   // MV Rupsha Express Launch
+      [23, 6, 68, 0xffb74d, 44],    // Park Sunset Cafe Deck
+      [-6, 5, 68, 0x38bdf8, 36],    // Park Central Fountain LED glow
+      [2, 7, -62, 0xffd28a, 42],    // Wholesale Fish Market
+    ];
+    for (const [lx, ly, lz, col, dist] of localLightSpecs) {
+      const pl = new THREE.PointLight(col, 0, dist, 1.45);
+      pl.position.set(lx, ly, lz);
+      scene.add(pl);
+      nightLights.push(pl);
+    }
+
+    // Build Full 3D Rupsha + Rupsha Ghat + Rupsha Park Map!
+    const rupshaMap = buildRupshaMap3D(skySystem.sharedUniforms);
+    scene.add(rupshaMap.root);
+
+    // Time of Day Cycle
+    const todOrder = [
+      { id: 'golden', label: 'আলো: সোনালী বিকেল', sunPos: [110, 68, -82], nightLight: 4 },
+      { id: 'daylight', label: 'আলো: দুপুর', sunPos: [72, 130, -56], nightLight: 0 },
+      { id: 'sunset', label: 'আলো: সূর্যাস্ত', sunPos: [145, 24, 58], nightLight: 26 },
+      { id: 'night', label: 'আলো: খুলনার রাত', sunPos: [-60, 86, 62], nightLight: 46 },
+    ];
+    let todIdx = 0;
+
+    function applyTimeOfDay(idx) {
+      todIdx = idx % todOrder.length;
+      const item = todOrder[todIdx];
+      sunLight.position.set(...item.sunPos);
+      const preset = skySystem.applyPreset(item.id, {
+        sun: sunLight,
+        hemisphereLight: hemiLight,
+        ambientLight,
+        composerPasses: { bloom: bloomPass },
+        quality: 'ultra',
+      });
+      rupshaMap.setNightFactor(preset.nightFactor);
+      for (const pl of nightLights) pl.intensity = item.nightLight;
+      document.getElementById('btn-tod').textContent = item.label;
+    }
+    applyTimeOfDay(0);
+
+    // 7 Instant Cinematic Camera Presets
+    const presets = {
+      aerial:  { pos: [-48, 62, 138], target: [8, 4, 24] },
+      ghat:    { pos: [-16, 15, 22],  target: [34, 3, -10] },
+      park:    { pos: [-38, 16, 22],  target: [-4, 2.5, 68] },
+      cafe:    { pos: [6, 7.5, 44],   target: [26, 2.5, 72] },
+      traffic: { pos: [-56, 18, 22],  target: [-88, 4, -14] },
+      fish:    { pos: [-26, 14, -36], target: [4, 2.5, -62] },
+      river:   { pos: [112, 14, 48],  target: [12, 4, 18] },
+    };
+
+    let droneMode = false;
+    let rainOn = false;
+    let camLerp = null;
+
+    function setActiveCamBtn(id) {
+      for (const bId of ['btn-aerial', 'btn-ghat', 'btn-park', 'btn-cafe', 'btn-traffic', 'btn-fish', 'btn-river']) {
+        document.getElementById(bId)?.classList.remove('active');
+      }
+      document.getElementById(id)?.classList.add('active');
+    }
+
+    function flyTo(key, btnId) {
+      const p = presets[key];
+      if (!p) return;
+      droneMode = false;
+      document.getElementById('btn-drone').textContent = 'ড্রোন ট্যুর: বন্ধ';
+      document.getElementById('btn-drone').classList.remove('active');
+      camLerp = {
+        fromPos: camera.position.clone(),
+        toPos: new THREE.Vector3(...p.pos),
+        fromTgt: controls.target.clone(),
+        toTgt: new THREE.Vector3(...p.target),
+        t: 0,
+      };
+      if (btnId) setActiveCamBtn(btnId);
+    }
+
+    document.getElementById('btn-aerial').onclick = () => flyTo('aerial', 'btn-aerial');
+    document.getElementById('btn-reset').onclick = () => flyTo('aerial', 'btn-aerial');
+    document.getElementById('btn-ghat').onclick = () => flyTo('ghat', 'btn-ghat');
+    document.getElementById('btn-park').onclick = () => flyTo('park', 'btn-park');
+    document.getElementById('btn-cafe').onclick = () => flyTo('cafe', 'btn-cafe');
+    document.getElementById('btn-traffic').onclick = () => flyTo('traffic', 'btn-traffic');
+    document.getElementById('btn-fish').onclick = () => flyTo('fish', 'btn-fish');
+    document.getElementById('btn-river').onclick = () => flyTo('river', 'btn-river');
+
+    document.getElementById('btn-drone').onclick = () => {
+      droneMode = !droneMode;
+      camLerp = null;
+      const b = document.getElementById('btn-drone');
+      b.textContent = droneMode ? 'ড্রোন ট্যুর: চালু' : 'ড্রোন ট্যুর: বন্ধ';
+      b.classList.toggle('active', droneMode);
+    };
+
+    document.getElementById('btn-tod').onclick = () => applyTimeOfDay(todIdx + 1);
+    document.getElementById('btn-rain').onclick = () => {
+      rainOn = !rainOn;
+      rupshaMap.setRainEnabled(rainOn);
+      const b = document.getElementById('btn-rain');
+      b.textContent = rainOn ? 'বৃষ্টি: চালু (ভেজা রাস্তা)' : 'বৃষ্টি: বন্ধ';
+      b.classList.toggle('active', rainOn);
+    };
+    document.getElementById('btn-bloom').onclick = () => {
+      bloomEnabled = !bloomEnabled;
+      const b = document.getElementById('btn-bloom');
+      b.textContent = bloomEnabled ? 'HDR ব্লুম: চালু' : 'HDR ব্লুম: বন্ধ';
+      b.classList.toggle('active', bloomEnabled);
+    };
+
+    toggleHudBtn.onclick = () => {
+      const hidden = hudEl.classList.toggle('hidden');
+      toggleHudBtn.textContent = hidden ? 'UI দেখান (H)' : 'UI লুকান (H)';
+    };
+
+    // One-Click .GLB Export
+    document.getElementById('btn-glb').onclick = () => {
+      statusEl.textContent = 'সম্পূর্ণ রূপসা ৩ডি ম্যাপ .GLB এক্সপোর্ট হচ্ছে...';
+      const exporter = new GLTFExporter();
+      exporter.parse(
+        rupshaMap.root,
+        (result) => {
+          const blob = new Blob([result], { type: 'model/gltf-binary' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'khulna_rupsha_ghat_park_3d.glb';
+          a.click();
+          URL.revokeObjectURL(url);
+          statusEl.textContent = 'khulna_rupsha_ghat_park_3d.glb ডাউনলোড সম্পন্ন!';
+        },
+        (err) => { statusEl.textContent = 'এক্সপোর্ট এরর: ' + err.message; },
+        { binary: true },
+      );
+    };
+
+    // Interactive Mini-Map Radar Canvas
+    const mm = document.getElementById('minimap');
+    const mctx = mm.getContext('2d');
+    const worldToMap = (x, z) => [
+      ((x + 130) / 310) * mm.width,
+      ((z + 110) / 330) * mm.height,
+    ];
+    mm.addEventListener('click', (e) => {
+      const rect = mm.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const wx = (mx / mm.width) * 310 - 130;
+      const wz = (my / mm.height) * 330 - 110;
+      droneMode = false;
+      camLerp = {
+        fromPos: camera.position.clone(),
+        toPos: new THREE.Vector3(wx - 24, 24, wz + 32),
+        fromTgt: controls.target.clone(),
+        toTgt: new THREE.Vector3(wx, 2, wz),
+        t: 0,
+      };
+    });
+
+    function drawMinimap() {
+      mctx.fillStyle = '#0f172a';
+      mctx.fillRect(0, 0, mm.width, mm.height);
+      // Rupsha River blue strip
+      const [rx0] = worldToMap(24, 0);
+      mctx.fillStyle = '#0c4a6e';
+      mctx.fillRect(rx0, 0, mm.width - rx0, mm.height);
+      // Park emerald rectangle
+      const [px0, pz0] = worldToMap(-46, 26);
+      const [px1, pz1] = worldToMap(23, 128);
+      mctx.fillStyle = '#14532d';
+      mctx.fillRect(px0, pz0, px1 - px0, pz1 - pz0);
+      // Roads
+      mctx.strokeStyle = '#475569';
+      mctx.lineWidth = 3;
+      const [kX] = worldToMap(-85, 0);
+      mctx.beginPath(); mctx.moveTo(kX, 0); mctx.lineTo(kX, mm.height); mctx.stroke();
+      const [gX0, gZ] = worldToMap(-85, -12);
+      const [gX1] = worldToMap(24, -12);
+      mctx.beginPath(); mctx.moveTo(gX0, gZ); mctx.lineTo(gX1, gZ); mctx.stroke();
+      // Rupsha Bridge line
+      const [, bZ] = worldToMap(0, 195);
+      mctx.strokeStyle = '#c084fc';
+      mctx.lineWidth = 2.5;
+      mctx.beginPath(); mctx.moveTo(0, bZ); mctx.lineTo(mm.width, bZ); mctx.stroke();
+
+      // Landmark Pins
+      mctx.font = 'bold 9px "Noto Sans Bengali", sans-serif';
+      for (const lm of rupshaMap.landmarks) {
+        const [lx, lz] = worldToMap(lm.x, lm.z);
+        mctx.fillStyle = lm.color;
+        mctx.beginPath(); mctx.arc(lx, lz, 3.6, 0, Math.PI * 2); mctx.fill();
+        mctx.fillStyle = '#f8fafc';
+        mctx.fillText(lm.label, Math.min(mm.width - 48, lx + 5), lz + 3);
+      }
+
+      // Live Camera Marker
+      const [cx, cz] = worldToMap(camera.position.x, camera.position.z);
+      mctx.fillStyle = '#facc15';
+      mctx.beginPath(); mctx.arc(cx, cz, 4.5, 0, Math.PI * 2); mctx.fill();
+      mctx.strokeStyle = '#0f172a'; mctx.lineWidth = 1.5; mctx.stroke();
+    }
+
+    // Smooth WASD + Q/E + Shift Free-Walk/Fly Controls
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (e.code === 'KeyH') toggleHudBtn.click();
+    });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    const fwd = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const clock = new THREE.Clock();
+    let elapsed = 0;
+    let fpsFrames = 0;
+    let fpsTimer = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.05, clock.getDelta());
+      elapsed += dt;
+
+      fpsFrames++;
+      fpsTimer += dt;
+      if (fpsTimer >= 0.5) {
+        fpsEl.textContent = `${Math.round(fpsFrames / fpsTimer)} FPS`;
+        fpsFrames = 0;
+        fpsTimer = 0;
+      }
+
+      if (camLerp) {
+        camLerp.t = Math.min(1, camLerp.t + dt * 1.45);
+        const s = camLerp.t * camLerp.t * (3 - 2 * camLerp.t);
+        camera.position.lerpVectors(camLerp.fromPos, camLerp.toPos, s);
+        controls.target.lerpVectors(camLerp.fromTgt, camLerp.toTgt, s);
+        if (camLerp.t >= 1) camLerp = null;
+      } else if (droneMode) {
+        const ang = elapsed * 0.14;
+        camera.position.set(10 + Math.cos(ang) * 118, 36 + Math.sin(ang * 2) * 14, 26 + Math.sin(ang) * 112);
+        controls.target.set(8, 4, 24);
+      } else {
+        const speed = (keys.ShiftLeft || keys.ShiftRight ? 36 : 16) * dt;
+        camera.getWorldDirection(fwd);
+        fwd.y = 0;
+        fwd.normalize();
+        right.crossVectors(fwd, camera.up).normalize();
+        const move = new THREE.Vector3();
+        if (keys.KeyW || keys.ArrowUp) move.add(fwd);
+        if (keys.KeyS || keys.ArrowDown) move.sub(fwd);
+        if (keys.KeyD || keys.ArrowRight) move.add(right);
+        if (keys.KeyA || keys.ArrowLeft) move.sub(right);
+        if (keys.KeyE) move.y += 1;
+        if (keys.KeyQ) move.y -= 1;
+        if (move.lengthSq() > 0) {
+          move.normalize().multiplyScalar(speed);
+          camera.position.add(move);
+          controls.target.add(move);
+        }
+      }
+
+      controls.update();
+      skySystem.update(elapsed, camera.position);
+      rupshaMap.update(elapsed, dt, camera.position);
+      drawMinimap();
+
+      if (bloomEnabled) composer.render();
+      else renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
