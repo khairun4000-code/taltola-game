@@ -383,8 +383,8 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
   // Alia Madrasah & Model Mosque District
   registerBotanicalZone(
     [[195, 132, 12.5, 137], [238, 146, 13.2, 149], [198, 94, 12.2, 155], [229, 95, 12.8, 163]],
-    [[192, 152, 9.2, 277], [184, 134, 8.4, 283], [228, 138, 8.8, 289], [230, 88, 8.6, 291]],
-    [[199, 158, 0.55, 331], [199, 174, 0.55, 332], [188, 144, 0.52, 333], [214, 118, 0.58, 334]]
+    [[192, 152, 9.2, 277], [228, 138, 8.8, 289], [230, 88, 8.6, 291]],
+    [[199, 158, 0.55, 331], [199, 174, 0.55, 332], [214, 118, 0.58, 334]]
   );
 
   // Shaheed Hadis Park, Boro Maath & Stadium Ring — dense lush swaying Circuit House Shade Trees, Norfolk Pines & Garden Bushes!
