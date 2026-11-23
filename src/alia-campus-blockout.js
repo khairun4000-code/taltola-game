@@ -190,7 +190,7 @@ function makeDemoLabelTex(titleBn, titleEn, dimsText, bgHex = '#1e293b') {
   return tex;
 }
 
-function addRoadRibbon(staticG, pts, halfW, mat, yTop = 0.058, curbMat = null, curbExtra = 0.65) {
+function addRoadRibbon(staticG, pts, halfW, mat, yTop = 0.0032, curbMat = null, curbExtra = 0.65) {
   if (!pts || pts.length < 2) return;
   const buildStrip = (hw, y, material) => {
     const positions = [];
@@ -242,7 +242,7 @@ function addRoadRibbon(staticG, pts, halfW, mat, yTop = 0.058, curbMat = null, c
   };
 
   if (curbMat) {
-    buildStrip(halfW + curbExtra, yTop - 0.012, curbMat);
+    buildStrip(halfW + curbExtra, Math.max(0.0012, yTop - 0.0014), curbMat);
   }
   buildStrip(halfW, yTop, mat);
 }
@@ -416,7 +416,7 @@ function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, colliders
     wall.rotation.y = yaw;
     const cap = box(staticG, [0.82, 0.10, len + 0.7], [mx + e.nx * 0.34, 0.55, mz + e.nz * 0.34], bank.stonePlinth);
     cap.rotation.y = yaw;
-    const walk = box(staticG, [2.6, 0.12, len + 2.4], [mx + e.nx * 1.9, 0.06, mz + e.nz * 1.9], mats.dustyBrick, { uvScale: 3.0, castShadow: false });
+    const walk = box(staticG, [2.6, 0.012, len + 2.4], [mx + e.nx * 1.9, -0.002, mz + e.nz * 1.9], mats.dustyBrick, { uvScale: 3.0, castShadow: false });
     walk.rotation.y = yaw;
   }
 
@@ -459,7 +459,7 @@ function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, colliders
     [194.2, 173.8],
     [216.0, 173.8],
     [244.5, 173.8],
-  ], 3.4, mats.dirtPath, 0.048, null, 0);
+  ], 3.4, mats.dirtPath, 0.0025, null, 0);
 
   /* ---- C) POND-FRONT MADRASAH VEHICLE & BIKE GARAGE (আলিয়া মাদ্রাসা পুকুরের সামনের গ্যারেজ!) ---- */
   const garX = 197.6;
@@ -686,14 +686,14 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
     [184.0, 136.0],
     [184.0, 106.0],
     [184.0, 86.0],
-  ], 3.8, mats.concreteRoad, 0.060, mats.curb, 0.45);
+  ], 3.8, mats.concreteRoad, 0.0035, mats.curb, 0.45);
 
   // Concrete front promenade along the Main Alia Madrasah Portico Building (z = 86.0)
   addRoadRibbon(staticG, [
     [164.0, 86.0],
     [184.0, 86.0],
     [206.0, 86.0],
-  ], 3.4, mats.concreteRoad, 0.059, mats.curb, 0.35);
+  ], 3.4, mats.concreteRoad, 0.0032, mats.curb, 0.35);
 
   // Iconic Red-and-Green Pipe Railings along BOTH Right (x=188.4) and Left (x=179.6) sides past the Pukurpar right-turn road (z=136.5)
   for (const railX of [179.6, 188.4]) {
@@ -774,28 +774,28 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
     [240.0, 75.0],
     [240.0, 106.0],
     [239.0, 136.0],
-  ], 2.6, mats.dustyBrick, 0.056, mats.curb, 0.35);
+  ], 2.6, mats.dustyBrick, 0.0028, mats.curb, 0.35);
 
   // Dusty weathered brick connector path between Big Playground & Clean Pond -> Student Hostel & Teachers' Quarters
   addRoadRibbon(staticG, [
     [187.5, 136.5],
     [216.0, 136.5],
     [239.0, 136.0],
-  ], 2.6, mats.dustyBrick, 0.056, mats.curb, 0.35);
+  ], 2.6, mats.dustyBrick, 0.0028, mats.curb, 0.35);
 
   // Dusty weathered interlocking paver forecourt right in front of Model Mosque inside campus (left of Main Road!)
-  box(staticG, [8.5, 0.05, 22.0], [176.0, 0.025, 162.0], mats.dustyBrick, { castShadow: false, uvScale: 4.0 });
+  box(staticG, [8.5, 0.008, 22.0], [176.0, -0.001, 162.0], mats.dustyBrick, { castShadow: false, uvScale: 4.0 });
 
   // Bigger Clean Central Play Ground (আলিয়া মাদ্রাসা বড় মাঠ — 100% open & free of benches!)
   const fx = 216.5;
   const fz = 105.5;
   const fw = 35.0;
   const fl = 48.0;
-  box(staticG, [fw, 0.02, 0.24], [fx, 0.032, fz - fl * 0.5], mats.chalkLine, { castShadow: false });
-  box(staticG, [fw, 0.02, 0.24], [fx, 0.032, fz + fl * 0.5], mats.chalkLine, { castShadow: false });
-  box(staticG, [fw, 0.02, 0.24], [fx, 0.032, fz], mats.chalkLine, { castShadow: false });
-  box(staticG, [0.24, 0.02, fl], [fx - fw * 0.5, 0.032, fz], mats.chalkLine, { castShadow: false });
-  box(staticG, [0.24, 0.02, fl], [fx + fw * 0.5, 0.032, fz], mats.chalkLine, { castShadow: false });
+  box(staticG, [fw, 0.004, 0.24], [fx, 0.003, fz - fl * 0.5], mats.chalkLine, { castShadow: false });
+  box(staticG, [fw, 0.004, 0.24], [fx, 0.003, fz + fl * 0.5], mats.chalkLine, { castShadow: false });
+  box(staticG, [fw, 0.004, 0.24], [fx, 0.003, fz], mats.chalkLine, { castShadow: false });
+  box(staticG, [0.24, 0.004, fl], [fx - fw * 0.5, 0.003, fz], mats.chalkLine, { castShadow: false });
+  box(staticG, [0.24, 0.004, fl], [fx + fw * 0.5, 0.003, fz], mats.chalkLine, { castShadow: false });
   buildFootballGoalpost(staticG, bank, fx, fz - fl * 0.5 + 1.0, -1);
   buildFootballGoalpost(staticG, bank, fx, fz + fl * 0.5 - 1.0, 1);
 

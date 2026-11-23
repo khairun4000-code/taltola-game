@@ -3232,10 +3232,11 @@ async function initialize() {
         }
       }
       const heading = Math.atan2(forwardVec.x, forwardVec.z) + Math.PI * 0.5;
+      const spawnGroundY = Math.max(0, computeGroundHeight(new THREE.Vector3(sx, EYE_HEIGHT, sz)));
       const spawnedCar = createDrivableCar(scene, undefined, {
         ...baseCfg,
         id: `${baseCfg.id}_spawn_${Date.now()}_${cheatSpawnedCars.length + 1}`,
-        spawnPos: [sx, 0.01, sz],
+        spawnPos: [sx, spawnGroundY + 0.006, sz],
         spawnHeading: heading,
       });
       spawnedCar.setQualityMode?.(quality);
@@ -4027,9 +4028,9 @@ function warpToLandmark(lm, lockControls = false) {
 
     activeCar.spawnAt(bestX, bestZ, heading);
     const groundY = Math.max(0, computeGroundHeight(new THREE.Vector3(bestX, EYE_HEIGHT, bestZ)));
-    if (groundY > 0.02 && groundY < 2.2) {
-      activeCar.state.pos.y = groundY + 0.01;
-      activeCar.group.position.y = groundY + 0.01;
+    if (groundY >= 0 && groundY < 2.2) {
+      activeCar.state.pos.y = groundY + 0.006;
+      activeCar.group.position.y = groundY + 0.006;
     }
 
     playerPos.set(bestX, activeCar.state.pos.y + EYE_HEIGHT, bestZ);

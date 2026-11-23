@@ -4,8 +4,45 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { VOICE_CLIPS, VOICE_BUS } from './voice-clips.js';
 
 const MODEL_URL = './assets/player-bangladeshi.glb?v=v8clean';
+const IPHONE_MODEL_URL = './assets/iphone_18_pro_max_burgundy.glb';
 const DRACO_PATH = './draco/gltf/';
 const PLAYER_EYE_HEIGHT = 1.68;
+
+let sharedBurgundyIphonePromise = null;
+function loadSharedBurgundyIPhone() {
+  if (!sharedBurgundyIphonePromise) {
+    const phoneLoader = new GLTFLoader();
+    sharedBurgundyIphonePromise = new Promise((resolve) => {
+      phoneLoader.load(
+        IPHONE_MODEL_URL,
+        (gltf) => {
+          const src = gltf.scene;
+          src.traverse((ch) => {
+            if (!ch.isMesh) return;
+            ch.castShadow = false;
+            ch.receiveShadow = false;
+            const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+            for (let i = 0; i < mats.length; i++) {
+              const m = mats[i];
+              if (!m) continue;
+              if (/Screen/i.test(m.name || '')) {
+                // Keep OLED Burgundy iPhone 18 Pro Max screen vividly lit & crisp!
+                m.emissiveIntensity = Math.max(m.emissiveIntensity || 1.0, 1.35);
+                m.roughness = 0.08;
+              } else if (/Cherry_Backpanel|Cherry_Side|Cherry_Apple|Lens|Glass/i.test(m.name || '')) {
+                m.envMapIntensity = 1.45;
+              }
+            }
+          });
+          resolve(src);
+        },
+        undefined,
+        () => resolve(null),
+      );
+    });
+  }
+  return sharedBurgundyIphonePromise;
+}
 
 export const CHARACTER_ROSTER = [
   {
@@ -229,7 +266,10 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   let idleFootDownBlend = 0;
   let reverseWalkBlend = 0;
   let reverseWalkPhase = 0;
-  let baseGroundY = 0;
+  let baseGroundY = 0.005;
+  let calibratedFootToSole = 0.095;
+  const _footCheckL = new THREE.Vector3();
+  const _footCheckR = new THREE.Vector3();
   let headBone = null;
   let neckBone = null;
   let jawBone = null;
@@ -252,10 +292,23 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   let rightForeArm = null;
   let rightHand = null;
   let handheldPhoneMesh = null;
+  let phonePalmFrame = null;
   let phoneActive = false;
+  let phoneDrawBlend = 0; // 0 = stowed in pocket, 1 = held in front of chest (fast GTA V draw/stow!)
+  let phoneScrollClock = 0;
   let phoneTapTimer = 0;
+  const phonePocketPos = new THREE.Vector3();
   const phoneHoldTarget = new THREE.Vector3();
-  const phoneTapTarget = new THREE.Vector3();
+  const phoneCurrTarget = new THREE.Vector3();
+  const phoneRestWristPos = new THREE.Vector3();
+  const phoneGripFingersR = [];
+  let rightThumb1 = null;
+  let rightThumb2 = null;
+  let rightThumb3 = null;
+  const restRightThumb1Q = new THREE.Quaternion();
+  const restRightThumb2Q = new THREE.Quaternion();
+  const restRightThumb3Q = new THREE.Quaternion();
+  const phoneEnvMaterials = [];
   const jawRestQ = new THREE.Quaternion();
   const lLidRestQ = new THREE.Quaternion();
   const rLidRestQ = new THREE.Quaternion();
@@ -643,6 +696,13 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         m.needsUpdate = true;
       }
     }
+    for (let i = 0; i < phoneEnvMaterials.length; i++) {
+      const m = phoneEnvMaterials[i];
+      if (m && 'envMap' in m && m.envMap !== pendingEnvMap) {
+        m.envMap = pendingEnvMap;
+        m.needsUpdate = true;
+      }
+    }
   }
 
   function resolveClipAction(clipName) {
@@ -771,57 +831,49 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     rightForeArm = findBoneBySuffix(model, 'RightForeArm');
     rightHand = findBoneBySuffix(model, 'RightHand');
     if (rightHand) {
+      // Calibrated anatomical palm frame (rotated to exact RightHand local basis once knuckle bones are read below!)
+      // Inside phonePalmFrame: +X = pinky side, +Y = wrist->fingertips, -Z = palm normal (toward eyes), +Z = back of hand
+      phonePalmFrame = new THREE.Group();
+      phonePalmFrame.name = 'RightPalmCalibratedFrame';
+      rightHand.add(phonePalmFrame);
+
       const phoneGroup = new THREE.Group();
       phoneGroup.name = 'HandheldSmartphoneProp';
-      // Realistic flagship titanium chassis + glass OLED screen + triple-lens rear camera island
-      const chassisMat = new THREE.MeshStandardMaterial({ color: 0x1e2530, roughness: 0.22, metalness: 0.88 });
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.076, 0.156, 0.0095), chassisMat);
-      const pCanvas = document.createElement('canvas');
-      pCanvas.width = 128; pCanvas.height = 256;
-      const pCtx = pCanvas.getContext('2d');
-      const grd = pCtx.createLinearGradient(0, 0, 128, 256);
-      grd.addColorStop(0, '#0f172a'); grd.addColorStop(0.45, '#0ea5e9'); grd.addColorStop(1, '#10b981');
-      pCtx.fillStyle = grd; pCtx.fillRect(0, 0, 128, 256);
-      pCtx.fillStyle = '#020617'; pCtx.fillRect(42, 8, 44, 10);
-      pCtx.fillStyle = '#ffffff'; pCtx.font = 'bold 24px sans-serif'; pCtx.textAlign = 'center'; pCtx.fillText('12:00', 64, 58);
-      const iconCols = ['#22c55e', '#38bdf8', '#f472b6', '#f59e0b', '#a855f7', '#ef4444'];
-      for (let i = 0; i < 6; i++) {
-        pCtx.fillStyle = iconCols[i];
-        pCtx.fillRect(16 + (i % 3) * 36, 92 + Math.floor(i / 3) * 40, 24, 24);
-      }
-      pCtx.fillStyle = 'rgba(255,255,255,0.45)'; pCtx.fillRect(36, 238, 56, 4);
-      const screenTex = new THREE.CanvasTexture(pCanvas);
-      screenTex.colorSpace = THREE.SRGBColorSpace;
-      const screen = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.068, 0.144),
-        new THREE.MeshBasicMaterial({ map: screenTex }),
-      );
-      screen.position.z = 0.0052;
-      const camIsland = new THREE.Mesh(
-        new THREE.BoxGeometry(0.032, 0.034, 0.003),
-        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.25, metalness: 0.7 }),
-      );
-      camIsland.position.set(-0.017, 0.052, -0.0055);
-      const lensMat = new THREE.MeshStandardMaterial({ color: 0x05080f, roughness: 0.08, metalness: 0.95 });
-      for (const [lx, ly] of [[-0.007, 0.008], [-0.007, -0.008], [0.007, 0.0]]) {
-        const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 0.003, 12), lensMat);
-        lens.rotation.x = Math.PI / 2;
-        lens.position.set(lx, ly, -0.0018);
-        camIsland.add(lens);
-      }
-      const flash = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.0028, 0.0028, 0.0025, 10),
-        new THREE.MeshBasicMaterial({ color: 0xfef3c7 }),
-      );
-      flash.rotation.x = Math.PI / 2;
-      flash.position.set(0.007, 0.010, -0.0016);
-      camIsland.add(flash);
-      phoneGroup.add(body, screen, camIsland);
-      phoneGroup.position.set(0.012, 0.068, 0.028);
-      phoneGroup.rotation.set(-0.98, 0.14, 0.06);
+      // Seated cleanly INSIDE the cupped fold of the right palm (Z = -0.029 puts rear Burgundy back at -0.021 inside inner palm skin,
+      // ZERO clipping through back of hand, and glowing OLED screen at -0.033 right under the right thumb!)
+      phoneGroup.position.set(0.012, 0.022, -0.029);
       phoneGroup.visible = false;
-      rightHand.add(phoneGroup);
+      phonePalmFrame.add(phoneGroup);
       handheldPhoneMesh = phoneGroup;
+
+      // Load real Burgundy iPhone 18 Pro Max 3D GLB model into the calibrated, scale-normalized right palm frame!
+      loadSharedBurgundyIPhone().then((srcModel) => {
+        if (!srcModel || !handheldPhoneMesh) return;
+        const phoneClone = srcModel.clone(true);
+        // Exact true-to-life iPhone 18 Pro Max smartphone size (~13.7cm tall x 6.6cm wide — NOT tiny, NOT a tablet!)
+        // (phonePalmFrame compensates for KurtaBlueArmature's 1.71x scale so Sabit & Huzzatullah get identical real-world size!)
+        phoneClone.scale.setScalar(0.84);
+        // Flip 180 deg around Y so OLED screen (+Z in GLB) faces -Z (out of palm toward character's eyes!)
+        // and the deep glossy Burgundy triple-camera rear sits cleanly against the cradled fingers!
+        phoneClone.rotation.set(0.0, Math.PI, -0.02);
+        phoneClone.position.set(0, 0, 0);
+        phoneClone.traverse((ch) => {
+          if (!ch.isMesh || !ch.material) return;
+          const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+          for (let i = 0; i < mats.length; i++) {
+            const m = mats[i];
+            if (!m) continue;
+            if ('envMap' in m) {
+              phoneEnvMaterials.push(m);
+              if (pendingEnvMap) {
+                m.envMap = pendingEnvMap;
+                m.needsUpdate = true;
+              }
+            }
+          }
+        });
+        handheldPhoneMesh.add(phoneClone);
+      });
     }
     if (jawBone) jawRestQ.copy(jawBone.quaternion);
     if (lLidTop) lLidRestQ.copy(lLidTop.quaternion);
@@ -863,8 +915,9 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     if (rightForeArm) restRightForeArmQ.copy(rightForeArm.quaternion);
     if (rightHand) restRightHandQ.copy(rightHand.quaternion);
 
-    // Snapshot all finger bones so hands wrap & clench tightly around motorcycle/bicycle/rickshaw handlebar grips!
+    // Snapshot all finger bones so hands wrap & clench tightly around motorcycle/bicycle/rickshaw handlebar grips + phone cradling!
     fingerGripEntries.length = 0;
+    phoneGripFingersR.length = 0;
     const fingerNames = ['Index', 'Middle', 'Ring', 'Pinky'];
     for (const side of ['Left', 'Right']) {
       const sign = side === 'Left' ? -1 : 1;
@@ -874,6 +927,15 @@ export function createPlayerCharacter(scene, manager, options = {}) {
           if (b) {
             const curl = seg === 1 ? 1.02 : (seg === 2 ? 1.28 : 0.88);
             fingerGripEntries.push({ bone: b, restQ: b.quaternion.clone(), axis: 'x', angle: sign * curl });
+            if (side === 'Right') {
+              // Mixamo Idle fingers are already pre-curved into the palm (-Z = -0.047m);
+              // slightly open seg 1 (-0.28) so fingers cradle cleanly BEHIND the Burgundy rear glass,
+              // and gently hook seg 2/3 around the left edge so ZERO fingers clip through the phone or screen!
+              const pCurl = fName === 'Pinky'
+                ? (seg === 1 ? -0.14 : (seg === 2 ? 0.14 : 0.18))
+                : (seg === 1 ? -0.28 : (seg === 2 ? 0.08 : 0.16));
+              phoneGripFingersR.push({ bone: b, restQ: b.quaternion.clone(), angle: pCurl });
+            }
           }
         }
       }
@@ -883,9 +945,17 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       if (th1) fingerGripEntries.push({ bone: th1, restQ: th1.quaternion.clone(), axis: 'z', angle: sign * 0.42 });
       if (th2) fingerGripEntries.push({ bone: th2, restQ: th2.quaternion.clone(), axis: 'x', angle: sign * 0.62 });
       if (th3) fingerGripEntries.push({ bone: th3, restQ: th3.quaternion.clone(), axis: 'x', angle: sign * 0.68 });
+      if (side === 'Right') {
+        rightThumb1 = th1;
+        rightThumb2 = th2;
+        rightThumb3 = th3;
+        if (th1) restRightThumb1Q.copy(th1.quaternion);
+        if (th2) restRightThumb2Q.copy(th2.quaternion);
+        if (th3) restRightThumb3Q.copy(th3.quaternion);
+      }
 
       // Measure exact orthonormal anatomical local basis of LeftHand & RightHand from child knuckle bones
-      // (eliminates Mixamo RightHand ~52 deg axial twist so BOTH hands sit 100% flat & symmetric on handlebar grips!)
+      // (eliminates Mixamo RightHand ~52 deg axial twist so BOTH hands sit 100% flat & symmetric on handlebar grips & iPhone!)
       const idx1 = findBoneBySuffix(model, `${side}HandIndex1`);
       const mid1 = findBoneBySuffix(model, `${side}HandMiddle1`);
       const pky1 = findBoneBySuffix(model, `${side}HandPinky1`);
@@ -903,15 +973,60 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         } else {
           rightHandLocalBasisInv.copy(basisM).transpose();
           hasRightHandBasis = true;
+          if (phonePalmFrame && rightHand) {
+            root.updateMatrixWorld(true);
+            const handWorldScale = new THREE.Vector3();
+            rightHand.getWorldScale(handWorldScale);
+            const invS = 1 / Math.max(0.2, handWorldScale.y || 1);
+            phonePalmFrame.quaternion.setFromRotationMatrix(basisM);
+            phonePalmFrame.scale.setScalar(invS);
+          }
         }
       }
     }
 
-    // Preserve Blender's Z=0 shoe-sole grounding
-    const box = new THREE.Box3().setFromObject(model);
-    if (Number.isFinite(box.min.y) && Math.abs(box.min.y) < 0.08) {
-      baseGroundY = -box.min.y;
+    // Measure TRUE skinned shoe-sole lowest Y in live Idle pose (Box3.setFromObject ignores bone skinning!)
+    root.updateMatrixWorld(true);
+    const invHolder = new THREE.Matrix4().copy(modelHolder.matrixWorld).invert();
+    const skinnedVert = new THREE.Vector3();
+    let trueMinY = Infinity;
+    model.traverse((obj) => {
+      if (!obj.isMesh || !obj.geometry?.attributes?.position) return;
+      const posAttr = obj.geometry.attributes.position;
+      const step = posAttr.count > 6000 ? 3 : 1;
+      if (obj.isSkinnedMesh && typeof obj.getVertexPosition === 'function') {
+        for (let i = 0; i < posAttr.count; i += step) {
+          obj.getVertexPosition(i, skinnedVert);
+          skinnedVert.applyMatrix4(obj.matrixWorld).applyMatrix4(invHolder);
+          if (skinnedVert.y < trueMinY) trueMinY = skinnedVert.y;
+        }
+      } else {
+        for (let i = 0; i < posAttr.count; i += step) {
+          skinnedVert.fromBufferAttribute(posAttr, i).applyMatrix4(obj.matrixWorld).applyMatrix4(invHolder);
+          if (skinnedVert.y < trueMinY) trueMinY = skinnedVert.y;
+        }
+      }
+    });
+    const ROAD_FLUSH_CLEARANCE = 0.005; // Keeps shoe soles flush ON TOP of +0.002..+0.0035m road asphalt (zero sinking, zero floating!)
+    if (Number.isFinite(trueMinY) && Math.abs(trueMinY) < 0.45) {
+      baseGroundY = -trueMinY + ROAD_FLUSH_CLEARANCE;
       modelHolder.position.y = baseGroundY;
+    } else {
+      const box = new THREE.Box3().setFromObject(model);
+      if (Number.isFinite(box.min.y) && Math.abs(box.min.y) < 0.25) {
+        baseGroundY = -box.min.y + ROAD_FLUSH_CLEARANCE;
+        modelHolder.position.y = baseGroundY;
+      }
+    }
+    // Calibrate exact ankle-bone-to-sole vertical height in Idle so live Walk/Run/IdleLook animations NEVER dip soles into asphalt!
+    root.updateMatrixWorld(true);
+    if (leftFoot && rightFoot) {
+      leftFoot.getWorldPosition(_footCheckL);
+      rightFoot.getWorldPosition(_footCheckR);
+      const minFootRelY = Math.min(_footCheckL.y, _footCheckR.y) - root.position.y;
+      if (Number.isFinite(minFootRelY) && minFootRelY > 0.02 && minFootRelY < 0.28) {
+        calibratedFootToSole = Math.max(0.02, minFootRelY - ROAD_FLUSH_CLEARANCE);
+      }
     }
 
     applyMeshQuality(currentQuality);
@@ -2375,6 +2490,18 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         const vert = _hipsDelta.dot(restHipsUpLocal);
         hipsBone.position.copy(restHipsPos).addScaledVector(restHipsUpLocal, vert);
       }
+      // Real-time shoe-sole anti-sinking floor guard: keeps both soles cleanly ON TOP of asphalt during Idle, Walk, Run & IdleLook!
+      if (grounded && !isSwimming && !inStudio && !isVehicleAnim && !isRidingRickshaw && !isRidingBike && !isDrivingCar && !isLedgeHanging && state.emote !== 'sit' && leftFoot && rightFoot) {
+        root.updateMatrixWorld(true);
+        leftFoot.getWorldPosition(_footCheckL);
+        rightFoot.getWorldPosition(_footCheckR);
+        const minSoleY = Math.min(_footCheckL.y, _footCheckR.y) - calibratedFootToSole;
+        const roadFloorY = root.position.y + 0.0045;
+        if (minSoleY < roadFloorY) {
+          const lift = Math.min(0.12, roadFloorY - minSoleY);
+          modelHolder.position.y += lift;
+        }
+      }
     }
 
     if (isVehicleAnim) {
@@ -2399,49 +2526,156 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       reverseWalkBlend = 0;
     }
 
-    // Persistent right-hand smartphone hold + looking down at phone + left-hand finger-tap acting!
-    const holdingPhoneNow = phoneActive && !inStudio && !isRidingRickshaw && !isRidingBike && !isDrivingCar && !isVehicleAnim;
+    // Fast GTA V-style pocket draw/stow + single-hand Burgundy iPhone 18 Pro Max hold + right-thumb scrolling + direct gaze!
+    const canHoldPhone = !inStudio && !isRidingRickshaw && !isRidingBike && !isDrivingCar && !isVehicleAnim && !isLedgeHanging;
+    const wantPhoneOut = phoneActive && canHoldPhone;
+    const prevDraw = phoneDrawBlend;
+    if (wantPhoneOut) {
+      // Snappy ~0.30s GTA V pocket draw (fast, smooth, never jerky!)
+      phoneDrawBlend = Math.min(1, phoneDrawBlend + dt * 3.35);
+    } else if (canHoldPhone && phoneDrawBlend > 0) {
+      // Crisp ~0.24s pocket stow when closing [P]
+      phoneDrawBlend = Math.max(0, phoneDrawBlend - dt * 4.2);
+    } else {
+      phoneDrawBlend = 0;
+    }
     if (phoneTapTimer > 0) phoneTapTimer = Math.max(0, phoneTapTimer - dt);
-    if (holdingPhoneNow && spine2Bone && rightArm && rightForeArm && rightHand) {
-      root.updateMatrixWorld(true);
-      const h = state.facingYaw || 0;
-      ikFwd.set(Math.sin(h), 0, Math.cos(h));
-      ikRight.set(Math.cos(h), 0, -Math.sin(h));
-      spine2Bone.getWorldPosition(phoneHoldTarget);
-      // Natural real-human chest-level phone hold (elbow relaxed at side, forearm raised cleanly in front of chest)
-      phoneHoldTarget.addScaledVector(ikFwd, 0.34).addScaledVector(ikRight, -0.05);
-      phoneHoldTarget.y -= 0.05;
-      ikPole.copy(phoneHoldTarget).addScaledVector(ikRight, -0.26).addScaledVector(ikFwd, -0.14);
-      ikPole.y -= 0.38;
-      solveTwoBoneIK(rightArm, rightForeArm, rightHand, phoneHoldTarget, ikPole);
+    if (wantPhoneOut) phoneScrollClock += dt;
 
-      // Natural gentle head & neck gaze down at the smartphone screen
-      if (neckBone) {
-        eulerTemp.set(0.14, -0.05, 0);
-        qTempA.setFromEuler(eulerTemp);
-        neckBone.quaternion.copy(restNeckQ).multiply(qTempA);
-      }
-      if (headBone) {
-        eulerTemp.set(0.20, -0.06, 0);
-        qTempA.setFromEuler(eulerTemp);
-        headBone.quaternion.copy(restHeadQ).multiply(qTempA);
-      }
-
-      // Finger-tap acting: left hand gently lifts up to tap the phone screen whenever user presses a button!
-      if (phoneTapTimer > 0 && leftArm && leftForeArm && leftHand) {
-        const tapWave = Math.sin((phoneTapTimer / 0.28) * Math.PI);
-        phoneTapTarget.copy(phoneHoldTarget)
-          .addScaledVector(ikFwd, -0.01 - (1 - tapWave) * 0.07)
-          .addScaledVector(ikRight, 0.04 + (1 - tapWave) * 0.12);
-        phoneTapTarget.y += 0.03 - (1 - tapWave) * 0.10;
-        ikPole.copy(phoneHoldTarget).addScaledVector(ikRight, 0.28).addScaledVector(ikFwd, -0.14);
-        ikPole.y -= 0.36;
-        solveTwoBoneIK(leftArm, leftForeArm, leftHand, phoneTapTarget, ikPole);
+    const phoneAnimActive = phoneDrawBlend > 0.005 && canHoldPhone;
+    if (handheldPhoneMesh) {
+      // Appears right as the right hand pulls out of the pocket (blend >= 0.28) and hides cleanly as it enters pocket!
+      const showMesh = phoneAnimActive && phoneDrawBlend >= 0.28;
+      if (handheldPhoneMesh.visible !== showMesh) handheldPhoneMesh.visible = showMesh;
+      if (showMesh) {
+        const popT = THREE.MathUtils.clamp((phoneDrawBlend - 0.28) / 0.26, 0, 1);
+        const sc = THREE.MathUtils.lerp(0.84, 1.0, popT * (2 - popT));
+        handheldPhoneMesh.scale.setScalar(sc);
       }
     }
 
+    if (phoneAnimActive && spine2Bone && hipsBone && rightArm && rightForeArm && rightHand) {
+      root.updateMatrixWorld(true);
+      const h = state.facingYaw || 0;
+      ikFwd.set(Math.sin(h), 0, Math.cos(h));
+      ikRight.set(Math.cos(h), 0, -Math.sin(h)); // +ikRight = character's LEFT, -ikRight = character's RIGHT!
+
+      // Capture the animated natural wrist position before IK so draw-in & stow-out blend seamlessly (zero snap/glitch!)
+      rightHand.getWorldPosition(phoneRestWristPos);
+
+      // Right trouser/panjabi pocket position
+      hipsBone.getWorldPosition(phonePocketPos);
+      phonePocketPos.addScaledVector(ikRight, -0.19).addScaledVector(ikFwd, 0.06);
+      phonePocketPos.y -= 0.07;
+
+      // Natural GTA V upright chest-level smartphone hold (high enough in frame to clearly see phone & hand!)
+      spine2Bone.getWorldPosition(phoneHoldTarget);
+      phoneHoldTarget.addScaledVector(ikFwd, 0.34).addScaledVector(ikRight, -0.07);
+      phoneHoldTarget.y += 0.03;
+
+      // Two-stage GTA V trajectory:
+      // Stage 1 (0.00 -> 0.30): right hand dips briskly to right pocket
+      // Stage 2 (0.30 -> 1.00): right hand sweeps out & up in a clean natural arc to reading height (zero torso clipping!)
+      if (phoneDrawBlend < 0.30) {
+        const u = phoneDrawBlend / 0.30;
+        const e = u * u * (3 - 2 * u);
+        phoneCurrTarget.lerpVectors(phoneRestWristPos, phonePocketPos, e);
+      } else {
+        const u = (phoneDrawBlend - 0.30) / 0.70;
+        const easeOut = 1 - Math.pow(1 - u, 3);
+        phoneCurrTarget.lerpVectors(phonePocketPos, phoneHoldTarget, easeOut);
+        // Subtle outward sweep around hip/chest as phone clears pocket
+        const arcOut = Math.sin(u * Math.PI);
+        phoneCurrTarget.addScaledVector(ikRight, -0.055 * arcOut);
+        phoneCurrTarget.addScaledVector(ikFwd, 0.045 * arcOut);
+      }
+
+      // Natural relaxed elbow pole slightly out to the right & down
+      ikPole.copy(phoneCurrTarget).addScaledVector(ikRight, -0.26).addScaledVector(ikFwd, -0.16);
+      ikPole.y -= 0.36;
+      solveTwoBoneIK(rightArm, rightForeArm, rightHand, phoneCurrTarget, ikPole);
+
+      // Orient RightHand in TRUE WORLD SPACE using exact calibrated rightHandLocalBasisInv
+      // so palm faces cleanly UP & BACK toward the character's eyes (zero wrist twist or clipping!)
+      const holdWeight = THREE.MathUtils.clamp((phoneDrawBlend - 0.25) / 0.55, 0, 1);
+      if (holdWeight > 0.01 && rightHand.parent) {
+        const smoothW = holdWeight * holdWeight * (3 - 2 * holdWeight);
+        rightHand.parent.updateWorldMatrix(true, false);
+        rightHand.updateMatrixWorld(false);
+        rightHand.parent.getWorldQuaternion(_hgParentQ);
+
+        // Hold phone UPRIGHT in the cupped fold of the right palm (NOT flat from underneath!):
+        // Pinky side (+wX) -> character's left (+ikRight) turned naturally inward toward chest center
+        _hgX.copy(ikRight).multiplyScalar(0.90).addScaledVector(ikFwd, 0.42).normalize();
+        // Back of hand (+wZ) -> mostly forward (+0.88) & slightly down (-0.46) so phone stands UPRIGHT (~63 deg)
+        // with glowing screen (-wZ) facing cleanly back & slightly up into the character's eyes!
+        _hgZ.copy(ikFwd).multiplyScalar(0.88);
+        _hgZ.y -= 0.46;
+        _hgZ.addScaledVector(_hgX, -_hgZ.dot(_hgX)).normalize();
+        // Wrist -> fingertips (+wY) = wZ × wX -> UPRIGHT (+0.88 Y, +0.46 Fwd)!
+        _hgY.crossVectors(_hgZ, _hgX).normalize();
+        _hgZ.crossVectors(_hgX, _hgY).normalize();
+
+        _hgMat.makeBasis(_hgX, _hgY, _hgZ);
+        if (hasRightHandBasis) {
+          _hgMat.multiply(rightHandLocalBasisInv);
+        }
+        _hgWorldQ.setFromRotationMatrix(_hgMat);
+        qTempA.copy(_hgParentQ).invert().multiply(_hgWorldQ);
+        rightHand.quaternion.slerp(qTempA, smoothW);
+
+        // Gently cradle the rear & left edge of the Burgundy iPhone with right 4 fingers (zero screen clipping!)
+        for (let i = 0; i < phoneGripFingersR.length; i++) {
+          const f = phoneGripFingersR[i];
+          eulerTemp.set(f.angle * smoothW, 0, 0);
+          qTempB.setFromEuler(eulerTemp);
+          qTempA.copy(f.restQ).multiply(qTempB);
+          f.bone.quaternion.slerp(qTempA, smoothW);
+        }
+
+        // Live Right-Thumb scrolling & tapping directly on the glowing iPhone screen!
+        // Idle: smooth natural thumb micro-scroll across screen; Button press (triggerPhoneTap): crisp thumb tap + swipe!
+        const idleScroll = Math.sin(phoneScrollClock * 2.6) * 0.14 + Math.sin(phoneScrollClock * 5.8) * 0.05;
+        const tapPulse = phoneTapTimer > 0 ? Math.sin((phoneTapTimer / 0.30) * Math.PI) : 0;
+        const thumbSweepZ = (0.34 + idleScroll * 0.55 + tapPulse * 0.24) * smoothW;
+        const thumbPressX = (0.32 + Math.max(0, Math.sin(phoneScrollClock * 2.6 - 0.5)) * 0.16 + tapPulse * 0.42) * smoothW;
+        const thumbTipX = (0.36 + tapPulse * 0.48) * smoothW;
+        if (rightThumb1) {
+          eulerTemp.set(thumbPressX * 0.35, 0, thumbSweepZ);
+          qTempB.setFromEuler(eulerTemp);
+          rightThumb1.quaternion.copy(restRightThumb1Q).multiply(qTempB);
+        }
+        if (rightThumb2) {
+          eulerTemp.set(thumbPressX, 0, 0);
+          qTempB.setFromEuler(eulerTemp);
+          rightThumb2.quaternion.copy(restRightThumb2Q).multiply(qTempB);
+        }
+        if (rightThumb3) {
+          eulerTemp.set(thumbTipX, 0, 0);
+          qTempB.setFromEuler(eulerTemp);
+          rightThumb3.quaternion.copy(restRightThumb3Q).multiply(qTempB);
+        }
+      }
+
+      // Direct world-space downward gaze directly at the glowing iPhone 18 Pro Max screen (zero sideways tilt!)
+      const gazeW = THREE.MathUtils.clamp((phoneDrawBlend - 0.15) / 0.65, 0, 1);
+      const gazeSmooth = gazeW * gazeW * (3 - 2 * gazeW);
+      if (gazeSmooth > 0.01) {
+        applyWorldBoneDelta(neckBone, restNeckQ, h, 0.25 * gazeSmooth, -0.08 * gazeSmooth, 0);
+        applyWorldBoneDelta(headBone, restHeadQ, h, 0.34 * gazeSmooth, -0.10 * gazeSmooth, 0);
+      }
+    } else if (prevDraw > 0 && !phoneAnimActive) {
+      // Cleanly restore right thumb & finger bones on the frame stowing completes
+      for (let i = 0; i < phoneGripFingersR.length; i++) {
+        phoneGripFingersR[i].bone.quaternion.copy(phoneGripFingersR[i].restQ);
+      }
+      if (rightThumb1) rightThumb1.quaternion.copy(restRightThumb1Q);
+      if (rightThumb2) rightThumb2.quaternion.copy(restRightThumb2Q);
+      if (rightThumb3) rightThumb3.quaternion.copy(restRightThumb3Q);
+    }
+
     if (root.visible) {
-      applyProceduralHeadAndFace(dt, Boolean(isRidingRickshaw || isRidingBike || isDrivingCar || isVehicleAnim || holdingPhoneNow));
+      applyProceduralHeadAndFace(dt, Boolean(isRidingRickshaw || isRidingBike || isDrivingCar || isVehicleAnim || phoneAnimActive));
       if (isVehicleAnim) {
         lockHeadAndNeckStraight();
       }
@@ -2450,12 +2684,11 @@ export function createPlayerCharacter(scene, manager, options = {}) {
 
   function setPhoneInHand(visible) {
     phoneActive = Boolean(visible);
-    if (handheldPhoneMesh) handheldPhoneMesh.visible = phoneActive;
     if (!phoneActive) phoneTapTimer = 0;
   }
 
   function triggerPhoneTap() {
-    if (phoneActive) phoneTapTimer = 0.28;
+    if (phoneActive) phoneTapTimer = 0.30;
   }
 
   return {

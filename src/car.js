@@ -600,7 +600,7 @@ export const CAR_FLEET_CONFIGS = [
     rotateY: 0,
     rotateX: 0.071,
     hideMats: ['ground'],
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.50, 0.003, TALTOLA_HOUSE_OFFSET.z - 1.2],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.50, 0.006, TALTOLA_HOUSE_OFFSET.z - 1.2],
     spawnHeading: 0.0,
     paintPresets: BIKE_PAINT_PRESETS,
     maxSpeed: 31.9,
@@ -715,7 +715,7 @@ export const CAR_FLEET_CONFIGS = [
     targetLength: 1.88,
     width: 0.63,
     rotateY: 0,
-    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.50, 0.003, TALTOLA_HOUSE_OFFSET.z + 2.4],
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.50, 0.006, TALTOLA_HOUSE_OFFSET.z + 2.4],
     spawnHeading: 0.0,
     paintPresets: BICYCLE_PAINT_PRESETS,
     bodyPaintMats: ['Atlas_Frame_Black'],
@@ -4705,11 +4705,21 @@ export function createDrivableCar(scene, manager, config) {
     const ks = state.hasKickstand ? THREE.MathUtils.clamp(state.kickstandDeploy || 0, 0, 1) : 0;
     // Parked kickstand lean ONLY for Bicycle & Motorcycle (both lean gently onto LEFT +X kickstand side), NEVER Rickshaw/Van!
     const parkedLeanRoll = config.isBicycle ? (-0.140 * ks) : (config.isBike ? (-0.145 * ks) : 0);
-    bodyTiltGroup.position.y = config.isBike
-      ? THREE.MathUtils.clamp(state.frontSuspOffset * 0.45 + state.rearSuspOffset * 0.55 + state.suspHeave * 0.35 + (state.riderSag || 0), -0.022, 0.014)
+    const totalRoll = state.roll + parkedLeanRoll;
+    // Exact geometric non-penetration tire-contact guard: keeps tires flush & gripping asphalt (NEVER sinking underground during braking, leaning, cornering, or bumps!)
+    const wheelbaseHalf = Math.max(0.55, state.halfLength * 0.68);
+    const trackHalf = (config.isBike || config.isBicycle)
+      ? 0.068
+      : (config.isCNG ? 0.54 : Math.max(0.42, state.halfWidth * 0.86));
+    const pitchDrop = Math.abs(Math.sin(state.pitch)) * wheelbaseHalf;
+    const rollDrop = Math.abs(Math.sin(totalRoll)) * trackHalf;
+    const minSafeBodyY = pitchDrop + rollDrop;
+    const rawHeave = config.isBike
+      ? THREE.MathUtils.clamp(state.frontSuspOffset * 0.45 + state.rearSuspOffset * 0.55 + state.suspHeave * 0.35 + (state.riderSag || 0), -0.018, 0.014)
       : ((config.isRickshaw || config.isBicycle) ? 0 : state.suspHeave);
+    bodyTiltGroup.position.y = Math.max(minSafeBodyY, minSafeBodyY + Math.max(0, rawHeave));
     bodyTiltGroup.rotation.x = state.pitch;
-    bodyTiltGroup.rotation.z = state.roll + parkedLeanRoll;
+    bodyTiltGroup.rotation.z = totalRoll;
     if (bikeKickstandPivot) {
       // Straight-down stance (-1.48 rad ≈ 85 deg) with crisp outward splay (+0.32 rad) so flat pad touches asphalt flush (y = 0.000)!
       bikeKickstandPivot.rotation.x = -1.48 * ks;
@@ -4861,9 +4871,8 @@ export function createDrivableCar(scene, manager, config) {
         }
       }
       if (config.isBike && typeof w.restY === 'number') {
-        // Subtle, mudguard-safe wheel compensation: keeps tires grounded while NEVER pushing the front tire up into the mudguard!
-        const wheelOffset = THREE.MathUtils.clamp(-bodyTiltGroup.position.y, -0.014, 0.016);
-        w.wheelRoot.position.y = w.restY + wheelOffset;
+        // Keep motorcycle wheels seated cleanly at restY; bodyTiltGroup non-penetration lift handles road contact with zero tire clipping or mudguard collision!
+        w.wheelRoot.position.y = w.restY;
       }
       w.spinGroup.rotation.x = state.wheelSpin;
     }
@@ -5082,7 +5091,7 @@ export function createDrivableCar(scene, manager, config) {
       hRight = (hFR + hRR) * 0.5;
       avgWheelY = (hFL + hFR + hRL + hRR) * 0.25;
     }
-    const groundOffset = typeof config.groundOffset === 'number' ? Math.max(0.003, config.groundOffset) : 0.003;
+    const groundOffset = typeof config.groundOffset === 'number' ? Math.max(0.006, config.groundOffset) : 0.006;
     let targetGroundY = Math.max(hC, avgWheelY) + groundOffset;
     // Deadzone sub-1.2cm asphalt seam micro-steps while grounded so vehicle & rider never vertically vibrate on flat roads!
     if (state.grounded && Math.abs(state.velY) < 0.05 && Math.abs(targetGroundY - state.pos.y) < 0.012) {
@@ -5913,7 +5922,7 @@ export function createDrivableCar(scene, manager, config) {
     getBikeRiderAnchors,
     getBikePovCameraPose,
     spawnAt(x, z, heading = 0) {
-      const groundOffset = typeof config.groundOffset === 'number' ? Math.max(0.003, config.groundOffset) : 0.003;
+      const groundOffset = typeof config.groundOffset === 'number' ? Math.max(0.006, config.groundOffset) : 0.006;
       state.pos.set(x, groundOffset, z);
       state.heading = heading;
       state.speed = 0;
