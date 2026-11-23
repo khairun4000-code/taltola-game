@@ -455,9 +455,9 @@ export const TIME_OF_DAY_PRESETS = {
     skyHorizon: 0xf4c898,
     skySunGlow: 0xffb368,
     fogColor: 0xdccbb6,
-    exposure: 1.04,
-    bloomStrength: 0.24,
-    bloomThreshold: 0.86,
+    exposure: 1.05,
+    bloomStrength: 0.34,
+    bloomThreshold: 0.80,
     isNight: false,
     nightFactor: 0.0,
     starAlpha: 0.0,
@@ -478,9 +478,9 @@ export const TIME_OF_DAY_PRESETS = {
     skyHorizon: 0xd2e4ef,
     skySunGlow: 0xffe4b8,
     fogColor: 0xcfe0ea,
-    exposure: 1.02,
-    bloomStrength: 0.16,
-    bloomThreshold: 0.90,
+    exposure: 1.03,
+    bloomStrength: 0.24,
+    bloomThreshold: 0.86,
     isNight: false,
     nightFactor: 0.0,
     starAlpha: 0.0,
@@ -501,9 +501,9 @@ export const TIME_OF_DAY_PRESETS = {
     skyHorizon: 0xec7c5e,
     skySunGlow: 0xff6e38,
     fogColor: 0x9c7274,
-    exposure: 1.07,
-    bloomStrength: 0.42,
-    bloomThreshold: 0.75,
+    exposure: 1.08,
+    bloomStrength: 0.54,
+    bloomThreshold: 0.68,
     isNight: true,
     nightFactor: 0.65,
     starAlpha: 0.22,
@@ -524,9 +524,9 @@ export const TIME_OF_DAY_PRESETS = {
     skyHorizon: 0x1d3154,
     skySunGlow: 0x5c7eb0,
     fogColor: 0x121d30,
-    exposure: 1.14,
-    bloomStrength: 0.52,
-    bloomThreshold: 0.67,
+    exposure: 1.15,
+    bloomStrength: 0.68,
+    bloomThreshold: 0.58,
     isNight: true,
     nightFactor: 1.0,
     starAlpha: 0.85,
@@ -725,7 +725,7 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
     const lowFillMult = quality === 'low' ? 1.12 : (quality === 'medium' ? 1.08 : 1.0);
     if (sun) {
       sun.color.setHex(preset.sunColor);
-      sun.intensity = preset.sunIntensity;
+      sun.intensity = preset.sunIntensity * (quality === 'ultra' ? 1.08 : 1.0);
     }
     if (hemisphereLight) {
       hemisphereLight.color.setHex(preset.hemiSky);
@@ -742,8 +742,18 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
     renderer.toneMappingExposure = preset.exposure;
 
     if (composerPasses?.bloom) {
-      composerPasses.bloom.strength = (quality === 'low' || quality === 'medium') ? 0 : preset.bloomStrength;
-      composerPasses.bloom.threshold = preset.bloomThreshold;
+      if (quality === 'ultra') {
+        composerPasses.bloom.strength = preset.bloomStrength * 1.15;
+        composerPasses.bloom.radius = 0.52;
+        composerPasses.bloom.threshold = Math.max(0.48, preset.bloomThreshold - 0.04);
+      } else if (quality === 'high') {
+        composerPasses.bloom.strength = preset.bloomStrength * 0.78;
+        composerPasses.bloom.radius = 0.40;
+        composerPasses.bloom.threshold = preset.bloomThreshold;
+      } else {
+        composerPasses.bloom.strength = 0;
+        composerPasses.bloom.threshold = preset.bloomThreshold;
+      }
     }
 
     skyDome.visible = true;
@@ -751,7 +761,7 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
     const useGlobalEnv = quality === 'ultra' || quality === 'high';
     scene.environment = useGlobalEnv ? (currentEnvRT?.texture || null) : null;
     if ('environmentIntensity' in scene) {
-      scene.environmentIntensity = quality === 'ultra' ? 0.92 : (quality === 'high' ? 0.72 : 0.55);
+      scene.environmentIntensity = quality === 'ultra' ? 1.15 : (quality === 'high' ? 0.85 : 0.60);
     }
     return preset;
   }

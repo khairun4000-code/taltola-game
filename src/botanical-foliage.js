@@ -138,12 +138,14 @@ export function createCityBotanicalFoliage(parent, renderer = null) {
 
   function applyQuality() {
     const isLow = qualityMode === 'low';
-    const aniso = isLow ? 1 : 2;
+    const isUltra = qualityMode === 'ultra';
+    const aniso = isLow ? 1 : (qualityMode === 'medium' ? 2 : (qualityMode === 'high' ? 4 : 8));
     for (let i = 0; i < builtMeshes.length; i++) {
       const entry = builtMeshes[i];
-      // Whole-city frustumCulled=false instanced foliage skips shadow pass & 9-tap PCF leaf lookup (massive 60 FPS GPU boost!)
+      // Keep whole-city frustumCulled=false instanced foliage castShadow=false for locked 60 FPS,
+      // while enabling crisp receiveShadow on Ultra for realistic building/sun shading depth!
       entry.mesh.castShadow = false;
-      entry.mesh.receiveShadow = false;
+      entry.mesh.receiveShadow = isUltra;
     }
     for (let i = 0; i < builtMaterials.length; i++) {
       const mat = builtMaterials[i];

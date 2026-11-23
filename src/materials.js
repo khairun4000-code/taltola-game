@@ -414,7 +414,10 @@ export function createMaterials(renderer, manager) {
 
   materials.setQualityMode = (quality) => {
     const isLow = quality === 'low';
-    const nextAniso = isLow ? 1 : (quality === 'medium' ? 2 : (quality === 'high' ? 4 : Math.min(8, anisotropy)));
+    const isUltra = quality === 'ultra';
+    const nextAniso = isLow ? 2 : (quality === 'medium' ? Math.min(4, anisotropy) : (quality === 'high' ? Math.min(8, anisotropy) : anisotropy));
+    const normMult = isUltra ? 1.18 : 1.0;
+    const envMult = isUltra ? 1.22 : 1.0;
     for (const mat of allMaterials) {
       if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
       if (mat.userData && mat.userData.pbrNormalMap) {
@@ -425,11 +428,27 @@ export function createMaterials(renderer, manager) {
           mat.roughnessMap = nextRough;
           mat.needsUpdate = true;
         }
+        if (mat.normalScale) {
+          if (mat.userData._origNormalScale === undefined) {
+            mat.userData._origNormalScale = mat.normalScale.x;
+          }
+          const s = mat.userData._origNormalScale * normMult;
+          mat.normalScale.set(s, s);
+        }
+      }
+      if ('envMapIntensity' in mat && typeof mat.envMapIntensity === 'number') {
+        if (mat.userData._origEnvIntensity === undefined) {
+          mat.userData._origEnvIntensity = mat.envMapIntensity;
+        }
+        mat.envMapIntensity = mat.userData._origEnvIntensity * envMult;
       }
       if (mat.map && mat.map.anisotropy !== nextAniso) {
         mat.map.anisotropy = nextAniso;
         mat.map.needsUpdate = true;
       }
+    }
+    if (materials.road.userData.wetUniforms) {
+      materials.road.userData.wetUniforms.uWetness.value = isUltra ? 0.82 : (quality === 'high' ? 0.72 : 0.60);
     }
   };
 

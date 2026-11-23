@@ -130,14 +130,14 @@ let composer = null;
 let bloomPass = null;
 
 function setupPostProcessing() {
-  // WebGL2 MSAA (4x multisampled HalfFloat render target) keeps Night & Sunset RAZOR-SHARP at full native resolution!
+  // WebGL2 4x MSAA HalfFloat render target keeps Ultra & High RAZOR-SHARP at full native resolution with smooth half-res Bloom glow!
   const isWebGL2 = Boolean(renderer.capabilities?.isWebGL2);
   const composerRT = new THREE.WebGLRenderTarget(
     Math.max(1, window.innerWidth),
     Math.max(1, window.innerHeight),
     {
       type: THREE.HalfFloatType,
-      samples: isWebGL2 ? 2 : 0,
+      samples: isWebGL2 ? 4 : 0,
     }
   );
   composer = new EffectComposer(renderer, composerRT);
@@ -147,9 +147,9 @@ function setupPostProcessing() {
       Math.max(256, Math.floor(window.innerWidth * 0.5)),
       Math.max(144, Math.floor(window.innerHeight * 0.5))
     ),
-    0.24,
-    0.38,
-    0.86
+    0.34,
+    0.48,
+    0.80
   );
   composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
@@ -216,9 +216,19 @@ function cycleTimeOfDay() {
 timeToggleButton?.addEventListener('click', cycleTimeOfDay);
 
 function renderActiveScene() {
-  // Render directly through hardware MSAA swapchain for razor-sharp full resolution & 60 FPS across ALL times of day
-  // (avoids 13-pass HalfFloat UnrealBloomPass overhead that halved FPS in Sunset & Night!)
-  renderer.render(scene, camera);
+  // Full-resolution 4x MSAA EffectComposer + half-res UnrealBloomPass glow on Ultra & High across ALL times of day!
+  const useBloom = Boolean(
+    !inStudio
+    && composer
+    && bloomPass
+    && (quality === 'ultra' || quality === 'high')
+    && bloomPass.strength > 0.02
+  );
+  if (useBloom) {
+    composer.render();
+  } else {
+    renderer.render(scene, camera);
+  }
 }
 
 const controls = new FirstPersonControls(camera, renderer.domElement);
@@ -1313,18 +1323,20 @@ function setUltraFastPerf(enabled) {
 
 function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynamic = false) {
   if (!sun || inStudio) return;
-  const radius = quality === 'ultra' ? 22 : (quality === 'high' ? 22 : (quality === 'medium' ? 20 : 18));
-  const mapSize = sun.shadow.mapSize.x || 1024;
+  const radius = quality === 'ultra' ? 46 : (quality === 'high' ? 34 : (quality === 'medium' ? 22 : 18));
+  const mapSize = sun.shadow.mapSize.x || 2048;
   const worldUnitsPerTexel = (radius * 2) / mapSize;
 
   // Texel-snap shadow frustum center to eliminate shadow edge shimmer while walking or driving!
   const snapX = Math.round(focusPos.x / worldUnitsPerTexel) * worldUnitsPerTexel;
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
-  const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 0.65 || Math.abs(snapZ - lastSunAnchorZ) > 0.65;
+  const moveThresh = quality === 'ultra' ? 0.25 : (quality === 'high' ? 0.40 : 0.65);
+  const anchorMoved = Math.abs(snapX - lastSunAnchorX) > moveThresh || Math.abs(snapZ - lastSunAnchorZ) > moveThresh;
   const activeDrivingSpeed = Math.abs(getDrivingCar()?.state?.speed || 0);
-  const baseCadence = quality === 'low' ? 240 : (quality === 'medium' ? 220 : (quality === 'high' ? 210 : 220));
-  const shadowCadenceMs = activeDrivingSpeed > 4.0 ? Math.max(baseCadence, 320) : baseCadence;
+  const baseCadence = quality === 'ultra' ? 32 : (quality === 'high' ? 50 : (quality === 'medium' ? 120 : 200));
+  const driveCadence = quality === 'ultra' ? 48 : (quality === 'high' ? 80 : 180);
+  const shadowCadenceMs = activeDrivingSpeed > 4.0 ? Math.max(baseCadence, driveCadence) : baseCadence;
   const elapsedSinceShadow = nowPerf - lastShadowUpdateAt;
   if (anchorMoved && (lastShadowUpdateAt === 0 || elapsedSinceShadow >= shadowCadenceMs)) {
     lastSunAnchorX = snapX;
@@ -1355,14 +1367,14 @@ function applyQuality(nextQuality) {
   const isLow = quality === 'low';
   const isUltra = quality === 'ultra';
   const isHigh = quality === 'high';
-  // Crisp native Retina/PC pixel ratios paired with hardware MSAA & fast shadow map sizes (razor-sharp resolution + locked 60 FPS!)
+  // Preserve FULL sharp native resolution (never downscale Ultra/High!) while keeping 60 FPS via smart GPU techniques
   const ratios = {
-    low: Math.min(dpr, 1.0),
-    medium: Math.min(dpr, 1.1),
-    high: Math.min(dpr, 1.25),
-    ultra: Math.min(dpr, 1.5),
+    low: Math.min(dpr, 1.25),
+    medium: Math.min(dpr, 1.5),
+    high: Math.min(dpr, 2.0),
+    ultra: Math.min(dpr, 2.0),
   };
-  const shadowSizes = { low: 768, medium: 1024, high: 1024, ultra: 1536 };
+  const shadowSizes = { low: 1024, medium: 1024, high: 2048, ultra: 2048 };
   const useShadows = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : !isLow);
   const activeRatio = ratios[quality] ?? ratios.high;
 
@@ -1378,7 +1390,7 @@ function applyQuality(nextQuality) {
     );
   }
   renderer.shadowMap.enabled = useShadows;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = (isUltra || isHigh) ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
   if (useShadows) {
     renderer.shadowMap.needsUpdate = true;
@@ -1417,17 +1429,17 @@ function applyQuality(nextQuality) {
   }
   if (sun) {
     sun.visible = true;
-    sun.intensity = isUltra ? 2.38 : (isHigh ? 2.18 : 2.02);
+    sun.intensity = isUltra ? 2.58 : (isHigh ? 2.28 : 2.02);
     sun.castShadow = useShadows;
     if (useShadows) {
-      const size = shadowSizes[quality] || 1536;
-      const radius = isUltra ? 22 : (isHigh ? 22 : (quality === 'medium' ? 20 : 18));
+      const size = shadowSizes[quality] || 2048;
+      const radius = isUltra ? 46 : (isHigh ? 34 : (quality === 'medium' ? 22 : 18));
       sun.shadow.camera.left = -radius;
       sun.shadow.camera.right = radius;
       sun.shadow.camera.top = radius;
       sun.shadow.camera.bottom = -radius;
       sun.shadow.camera.near = 2;
-      sun.shadow.camera.far = 135;
+      sun.shadow.camera.far = isUltra ? 180 : 145;
       sun.shadow.camera.updateProjectionMatrix();
 
       if (sun.shadow.mapSize.x !== size || sun.shadow.mapSize.y !== size) {
@@ -1437,14 +1449,14 @@ function applyQuality(nextQuality) {
           sun.shadow.map = null;
         }
       }
-      sun.shadow.bias = -0.0005;
-      sun.shadow.normalBias = 0.035;
+      sun.shadow.bias = isUltra ? -0.00035 : -0.0005;
+      sun.shadow.normalBias = isUltra ? 0.028 : 0.035;
       renderer.shadowMap.needsUpdate = true;
       lastShadowUpdateAt = 0;
     }
   }
 
-  // Keep showroom dual-lobe clearcoat ONLY on hero vehicles & hero character (strips expensive dual-lobe clearcoat from static world buildings for ~40% faster world fragment shaders!)
+  // On Ultra, preserve full physical clearcoat on vehicles, glass, marble, porcelain & water; on High/Medium keep clearcoat on hero vehicles for fast 60 FPS
   const seenPhysMats = new Set();
   const isInsideVehicle = (obj) => {
     let cur = obj;
@@ -1465,7 +1477,7 @@ function applyQuality(nextQuality) {
       if (mat.userData._origClearcoat === undefined) {
         mat.userData._origClearcoat = mat.clearcoat || 0;
       }
-      const wantCC = (!isLow && isVeh) ? mat.userData._origClearcoat : 0;
+      const wantCC = isUltra ? mat.userData._origClearcoat : ((!isLow && isVeh) ? mat.userData._origClearcoat : 0);
       if (mat.clearcoat !== wantCC) {
         mat.clearcoat = wantCC;
         mat.needsUpdate = true;
@@ -3894,7 +3906,8 @@ function syncSceneVisibility(force = false) {
       environment.farGroup.visible = wantFar;
     }
   }
-  const parkedCarVisSq = (isDrivingNow ? 68 : 92) ** 2;
+  const parkedCarVisSq = (quality === 'ultra' ? (isDrivingNow ? 105 : 130) : (isDrivingNow ? 68 : 92)) ** 2;
+  const vehShadowSq = (quality === 'ultra' ? 46 : (quality === 'high' ? 30 : 15)) ** 2;
   for (let i = 0; i < cars.length; i++) {
     const c = cars[i];
     if (!c) continue;
@@ -3903,9 +3916,7 @@ function syncSceneVisibility(force = false) {
     const dz = cPos.z - playerPos.z;
     const dSq = dx * dx + dz * dz;
     const wantVis = Boolean(c.state.driving) || dSq < parkedCarVisSq;
-    // Only the actively driven vehicle (or very close parked vehicle while on foot) casts dynamic sun shadow;
-    // parked cars already have grounded contactShadow meshes, saving millions of shadow-pass triangles!
-    const wantShadow = Boolean(c.state.driving) || (!isDrivingNow && dSq < 15 * 15);
+    const wantShadow = Boolean(c.state.driving) || (quality === 'ultra' ? dSq < vehShadowSq : (!isDrivingNow && dSq < vehShadowSq));
     c.setVisibilityAndShadow?.(wantVis, wantShadow);
   }
   if (environment?.city) {
