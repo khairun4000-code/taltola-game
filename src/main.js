@@ -130,22 +130,22 @@ let composer = null;
 let bloomPass = null;
 
 function setupPostProcessing() {
-  // WebGL2 4x MSAA HalfFloat render target keeps Ultra & High RAZOR-SHARP at full native resolution with smooth half-res Bloom glow!
+  // WebGL2 2x MSAA HalfFloat render target + quarter-res UnrealBloomPass gives razor-sharp Ultra 4K glow at 2x higher FPS!
   const isWebGL2 = Boolean(renderer.capabilities?.isWebGL2);
   const composerRT = new THREE.WebGLRenderTarget(
     Math.max(1, window.innerWidth),
     Math.max(1, window.innerHeight),
     {
       type: THREE.HalfFloatType,
-      samples: isWebGL2 ? 4 : 0,
+      samples: isWebGL2 ? 2 : 0,
     }
   );
   composer = new EffectComposer(renderer, composerRT);
   composer.addPass(new RenderPass(scene, camera));
   bloomPass = new UnrealBloomPass(
     new THREE.Vector2(
-      Math.max(256, Math.floor(window.innerWidth * 0.5)),
-      Math.max(144, Math.floor(window.innerHeight * 0.5))
+      Math.max(192, Math.floor(window.innerWidth * 0.25)),
+      Math.max(108, Math.floor(window.innerHeight * 0.25))
     ),
     0.34,
     0.48,
@@ -1323,19 +1323,19 @@ function setUltraFastPerf(enabled) {
 
 function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynamic = false) {
   if (!sun || inStudio) return;
-  const radius = quality === 'ultra' ? 46 : (quality === 'high' ? 34 : (quality === 'medium' ? 22 : 18));
-  const mapSize = sun.shadow.mapSize.x || 2048;
+  const radius = quality === 'ultra' ? 38 : (quality === 'high' ? 30 : (quality === 'medium' ? 22 : 18));
+  const mapSize = sun.shadow.mapSize.x || 1536;
   const worldUnitsPerTexel = (radius * 2) / mapSize;
 
   // Texel-snap shadow frustum center to eliminate shadow edge shimmer while walking or driving!
   const snapX = Math.round(focusPos.x / worldUnitsPerTexel) * worldUnitsPerTexel;
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
-  const moveThresh = quality === 'ultra' ? 0.25 : (quality === 'high' ? 0.40 : 0.65);
+  const moveThresh = quality === 'ultra' ? 0.45 : (quality === 'high' ? 0.55 : 0.70);
   const anchorMoved = Math.abs(snapX - lastSunAnchorX) > moveThresh || Math.abs(snapZ - lastSunAnchorZ) > moveThresh;
   const activeDrivingSpeed = Math.abs(getDrivingCar()?.state?.speed || 0);
-  const baseCadence = quality === 'ultra' ? 32 : (quality === 'high' ? 50 : (quality === 'medium' ? 120 : 200));
-  const driveCadence = quality === 'ultra' ? 48 : (quality === 'high' ? 80 : 180);
+  const baseCadence = quality === 'ultra' ? 110 : (quality === 'high' ? 140 : (quality === 'medium' ? 180 : 240));
+  const driveCadence = quality === 'ultra' ? 160 : (quality === 'high' ? 200 : 240);
   const shadowCadenceMs = activeDrivingSpeed > 4.0 ? Math.max(baseCadence, driveCadence) : baseCadence;
   const elapsedSinceShadow = nowPerf - lastShadowUpdateAt;
   if (anchorMoved && (lastShadowUpdateAt === 0 || elapsedSinceShadow >= shadowCadenceMs)) {
@@ -1367,26 +1367,26 @@ function applyQuality(nextQuality) {
   const isLow = quality === 'low';
   const isUltra = quality === 'ultra';
   const isHigh = quality === 'high';
-  // Preserve FULL sharp native resolution (never downscale Ultra/High!) while keeping 60 FPS via smart GPU techniques
+  // 4 Game-Style Presets: Low Smooth (crisp high-detail at 60 FPS), Medium, High, Ultra 4K (full native resolution + glow + soft shadows)
   const ratios = {
-    low: Math.min(dpr, 1.25),
-    medium: Math.min(dpr, 1.5),
-    high: Math.min(dpr, 2.0),
+    low: Math.min(dpr, 1.15),
+    medium: Math.min(dpr, 1.35),
+    high: Math.min(dpr, 1.60),
     ultra: Math.min(dpr, 2.0),
   };
-  const shadowSizes = { low: 1024, medium: 1024, high: 2048, ultra: 2048 };
+  const shadowSizes = { low: 1024, medium: 1024, high: 1536, ultra: 2048 };
   const useShadows = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : !isLow);
   const activeRatio = ratios[quality] ?? ratios.high;
 
   renderer.setPixelRatio(activeRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.toneMappingExposure = isUltra ? 1.12 : (isHigh ? 1.09 : (isLow ? 1.05 : 1.07));
+  renderer.toneMappingExposure = isUltra ? 1.12 : (isHigh ? 1.09 : (isLow ? 1.06 : 1.07));
   if (composer) {
     composer.setPixelRatio(activeRatio);
     composer.setSize(window.innerWidth, window.innerHeight);
     bloomPass?.setSize?.(
-      Math.max(256, Math.floor(window.innerWidth * 0.5)),
-      Math.max(144, Math.floor(window.innerHeight * 0.5))
+      Math.max(192, Math.floor(window.innerWidth * 0.25)),
+      Math.max(108, Math.floor(window.innerHeight * 0.25))
     );
   }
   renderer.shadowMap.enabled = useShadows;
@@ -1400,9 +1400,9 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = isLow ? 120 : (quality === 'medium' ? 175 : (isUltra ? 260 : 215));
-    scene.fog.far = isLow ? 275 : (quality === 'medium' ? 410 : (isUltra ? 620 : 510));
-    camera.far = isLow ? 320 : (quality === 'medium' ? 460 : (isUltra ? 660 : 550));
+    scene.fog.near = isLow ? 145 : (quality === 'medium' ? 185 : (isUltra ? 260 : 215));
+    scene.fog.far = isLow ? 340 : (quality === 'medium' ? 430 : (isUltra ? 620 : 510));
+    camera.far = isLow ? 390 : (quality === 'medium' ? 480 : (isUltra ? 660 : 550));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
@@ -1433,13 +1433,13 @@ function applyQuality(nextQuality) {
     sun.castShadow = useShadows;
     if (useShadows) {
       const size = shadowSizes[quality] || 2048;
-      const radius = isUltra ? 46 : (isHigh ? 34 : (quality === 'medium' ? 22 : 18));
+      const radius = isUltra ? 38 : (isHigh ? 30 : (quality === 'medium' ? 22 : 18));
       sun.shadow.camera.left = -radius;
       sun.shadow.camera.right = radius;
       sun.shadow.camera.top = radius;
       sun.shadow.camera.bottom = -radius;
       sun.shadow.camera.near = 2;
-      sun.shadow.camera.far = isUltra ? 180 : 145;
+      sun.shadow.camera.far = isUltra ? 165 : 140;
       sun.shadow.camera.updateProjectionMatrix();
 
       if (sun.shadow.mapSize.x !== size || sun.shadow.mapSize.y !== size) {
@@ -1456,7 +1456,7 @@ function applyQuality(nextQuality) {
     }
   }
 
-  // On Ultra, preserve full physical clearcoat on vehicles, glass, marble, porcelain & water; on High/Medium keep clearcoat on hero vehicles for fast 60 FPS
+  // Keep showroom dual-lobe clearcoat strictly on hero vehicles & hero character (saves ~40% fragment shader cost across static world buildings!)
   const seenPhysMats = new Set();
   const isInsideVehicle = (obj) => {
     let cur = obj;
@@ -1477,7 +1477,7 @@ function applyQuality(nextQuality) {
       if (mat.userData._origClearcoat === undefined) {
         mat.userData._origClearcoat = mat.clearcoat || 0;
       }
-      const wantCC = isUltra ? mat.userData._origClearcoat : ((!isLow && isVeh) ? mat.userData._origClearcoat : 0);
+      const wantCC = (!isLow && isVeh) ? mat.userData._origClearcoat : 0;
       if (mat.clearcoat !== wantCC) {
         mat.clearcoat = wantCC;
         mat.needsUpdate = true;
@@ -1598,6 +1598,9 @@ function toggleRunMode() {
 }
 
 function getActiveLiftTower() {
+  if (house?.isInTowerFootprint?.(playerPos, 3.0)) {
+    return house;
+  }
   if (environment?.landmarks?.judgeCourt?.isInTowerFootprint?.(playerPos, 6.0)) {
     return environment.landmarks.judgeCourt;
   }
@@ -2738,6 +2741,23 @@ function handleDoorInteraction(allowClimbFallback = false) {
     return true;
   }
   if (environment?.altapole?.interact(playerPos)) {
+    syncHUDButtons(false, true);
+    return true;
+  }
+  const houseLiftRes = house?.interact?.(playerPos);
+  if (houseLiftRes === 'open_lift_keypad') {
+    openLiftKeypad();
+    syncHUDButtons(false, true);
+    return true;
+  }
+  const tvRes = house?.toggleNearestTV?.(playerPos);
+  if (tvRes) {
+    playerCharacter?.triggerPhoneTap?.();
+    gtaPhoneUI?.showToast?.(
+      tvRes.isOn
+        ? `📺 TV ON (Flat ${tvRes.unit}) — ${tvRes.channelName} · [K] চ্যানেল পাল্টাও`
+        : `📺 TV OFF (Flat ${tvRes.unit}) — রিমোট দিয়ে বন্ধ করা হয়েছে`
+    );
     syncHUDButtons(false, true);
     return true;
   }
@@ -4760,9 +4780,17 @@ window.addEventListener('keydown', (event) => {
   }
 
   if (event.code === 'KeyE') {
-    // [E] strictly for doors, gates, lift & sitting
+    // [E] strictly for doors, gates, lift, TV remote & sitting
     event.preventDefault();
     handleDoorInteraction(false);
+  } else if (event.code === 'KeyK' && !event.repeat) {
+    // [K] TV Remote: Next Channel
+    const chRes = house?.cycleNearestTVChannel?.(playerPos);
+    if (chRes) {
+      event.preventDefault();
+      playerCharacter?.triggerPhoneTap?.();
+      gtaPhoneUI?.showToast?.(`📺 Flat ${chRes.unit} TV · Channel: ${chRes.channelName}`);
+    }
   } else if (event.code === 'KeyF') {
     // [F] strictly for entering/exiting vehicles (falls back to wall climb if no vehicle nearby)
     event.preventDefault();
@@ -4967,33 +4995,40 @@ function getFurnitureBoxesForFloor(building, fy) {
   // --- 5-STORY TALTOLA HOUSE (levels 0..4, fy = 0, 3.05, 6.10, 9.15, 12.20) ---
   if (fy > 13.5) return [];
   return [
-    // Unit A Drawing Room Sofa & Coffee Table
+    // Unit A Drawing Room Sofa, Coffee Table & TV Media Console
     {
       minX: 6.80, maxX: 8.90, minZ: -5.18, maxZ: -4.40, h: 0.48,
       seat: true, seatX: 7.85, seatZ: -4.68, seatY: 0.46, yaw: 0,
       label: 'Living Room Sofa',
     },
     { minX: 7.28, maxX: 8.42, minZ: -3.86, maxZ: -3.24, h: 0.48, seat: false },
-    // Unit A Master Bedroom King Bed & Almirah
+    { minX: 9.14, maxX: 9.62, minZ: -4.58, maxZ: -2.72, h: 0.68, seat: false },
+    // Unit A Master Bedroom King Bed, Nightstand & Almirah Wardrobe
     {
       minX: 11.88, maxX: 13.82, minZ: -5.08, maxZ: -3.28, h: 0.56,
       seat: true, seatX: 12.85, seatZ: -3.95, seatY: 0.54, yaw: 0,
       label: 'Master Bed',
     },
+    { minX: 11.48, maxX: 11.98, minZ: -5.08, maxZ: -4.62, h: 0.58, seat: false },
     { minX: 11.55, maxX: 12.10, minZ: -3.74, maxZ: -2.56, h: 2.02, seat: false },
-    // Unit A & Unit B Attached Bathroom Western Toilet Commodes
+    // Unit A & Unit B Attached Bathroom Commodes, Pedestal Wash Basins & Buckets
     {
       minX: 9.72, maxX: 10.32, minZ: -4.98, maxZ: -4.46, h: 0.52,
       seat: true, seatX: 10.06, seatZ: -4.72, seatY: 0.50, yaw: Math.PI / 2,
       label: 'Toilet Commode',
     },
+    { minX: 9.70, maxX: 10.22, minZ: -3.66, maxZ: -3.10, h: 0.92, seat: false },
+    { minX: 10.82, maxX: 11.24, minZ: -4.38, maxZ: -3.96, h: 0.44, seat: false },
     {
       minX: 9.72, maxX: 10.32, minZ: 4.46, maxZ: 4.98, h: 0.52,
       seat: true, seatX: 10.06, seatZ: 4.72, seatY: 0.50, yaw: Math.PI / 2,
       label: 'Toilet Commode',
     },
-    // Unit B Dining Table & 4 Dining Chairs
+    { minX: 9.70, maxX: 10.22, minZ: 3.10, maxZ: 3.66, h: 0.92, seat: false },
+    { minX: 10.82, maxX: 11.24, minZ: 3.96, maxZ: 4.38, h: 0.44, seat: false },
+    // Unit B Dining Table, 4 Dining Chairs & TV Media Console
     { minX: 7.10, maxX: 8.60, minZ: 3.04, maxZ: 4.06, h: 0.79, seat: false },
+    { minX: 9.14, maxX: 9.62, minZ: 2.82, maxZ: 4.68, h: 0.68, seat: false },
     {
       minX: 7.28, maxX: 7.72, minZ: 2.56, maxZ: 3.00, h: 0.48,
       seat: true, seatX: 7.50, seatZ: 2.78, seatY: 0.46, yaw: 0,
@@ -5203,6 +5238,13 @@ function computeGroundHeight(pos, isGroundedOverride = grounded, velYOverride = 
   // --- 5-STORY TALTOLA HOUSE (at Tootpara Taltola Hospital Cross Rd) ---
   const lx = pos.x - TALTOLA_HOUSE_OFFSET.x;
   const lz = pos.z - TALTOLA_HOUSE_OFFSET.z;
+  // Inside Taltola House 3D Elevator Cabin (lx ∈ [14.30, 16.02], |lz| ≤ 0.88)
+  if (house?.isInsideLift?.(pos)) {
+    const liftY = house.state.liftY;
+    if (Math.abs(footY - liftY) < 2.4) {
+      return liftY;
+    }
+  }
   const insideMainSlab = lx >= 5.95 && lx <= 14.38 && Math.abs(lz) <= 5.42;
   const inFrontBalconyZone = lx >= 4.74 && lx <= 6.08 &&
     ((lz >= -5.12 && lz <= -1.48) || (lz >= 1.52 && lz <= 5.12));
@@ -5493,7 +5535,16 @@ function applyWorldCollisions(pos, isProbe = false) {
   }
   const onStairs = lpos.x >= 7.68 && lpos.x <= 12.12 && lpos.z >= 0.16 && lpos.z <= 1.16;
 
-  for (let iter = 0; iter < 2; iter++) {
+  for (let iter = 0; iter < 3; iter++) {
+    // Taltola House 3D Elevator Shaft Solid Walls (x ∈ [14.34, 16.06], z ∈ [-0.94, +0.94]) across ALL floors + Rooftop!
+    resolveCircleAABB(lpos, 0.22, 15.92, 16.14, -0.96, 0.96); // Rear East glass wall
+    resolveCircleAABB(lpos, 0.22, 14.32, 16.08, -0.96, -0.82); // North shaft wall
+    resolveCircleAABB(lpos, 0.22, 14.32, 16.08, 0.82, 0.96); // South shaft wall
+    if (!house?.isLiftOpenAtY?.(footY)) {
+      // Block lift doorway when cabin is moving or on another floor so player never falls into shaft or clips out mid-ride!
+      resolveCircleAABB(lpos, 0.22, 14.24, 14.44, -0.66, 0.66);
+    }
+
     // Taltola House Front Compound Wall & Main Gate (climbable up to y=2.25, Gate Pillars solid up to 3.15!)
     if (footY < 2.22) {
       resolveCircleAABB(lpos, PLAYER_RADIUS, 2.06, 2.86, -7.36, -2.06);
@@ -5515,29 +5566,20 @@ function applyWorldCollisions(pos, isProbe = false) {
         resolveCircleAABB(lpos, PLAYER_RADIUS, 2.34, 2.96, side * 7.28 - 0.32, side * 7.28 + 0.32);
       }
     }
-    // Courtyard & Backyard Solid Obstacles (Ground Level):
-    // 1) Front Entrance Porch Pillars ([5.68, ±0.96])
-    // 2) Backyard Clothesline Rack & Poles (x=17.6, z=-4.8..-1.6 — কাপড় নাড়ানোর স্ট্যান্ড!)
-    // 3) Backyard Water Tap Pillar & Concrete Basin (x=14.7..15.65, z=3.95..4.88)
-    // 4) Backyard Raised Brick Flower Bed (x=20.2..21.3, z=-4.3..4.3)
-    // 5) 8 Terracotta Potted Plants & Roadside Utility Poles
+    // Courtyard & Backyard Solid Obstacles (Ground Level)
     if (footY < 2.65) {
       resolveCircleAABB(lpos, PLAYER_RADIUS, 5.53, 5.83, -1.09, -0.83);
       resolveCircleAABB(lpos, PLAYER_RADIUS, 5.53, 5.83, 0.83, 1.09);
-      // Roadside utility poles outside Taltola House
       resolveCircleAABB(lpos, PLAYER_RADIUS, -2.56, -2.14, -18.22, -17.78);
       resolveCircleAABB(lpos, PLAYER_RADIUS, -2.56, -2.14, 17.78, 18.22);
     }
     if (footY < 2.28) {
-      // Backyard Clothesline Rack & Hanging Clothes (solid poles & line!)
       resolveCircleAABB(lpos, PLAYER_RADIUS, 17.44, 17.76, -4.86, -1.54);
     }
     if (footY < 0.98) {
-      // Backyard Water Tap Pillar & Basin
       resolveCircleAABB(lpos, PLAYER_RADIUS, 14.58, 15.68, 3.92, 4.88);
     }
     if (footY < 0.46) {
-      // Backyard Brick Flower Planter Bed
       resolveCircleAABB(lpos, PLAYER_RADIUS, 20.18, 21.32, -4.35, 4.35);
     }
     if (footY < 0.72) {
@@ -5551,15 +5593,15 @@ function applyWorldCollisions(pos, isProbe = false) {
 
     // Rooftop Parapet & Mumty Collisions (Level 5: y ≈ 15.25)
     if (footY >= 14.1) {
-      // Stairwell guardrail & Mumty walls on roof
       resolveCircleAABB(lpos, 0.14, 7.86, 11.94, 0.14, 0.20);
-      resolveCircleAABB(lpos, PLAYER_RADIUS, 7.50, 13.65, -1.30, -1.12);
-      resolveCircleAABB(lpos, PLAYER_RADIUS, 7.50, 13.65, 1.15, 1.32);
-      resolveCircleAABB(lpos, PLAYER_RADIUS, 13.45, 13.68, -1.25, 1.25);
-      // Rooftop Parapet Walls — only block horizontally when not jumping over them (footY - 15.25 < 0.68)!
+      resolveCircleAABB(lpos, PLAYER_RADIUS, 7.50, 14.32, -1.30, -1.12);
+      resolveCircleAABB(lpos, PLAYER_RADIUS, 7.50, 14.32, 1.15, 1.32);
+      resolveCircleAABB(lpos, PLAYER_RADIUS, 14.15, 14.42, -1.25, -0.64);
+      resolveCircleAABB(lpos, PLAYER_RADIUS, 14.15, 14.42, 0.64, 1.25);
       if (footY - 15.25 < 0.68) {
         resolveCircleAABB(lpos, PLAYER_RADIUS, 5.75, 6.02, -5.50, 5.50);
-        resolveCircleAABB(lpos, PLAYER_RADIUS, 14.15, 14.42, -5.50, 5.50);
+        resolveCircleAABB(lpos, PLAYER_RADIUS, 14.15, 14.42, -5.50, -0.64);
+        resolveCircleAABB(lpos, PLAYER_RADIUS, 14.15, 14.42, 0.64, 5.50);
         resolveCircleAABB(lpos, PLAYER_RADIUS, 5.85, 14.35, -5.55, -5.28);
         resolveCircleAABB(lpos, PLAYER_RADIUS, 5.85, 14.35, 5.28, 5.55);
       }
@@ -5569,25 +5611,23 @@ function applyWorldCollisions(pos, isProbe = false) {
     const houseFy = currentLevel * 3.05;
 
     // Building Exterior Front & Back Walls (x = 6.08 and x = 14.28) — ALWAYS SOLID at ALL jump heights!
+    // Rear wall leaves open lift doorway at z ∈ [-0.64, +0.64] on ALL 5 floors!
     if (currentLevel === 0) {
       resolveCircleAABB(lpos, PLAYER_RADIUS, 5.90, 6.26, -5.50, -0.60);
       resolveCircleAABB(lpos, PLAYER_RADIUS, 5.90, 6.26, 0.60, 5.50);
       if (house && !house.state.frontDoorOpen) {
         resolveCircleAABB(lpos, PLAYER_RADIUS, 5.88, 6.24, -0.64, 0.64);
       }
-
-      resolveCircleAABB(lpos, PLAYER_RADIUS, 14.10, 14.46, -5.50, -0.60);
-      resolveCircleAABB(lpos, PLAYER_RADIUS, 14.10, 14.46, 0.60, 5.50);
-      if (house && !house.state.backDoorOpen) {
-        resolveCircleAABB(lpos, PLAYER_RADIUS, 14.14, 14.48, -0.64, 0.64);
-      }
-    } else if (currentLevel >= 1 && currentLevel <= 4 && lpos.x >= 4.5 && lpos.x <= 14.6 && Math.abs(lpos.z) <= 5.55) {
+      resolveCircleAABB(lpos, PLAYER_RADIUS, 14.10, 14.46, -5.50, -0.64);
+      resolveCircleAABB(lpos, PLAYER_RADIUS, 14.10, 14.46, 0.64, 5.50);
+    } else if (currentLevel >= 1 && currentLevel <= 4 && lpos.x >= 4.5 && lpos.x <= 16.2 && Math.abs(lpos.z) <= 5.55) {
       // Upper floors: Front wall (x = 6.08) has open balcony doorways at z ∈ [-3.25, -1.90] (Unit A) and z ∈ [1.90, 3.25] (Unit B)!
       resolveCircleAABB(lpos, PLAYER_RADIUS, 5.94, 6.22, -5.48, -3.25);
       resolveCircleAABB(lpos, PLAYER_RADIUS, 5.94, 6.22, -1.90, 1.90);
       resolveCircleAABB(lpos, PLAYER_RADIUS, 5.94, 6.22, 3.25, 5.48);
-      // Back wall
-      resolveCircleAABB(lpos, PLAYER_RADIUS, 14.14, 14.46, -5.48, 5.48);
+      // Back wall leaves Lift Doorway open at z ∈ [-0.64, +0.64]
+      resolveCircleAABB(lpos, PLAYER_RADIUS, 14.14, 14.46, -5.48, -0.64);
+      resolveCircleAABB(lpos, PLAYER_RADIUS, 14.14, 14.46, 0.64, 5.48);
       // Front balcony side walls & jumpable front railing (x = 4.77)
       resolveCircleAABB(lpos, PLAYER_RADIUS, 4.72, 6.08, -5.20, -5.02);
       resolveCircleAABB(lpos, PLAYER_RADIUS, 4.72, 6.08, -1.56, -1.38);
@@ -6362,6 +6402,32 @@ function updateMovement(delta) {
     grounded = false;
     verticalVelocity -= 15.8 * delta;
     playerPos.y += verticalVelocity * delta;
+    // Solid Indoor Ceiling Clamp: jumping inside Taltola House or Sk Arshan Tower NEVER clips through to the floor above!
+    if (verticalVelocity > 0) {
+      const lxCeil = playerPos.x - TALTOLA_HOUSE_OFFSET.x;
+      const lzCeil = playerPos.z - TALTOLA_HOUSE_OFFSET.z;
+      if (lxCeil >= 5.85 && lxCeil <= 14.42 && Math.abs(lzCeil) <= 5.42 && groundY < 14.5) {
+        const inHouseStairOpen = lxCeil >= 7.62 && lxCeil <= 12.18 && lzCeil >= 0.16 && lzCeil <= 1.16;
+        if (!inHouseStairOpen) {
+          const floorLvl = Math.max(0, Math.min(4, Math.floor((groundY + 0.35) / 3.05)));
+          const maxEyeY = (floorLvl + 1) * 3.05 - 0.34;
+          if (playerPos.y > maxEyeY) {
+            playerPos.y = maxEyeY;
+            verticalVelocity = 0;
+          }
+        }
+      } else if (playerPos.x >= -19.85 && playerPos.x <= -3.4 && playerPos.z >= 14.28 && playerPos.z <= 28.55 && groundY < 29.8) {
+        const inTowerStairOpen = playerPos.x >= -14.25 && playerPos.x <= -9.55 && playerPos.z >= 21.50 && playerPos.z <= 22.85;
+        if (!inTowerStairOpen && !environment?.tower?.isInsideLift?.(playerPos)) {
+          const nextSlabY = groundY < 2.2 ? 4.0 : (4.0 + (Math.floor((groundY - 4.0 + 0.35) / 3.0) + 1) * 3.0);
+          const maxEyeY = nextSlabY - 0.36;
+          if (playerPos.y > maxEyeY) {
+            playerPos.y = maxEyeY;
+            verticalVelocity = 0;
+          }
+        }
+      }
+    }
     if (playerPos.y > airPeakY) airPeakY = playerPos.y;
     if (verticalVelocity <= 0 && playerPos.y <= targetEyeY) {
       const dropH = airPeakY - targetEyeY;
@@ -6391,7 +6457,7 @@ function updateMovement(delta) {
   const camFootY = playerPos.y - EYE_HEIGHT;
   const lxCam = playerPos.x - TALTOLA_HOUSE_OFFSET.x;
   const lzCam = playerPos.z - TALTOLA_HOUSE_OFFSET.z;
-  const insideHouse = (lxCam > 4.7 && lxCam < 14.6 && Math.abs(lzCam) < 5.3)
+  const insideHouse = (lxCam > 4.7 && lxCam < 16.3 && Math.abs(lzCam) < 5.3)
     || (playerPos.x < -2.8 && playerPos.x > -19.9 && playerPos.z > 14.3 && playerPos.z < 28.6)
     || Boolean(environment?.altapole?.isInsideAnyHouse?.(playerPos))
     || Boolean(environment?.altapoleTower?.isInsideAnyRoom?.(playerPos))
@@ -6550,8 +6616,8 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer?.setSize(window.innerWidth, window.innerHeight);
   bloomPass?.setSize?.(
-    Math.max(256, Math.floor(window.innerWidth * 0.5)),
-    Math.max(144, Math.floor(window.innerHeight * 0.5))
+    Math.max(192, Math.floor(window.innerWidth * 0.25)),
+    Math.max(108, Math.floor(window.innerHeight * 0.25))
   );
 });
 

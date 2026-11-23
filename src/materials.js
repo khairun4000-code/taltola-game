@@ -415,13 +415,14 @@ export function createMaterials(renderer, manager) {
   materials.setQualityMode = (quality) => {
     const isLow = quality === 'low';
     const isUltra = quality === 'ultra';
-    const nextAniso = isLow ? 2 : (quality === 'medium' ? Math.min(4, anisotropy) : (quality === 'high' ? Math.min(8, anisotropy) : anisotropy));
+    // Even on Low Smooth, keep crisp 4x anisotropy and PBR normal maps so everything stays high-detail while running at 60 FPS!
+    const nextAniso = isLow ? Math.min(4, anisotropy) : (quality === 'medium' ? Math.min(4, anisotropy) : (quality === 'high' ? Math.min(8, anisotropy) : anisotropy));
     const normMult = isUltra ? 1.18 : 1.0;
-    const envMult = isUltra ? 1.22 : 1.0;
+    const envMult = isUltra ? 1.22 : (isLow ? 0.85 : 1.0);
     for (const mat of allMaterials) {
       if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
       if (mat.userData && mat.userData.pbrNormalMap) {
-        const nextNorm = isLow ? null : mat.userData.pbrNormalMap;
+        const nextNorm = mat.userData.pbrNormalMap;
         const nextRough = (isLow || quality === 'medium') ? null : mat.userData.pbrRoughnessMap;
         if (mat.normalMap !== nextNorm || mat.roughnessMap !== nextRough) {
           mat.normalMap = nextNorm;
@@ -448,7 +449,7 @@ export function createMaterials(renderer, manager) {
       }
     }
     if (materials.road.userData.wetUniforms) {
-      materials.road.userData.wetUniforms.uWetness.value = isUltra ? 0.82 : (quality === 'high' ? 0.72 : 0.60);
+      materials.road.userData.wetUniforms.uWetness.value = isUltra ? 0.82 : (quality === 'high' ? 0.72 : 0.65);
     }
   };
 

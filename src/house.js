@@ -1,6 +1,192 @@
 import * as THREE from 'three';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 import { box, cylinder, rodBetween, facadeShape, polygonShape, mergeStaticMeshes } from './scene-utils.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
+
+const TV_CHANNELS = [
+  { id: 'news', name: 'SOMOY NEWS 24', accent: '#dc2626', bgTop: '#0c4a6e', bgBot: '#0f172a' },
+  { id: 'cricket', name: 'BD CRICKET LIVE', accent: '#16a34a', bgTop: '#065f46', bgBot: '#14532d' },
+  { id: 'music', name: 'KHULNA MUSIC HD', accent: '#9333ea', bgTop: '#312e81', bgBot: '#0f172a' },
+  { id: 'cinema', name: 'BANGLA CINEMA', accent: '#ea580c', bgTop: '#9a3412', bgBot: '#1e3a5f' },
+];
+
+function playRemoteClickBeep(freq = 1280, dur = 0.045) {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!window.__taltolaRemoteAudioCtx) window.__taltolaRemoteAudioCtx = new AC();
+    const ctx = window.__taltolaRemoteAudioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + dur);
+  } catch {}
+}
+
+function createLiveTVBroadcastSystem() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 384;
+  canvas.height = 216;
+  const ctx = canvas.getContext('2d');
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+
+  const tvOnMat = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
+  const tvOffMat = new THREE.MeshStandardMaterial({
+    color: 0x0b0e13,
+    roughness: 0.14,
+    metalness: 0.25,
+    envMapIntensity: 0.9,
+  });
+
+  let lastDrawMs = 0;
+
+  function drawChannel(channelIndex, timeSec) {
+    const ch = TV_CHANNELS[channelIndex % TV_CHANNELS.length] || TV_CHANNELS[0];
+    const W = canvas.width;
+    const H = canvas.height;
+
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, ch.bgTop);
+    grad.addColorStop(1, ch.bgBot);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    if (ch.id === 'news') {
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(18, 42, W - 36, 120);
+      ctx.strokeStyle = 'rgba(56,189,248,0.28)';
+      ctx.lineWidth = 2;
+      const shift = (timeSec * 22) % 36;
+      for (let gx = 20 + shift; gx < W - 20; gx += 36) {
+        ctx.beginPath();
+        ctx.moveTo(gx, 44);
+        ctx.lineTo(gx, 160);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(W * 0.5, 92, 18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(W * 0.5 - 32, 112, 64, 50, 14);
+      ctx.fill();
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(W * 0.5 - 4, 116, 8, 26);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 174, W, 42);
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(0, 174, 92, 42);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px Arial';
+      ctx.fillText('BREAKING', 12, 200);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(96, 174, W - 96, 42);
+      ctx.clip();
+      const tickerText = 'খুলনা তালতলা লাইভ নিউজ  •  KHULNA VI OPEN WORLD  •  ROYAL MORE & ALIA MADRASAH LIVE  •  ';
+      const tx = W - ((timeSec * 58) % (W + 460));
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 13px Arial';
+      ctx.fillText(tickerText, tx, 200);
+      ctx.restore();
+    } else if (ch.id === 'cricket') {
+      ctx.fillStyle = '#15803d';
+      ctx.fillRect(0, 88, W, 128);
+      ctx.fillStyle = '#d4b483';
+      ctx.fillRect(W * 0.42, 100, W * 0.16, 86);
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      for (let i = 0; i < 28; i++) {
+        ctx.fillRect(10 + i * 13, 62 + ((i * 7) % 18), 7, 7);
+      }
+      const bx = W * 0.5 + Math.sin(timeSec * 3.8) * 110;
+      const by = 135 - Math.abs(Math.cos(timeSec * 3.8)) * 42;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(bx, by, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(15,23,42,0.92)';
+      ctx.fillRect(0, 178, W, 38);
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(0, 178, 82, 38);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px Arial';
+      ctx.fillText('BAN', 22, 202);
+      const runs = 184 + (Math.floor(timeSec * 0.4) % 12);
+      ctx.fillText(`${runs}/3  (17.4 OV)  •  KHULNA STADIUM`, 94, 202);
+    } else if (ch.id === 'music') {
+      const bars = 18;
+      const bw = (W - 48) / bars;
+      for (let i = 0; i < bars; i++) {
+        const amp = 0.25 + 0.75 * Math.abs(Math.sin(timeSec * 4.2 + i * 0.55));
+        const bh = amp * 110;
+        ctx.fillStyle = i % 2 === 0 ? '#ec4899' : '#38bdf8';
+        ctx.fillRect(24 + i * bw, 168 - bh, bw - 4, bh);
+      }
+      ctx.fillStyle = 'rgba(15,23,42,0.85)';
+      ctx.fillRect(0, 176, W, 40);
+      ctx.fillStyle = '#f472b6';
+      ctx.font = 'bold 14px Arial';
+      ctx.fillText('♪ NOW PLAYING: KHULNA NIGHTS (LIVE HD)', 22, 201);
+    } else {
+      const sunY = 74 + Math.sin(timeSec * 0.6) * 4;
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.arc(W * 0.72, sunY, 24, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#0c4a6e';
+      ctx.fillRect(0, 128, W, 88);
+      const boatX = ((timeSec * 28) % (W + 100)) - 50;
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.moveTo(boatX, 148);
+      ctx.lineTo(boatX + 54, 148);
+      ctx.lineTo(boatX + 44, 160);
+      ctx.lineTo(boatX + 10, 160);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(boatX + 16, 136, 22, 12);
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(0, 182, W, 34);
+      ctx.fillStyle = '#fed7aa';
+      ctx.font = 'bold 13px Arial';
+      ctx.fillText('★ BANGLA CINEMA HD · রূপসা নদীর গল্প', 22, 204);
+    }
+
+    const pulse = Math.sin(timeSec * 5.0) > -0.2;
+    ctx.fillStyle = pulse ? ch.accent : '#7f1d1d';
+    ctx.fillRect(14, 12, 56, 20);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px Arial';
+    ctx.fillText('● LIVE', 20, 26);
+    ctx.fillStyle = 'rgba(15,23,42,0.82)';
+    ctx.fillRect(74, 12, 132, 20);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillText(ch.name, 82, 26);
+
+    texture.needsUpdate = true;
+  }
+
+  drawChannel(0, 0);
+
+  return {
+    tvOnMat,
+    tvOffMat,
+    update(channelIndex, nowMs) {
+      if (nowMs - lastDrawMs < 110) return;
+      lastDrawMs = nowMs;
+      drawChannel(channelIndex, nowMs * 0.001);
+    },
+  };
+}
 
 function frontWindow(group, m, { x = 6.16, y, z, width, height, grill = false, frosted = false, openable = true }) {
   if (!openable) {
@@ -375,13 +561,16 @@ function createCeilingFan(parent, position, m, animatedFans = null) {
  * Builds a complete, realistic 55-inch 4K Smart TV + Media Console + Soundbar + Live Screen
  * wallSide = 1 means screen faces -X (mounted on x = wallX), wallSide = -1 means screen faces +X
  */
-function buildSmartTVUnit(staticGroup, m, { x, fy, z, faceDir = -1 }) {
+function buildSmartTVUnit(staticGroup, dynamicParent, m, tvSystem, interactiveTVs, { x, fy, z, faceDir = -1, lvl = 0, unitLabel = '1A', defaultOn = true, defaultChannel = 0 }) {
   // Wooden Media Console Table underneath
   box(staticGroup, [0.42, 0.46, 1.76], [x + faceDir * 0.18, fy + 0.27, z], m.wood);
   box(staticGroup, [0.45, 0.04, 1.82], [x + faceDir * 0.18, fy + 0.51, z], m.blackTile);
   // Set-top box / Wi-Fi router with green LED
   box(staticGroup, [0.22, 0.05, 0.34], [x + faceDir * 0.22, fy + 0.56, z - 0.42], m.darkMetal);
   box(staticGroup, [0.02, 0.02, 0.04], [x + faceDir * 0.33, fy + 0.56, z - 0.36], m.ledGreen);
+  // TV Remote Control resting neatly on the media console
+  box(staticGroup, [0.16, 0.022, 0.055], [x + faceDir * 0.24, fy + 0.545, z + 0.48], m.darkMetal);
+  box(staticGroup, [0.02, 0.026, 0.02], [x + faceDir * 0.30, fy + 0.548, z + 0.48], m.ledRed);
   // Soundbar Speaker below TV
   box(staticGroup, [0.09, 0.08, 1.05], [x + faceDir * 0.15, fy + 0.62, z], m.darkMetal);
   box(staticGroup, [0.095, 0.02, 0.96], [x + faceDir * 0.15, fy + 0.62, z], m.chrome);
@@ -393,21 +582,39 @@ function buildSmartTVUnit(staticGroup, m, { x, fy, z, faceDir = -1 }) {
   box(staticGroup, [0.06, tvH + 0.08, tvW + 0.08], [x + faceDir * 0.04, tvY, z], m.darkMetal);
   box(staticGroup, [0.07, tvH + 0.02, tvW + 0.02], [x + faceDir * 0.055, tvY, z], m.blackTile);
 
-  // Glowing 4K Live Broadcast Screen Plane (oriented directly toward viewer!)
-  const screenPlane = new THREE.Mesh(new THREE.PlaneGeometry(tvW - 0.04, tvH - 0.04), m.tvScreen);
-  screenPlane.geometry.rotateY(faceDir * (Math.PI / 2));
-  screenPlane.position.set(x + faceDir * 0.095, tvY, z);
-  staticGroup.add(screenPlane);
+  // Dynamic Interactive Screen Plane (separate from merged meshes so Remote turns it ON/OFF live!)
+  const screenGeo = new THREE.PlaneGeometry(tvW - 0.04, tvH - 0.04);
+  screenGeo.rotateY(faceDir * (Math.PI / 2));
+  const screenPlane = new THREE.Mesh(screenGeo, defaultOn ? tvSystem.tvOnMat : tvSystem.tvOffMat);
+  screenPlane.position.set(x + faceDir * 0.096, tvY, z);
+  dynamicParent.add(screenPlane);
 
-  // Power indicator LED on bottom bezel
-  box(staticGroup, [0.02, 0.02, 0.03], [x + faceDir * 0.092, tvY - tvH / 2 - 0.015, z + 0.62], m.ledRed);
+  // Dynamic Power Indicator LED (Green = ON, Red = Standby OFF)
+  const ledMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.022, 0.022, 0.036),
+    defaultOn ? m.ledGreen : m.ledRed
+  );
+  ledMesh.position.set(x + faceDir * 0.094, tvY - tvH / 2 - 0.015, z + 0.62);
+  dynamicParent.add(ledMesh);
+
+  interactiveTVs.push({
+    level: lvl,
+    unit: unitLabel,
+    x,
+    y: fy,
+    z,
+    isOn: defaultOn,
+    channel: defaultChannel % TV_CHANNELS.length,
+    screenMesh: screenPlane,
+    ledMesh,
+  });
 }
 
 /**
  * Builds a fully equipped attached Bathroom (বাথরুম) with ceramic tiles, Western commode,
- * wash basin, mirror, chrome overhead shower, towel rack, and blue plastic bucket & mug.
+ * wash basin, REAL reflective mirror slot, chrome overhead shower, towel rack, and blue plastic bucket & mug.
  */
-function buildAttachedBathroom(staticGroup, m, fy, side) {
+function buildAttachedBathroom(staticGroup, m, fy, side, lvl, mirrorSlots) {
   // side = -1 (Unit A Bathroom: x = 9.65..11.45, z = -5.28..-2.55)
   // side = +1 (Unit B Bathroom: x = 9.65..11.45, z = +2.55..+5.28)
   const zMin = side === -1 ? -5.26 : 2.58;
@@ -431,16 +638,25 @@ function buildAttachedBathroom(staticGroup, m, fy, side) {
   box(staticGroup, [0.22, 0.04, 0.44], [9.82, fy + 0.94, commodeZ], m.porcelain);
   cylinder(staticGroup, 0.03, 0.03, 0.03, [9.82, fy + 0.97, commodeZ], m.chrome, 10);
 
-  // 2. Porcelain Pedestal Wash Basin & Mirror (বেসিন ও আয়না) at x = 9.95, z = -3.45 / +3.45
+  // 2. Porcelain Pedestal Wash Basin & Real-Time Mirror (বেসিন ও আসল আয়না) at x = 9.95, z = -3.38 / +3.38
   const basinZ = side === -1 ? -3.38 : 3.38;
   cylinder(staticGroup, 0.11, 0.13, 0.68, [9.92, fy + 0.42, basinZ], m.porcelain, 12);
   box(staticGroup, [0.42, 0.14, 0.52], [9.96, fy + 0.82, basinZ], m.porcelain);
   // Chrome Faucet Tap
   cylinder(staticGroup, 0.018, 0.018, 0.14, [9.80, fy + 0.94, basinZ], m.chrome, 8);
   rodBetween(staticGroup, [9.80, fy + 1.0, basinZ], [9.92, fy + 0.98, basinZ], 0.014, m.chrome, 8);
-  // Framed Wall Mirror above Wash Basin
-  box(staticGroup, [0.03, 0.76, 0.56], [9.71, fy + 1.48, basinZ], m.chrome);
-  box(staticGroup, [0.04, 0.70, 0.50], [9.72, fy + 1.48, basinZ], m.mirrorMat);
+  // Framed Wall Mirror above Wash Basin (fallback + live real-time Reflector slot)
+  box(staticGroup, [0.03, 0.78, 0.58], [9.71, fy + 1.48, basinZ], m.chrome);
+  box(staticGroup, [0.032, 0.72, 0.52], [9.72, fy + 1.48, basinZ], m.mirrorMat);
+  mirrorSlots.push({
+    kind: 'bath',
+    level: lvl,
+    x: 9.752,
+    y: fy + 1.48,
+    z: basinZ,
+    rotY: Math.PI / 2,
+    fy,
+  });
 
   // 3. Overhead Chrome Shower (শাওয়ার) + Mixer Tap + Blue Bucket & Mug at x = 11.15
   const showerZ = side === -1 ? -4.65 : 4.65;
@@ -462,7 +678,7 @@ function buildAttachedBathroom(staticGroup, m, fy, side) {
  * Builds the complete interior architecture, stairs, rooms, bathrooms, and furniture
  * for ALL 5 FLOORS (levels 0..4: y = 0, 3.05, 6.10, 9.15, 12.20) + Rooftop access (y = 15.25).
  */
-function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans, flatDoors, floorInteriors) {
+function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans, flatDoors, floorInteriors, tvSystem, interactiveTVs, mirrorSlots) {
   const levelBaseYs = [0, 3.05, 6.10, 9.15, 12.20];
   const wallH = 3.06;
 
@@ -524,27 +740,26 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
       }
     }
 
-    // Back Exterior Wall (x = 14.28)
-    if (lvl === 0) {
-      box(staticGroup, [0.22, wallH, 0.72], [14.28, midY, -5.02], m.warmPlaster);
-      box(staticGroup, [0.22, wallH, 1.26], [14.28, midY, -1.27], m.warmPlaster);
-      box(staticGroup, [0.22, 0.52, 2.76], [14.28, fy + 0.26, -3.28], m.warmPlaster);
-      box(staticGroup, [0.22, 0.60, 2.76], [14.28, fy + 2.76, -3.28], m.warmPlaster);
+    // Back Exterior Wall (x = 14.28) — Open Stainless Lift Entrance Doorway (z = -0.64..+0.64) on ALL 5 FLOORS!
+    const backWallMat = lvl === 0 ? m.warmPlaster : m.plaster;
+    box(staticGroup, [0.22, wallH, 0.72], [14.28, midY, -5.02], backWallMat);
+    box(staticGroup, [0.22, wallH, 1.26], [14.28, midY, -1.27], backWallMat);
+    box(staticGroup, [0.22, 0.52, 2.76], [14.28, fy + 0.26, -3.28], backWallMat);
+    box(staticGroup, [0.22, 0.60, 2.76], [14.28, fy + 2.76, -3.28], backWallMat);
 
-      box(staticGroup, [0.22, wallH, 0.72], [14.28, midY, 5.02], m.warmPlaster);
-      box(staticGroup, [0.22, wallH, 1.26], [14.28, midY, 1.27], m.warmPlaster);
-      box(staticGroup, [0.22, 0.52, 2.76], [14.28, fy + 0.26, 3.28], m.warmPlaster);
-      box(staticGroup, [0.22, 0.60, 2.76], [14.28, fy + 2.76, 3.28], m.warmPlaster);
-      box(staticGroup, [0.22, 0.72, 1.32], [14.28, fy + 2.70, 0], m.warmPlaster);
-    } else {
-      box(staticGroup, [0.22, wallH, 0.70], [14.28, midY, -5.05], m.plaster);
-      box(staticGroup, [0.22, wallH, 3.88], [14.28, midY, 0.0], m.plaster);
-      box(staticGroup, [0.22, wallH, 0.70], [14.28, midY, 5.05], m.plaster);
-      for (const wz of [-3.32, 3.32]) {
-        box(staticGroup, [0.22, 0.45, 2.78], [14.28, fy + 0.225, wz], m.plaster);
-        box(staticGroup, [0.22, 0.58, 2.78], [14.28, fy + 2.77, wz], m.plaster);
-      }
-    }
+    box(staticGroup, [0.22, wallH, 0.72], [14.28, midY, 5.02], backWallMat);
+    box(staticGroup, [0.22, wallH, 1.26], [14.28, midY, 1.27], backWallMat);
+    box(staticGroup, [0.22, 0.52, 2.76], [14.28, fy + 0.26, 3.28], backWallMat);
+    box(staticGroup, [0.22, 0.60, 2.76], [14.28, fy + 2.76, 3.28], backWallMat);
+    box(staticGroup, [0.22, 0.72, 1.32], [14.28, fy + 2.70, 0], backWallMat);
+    // Brushed Steel Lift Door Frame & Floor Call Button Panel beside doorway
+    box(staticGroup, [0.26, 2.34, 0.08], [14.26, fy + 1.17, -0.64], m.chrome);
+    box(staticGroup, [0.26, 2.34, 0.08], [14.26, fy + 1.17, 0.64], m.chrome);
+    box(staticGroup, [0.26, 0.10, 1.36], [14.26, fy + 2.36, 0], m.chrome);
+    box(staticGroup, [0.06, 0.16, 0.42], [14.14, fy + 2.48, 0], m.darkMetal);
+    box(staticGroup, [0.07, 0.06, 0.26], [14.13, fy + 2.48, 0], m.ledGreen);
+    box(staticGroup, [0.05, 0.24, 0.11], [14.15, fy + 1.22, -0.82], m.chrome);
+    box(staticGroup, [0.06, 0.04, 0.04], [14.14, fy + 1.26, -0.82], m.ledGreen);
 
     // Left & Right Exterior Side Walls (z = -5.36 and z = +5.36) with Window Openings
     for (const side of [-1, 1]) {
@@ -690,7 +905,7 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
       box(floorInterior, [0.96, 0.06, 0.17], [10.55, fy + 2.24, side * 2.55], m.wood);
 
       // Build the complete Attached Bathroom (বাথরুম)
-      buildAttachedBathroom(floorInterior, m, fy, side);
+      buildAttachedBathroom(floorInterior, m, fy, side, lvl, mirrorSlots);
     }
 
     // ==========================================================================
@@ -714,8 +929,18 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
     cylinder(floorInterior, 0.045, 0.035, 0.07, [7.72, fy + 0.51, -3.52], m.porcelain, 10);
     cylinder(floorInterior, 0.045, 0.035, 0.07, [7.98, fy + 0.51, -3.58], m.porcelain, 10);
 
-    // 55" 4K Smart TV & Media Unit on partition wall x = 9.55 (facing -X toward the sofa & room!)
-    buildSmartTVUnit(floorInterior, m, { x: 9.56, fy, z: -3.65, faceDir: -1 });
+    // 55" 4K Smart TV & Media Unit on partition wall x = 9.56 (half ON, half OFF by default + Remote Control!)
+    const tvDynamicGroupA = new THREE.Group();
+    buildSmartTVUnit(floorInterior, tvDynamicGroupA, m, tvSystem, interactiveTVs, {
+      x: 9.56,
+      fy,
+      z: -3.65,
+      faceDir: -1,
+      lvl,
+      unitLabel: `${lvl + 1}A`,
+      defaultOn: lvl % 2 === 0,
+      defaultChannel: lvl % TV_CHANNELS.length,
+    });
 
     // Framed Landscape Painting on Front Wall & Window Curtains
     box(floorInterior, [0.04, 0.68, 0.96], [6.22, fy + 1.62, -3.28], m.wood);
@@ -740,9 +965,19 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
     // Bedside Nightstand with Glowing Lamp
     box(floorInterior, [0.42, 0.48, 0.42], [11.72, fy + 0.32, -4.85], m.wood);
     cylinder(floorInterior, 0.10, 0.14, 0.22, [11.72, fy + 0.68, -4.85], m.lamp, 10);
-    // Wooden Wardrobe / Almirah with Full-Length Dressing Mirror
+    // Wooden Wardrobe / Almirah with Full-Length Real-Time Dressing Mirror
     box(floorInterior, [0.54, 2.02, 1.18], [11.82, fy + 1.08, -3.15], m.wood);
-    box(floorInterior, [0.56, 1.48, 0.44], [11.82, fy + 1.15, -3.15], m.mirrorMat);
+    box(floorInterior, [0.56, 1.54, 0.52], [11.82, fy + 1.15, -3.15], m.chrome);
+    box(floorInterior, [0.57, 1.48, 0.46], [11.82, fy + 1.15, -3.15], m.mirrorMat);
+    mirrorSlots.push({
+      kind: 'wardrobe',
+      level: lvl,
+      x: 12.116,
+      y: fy + 1.15,
+      z: -3.15,
+      rotY: Math.PI / 2,
+      fy,
+    });
     // Bedroom Curtains, Ceiling LED Panel & Fan
     box(floorInterior, [0.22, 1.85, 0.08], [11.80, fy + 1.52, -5.20], m.curtainMat);
     box(floorInterior, [0.22, 1.85, 0.08], [13.55, fy + 1.52, -5.20], m.curtainMat);
@@ -768,8 +1003,18 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
       box(floorInterior, [0.05, 0.40, 0.05], [cx - 0.16, fy + 0.24, cz - 0.16], m.wood);
       box(floorInterior, [0.05, 0.40, 0.05], [cx + 0.16, fy + 0.24, cz + 0.16], m.wood);
     }
-    // Smart TV mounted on partition wall x = 9.56 in Unit B Family/Dining Room too!
-    buildSmartTVUnit(floorInterior, m, { x: 9.56, fy, z: 3.75, faceDir: -1 });
+    // Smart TV mounted on partition wall x = 9.56 in Unit B Family/Dining Room (alternating ON/OFF + Remote Control!)
+    const tvDynamicGroupB = new THREE.Group();
+    buildSmartTVUnit(floorInterior, tvDynamicGroupB, m, tvSystem, interactiveTVs, {
+      x: 9.56,
+      fy,
+      z: 3.75,
+      faceDir: -1,
+      lvl,
+      unitLabel: `${lvl + 1}B`,
+      defaultOn: lvl % 2 === 1,
+      defaultChannel: (lvl + 1) % TV_CHANNELS.length,
+    });
     // Glowing Ceiling LED Panel & Fan
     box(floorInterior, [0.55, 0.04, 0.55], [7.85, fy + 2.89, 3.45], m.lamp);
     createCeilingFan(lvl === 0 ? dynamicParent : floorInterior, [7.85, fy + 2.88, 3.45], m, lvl === 0 ? animatedFans : null);
@@ -800,6 +1045,7 @@ function buildAllFloorsAndInteriors(staticGroup, dynamicParent, m, animatedFans,
       if (obj.isMesh) obj.castShadow = false;
     });
     mergeStaticMeshes(floorInterior);
+    floorInterior.add(tvDynamicGroupA, tvDynamicGroupB);
     floorInterior.visible = false;
     dynamicParent.add(floorInterior);
     floorInteriors.push(floorInterior);
@@ -1002,12 +1248,9 @@ function buildSideAndRearElevations(staticGroup, m, floors) {
     }
   }
 
-  // REAR ELEVATION: Central Brick Column meets rear porch canopy cleanly at y = 2.94
-  box(staticGroup, [0.34, 12.72, 2.15], [14.39, 9.29, 0], m.brick, { uvScale: 2.5 });
+  // REAR ELEVATION: Panoramic 5-Story + Rooftop 3D Elevator Shaft (x = 14.34..16.04, z = -0.92..+0.92) + Rear Balconies!
   for (let level = 0; level < floors.length; level++) {
     const floorY = floors[level];
-    backWindow(staticGroup, m, { x: 14.54, y: floorY + 1.48, z: 0, width: 0.85, height: 2.05, frosted: true, openable: true });
-
     for (const side of [-1, 1]) {
       const zCenter = side * 3.32;
       const width = 3.55;
@@ -1016,6 +1259,20 @@ function buildSideAndRearElevations(staticGroup, m, floors) {
       backWindow(staticGroup, m, { x: 14.24, y: floorY + 1.42, z: zCenter, width: 2.75, height: 2.02, grill: level === 0, openable: true });
       backBalconyRail(staticGroup, m, floorY, zCenter, width, level === 0);
     }
+  }
+  // Panoramic Brushed-Steel & Glass Elevator Shaft Frame rising from GF (y=0) to Rooftop (y=18.2)
+  for (const [cx, cz] of [[14.38, -0.90], [14.38, 0.90], [16.02, -0.90], [16.02, 0.90]]) {
+    box(staticGroup, [0.14, 18.20, 0.14], [cx, 9.10, cz], m.darkMetal);
+  }
+  for (const side of [-1, 1]) {
+    box(staticGroup, [1.66, 18.10, 0.06], [15.20, 9.05, side * 0.90], m.glass);
+  }
+  box(staticGroup, [0.06, 18.10, 1.80], [16.02, 9.05, 0], m.glass);
+  box(staticGroup, [1.80, 0.26, 2.00], [15.20, 18.18, 0], m.concrete);
+  for (const ry of [3.05, 6.10, 9.15, 12.20, 15.25, 17.95]) {
+    box(staticGroup, [1.72, 0.12, 0.10], [15.20, ry, -0.90], m.chrome);
+    box(staticGroup, [1.72, 0.12, 0.10], [15.20, ry, 0.90], m.chrome);
+    box(staticGroup, [0.10, 0.12, 1.88], [16.02, ry, 0], m.chrome);
   }
 
   const rearClothColors = [0x2b6cb0, 0xc53030, 0xd69e2e, 0x319795];
@@ -1027,14 +1284,19 @@ function buildSideAndRearElevations(staticGroup, m, floors) {
     staticGroup.add(cloth);
   }
 
-  // Hollow Walkable Rooftop Stairwell Mumty Room (চিলেকোঠা y = 15.25..17.95) & Overhead Water Tank
-  // Front door opening at x = 7.55, z = -0.95..+0.15 so player can walk out onto the open roof!
-  box(staticGroup, [6.10, 2.65, 0.18], [10.60, 16.60, -1.22], m.plaster);
-  box(staticGroup, [6.10, 2.65, 0.18], [10.60, 16.60, 1.24], m.plaster);
-  box(staticGroup, [0.22, 2.65, 2.48], [13.55, 16.60, 0], m.brick);
+  // Hollow Walkable Rooftop Stairwell & Lift Mumty Room (চিলেকোঠা y = 15.25..17.95) & Overhead Water Tank
+  // Front roof exit at x = 7.55, z = -0.95..+0.15; Rear Lift Entrance at x = 14.28, z = -0.64..+0.64!
+  box(staticGroup, [6.78, 2.65, 0.18], [10.94, 16.60, -1.22], m.plaster);
+  box(staticGroup, [6.78, 2.65, 0.18], [10.94, 16.60, 1.24], m.plaster);
+  box(staticGroup, [0.22, 2.65, 0.62], [14.28, 16.60, -0.94], m.brick);
+  box(staticGroup, [0.22, 2.65, 0.62], [14.28, 16.60, 0.94], m.brick);
+  box(staticGroup, [0.22, 0.44, 1.32], [14.28, 17.70, 0], m.brick);
+  box(staticGroup, [0.26, 2.34, 0.08], [14.26, 16.42, -0.64], m.chrome);
+  box(staticGroup, [0.26, 2.34, 0.08], [14.26, 16.42, 0.64], m.chrome);
+  box(staticGroup, [0.26, 0.10, 1.36], [14.26, 17.61, 0], m.chrome);
   box(staticGroup, [0.18, 2.65, 1.05], [7.55, 16.60, 0.72], m.plaster);
   box(staticGroup, [0.18, 0.45, 1.42], [7.55, 17.70, -0.50], m.plaster);
-  box(staticGroup, [6.35, 0.18, 2.75], [10.60, 18.00, 0], m.trim);
+  box(staticGroup, [6.98, 0.18, 2.75], [10.94, 18.00, 0], m.trim);
   box(staticGroup, [0.65, 0.04, 0.35], [11.20, 17.88, 0], m.lamp);
 
   for (const sx of [11.1, 12.5]) {
@@ -1062,9 +1324,12 @@ export function buildHouse(scene, m) {
   const animatedFans = [];
   const flatDoors = [];
   const floorInteriors = [];
+  const tvSystem = createLiveTVBroadcastSystem();
+  const interactiveTVs = [];
+  const mirrorSlots = [];
 
-  // Build ALL 5 floors hollow & furnished + continuous staircase + 10 openable flats + bathrooms!
-  buildAllFloorsAndInteriors(staticGroup, group, m, animatedFans, flatDoors, floorInteriors);
+  // Build ALL 5 floors hollow & furnished + continuous staircase + 10 openable flats + interactive TVs + real mirrors!
+  buildAllFloorsAndInteriors(staticGroup, group, m, animatedFans, flatDoors, floorInteriors, tvSystem, interactiveTVs, mirrorSlots);
 
   // Front Red-Brick Vertical Column rests cleanly on the porch beam (y = 3.05..15.65) and attaches flush into front wall x=6.08
   box(staticGroup, [0.56, 12.6, 2.05], [5.82, 9.35, 0.45], m.brick, { uvScale: 2.5 });
@@ -1077,11 +1342,9 @@ export function buildHouse(scene, m) {
     for (const side of [-1, 1]) {
       const zCenter = side === -1 ? -3.28 : 3.35;
       const width = side === -1 ? 3.65 : 3.55;
-      // Balcony slab ends cleanly outside exterior wall face (x=6.01) so it never pokes into interior floors
       box(staticGroup, [1.34, 0.22, width + 0.14], [5.34, floorY, zCenter], m.whiteBand);
       box(staticGroup, [0.18, 0.44, width + 0.12], [4.77, floorY - 0.09, zCenter], side === 1 ? m.whiteBand : m.plaster);
       box(staticGroup, [1.45, 2.85, 0.16], [5.48, floorY + 1.47, zCenter + side * (width / 2)], m.plaster);
-      // Half-open sliding glass door/window on outer half (side * 4.02), leaving inner half (side * 2.55) open to walk onto balcony!
       frontWindow(staticGroup, m, { y: floorY + 1.42, z: side * 4.02, width: 1.42, height: 2.05, grill: false, openable: true });
 
       if (level === 0 && side === -1) {
@@ -1111,10 +1374,11 @@ export function buildHouse(scene, m) {
     staticGroup.add(cloth);
   }
 
-  // Rooftop Parapet Walls (ছাদের রেলিং দেয়াল)
+  // Rooftop Parapet Walls (ছাদের রেলিং দেয়াল — leaving Rooftop Lift Entrance open at x=14.28, z=-0.64..+0.64)
   box(staticGroup, [0.22, 0.92, 11.1], [5.88, 15.72, 0], m.plaster);
   for (const z of [-5.46, 5.46]) box(staticGroup, [8.48, 0.92, 0.22], [10.12, 15.72, z], m.plaster);
-  box(staticGroup, [0.22, 0.92, 11.1], [14.28, 15.72, 0], m.plaster);
+  box(staticGroup, [0.22, 0.92, 4.34], [14.28, 15.72, -3.38], m.plaster);
+  box(staticGroup, [0.22, 0.92, 4.34], [14.28, 15.72, 3.38], m.plaster);
   for (let z = -1.05; z <= 1.06; z += 0.3) {
     rodBetween(staticGroup, [5.48, 15.3, z], [5.48, 16.45, z], 0.035, m.aluminum);
   }
@@ -1132,21 +1396,192 @@ export function buildHouse(scene, m) {
 
   mergeStaticMeshes(staticGroup);
 
+  // ==========================================================================
+  // REAL-TIME REFLECTIVE MIRRORS (Shows your 3D Character LIVE at 60 FPS!)
+  // ==========================================================================
+  let bathReflector = null;
+  let wardrobeReflector = null;
+  try {
+    bathReflector = new Reflector(new THREE.PlaneGeometry(0.50, 0.70), {
+      clipBias: 0.003,
+      textureWidth: 512,
+      textureHeight: 512,
+      color: 0xd8e2ec,
+    });
+    bathReflector.visible = false;
+    group.add(bathReflector);
+
+    wardrobeReflector = new Reflector(new THREE.PlaneGeometry(0.46, 1.48), {
+      clipBias: 0.003,
+      textureWidth: 512,
+      textureHeight: 512,
+      color: 0xd8e2ec,
+    });
+    wardrobeReflector.visible = false;
+    group.add(wardrobeReflector);
+  } catch {}
+
+  // ==========================================================================
+  // WORKING 5-STORY + ROOFTOP 3D ELEVATOR / LIFT (x = 14.36..15.98, z = -0.86..+0.86)
+  // ==========================================================================
+  const stops = [
+    { code: 'GF', label: 'Ground Floor (1F)', y: 0.0 },
+    { code: '2F', label: '2nd Floor (2A/2B)', y: 3.05 },
+    { code: '3F', label: '3rd Floor (3A/3B)', y: 6.10 },
+    { code: '4F', label: '4th Floor (4A/4B)', y: 9.15 },
+    { code: '5F', label: '5th Floor (5A/5B)', y: 12.20 },
+    { code: 'RF', label: 'Rooftop Terrace', y: 15.25 },
+  ];
+
+  const liftCabin = new THREE.Group();
+  liftCabin.position.set(15.18, 0.0, 0.0);
+  group.add(liftCabin);
+
+  box(liftCabin, [1.56, 0.12, 1.68], [0, -0.02, 0], m.blackTile);
+  box(liftCabin, [1.56, 0.12, 1.68], [0, 2.38, 0], m.darkMetal);
+  box(liftCabin, [1.10, 0.03, 1.10], [0, 2.30, 0], m.lamp);
+  box(liftCabin, [1.54, 2.36, 0.06], [0, 1.18, -0.82], m.aluminum);
+  box(liftCabin, [1.54, 2.36, 0.06], [0, 1.18, 0.82], m.aluminum);
+  box(liftCabin, [0.06, 0.90, 1.64], [0.76, 0.45, 0], m.aluminum);
+  box(liftCabin, [0.04, 1.42, 1.56], [0.76, 1.62, 0], m.glass);
+  rodBetween(liftCabin, [-0.55, 0.95, -0.74], [0.65, 0.95, -0.74], 0.02, m.chrome, 8);
+  rodBetween(liftCabin, [-0.55, 0.95, 0.74], [0.65, 0.95, 0.74], 0.02, m.chrome, 8);
+  rodBetween(liftCabin, [0.68, 0.95, -0.70], [0.68, 0.95, 0.70], 0.02, m.chrome, 8);
+  box(liftCabin, [0.06, 0.52, 0.18], [-0.58, 1.24, -0.75], m.darkMetal);
+  box(liftCabin, [0.07, 0.10, 0.12], [-0.58, 1.42, -0.75], m.ledGreen);
+
+  const liftDoorLeft = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.28, 0.62), m.chrome);
+  liftDoorLeft.position.set(-0.77, 1.16, -0.31);
+  const liftDoorRight = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.28, 0.62), m.chrome);
+  liftDoorRight.position.set(-0.77, 1.16, 0.31);
+  liftCabin.add(liftDoorLeft, liftDoorRight);
+
   const leftGateWing = buildGateWing(m, -1);
   const rightGateWing = buildGateWing(m, 1);
   const frontDoorPivot = buildWoodenDoor(m, [5.98, 0.04, -0.61], 1);
-  const backDoorPivot = buildWoodenDoor(m, [14.34, 0.04, -0.61], 1);
-  group.add(leftGateWing, rightGateWing, frontDoorPivot, backDoorPivot);
+  group.add(leftGateWing, rightGateWing, frontDoorPivot);
 
   const state = {
     gateOpen: false,
     frontDoorOpen: false,
-    backDoorOpen: false,
+    backDoorOpen: true,
     gateAngle: 0,
     frontDoorAngle: 0,
     backDoorAngle: 0,
     flatDoors,
+    liftY: 0.0,
+    liftFloorIndex: 0,
+    liftTargetIndex: 0,
+    liftPhase: 'idle',
+    liftDoorOpen: 1.0,
+    liftDirection: 1,
+    liftHoldTimer: 0,
   };
+
+  function nearestFloorIndex(footY) {
+    let bestIdx = 0;
+    let bestDiff = Infinity;
+    for (let i = 0; i < stops.length; i++) {
+      const d = Math.abs(footY - stops[i].y);
+      if (d < bestDiff) {
+        bestDiff = d;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }
+
+  function isInTowerFootprint(worldPos, pad = 2.5) {
+    const lp = toLocal(worldPos);
+    if (!lp) return false;
+    return lp.x >= 5.5 - pad && lp.x <= 16.5 + pad && Math.abs(lp.z) <= 6.2 + pad;
+  }
+
+  function isInsideLift(worldPos) {
+    const lp = toLocal(worldPos);
+    if (!lp) return false;
+    return lp.x >= 14.30 && lp.x <= 16.02 && Math.abs(lp.z) <= 0.88;
+  }
+
+  function isNearLiftLobby(worldPos) {
+    const lp = toLocal(worldPos);
+    if (!lp) return false;
+    return lp.x >= 12.1 && lp.x <= 14.55 && Math.abs(lp.z) <= 1.35;
+  }
+
+  function isLiftOpenAtY(footY) {
+    return state.liftPhase !== 'moving' && state.liftDoorOpen > 0.65 && Math.abs(footY - state.liftY) < 0.85;
+  }
+
+  function goToFloor(index) {
+    const idx = THREE.MathUtils.clamp(Math.round(index), 0, stops.length - 1);
+    state.liftTargetIndex = idx;
+    if (idx === state.liftFloorIndex && Math.abs(state.liftY - stops[idx].y) < 0.05) {
+      state.liftPhase = 'opening';
+      state.liftHoldTimer = 5.0;
+    } else {
+      state.liftDirection = stops[idx].y >= state.liftY ? 1 : -1;
+      state.liftPhase = state.liftDoorOpen > 0.05 ? 'closing' : 'moving';
+    }
+  }
+
+  function openDoors() {
+    if (state.liftPhase !== 'moving') {
+      state.liftPhase = 'opening';
+      state.liftHoldTimer = 5.0;
+    }
+  }
+
+  function closeDoors() {
+    if (state.liftPhase !== 'moving') {
+      state.liftPhase = 'closing';
+    }
+  }
+
+  function findNearestTV(worldPos, maxDist = 3.2) {
+    const lp = toLocal(worldPos);
+    if (!lp) return null;
+    const footY = lp.y - 1.68;
+    let best = null;
+    let bestDist = maxDist;
+    for (const tv of interactiveTVs) {
+      if (Math.abs(footY - tv.y) > 1.5) continue;
+      const d = Math.hypot(lp.x - tv.x, lp.z - tv.z);
+      if (d < bestDist) {
+        bestDist = d;
+        best = tv;
+      }
+    }
+    return best ? { tv: best, dist: bestDist } : null;
+  }
+
+  function toggleNearestTV(worldPos) {
+    const hit = findNearestTV(worldPos, 3.3);
+    if (!hit) return null;
+    const { tv } = hit;
+    tv.isOn = !tv.isOn;
+    tv.screenMesh.material = tv.isOn ? tvSystem.tvOnMat : tvSystem.tvOffMat;
+    tv.ledMesh.material = tv.isOn ? m.ledGreen : m.ledRed;
+    playRemoteClickBeep(tv.isOn ? 1420 : 880, 0.05);
+    const chName = TV_CHANNELS[tv.channel]?.name || 'LIVE HD';
+    return { unit: tv.unit, isOn: tv.isOn, channelName: chName };
+  }
+
+  function cycleNearestTVChannel(worldPos) {
+    const hit = findNearestTV(worldPos, 3.3);
+    if (!hit) return null;
+    const { tv } = hit;
+    if (!tv.isOn) {
+      tv.isOn = true;
+      tv.screenMesh.material = tvSystem.tvOnMat;
+      tv.ledMesh.material = m.ledGreen;
+    } else {
+      tv.channel = (tv.channel + 1) % TV_CHANNELS.length;
+    }
+    playRemoteClickBeep(1640, 0.04);
+    const chName = TV_CHANNELS[tv.channel]?.name || 'LIVE HD';
+    return { unit: tv.unit, isOn: tv.isOn, channelName: chName };
+  }
 
   function findNearestFlatDoor(localPos) {
     const footY = localPos.y - 1.68;
@@ -1166,7 +1601,36 @@ export function buildHouse(scene, m) {
   return {
     group,
     offset: TALTOLA_HOUSE_OFFSET,
+    eyebrowTitle: 'TALTOLA 5-STORY HOUSE · LIFT',
+    stops,
     state,
+    liftCabinCenter: { x: ox + 15.18, z: oz },
+    liftExitPos: { x: ox + 13.45, z: oz },
+    isInTowerFootprint,
+    isInsideLift,
+    isNearLiftLobby,
+    isLiftOpenAtY,
+    nearestFloorIndex,
+    goToFloor,
+    openDoors,
+    closeDoors,
+    findNearestTV,
+    toggleNearestTV,
+    cycleNearestTVChannel,
+    interact(playerPosition) {
+      if (isInsideLift(playerPosition)) {
+        return 'open_lift_keypad';
+      }
+      if (isNearLiftLobby(playerPosition)) {
+        const lp = toLocal(playerPosition);
+        const nearK = nearestFloorIndex(lp.y - 1.68);
+        if (state.liftFloorIndex !== nearK || state.liftDoorOpen < 0.7) {
+          goToFloor(nearK);
+        }
+        return 'open_lift_keypad';
+      }
+      return null;
+    },
     isFlatDoorOpen(level, side) {
       const unit = `${level + 1}${side < 0 ? 'A' : 'B'}`;
       const found = flatDoors.find((d) => d.unit === unit);
@@ -1180,23 +1644,18 @@ export function buildHouse(scene, m) {
       if (footY < 1.5) {
         const dGate = Math.hypot(lp.x - 2.48, lp.z);
         const dFront = Math.hypot(lp.x - 5.98, lp.z);
-        const dBack = Math.hypot(lp.x - 14.34, lp.z);
 
-        if (nearestFlat && dFlat < 2.2 && dFlat < dFront && dFlat < dBack) {
+        if (nearestFlat && dFlat < 2.2 && dFlat < dFront) {
           nearestFlat.open = !nearestFlat.open;
           return { target: nearestFlat.unit, open: nearestFlat.open };
         }
-        if (dGate <= dFront && dGate <= dBack && dGate < 6.5) {
+        if (dGate <= dFront && dGate < 6.5) {
           state.gateOpen = !state.gateOpen;
           return { target: 'gate', open: state.gateOpen };
         }
-        if (dFront <= dBack && dFront < 5.5) {
+        if (dFront < 5.5) {
           state.frontDoorOpen = !state.frontDoorOpen;
           return { target: 'frontDoor', open: state.frontDoorOpen };
-        }
-        if (dBack < 5.5) {
-          state.backDoorOpen = !state.backDoorOpen;
-          return { target: 'backDoor', open: state.backDoorOpen };
         }
       }
 
@@ -1209,16 +1668,30 @@ export function buildHouse(scene, m) {
       return { target: 'gate', open: state.gateOpen };
     },
     toggleAllDoors() {
-      const next = !(state.gateOpen && state.frontDoorOpen && state.backDoorOpen);
+      const next = !(state.gateOpen && state.frontDoorOpen);
       state.gateOpen = next;
       state.frontDoorOpen = next;
-      state.backDoorOpen = next;
       for (const fd of flatDoors) fd.open = next;
       return next;
     },
     getPrompt(playerPosition) {
       const lp = toLocal(playerPosition);
       const footY = lp.y - 1.68;
+      if (isInsideLift(playerPosition)) {
+        const curStop = stops[state.liftFloorIndex] || stops[0];
+        return `[L / E] House Lift Keypad (${curStop.code}) · Press 0-5`;
+      }
+      if (isNearLiftLobby(playerPosition)) {
+        return '[E / L] Call & Enter Taltola House Lift';
+      }
+      const tvHit = findNearestTV(playerPosition, 3.1);
+      if (tvHit) {
+        const { tv } = tvHit;
+        const chName = TV_CHANNELS[tv.channel]?.name || 'LIVE HD';
+        return tv.isOn
+          ? `📺 [E] Remote: Turn TV OFF · [K] Channel (${chName})`
+          : `📺 [E] Remote: Turn TV ON (Flat ${tv.unit})`;
+      }
       const { door: nearestFlat, dist: dFlat } = findNearestFlatDoor(lp);
 
       if (nearestFlat && dFlat < 2.15) {
@@ -1230,15 +1703,11 @@ export function buildHouse(scene, m) {
       if (footY < 1.5) {
         const dGate = Math.hypot(lp.x - 2.48, lp.z);
         const dFront = Math.hypot(lp.x - 5.98, lp.z);
-        const dBack = Math.hypot(lp.x - 14.34, lp.z);
         if (dGate < 4.5 && dGate <= dFront) {
           return state.gateOpen ? '[E] Close Main Gate' : '[E] Open Main Gate';
         }
-        if (dFront < 4.0 && dFront <= dBack) {
+        if (dFront < 4.0) {
           return state.frontDoorOpen ? '[E] Close Front Door' : '[E] Open Front Door';
-        }
-        if (dBack < 4.0) {
-          return state.backDoorOpen ? '[E] Close Back Door' : '[E] Open Back Door';
         }
       }
       return null;
@@ -1248,7 +1717,6 @@ export function buildHouse(scene, m) {
       const step = Math.min(1, 6.0 * delta);
       const targetGate = state.gateOpen ? Math.PI * 0.48 : 0;
       const targetFront = state.frontDoorOpen ? Math.PI * 0.54 : 0;
-      const targetBack = state.backDoorOpen ? -Math.PI * 0.54 : 0;
 
       if (Math.abs(targetGate - state.gateAngle) > 0.0005) {
         state.gateAngle += (targetGate - state.gateAngle) * step;
@@ -1259,10 +1727,6 @@ export function buildHouse(scene, m) {
         state.frontDoorAngle += (targetFront - state.frontDoorAngle) * step;
         frontDoorPivot.rotation.y = state.frontDoorAngle;
       }
-      if (Math.abs(targetBack - state.backDoorAngle) > 0.0005) {
-        state.backDoorAngle += (targetBack - state.backDoorAngle) * step;
-        backDoorPivot.rotation.y = state.backDoorAngle;
-      }
 
       for (const fd of flatDoors) {
         const target = fd.open ? fd.openDir * Math.PI * 0.52 : 0;
@@ -1272,10 +1736,47 @@ export function buildHouse(scene, m) {
         }
       }
 
-      // Cull interior furniture of floors the player cannot see (eliminates 85% of geometry outside / on other floors!)
+      // Update 5-Story + Rooftop Lift Cabin & Sliding Doors smoothly
+      if (state.liftPhase === 'closing') {
+        state.liftDoorOpen = Math.max(0, state.liftDoorOpen - delta * 2.1);
+        if (state.liftDoorOpen <= 0.001) {
+          state.liftDoorOpen = 0;
+          const targetY = stops[state.liftTargetIndex].y;
+          if (Math.abs(state.liftY - targetY) > 0.05) {
+            state.liftPhase = 'moving';
+          } else {
+            state.liftPhase = 'idle';
+          }
+        }
+      } else if (state.liftPhase === 'moving') {
+        const targetY = stops[state.liftTargetIndex].y;
+        const diff = targetY - state.liftY;
+        const speed = 3.2;
+        if (Math.abs(diff) <= speed * delta) {
+          state.liftY = targetY;
+          state.liftFloorIndex = state.liftTargetIndex;
+          state.liftPhase = 'opening';
+          state.liftHoldTimer = 5.0;
+        } else {
+          state.liftY += Math.sign(diff) * speed * delta;
+          state.liftFloorIndex = nearestFloorIndex(state.liftY);
+        }
+      } else if (state.liftPhase === 'opening') {
+        state.liftDoorOpen = Math.min(1, state.liftDoorOpen + delta * 2.1);
+        if (state.liftDoorOpen >= 0.999) {
+          state.liftDoorOpen = 1;
+          state.liftPhase = 'idle';
+        }
+      }
+      liftCabin.position.y = state.liftY;
+      liftDoorLeft.position.z = -0.31 - state.liftDoorOpen * 0.56;
+      liftDoorRight.position.z = 0.31 + state.liftDoorOpen * 0.56;
+
+      // Cull interior furniture of floors the player cannot see + activate nearest real-time Mirror & live TV!
       if (lp) {
-        const insideOrNear = lp.x > 3.8 && lp.x < 15.8 && Math.abs(lp.z) < 6.8;
-        const playerLvl = Math.round((lp.y - 1.68) / 3.05);
+        const insideOrNear = lp.x > 3.8 && lp.x < 16.5 && Math.abs(lp.z) < 6.8;
+        const footY = lp.y - 1.68;
+        const playerLvl = Math.round(footY / 3.05);
         const maxLvlDiff = isLowQuality ? 0 : 1;
         for (let i = 0; i < floorInteriors.length; i++) {
           const shouldShow = insideOrNear && Math.abs(i - playerLvl) <= maxLvlDiff;
@@ -1283,9 +1784,53 @@ export function buildHouse(scene, m) {
             floorInteriors[i].visible = shouldShow;
           }
         }
+
+        // Animate live TV broadcast ONLY when player is inside the house near an ON TV (ZERO FPS cost outside!)
+        if (insideOrNear) {
+          let activeChannel = null;
+          for (const tv of interactiveTVs) {
+            if (tv.isOn && Math.abs(footY - tv.y) < 1.8) {
+              activeChannel = tv.channel;
+              break;
+            }
+          }
+          if (activeChannel !== null) {
+            tvSystem.update(activeChannel, performance.now());
+          }
+        }
+
+        // Real-Time Reflective Mirror: snap single Reflector to the closest mirror within 5.2m on the same floor!
+        if (bathReflector && wardrobeReflector) {
+          let bestMirror = null;
+          let bestMDist = 5.2;
+          if (insideOrNear) {
+            for (const ms of mirrorSlots) {
+              if (Math.abs(footY - ms.fy) > 1.55) continue;
+              const d = Math.hypot(lp.x - ms.x, lp.z - ms.z);
+              if (d < bestMDist) {
+                bestMDist = d;
+                bestMirror = ms;
+              }
+            }
+          }
+          if (bestMirror && bestMirror.kind === 'bath') {
+            bathReflector.position.set(bestMirror.x, bestMirror.y, bestMirror.z);
+            bathReflector.rotation.set(0, bestMirror.rotY, 0);
+            bathReflector.visible = true;
+            wardrobeReflector.visible = false;
+          } else if (bestMirror && bestMirror.kind === 'wardrobe') {
+            wardrobeReflector.position.set(bestMirror.x, bestMirror.y, bestMirror.z);
+            wardrobeReflector.rotation.set(0, bestMirror.rotY, 0);
+            wardrobeReflector.visible = true;
+            bathReflector.visible = false;
+          } else {
+            bathReflector.visible = false;
+            wardrobeReflector.visible = false;
+          }
+        }
       }
 
-      // Skip spinning ceiling fans when in Low (No GPU) mode outside the building
+      // Skip spinning ceiling fans when in Low Smooth mode outside the building
       if (isLowQuality && lp && (lp.x < 5.5 || lp.x > 14.8)) {
         return;
       }
