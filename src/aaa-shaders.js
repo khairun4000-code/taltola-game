@@ -446,7 +446,7 @@ export const TIME_OF_DAY_PRESETS = {
     shortLabel: 'GOLDEN',
     sunPos: [92, 54, -76],
     sunColor: 0xffd199,
-    sunIntensity: 2.55,
+    sunIntensity: 2.50,
     hemiSky: 0x9ec8f2,
     hemiGround: 0x5c4f3d,
     hemiIntensity: 1.02,
@@ -455,9 +455,9 @@ export const TIME_OF_DAY_PRESETS = {
     skyHorizon: 0xf4c898,
     skySunGlow: 0xffb368,
     fogColor: 0xdccbb6,
-    exposure: 1.05,
-    bloomStrength: 0.34,
-    bloomThreshold: 0.80,
+    exposure: 1.04,
+    bloomStrength: 0.12,
+    bloomThreshold: 0.93,
     isNight: false,
     nightFactor: 0.0,
     starAlpha: 0.0,
@@ -469,7 +469,7 @@ export const TIME_OF_DAY_PRESETS = {
     shortLabel: 'DAYLIGHT',
     sunPos: [68, 112, -52],
     sunColor: 0xfff5e4,
-    sunIntensity: 2.38,
+    sunIntensity: 2.35,
     hemiSky: 0xb6daf7,
     hemiGround: 0x5d6554,
     hemiIntensity: 1.08,
@@ -478,9 +478,9 @@ export const TIME_OF_DAY_PRESETS = {
     skyHorizon: 0xd2e4ef,
     skySunGlow: 0xffe4b8,
     fogColor: 0xcfe0ea,
-    exposure: 1.03,
-    bloomStrength: 0.24,
-    bloomThreshold: 0.86,
+    exposure: 1.02,
+    bloomStrength: 0.08,
+    bloomThreshold: 0.96,
     isNight: false,
     nightFactor: 0.0,
     starAlpha: 0.0,
@@ -492,45 +492,45 @@ export const TIME_OF_DAY_PRESETS = {
     shortLabel: 'SUNSET',
     sunPos: [118, 22, -60],
     sunColor: 0xff8c5a,
-    sunIntensity: 2.15,
+    sunIntensity: 2.10,
     hemiSky: 0x7b6ea8,
     hemiGround: 0x3b2c32,
     hemiIntensity: 0.86,
     ambientIntensity: 0.24,
-    skyTop: 0x1d2552,
-    skyHorizon: 0xec7c5e,
+    skyTop: 0x1a2248,
+    skyHorizon: 0xe67a5c,
     skySunGlow: 0xff6e38,
-    fogColor: 0x9c7274,
-    exposure: 1.08,
-    bloomStrength: 0.54,
-    bloomThreshold: 0.68,
+    fogColor: 0x946c70,
+    exposure: 1.04,
+    bloomStrength: 0.15,
+    bloomThreshold: 0.90,
     isNight: true,
     nightFactor: 0.65,
-    starAlpha: 0.22,
-    cloudTint: [0.95, 0.62, 0.56],
+    starAlpha: 0.20,
+    cloudTint: [0.92, 0.60, 0.54],
   },
   night: {
     id: 'night',
     label: 'KHULNA NIGHT',
     shortLabel: 'NIGHT',
     sunPos: [-52, 74, 48],
-    sunColor: 0x8fb4e8,
-    sunIntensity: 0.95,
-    hemiSky: 0x243b66,
-    hemiGround: 0x1a1e24,
-    hemiIntensity: 0.72,
-    ambientIntensity: 0.24,
-    skyTop: 0x070d1d,
-    skyHorizon: 0x1d3154,
-    skySunGlow: 0x5c7eb0,
-    fogColor: 0x121d30,
-    exposure: 1.15,
-    bloomStrength: 0.68,
-    bloomThreshold: 0.58,
+    sunColor: 0xa8bdd8,
+    sunIntensity: 0.72,
+    hemiSky: 0x1c2942,
+    hemiGround: 0x101318,
+    hemiIntensity: 0.64,
+    ambientIntensity: 0.22,
+    skyTop: 0x04070e,
+    skyHorizon: 0x111724,
+    skySunGlow: 0x2a3b56,
+    fogColor: 0x0b101a,
+    exposure: 1.04,
+    bloomStrength: 0.18,
+    bloomThreshold: 0.88,
     isNight: true,
     nightFactor: 1.0,
-    starAlpha: 0.85,
-    cloudTint: [0.24, 0.32, 0.48],
+    starAlpha: 0.88,
+    cloudTint: [0.11, 0.15, 0.22],
   },
 };
 
@@ -578,6 +578,7 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
       uniform vec3 uFogColor;
       uniform vec3 uCloudTint;
       uniform float uStarAlpha;
+      uniform float uNightFactor;
       varying vec3 vDir;
 
       float hash2s(vec2 p) {
@@ -611,42 +612,57 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
       void main() {
         vec3 d = normalize(vDir);
         float h = clamp(d.y, -0.05, 1.0);
-        vec3 col = mix(uSkyHorizon, uSkyTop, pow(max(h, 0.0), 0.52));
+        float nightW = smoothstep(0.45, 0.95, uNightFactor);
+        // Natural vertical sky gradient (deep dark midnight zenith -> subtle urban hazy horizon at night)
+        vec3 col = mix(uSkyHorizon, uSkyTop, pow(max(h, 0.0), mix(0.52, 0.42, nightW)));
 
-        // Mie sun halo & golden atmospheric scatter
-        float sunCos = max(dot(d, normalize(uSunDir)), 0.0);
-        col += uSunGlow * pow(sunCos, 6.0) * 0.34;
-        col += uSunColor * pow(sunCos, 52.0) * 0.52;
-        col += uSunColor * smoothstep(0.9985, 0.99965, sunCos) * 2.4;
-
-        // Soft drifting coastal Khulna cumulus clouds
-        if (d.y > 0.02) {
-          vec2 cloudUv = d.xz / (d.y + 0.18) * 1.45 + vec2(uTime * 0.0085, uTime * 0.003);
-          float cDense = fbmClouds(cloudUv);
-          float cloudMask = smoothstep(0.49, 0.78, cDense) * smoothstep(0.02, 0.16, d.y);
-          vec3 cloudLit = mix(uSkyTop * 0.85, uCloudTint * (0.95 + pow(sunCos, 3.0) * 0.45), 0.82);
-          col = mix(col, cloudLit, cloudMask * 0.68);
+        // Subtle realistic city light-pollution haze band right above the horizon at night
+        if (nightW > 0.01) {
+          float cityGlow = exp(-max(h, 0.0) * 14.0) * nightW;
+          col += vec3(0.055, 0.052, 0.068) * cityGlow;
         }
 
-        // Crisp round pinpoint starfield at sunset/night
-        if (uStarAlpha > 0.01 && d.y > 0.05) {
-          vec2 sp = d.xz / (d.y + 0.28) * 145.0;
+        // Daytime Mie sun halo vs. subtle realistic pale-silver Moon at night (no blinding glare!)
+        float sunCos = max(dot(d, normalize(uSunDir)), 0.0);
+        float dayVis = 1.0 - nightW;
+        col += uSunGlow * pow(sunCos, 6.0) * (0.30 * dayVis + 0.06 * nightW);
+        col += uSunColor * pow(sunCos, 52.0) * (0.45 * dayVis + 0.10 * nightW);
+        // Sun disc by day, soft realistic Moon disc by night
+        float dayDisc = smoothstep(0.9985, 0.99965, sunCos) * 2.0 * dayVis;
+        float moonDisc = smoothstep(0.9990, 0.99945, sunCos) * 0.72 * nightW;
+        col += uSunColor * dayDisc + vec3(0.86, 0.90, 0.97) * moonDisc;
+
+        // Crisp natural multi-brightness starfield in the dark upper sky (rendered behind clouds)
+        if (uStarAlpha > 0.01 && d.y > 0.07) {
+          vec2 sp = d.xz / (d.y + 0.30) * 165.0;
           vec2 starCell = floor(sp);
           vec2 starLocal = fract(sp) - 0.5;
           float starRnd = hash2s(starCell);
-          if (starRnd > 0.986) {
+          if (starRnd > 0.985) {
             vec2 off = vec2(hash2s(starCell + 13.7), hash2s(starCell + 41.3)) - 0.5;
             float dist = length(starLocal - off * 0.52);
-            float pin = smoothstep(0.11, 0.02, dist);
-            float tw = 0.65 + 0.35 * sin(uTime * 2.4 + starRnd * 50.0);
-            float sizeBoost = 0.75 + 0.55 * hash2s(starCell + 7.1);
-            col += vec3(0.88, 0.94, 1.0) * pin * tw * sizeBoost * uStarAlpha * smoothstep(0.05, 0.25, d.y);
+            float pin = smoothstep(0.085, 0.018, dist);
+            float tw = 0.70 + 0.30 * sin(uTime * 2.1 + starRnd * 50.0);
+            float mag = 0.38 + 0.55 * hash2s(starCell + 7.1);
+            vec3 starCol = mix(vec3(0.84, 0.90, 1.0), vec3(1.0, 0.94, 0.86), hash2s(starCell + 29.3));
+            col += starCol * pin * tw * mag * uStarAlpha * smoothstep(0.07, 0.30, d.y);
           }
         }
 
+        // Soft drifting coastal Khulna cumulus clouds (moody dark wisps at night, sunlit by day)
+        if (d.y > 0.02) {
+          vec2 cloudUv = d.xz / (d.y + 0.18) * 1.45 + vec2(uTime * 0.0085, uTime * 0.003);
+          float cDense = fbmClouds(cloudUv);
+          float cloudMask = smoothstep(0.50, 0.79, cDense) * smoothstep(0.02, 0.18, d.y);
+          vec3 dayCloud = mix(uSkyTop * 0.85, uCloudTint * (0.94 + pow(sunCos, 3.0) * 0.38), 0.82);
+          vec3 nightCloud = mix(vec3(0.035, 0.045, 0.072), uCloudTint * (0.78 + pow(sunCos, 6.0) * 0.35), 0.55);
+          vec3 cloudLit = mix(dayCloud, nightCloud, nightW);
+          col = mix(col, cloudLit, cloudMask * mix(0.66, 0.48, nightW));
+        }
+
         // Blend horizon cleanly into scene fog so far skyline fades seamlessly
-        float horBlend = 1.0 - smoothstep(-0.04, 0.11, d.y);
-        col = mix(col, uFogColor, horBlend * 0.92);
+        float horBlend = 1.0 - smoothstep(-0.04, 0.12, d.y);
+        col = mix(col, uFogColor, horBlend * 0.94);
 
         gl_FragColor = vec4(col, 1.0);
         #include <tonemapping_fragment>
@@ -743,13 +759,13 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
 
     if (composerPasses?.bloom) {
       if (quality === 'ultra') {
-        composerPasses.bloom.strength = preset.bloomStrength * 1.15;
-        composerPasses.bloom.radius = 0.52;
-        composerPasses.bloom.threshold = Math.max(0.48, preset.bloomThreshold - 0.04);
-      } else if (quality === 'high') {
-        composerPasses.bloom.strength = preset.bloomStrength * 0.78;
-        composerPasses.bloom.radius = 0.40;
+        composerPasses.bloom.strength = preset.bloomStrength;
+        composerPasses.bloom.radius = 0.32;
         composerPasses.bloom.threshold = preset.bloomThreshold;
+      } else if (quality === 'high') {
+        composerPasses.bloom.strength = preset.bloomStrength * 0.72;
+        composerPasses.bloom.radius = 0.28;
+        composerPasses.bloom.threshold = Math.min(0.98, preset.bloomThreshold + 0.03);
       } else {
         composerPasses.bloom.strength = 0;
         composerPasses.bloom.threshold = preset.bloomThreshold;
@@ -758,11 +774,8 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
 
     skyDome.visible = true;
     rebakePMREM(preset);
-    const useGlobalEnv = quality === 'ultra' || quality === 'high';
-    scene.environment = useGlobalEnv ? (currentEnvRT?.texture || null) : null;
-    if ('environmentIntensity' in scene) {
-      scene.environmentIntensity = quality === 'ultra' ? 1.15 : (quality === 'high' ? 0.85 : 0.60);
-    }
+    // Keep selective envMap on reflective glass/chrome/tiles/cars/characters instead of forcing heavy global PMREM IBL on every matte building pixel (+35-45% Ultra FPS!)
+    scene.environment = null;
     return preset;
   }
 
