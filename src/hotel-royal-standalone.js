@@ -1,25 +1,30 @@
 import * as THREE from 'three';
 import { box, cylinder, rodBetween } from './scene-utils.js';
 import { attachDerivedPBRMaps } from './aaa-shaders.js';
+import {
+  createLuxuryHotelBed,
+  createCarvedDiningChair,
+  createLuxuryDiningTableSet,
+  createChesterfieldSofa,
+  createSmartTVConsole,
+  createExecutiveStudyDesk,
+  createWardrobeAndMinibar,
+  createModernBathroom,
+} from './hotel-royal-furniture.js';
 
 /**
  * HOTEL ROYAL INTERNATIONAL, KHULNA — PHOTOREALISTIC 2026 STANDALONE WALKABLE 3D MODEL
  * (A-33 KDA Avenue / Khan Jahan Ali Road, Royal Mor, Khulna · Est. 1986)
  *
- * Upgraded Photorealistic Edition:
- *  - Full Layered PBR Textures (Diffuse + Sobel Normal + Roughness) with subtle realistic
- *    tropical concrete patina, micro-stucco grain, natural wood grain, honed granite speckles,
- *    Italian veined marble, stacked slate stone, pleated fabric, tufted velvet, & ACP panel seams.
- *  - ZERO unrealistic rooftop trees — clean architectural weatherproof tiled roof terrace.
- *  - 3-Story Curved Podium (Floors 1–3) seamlessly connected via walkable archways to the
- *    FULLY HOLLOW, HIGH-REALISTIC, WALKABLE 10-STORY REAR TOWER (Floors 1–10 + Rooftop):
- *      * Ground Floor Tower: Royal Grand Banquet & Conference Hall
- *      * 2nd Floor Tower: Executive Lounge & VIP Private Dining
- *      * 3rd & 4th Floors Tower: Walkable Corridors & Deluxe Balcony Guest Rooms (304, 305, 401, 402)
- *      * 5th, 7th–9th Floors Tower: Walkable Corridors, Elevators, Staircase & Furnished Window Suites
- *      * 6th Floor Tower: Royal Presidential Executive Suite (601) with KDA Ave Walk-Out Balcony
- *      * 10th Floor Tower: Royal Sky Lounge & Panoramic Observation Deck
- *      * Rooftop (y = 35.45m): Tiled Roof Deck, Stairhead, HVAC Chillers, Telecom Masts & Beacons
+ * Upgraded v3 Edition:
+ *  - Dedicated modular high-detail 3D furniture library (`hotel-royal-furniture.js`):
+ *    sculpted beveled luxury beds with quilted duvets, bed runners, plump pillows & lamps,
+ *    zero-Z-fighting carved oval-back dining chairs, turned pedestal tables with tableware,
+ *    4K Hotel Smart TV media consoles, tufted Chesterfield sofas, executive desks & glass-shower bathrooms.
+ *  - Spacious 10-Story Rear Tower (22m × 18m footprint) laid out with 2–3 full-sized rentable
+ *    hotel flats/suites per floor along a wide central corridor, seamlessly connected to the
+ *    3-story curved podium via walkable archways on Floors 1–3.
+ *  - ZERO unrealistic rooftop trees & full layered PBR textures with subtle tropical patina.
  */
 
 function seeded(seed = 1986) {
@@ -49,7 +54,6 @@ function makePanelizedConcreteTex(baseHex = '#cfc2ad', seedVal = 301) {
   ctx.fillStyle = baseHex;
   ctx.fillRect(0, 0, 512, 512);
 
-  // Soft plaster trowel tonal clouds (prevents flat CGI look)
   for (let i = 0; i < 65; i++) {
     const x = rnd() * 512;
     const y = rnd() * 512;
@@ -61,14 +65,10 @@ function makePanelizedConcreteTex(baseHex = '#cfc2ad', seedVal = 301) {
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
-
-  // Fine mineral stucco aggregate grain
   for (let i = 0; i < 9500; i++) {
     ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.055)' : 'rgba(38,32,24,0.065)';
     ctx.fillRect(rnd() * 512, rnd() * 512, 1.5 + rnd() * 2.2, 1.5 + rnd() * 2.2);
   }
-
-  // Subtle realistic monsoon drip-edge shading at top & bottom of slab panels (clean luxury patina, NOT dirty!)
   const topWash = ctx.createLinearGradient(0, 0, 0, 58);
   topWash.addColorStop(0, 'rgba(46,42,36,0.14)');
   topWash.addColorStop(1, 'rgba(46,42,36,0)');
@@ -81,7 +81,6 @@ function makePanelizedConcreteTex(baseHex = '#cfc2ad', seedVal = 301) {
   ctx.fillStyle = botWash;
   ctx.fillRect(0, 456, 512, 56);
 
-  // Delicate vertical rainwater micro-streaks (very restrained ~4-6% alpha)
   for (let s = 0; s < 18; s++) {
     const sx = rnd() * 512;
     const sw = 2 + rnd() * 5;
@@ -92,8 +91,6 @@ function makePanelizedConcreteTex(baseHex = '#cfc2ad', seedVal = 301) {
     ctx.fillStyle = sg;
     ctx.fillRect(sx, 0, sw, sh);
   }
-
-  // Architectural concrete panel expansion joints with crisp bevel highlight
   for (let x = 0; x < 512; x += 64) {
     ctx.fillStyle = 'rgba(38,32,24,0.28)';
     ctx.fillRect(x, 0, 2, 512);
@@ -104,7 +101,6 @@ function makePanelizedConcreteTex(baseHex = '#cfc2ad', seedVal = 301) {
     ctx.fillStyle = 'rgba(38,32,24,0.18)';
     ctx.fillRect(0, y, 512, 1.5);
   }
-
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -121,7 +117,6 @@ function makeTowerPlasterTex(baseHex = '#c5b7a2', seedVal = 409) {
   ctx.fillStyle = baseHex;
   ctx.fillRect(0, 0, 512, 512);
 
-  // Subtle exterior plaster mottling
   for (let i = 0; i < 80; i++) {
     const x = rnd() * 512;
     const y = rnd() * 512;
@@ -132,12 +127,10 @@ function makeTowerPlasterTex(baseHex = '#c5b7a2', seedVal = 409) {
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
-  // Fine exterior cement render grain
   for (let i = 0; i < 8500; i++) {
     ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.045)' : 'rgba(32,28,22,0.05)';
     ctx.fillRect(rnd() * 512, rnd() * 512, 1.5 + rnd() * 2, 1.5 + rnd() * 2);
   }
-  // Horizontal architectural floor-band reveal lines & subtle weathering shadow beneath them
   for (let y = 0; y < 512; y += 128) {
     ctx.fillStyle = 'rgba(42,36,30,0.22)';
     ctx.fillRect(0, y, 512, 2);
@@ -147,12 +140,10 @@ function makeTowerPlasterTex(baseHex = '#c5b7a2', seedVal = 409) {
     ctx.fillStyle = wg;
     ctx.fillRect(0, y + 2, 512, 22);
   }
-  // Vertical subtle expansion groove
   for (let x = 0; x < 512; x += 128) {
     ctx.fillStyle = 'rgba(42,36,30,0.12)';
     ctx.fillRect(x, 0, 1.5, 512);
   }
-
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -169,7 +160,6 @@ function makeWoodGrainTex(baseHex = '#864a24', darkHex = '#4e2610', seedVal = 51
   ctx.fillStyle = baseHex;
   ctx.fillRect(0, 0, 512, 512);
 
-  // Organic flowing wood grain fibers
   for (let i = 0; i < 160; i++) {
     const y0 = rnd() * 512;
     ctx.strokeStyle = rnd() > 0.35 ? darkHex : 'rgba(235,188,132,0.16)';
@@ -181,7 +171,6 @@ function makeWoodGrainTex(baseHex = '#864a24', darkHex = '#4e2610', seedVal = 51
     ctx.stroke();
   }
   ctx.globalAlpha = 1.0;
-  // Subtle veneer panel join lines
   ctx.fillStyle = 'rgba(20,10,4,0.22)';
   for (let y = 0; y < 512; y += 128) {
     ctx.fillRect(0, y, 512, 1.5);
@@ -201,7 +190,6 @@ function makeGraniteTex(baseHex = '#191c22', seedVal = 612) {
   const rnd = seeded(seedVal);
   ctx.fillStyle = baseHex;
   ctx.fillRect(0, 0, 256, 256);
-  // Crystalline quartz/feldspar/mica mineral flecks
   for (let i = 0; i < 4200; i++) {
     const v = rnd();
     ctx.fillStyle = v > 0.82
@@ -227,7 +215,6 @@ function makeFabricTex(baseHex = '#d4b270', mode = 'velvet', seedVal = 711) {
   ctx.fillRect(0, 0, 256, 256);
 
   if (mode === 'velvet') {
-    // Diamond Chesterfield tufting sheen
     const step = 32;
     ctx.strokeStyle = 'rgba(72,48,16,0.22)';
     ctx.lineWidth = 1.5;
@@ -242,7 +229,6 @@ function makeFabricTex(baseHex = '#d4b270', mode = 'velvet', seedVal = 711) {
       }
     }
   } else if (mode === 'curtain') {
-    // Vertical drapery pleats
     for (let x = 0; x < 256; x += 24) {
       const g = ctx.createLinearGradient(x, 0, x + 24, 0);
       g.addColorStop(0, 'rgba(0,0,0,0.22)');
@@ -252,7 +238,6 @@ function makeFabricTex(baseHex = '#d4b270', mode = 'velvet', seedVal = 711) {
       ctx.fillRect(x, 0, 24, 256);
     }
   } else {
-    // Woven hospitality carpet / leather micro-grain
     for (let i = 0; i < 5000; i++) {
       ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.09)';
       ctx.fillRect(rnd() * 256, rnd() * 256, 2, 2);
@@ -272,7 +257,6 @@ function makeBlackACPPanelTex() {
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#0d1017';
   ctx.fillRect(0, 0, 512, 512);
-  // Subtle metallic brushed sheen gradient per ACP cassette
   for (let y = 0; y < 512; y += 128) {
     for (let x = 0; x < 512; x += 128) {
       const g = ctx.createLinearGradient(x, y, x + 128, y + 128);
@@ -293,7 +277,6 @@ function makeBlackACPPanelTex() {
 }
 
 function makeRoofTileTex() {
-  // Clean architectural light-grey concrete roof tiles with subtle dust in grout joints
   const c = document.createElement('canvas');
   c.width = 512;
   c.height = 512;
@@ -337,14 +320,12 @@ function makeMarbleTileTex(baseHex = '#f5f1e8', groutHex = '#cfc7b8', seedVal = 
   const rnd = seeded(seedVal);
   ctx.fillStyle = baseHex;
   ctx.fillRect(0, 0, 512, 512);
-  // Subtle tile-to-tile tonal variation
   for (let y = 0; y < 512; y += 128) {
     for (let x = 0; x < 512; x += 128) {
       ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(175,160,136,0.05)';
       ctx.fillRect(x, y, 128, 128);
     }
   }
-  // Organic cream-gold marble veining
   for (let i = 0; i < 36; i++) {
     ctx.strokeStyle = rnd() > 0.4 ? 'rgba(178, 162, 138, 0.22)' : 'rgba(208, 192, 162, 0.18)';
     ctx.lineWidth = 0.8 + rnd() * 2.2;
@@ -490,7 +471,6 @@ function makePaverDrivewayTex() {
       ctx.fillRect(x + 2, y + 2, step - 4, 2);
     }
   }
-  // Light natural dust/sand grain in driveway joints
   for (let i = 0; i < 6000; i++) {
     ctx.fillStyle = rnd() > 0.5 ? 'rgba(214,204,188,0.08)' : 'rgba(32,28,24,0.07)';
     ctx.fillRect(rnd() * 512, rnd() * 512, 2, 2);
@@ -534,7 +514,6 @@ function makeTigerJaaliTex() {
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#f8f4ec';
   ctx.fillRect(0, 0, 512, 512);
-
   ctx.strokeStyle = '#111827';
   ctx.lineWidth = 18;
   ctx.strokeRect(10, 10, 492, 492);
@@ -572,7 +551,6 @@ function makeTigerJaaliTex() {
   ctx.fillStyle = '#ef4444';
   ctx.beginPath(); ctx.ellipse(205, 232, 18, 10, 0.18, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(307, 232, 18, 10, -0.18, 0, Math.PI * 2); ctx.fill();
-
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
@@ -614,7 +592,6 @@ function makeBlackCanopyHotelRoyalTex() {
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 6;
   ctx.strokeRect(4, 4, 1016, 184);
-
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = '900 94px "Manrope", "Arial Black", sans-serif';
@@ -626,7 +603,6 @@ function makeBlackCanopyHotelRoyalTex() {
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 3;
   ctx.strokeText('HOTEL ROYAL', 512, 98);
-
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 8;
@@ -707,162 +683,139 @@ function makeSignPlateTex(text, sub = '', bg = '#1e293b', fg = '#facc15') {
 }
 
 /* ============================================================================
- * REUSABLE INTERIOR FURNITURE & ARCHITECTURE HELPERS
+ * REUSABLE ROOM & ARCHITECTURE HELPERS (POWERED BY MODULAR 3D FURNITURE)
  * ========================================================================== */
 
 function addCeilingFan(parent, mats, x, y, z) {
   cylinder(parent, 0.06, 0.08, 0.08, [x, y - 0.04, z], mats.whiteWall, 10);
-  cylinder(parent, 0.02, 0.02, 0.36, [x, y - 0.22, z], mats.chrome, 8);
-  cylinder(parent, 0.14, 0.14, 0.08, [x, y - 0.42, z], mats.whiteWall, 12);
+  cylinder(parent, 0.02, 0.02, 0.34, [x, y - 0.21, z], mats.chrome, 8);
+  cylinder(parent, 0.14, 0.14, 0.08, [x, y - 0.40, z], mats.whiteWall, 12);
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2;
-    addRotBox(parent, [0.56, 0.016, 0.11], [x + Math.cos(a) * 0.38, y - 0.42, z + Math.sin(a) * 0.38], mats.whiteWall, -a);
+    addRotBox(parent, [0.56, 0.016, 0.11], [x + Math.cos(a) * 0.38, y - 0.40, z + Math.sin(a) * 0.38], mats.whiteWall, -a);
   }
 }
 
-function addTuftedSofa(parent, mats, x, y, z, length = 3.2, rotY = 0) {
-  const sg = new THREE.Group();
-  sg.position.set(x, y, z);
-  sg.rotation.y = rotY;
-  box(sg, [length, 0.14, 0.88], [0, 0.07, 0], mats.mahogany);
-  box(sg, [length - 0.08, 0.28, 0.84], [0, 0.28, 0.02], mats.goldVelvet);
-  box(sg, [length, 0.92, 0.20], [0, 0.72, -0.34], mats.goldVelvet);
-  for (const sx of [-length * 0.5 + 0.12, length * 0.5 - 0.12]) {
-    box(sg, [0.22, 0.52, 0.86], [sx, 0.42, 0], mats.goldVelvet);
-  }
-  parent.add(sg);
+function placeSofa(parent, mats, x, y, z, length = 3.2, rotY = 0) {
+  const s = createChesterfieldSofa(mats, length);
+  s.position.set(x, y, z);
+  s.rotation.y = rotY;
+  parent.add(s);
 }
 
-function addDiningTableSet(parent, mats, x, y, z) {
-  box(parent, [1.55, 0.06, 1.05], [x, y + 0.76, z], mats.crispWhite);
-  box(parent, [1.58, 0.22, 1.08], [x, y + 0.64, z], mats.blackGloss);
-  cylinder(parent, 0.08, 0.12, 0.68, [x, y + 0.34, z], mats.mahogany, 8);
-  cylinder(parent, 0.06, 0.04, 0.22, [x, y + 0.90, z], mats.goldTrim, 8);
-  for (const [cx, cz, ry] of [
-    [-0.95, 0, Math.PI * 0.5], [0.95, 0, -Math.PI * 0.5],
-    [0, -0.78, 0], [0, 0.78, Math.PI],
-  ]) {
-    const cg = new THREE.Group();
-    cg.position.set(x + cx, y, z + cz);
-    cg.rotation.y = ry;
-    box(cg, [0.46, 0.08, 0.46], [0, 0.45, 0], mats.goldVelvet);
-    box(cg, [0.46, 0.58, 0.07], [0, 0.78, -0.20], mats.mahogany);
-    box(cg, [0.34, 0.44, 0.09], [0, 0.78, -0.19], mats.goldVelvet);
-    for (const [lx, lz] of [[-0.19, -0.19], [0.19, -0.19], [-0.19, 0.19], [0.19, 0.19]]) {
-      box(cg, [0.05, 0.44, 0.05], [lx, 0.22, lz], mats.mahogany);
-    }
-    parent.add(cg);
-  }
+function placeDiningSet(parent, mats, x, y, z, rotY = 0) {
+  const d = createLuxuryDiningTableSet(mats);
+  d.position.set(x, y, z);
+  d.rotation.y = rotY;
+  parent.add(d);
 }
 
 /**
- * Fully Furnished Hotel Royal Standard Guest Room (Room 303 & Tower Deluxe Rooms)
+ * Spacious Luxury Hotel Flat / Guest Suite built with modular high-detail 3D furniture!
  */
-function addRoyalGuestRoom(parent, mats, x0, y, z0, roomW, roomD, roomNum = '303', doorFaceZ = -1) {
+function addSpaciousHotelFlat(parent, mats, x0, y, z0, roomW, roomD, roomNum = '303', options = {}) {
+  const {
+    subtitle = 'ROYAL DELUXE FLAT',
+    doorFaceZ = -1,
+    includeSecondSingleBed = true,
+    includeLoungeSofa = false,
+    ceilingH = 3.30,
+  } = options;
   const cx = x0 + roomW * 0.5;
   const cz = z0 + roomD * 0.5;
+  const eastX = x0 + roomW - 0.16;
+  const winZ = z0 + roomD - 0.22;
 
-  // Cherry-Mahogany Full-Width Headboard + Double & Single Beds
-  box(parent, [0.10, 1.32, Math.max(2.6, roomD - 1.4)], [x0 + 0.12, y + 0.72, cz], mats.mahogany);
-  box(parent, [2.10, 0.34, 1.74], [x0 + 1.20, y + 0.17, z0 + 1.42], mats.mahogany);
-  box(parent, [2.00, 0.24, 1.64], [x0 + 1.20, y + 0.45, z0 + 1.42], mats.crispWhite);
-  box(parent, [0.42, 0.16, 0.66], [x0 + 0.45, y + 0.64, z0 + 1.04], mats.crispWhite);
-  box(parent, [0.42, 0.16, 0.66], [x0 + 0.45, y + 0.64, z0 + 1.80], mats.crispWhite);
+  // 1) Sculpted Luxury 3D King/Queen Bed against West Wall (facing +X)
+  const mainBed = createLuxuryHotelBed(mats, {
+    width: includeSecondSingleBed ? 1.80 : 2.02,
+    length: 2.18,
+    withNightstands: true,
+  });
+  mainBed.position.set(x0 + 1.24, y, z0 + (includeSecondSingleBed ? 1.85 : 2.25));
+  parent.add(mainBed);
 
-  // Bedside Table + Phone + Tissue Box
-  box(parent, [0.46, 0.54, 0.50], [x0 + 0.42, y + 0.27, z0 + 2.60], mats.mahogany);
-  box(parent, [0.22, 0.10, 0.20], [x0 + 0.42, y + 0.59, z0 + 2.52], mats.blackGloss);
-  box(parent, [0.14, 0.09, 0.22], [x0 + 0.42, y + 0.59, z0 + 2.72], mats.herlanRed);
-
-  if (roomD >= 5.2) {
-    // Single Bed beside it
-    box(parent, [2.10, 0.34, 1.06], [x0 + 1.20, y + 0.17, z0 + 3.52], mats.mahogany);
-    box(parent, [2.00, 0.24, 0.98], [x0 + 1.20, y + 0.45, z0 + 3.52], mats.crispWhite);
-    box(parent, [0.42, 0.16, 0.64], [x0 + 0.45, y + 0.64, z0 + 3.52], mats.crispWhite);
+  // Optional Second Single Bed (like Room 303 & Family Suites)
+  if (includeSecondSingleBed && roomD >= 6.4) {
+    const singleBed = createLuxuryHotelBed(mats, {
+      width: 1.12,
+      length: 2.12,
+      withNightstands: false,
+    });
+    singleBed.position.set(x0 + 1.22, y, z0 + 4.25);
+    parent.add(singleBed);
   }
 
-  // Framed Wall Art above headboard
-  box(parent, [0.05, 0.72, 0.58], [x0 + 0.08, y + 1.95, z0 + 1.48], mats.mahogany);
-  box(parent, [0.06, 0.58, 0.44], [x0 + 0.09, y + 1.95, z0 + 1.48], mats.goldVelvet);
+  // 2) Full-Height Ribbed Walnut 4K Smart TV Media Console on Opposite East Wall (facing -X!)
+  const tvWall = createSmartTVConsole(mats, 2.35, 1.46);
+  tvWall.position.set(eastX - 0.04, y, z0 + 2.35);
+  tvWall.rotation.y = -Math.PI * 0.5;
+  parent.add(tvWall);
 
-  // Opposite Full-Height Cherry-Mahogany TV Wall Panel + Flat-Screen Smart TV
-  const eastX = x0 + roomW - 0.14;
-  box(parent, [0.10, 3.15, 1.72], [eastX, y + 1.58, z0 + 2.02], mats.mahogany);
-  box(parent, [0.07, 0.76, 1.26], [eastX - 0.08, y + 1.72, z0 + 2.02], mats.blackGloss);
+  // 3) Mahogany Wardrobe + Glossy Red Mini-Fridge + Executive Study Desk with Backlit Mirror & Kettle
+  const wb = createWardrobeAndMinibar(mats);
+  wb.position.set(x0 + 1.15, y, winZ - 0.42);
+  wb.rotation.y = Math.PI;
+  parent.add(wb);
 
-  // Mahogany Wardrobe + Red Mini-Fridge + Mirror Dressing Desk + Kettle + Rolling Chair
-  const winZ = z0 + roomD - 0.22;
-  box(parent, [0.82, 2.30, 0.62], [x0 + 0.54, y + 1.15, winZ - 0.40], mats.mahogany);
-  box(parent, [0.74, 0.80, 0.65], [x0 + 0.54, y + 0.41, winZ - 0.40], mats.herlanRed);
-  box(parent, [1.22, 0.76, 0.56], [x0 + 1.62, y + 0.38, winZ - 0.38], mats.mahogany);
-  box(parent, [1.08, 1.14, 0.05], [x0 + 1.62, y + 1.40, winZ - 0.12], mats.mirror);
-  cylinder(parent, 0.08, 0.09, 0.22, [x0 + 1.42, y + 0.88, winZ - 0.38], mats.cyanKettle, 10);
+  const desk = createExecutiveStudyDesk(mats);
+  desk.position.set(x0 + 3.25, y, winZ - 0.44);
+  desk.rotation.y = Math.PI;
+  parent.add(desk);
 
-  box(parent, [0.46, 0.08, 0.46], [x0 + 1.62, y + 0.46, winZ - 1.00], mats.darkLeather);
-  box(parent, [0.44, 0.44, 0.08], [x0 + 1.62, y + 0.72, winZ - 1.20], mats.darkLeather);
-  cylinder(parent, 0.04, 0.04, 0.44, [x0 + 1.62, y + 0.22, winZ - 1.00], mats.blackGloss, 8);
+  // 4) Optional Spacious Sitting Lounge (Chesterfield Sofa + Coffee Table) for Larger Tower Flats
+  if (includeLoungeSofa && roomW >= 8.5) {
+    placeSofa(parent, mats, eastX - 2.35, y, winZ - 1.45, 2.55, Math.PI);
+    box(parent, [1.15, 0.40, 0.68], [eastX - 2.35, y + 0.20, winZ - 2.55], mats.marbleFloor);
+  }
 
-  // Leather Accent Chair + Round Coffee Table + Dark Brown Curtains
-  cylinder(parent, 0.36, 0.34, 0.50, [eastX - 1.30, y + 0.25, winZ - 0.82], mats.darkLeather, 14);
-  box(parent, [0.64, 0.40, 0.64], [eastX - 0.62, y + 0.20, winZ - 0.82], mats.darkLeather);
-  box(parent, [0.46, 2.30, 0.12], [x0 + 2.40, y + 1.46, winZ - 0.08], mats.brownCurtain);
-  box(parent, [0.46, 2.30, 0.12], [eastX - 0.34, y + 1.46, winZ - 0.08], mats.brownCurtain);
+  // Dark Brown Pleated Curtains framing window
+  box(parent, [0.46, 2.35, 0.12], [x0 + 4.45, y + 1.46, winZ - 0.06], mats.brownCurtain);
+  box(parent, [0.46, 2.35, 0.12], [eastX - 0.34, y + 1.46, winZ - 0.06], mats.brownCurtain);
 
   // Split AC Unit + Ceiling Fan
-  box(parent, [1.10, 0.28, 0.24], [cx, y + 2.75, winZ - 0.16], mats.acUnit);
-  addCeilingFan(parent, mats, cx, y + 3.22, cz - 0.2);
+  box(parent, [1.12, 0.28, 0.24], [cx, y + ceilingH - 0.48, winZ - 0.14], mats.acUnit);
+  addCeilingFan(parent, mats, cx, y + ceilingH - 0.06, cz - 0.2);
 
-  // Attached Modern White-Tiled Bathroom
-  const bx = eastX - 1.02;
-  const bz = z0 + 0.82;
-  box(parent, [1.80, 0.04, 1.50], [bx, y + 0.02, bz], mats.concrete);
-  box(parent, [0.42, 0.44, 0.54], [bx + 0.52, y + 0.22, bz - 0.34], mats.crispWhite);
-  box(parent, [0.42, 0.42, 0.22], [bx + 0.52, y + 0.62, bz - 0.52], mats.crispWhite);
-  cylinder(parent, 0.23, 0.14, 0.80, [bx - 0.46, y + 0.40, bz - 0.44], mats.crispWhite, 12);
-  box(parent, [0.66, 0.80, 0.04], [bx - 0.46, y + 1.46, bz - 0.66], mats.mirror);
+  // 5) Modern Walk-In Glass Shower Bathroom (Back-Right Corner)
+  const bath = createModernBathroom(mats);
+  bath.position.set(eastX - 1.25, y, z0 + roomD - 1.15);
+  if (roomD >= 7.2) {
+    // Place neatly in back-right corner near corridor so window wall stays open & bright!
+    bath.position.set(eastX - 1.25, y, z0 + 1.05);
+  }
+  parent.add(bath);
 
-  // Room Number Plate on Corridor Wall
-  const plateTex = makeSignPlateTex(roomNum, 'ROYAL DELUXE', '#1e293b', '#f8fafc');
+  // Room Number Plate on Corridor Door Frame
+  const plateTex = makeSignPlateTex(roomNum, subtitle, '#1e293b', '#f8fafc');
   const plate = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.42, 0.22),
+    new THREE.PlaneGeometry(0.46, 0.24),
     new THREE.MeshBasicMaterial({ map: plateTex, side: THREE.DoubleSide }),
   );
-  plate.position.set(cx, y + 1.76, doorFaceZ < 0 ? z0 - 0.14 : z0 + roomD + 0.14);
+  plate.position.set(cx, y + 1.78, doorFaceZ < 0 ? z0 - 0.14 : z0 + roomD + 0.14);
   if (doorFaceZ < 0) plate.rotation.y = Math.PI;
   parent.add(plate);
 }
 
-/**
- * Recessed Architectural Window Bay Helper (Frame + Sill + Glass + Mullions)
- */
 function addArchitecturalWindowBay(parent, mats, pos, width, height, rotY = 0, withAC = false) {
   const wg = new THREE.Group();
   wg.position.set(...pos);
   wg.rotation.y = rotY;
-
-  // Deep Dark-Bronze/Aluminum Outer Frame & Granite Sill Ledge
   box(wg, [width + 0.16, 0.10, 0.34], [0, -height * 0.5 - 0.04, 0.05], mats.blackGranite);
   box(wg, [width + 0.12, 0.08, 0.28], [0, height * 0.5 + 0.02, 0.02], mats.chrome);
   box(wg, [0.08, height, 0.26], [-width * 0.5, 0, 0], mats.chrome);
   box(wg, [0.08, height, 0.26], [width * 0.5, 0, 0], mats.chrome);
-
-  // Reflective Recessed Dark-Green Tinted Architectural Glass
   box(wg, [width - 0.08, height - 0.08, 0.06], [0, 0, -0.04], mats.greenGlass, { castShadow: false });
-
-  // Vertical & Horizontal Mullions
   const cols = width >= 2.4 ? 2 : 1;
   for (let c = 1; c <= cols; c++) {
     const mx = -width * 0.5 + (c / (cols + 1)) * width;
     box(wg, [0.055, height - 0.08, 0.12], [mx, 0, -0.01], mats.chrome);
   }
   box(wg, [width - 0.08, 0.05, 0.12], [0, height * 0.18, -0.01], mats.chrome);
-
-  // Optional Exterior Split-AC Outdoor Unit tucked neatly below sill
   if (withAC) {
     box(wg, [0.74, 0.48, 0.30], [width * 0.25, -height * 0.5 - 0.34, 0.18], mats.acUnit);
     cylinder(wg, 0.17, 0.17, 0.04, [width * 0.25 - 0.14, -height * 0.5 - 0.34, 0.34], mats.blackGloss, 10);
   }
-
   parent.add(wg);
 }
 
@@ -1024,10 +977,8 @@ export function buildHotelRoyalStandalone3D() {
   /* ==========================================================================
    * 1. EXTERIOR FORECOURT, STONE CASCADING FOUNTAIN, ACCORDION GATE & HERLAN SHOWROOM
    * ======================================================================== */
-  // Paved Forecourt Platform extending cleanly around both Podium & 10-Story Tower
-  box(exteriorG, [48.0, 0.16, 54.0], [-2.0, -0.08, -4.0], mats.paver, { uvScale: 9.0, castShadow: false });
+  box(exteriorG, [54.0, 0.16, 60.0], [-2.0, -0.08, -5.0], mats.paver, { uvScale: 10.0, castShadow: false });
 
-  // Stone-Cladded Cascading Blue-Mosaic Outdoor Fountain (Left of Entrance)
   box(exteriorG, [6.2, 1.45, 1.4], [-7.4, 0.72, 13.8], mats.stoneWall, { uvScale: 2.0 });
   box(exteriorG, [5.6, 0.52, 1.15], [-7.4, 0.26, 14.9], mats.stoneWall);
   box(exteriorG, [5.2, 0.36, 0.86], [-7.4, 0.36, 14.9], mats.mosaic);
@@ -1042,7 +993,6 @@ export function buildHotelRoyalStandalone3D() {
     cylinder(exteriorG, 0.11, 0.11, 0.22, [bx, 0.46, 12.6], mats.crispWhite, 8);
   }
 
-  // Adjacent Red "HERLAN NEW YORK" Corner Showroom
   box(exteriorG, [5.8, 3.85, 5.2], [-13.6, 1.92, 11.2], mats.herlanRed);
   const herlanTex = makeSignPlateTex('HERLAN', 'NEW YORK · AUTHENTIC COSMETICS', '#dc2626', '#ffffff');
   const herlanSign = new THREE.Mesh(
@@ -1054,7 +1004,6 @@ export function buildHotelRoyalStandalone3D() {
 
   /* ==========================================================================
    * 2. HOLLOW 3-STORY CURVED BEIGE PODIUM SHELL (EXTERIOR + WALKABLE FLOORS)
-   *    Floors: Ground y0 = 0.25m, 2nd y1 = 4.05m, 3rd y2 = 7.85m, Roof y3 = 11.65m
    * ======================================================================== */
   const R_OUT = 13.2;
   const R_COL = 12.6;
@@ -1065,34 +1014,31 @@ export function buildHotelRoyalStandalone3D() {
   const stepAng = (ARC_END - ARC_START) / SEGS;
   const floorYs = [0.25, 4.05, 7.85, 11.65];
 
-  // Ground Floor Full Marble Slab
+  // Ground Floor Full Marble Slab (slight 2mm y-offset on cylinder to guarantee zero Z-fighting!)
   box(interiorG, [24.0, 0.26, 20.0], [0, 0.12, 0.0], mats.marbleFloor, { uvScale: 6.0 });
-  cylinder(interiorG, R_OUT - 0.1, R_OUT - 0.1, 0.26, [0, 0.12, 0], mats.marbleFloor, 32);
+  cylinder(interiorG, R_OUT - 0.1, R_OUT - 0.1, 0.25, [0, 0.115, 0], mats.marbleFloor, 32);
 
-  // 2nd & 3rd Floor Slabs (with stairwell cutout at x = -4.2..-0.4, z = -9.5..-3.5)
   for (const fy of [4.05, 7.85]) {
     box(interiorG, [24.0, 0.24, 15.5], [0, fy - 0.12, 4.2], mats.marbleFloor, { uvScale: 5.0 });
     box(interiorG, [8.2, 0.24, 6.2], [-8.0, fy - 0.12, -6.5], mats.marbleFloor, { uvScale: 2.5 });
     box(interiorG, [12.4, 0.24, 6.2], [5.8, fy - 0.12, -6.5], mats.marbleFloor, { uvScale: 3.0 });
-    cylinder(interiorG, R_GLASS + 0.1, R_GLASS + 0.1, 0.22, [0, fy - 0.12, 0], mats.marbleFloor, 32);
+    cylinder(interiorG, R_GLASS + 0.1, R_GLASS + 0.1, 0.21, [0, fy - 0.125, 0], mats.marbleFloor, 32);
   }
 
-  // Podium Rooftop Slab (Clean weatherproof architectural tiled deck — ZERO fake trees!)
+  // Clean Architectural Podium Roof Slab (ZERO fake trees!)
   box(exteriorG, [24.6, 0.30, 21.0], [0, 11.50, 0.0], mats.roofTile, { uvScale: 5.0 });
-  cylinder(exteriorG, R_OUT - 0.15, R_OUT - 0.15, 0.30, [0, 11.50, 0], mats.roofTile, 32);
+  cylinder(exteriorG, R_OUT - 0.15, R_OUT - 0.15, 0.28, [0, 11.49, 0], mats.roofTile, 32);
 
-  // Back & Side Structural Perimeter Walls of Podium — WITH WIDE WALKABLE ARCHWAYS INTO THE 10-STORY TOWER!
-  // Back wall at z = -9.8 has a wide open doorway at x = -11.0..-8.2 on Floors 1, 2 & 3!
+  // Back Wall of Podium with Walkable Archway into 10-Story Tower (x = -11.0..-8.2)
   box(exteriorG, [1.2, 11.6, 0.38], [-11.6, 5.8, -9.8], mats.podiumConc);
   box(exteriorG, [20.4, 11.6, 0.38], [2.0, 5.8, -9.8], mats.podiumConc);
-  // Archway lintels & warm teak portal trim connecting Podium -> 10-Story Tower on Floors 1, 2, 3
   for (const fy of [0.25, 4.05, 7.85]) {
     box(interiorG, [2.8, 0.72, 0.42], [-9.6, fy + 3.44, -9.8], mats.podiumConc);
     box(interiorG, [0.16, 3.12, 0.48], [-11.0, fy + 1.56, -9.8], mats.warmWood);
     box(interiorG, [0.16, 3.12, 0.48], [-8.2, fy + 1.56, -9.8], mats.warmWood);
     box(interiorG, [2.96, 0.16, 0.48], [-9.6, fy + 3.08, -9.8], mats.goldTrim);
   }
-  const towerPortalTex = makeSignPlateTex('TOWER WING & SUITES', 'BANQUET · ELEVATORS · FLOORS 1–10', '#1e293b', '#facc15');
+  const towerPortalTex = makeSignPlateTex('TOWER WING & FLATS', 'BANQUET · ELEVATORS · FLOORS 1–10', '#1e293b', '#facc15');
   for (const fy of [0.25, 4.05, 7.85]) {
     const signM = new THREE.Mesh(
       new THREE.PlaneGeometry(2.4, 0.56),
@@ -1102,11 +1048,10 @@ export function buildHotelRoyalStandalone3D() {
     interiorG.add(signM);
   }
 
-  // Side walls of Podium
   box(exteriorG, [0.38, 11.6, 20.0], [-12.2, 5.8, 0.0], mats.podiumConc);
   box(exteriorG, [0.38, 11.6, 20.0], [12.2, 5.8, 0.0], mats.podiumConc);
 
-  // Iconic Curved Facade: Horizontal Concrete Slabs + Recessed Reflective Dark-Green Glass + Columns + AC Units
+  // Curved Facade Slabs, Glass, Columns & Exterior AC Units
   for (let i = 0; i < SEGS; i++) {
     const a0 = ARC_START + i * stepAng;
     const am = a0 + stepAng * 0.5;
@@ -1149,7 +1094,6 @@ export function buildHotelRoyalStandalone3D() {
     }
   }
 
-  // Curved Top Rim Sign: "HOTEL ROYAL INTERNATIONAL LIMITED"
   const rimTex = makeCurvedRimBannerTex();
   const rimMesh = new THREE.Mesh(
     new THREE.CylinderGeometry(R_OUT + 0.12, R_OUT + 0.12, 0.82, 28, 1, true, -0.92, 1.84),
@@ -1158,7 +1102,7 @@ export function buildHotelRoyalStandalone3D() {
   rimMesh.position.y = 11.68;
   exteriorG.add(rimMesh);
 
-  // Glossy Black ACP Curved Entrance Canopy + Glowing Red-White "HOTEL ROYAL" + Glass Balustrade
+  // Glossy Black ACP Curved Entrance Canopy + Glowing Red-White "HOTEL ROYAL"
   box(exteriorG, [8.4, 0.62, 4.2], [0, 3.92, 13.6], mats.podiumConc);
   box(exteriorG, [8.5, 1.15, 0.24], [0, 4.42, 15.62], mats.blackGloss);
   const blackSignTex = makeBlackCanopyHotelRoyalTex();
@@ -1188,11 +1132,9 @@ export function buildHotelRoyalStandalone3D() {
   box(interiorG, [0.76, 3.55, 0.76], [1.2, y0 + 1.78, 5.2], mats.warmWood);
   box(interiorG, [0.10, 3.45, 0.05], [1.2, y0 + 1.78, 5.60], mats.ledWhite);
 
-  // Left: 3D Geometric Diamond Wall + Curved Champagne-Gold Tufted Sofa
   box(interiorG, [0.22, 3.55, 8.8], [-11.85, y0 + 1.78, 4.4], mats.reliefWall);
-  addTuftedSofa(interiorG, mats, -10.85, y0, 4.4, 5.8, Math.PI * 0.5);
+  placeSofa(interiorG, mats, -10.85, y0, 4.4, 5.8, Math.PI * 0.5);
 
-  // Left-Back: Warm Wooden Reception Counter (clear of Tower Portal at z = -9.8!)
   box(interiorG, [1.15, 1.12, 5.2], [-9.2, y0 + 0.56, -2.6], mats.warmWood);
   box(interiorG, [1.25, 0.08, 5.35], [-9.2, y0 + 1.14, -2.6], mats.marbleFloor);
   box(interiorG, [0.16, 0.42, 0.62], [-9.4, y0 + 1.38, -1.6], mats.blackGloss);
@@ -1206,16 +1148,14 @@ export function buildHotelRoyalStandalone3D() {
   recSign.rotation.y = Math.PI * 0.5;
   interiorG.add(recSign);
 
-  // Right: Backlit Vertical Wood Louvers + Tufted Sofas
   for (let lz = -3.2; lz <= 7.8; lz += 0.68) {
     box(interiorG, [0.24, 3.55, 0.14], [11.6, y0 + 1.78, lz], mats.warmWood);
   }
   box(interiorG, [0.06, 3.4, 11.4], [11.9, y0 + 1.78, 2.3], mats.ledWarm);
-  addTuftedSofa(interiorG, mats, 9.6, y0, 4.8, 3.4, -Math.PI * 0.5);
-  addTuftedSofa(interiorG, mats, 9.6, y0, 0.2, 3.4, -Math.PI * 0.5);
+  placeSofa(interiorG, mats, 9.6, y0, 4.8, 3.4, -Math.PI * 0.5);
+  placeSofa(interiorG, mats, 9.6, y0, 0.2, 3.4, -Math.PI * 0.5);
   box(interiorG, [0.85, 0.44, 1.5], [7.8, y0 + 0.22, 2.5], mats.marbleFloor);
 
-  // Back Center: Curved Slate-Grey Indoor Fountain + Tiger Jaali Screen + Podium Elevator + Granite Stairs
   cylinder(interiorG, 2.55, 2.55, 3.55, [0.2, y0 + 1.78, -5.8], mats.slateWall, 24);
   cylinder(interiorG, 3.25, 3.25, 0.58, [0.2, y0 + 0.29, -5.8], mats.mosaic, 24);
   cylinder(interiorG, 3.05, 3.05, 0.06, [0.2, y0 + 0.56, -5.8], mats.waterBlue, 24);
@@ -1234,7 +1174,6 @@ export function buildHotelRoyalStandalone3D() {
     box(interiorG, [1.85, 0.025, 1.15], [-6.4, fy + 0.015, -8.8], mats.redCarpet);
   }
 
-  // Grand Black-Granite Podium Staircase + Shimmering Hammered-Gold Wall
   box(interiorG, [0.16, 11.2, 6.4], [-4.2, 5.8, -6.6], mats.hammeredGold);
   const buildPodiumStairFlight = (yBot, yTop) => {
     const yMid = (yBot + yTop) * 0.5;
@@ -1259,7 +1198,7 @@ export function buildHotelRoyalStandalone3D() {
   buildPodiumStairFlight(4.05, 7.85);
 
   /* ==========================================================================
-   * 4. 2ND FLOOR PODIUM (y = 4.05m): SAPPHIRE RESTAURANT
+   * 4. 2ND FLOOR PODIUM (y = 4.05m): SAPPHIRE RESTAURANT (Zero-Z-Fighting Chairs!)
    * ======================================================================== */
   const y1 = 4.05;
   box(interiorG, [23.6, 0.14, 21.0], [0, y1 + 3.60, 0.8], mats.espressoCeiling);
@@ -1294,7 +1233,7 @@ export function buildHotelRoyalStandalone3D() {
     box(interiorG, [0.72, 3.55, 0.72], [px, y1 + 1.78, pz], mats.warmWood);
   }
   for (const [tx, tz] of [[-8.2, 6.2], [-2.0, 7.6], [4.2, 7.6], [-8.2, 1.5], [-1.5, 2.4], [4.8, 2.4]]) {
-    addDiningTableSet(interiorG, mats, tx, y1, tz);
+    placeDiningSet(interiorG, mats, tx, y1, tz);
   }
 
   /* ==========================================================================
@@ -1312,9 +1251,9 @@ export function buildHotelRoyalStandalone3D() {
     box(interiorG, [0.65, 0.06, 0.65], [lx, y2 + 3.52, -1.8], mats.ledWhite);
   }
 
-  addRoyalGuestRoom(interiorG, mats, -11.8, y2, 0.15, 7.6, 8.4, '301');
-  addRoyalGuestRoom(interiorG, mats, -3.8, y2, 0.15, 7.6, 9.6, '303');
-  addRoyalGuestRoom(interiorG, mats, 4.2, y2, 0.15, 7.6, 8.4, '302');
+  addSpaciousHotelFlat(interiorG, mats, -11.8, y2, 0.15, 7.6, 8.4, '301', { subtitle: 'ROYAL STANDARD', ceilingH: 3.55 });
+  addSpaciousHotelFlat(interiorG, mats, -3.8, y2, 0.15, 7.6, 9.6, '303', { subtitle: 'ROYAL STANDARD', ceilingH: 3.55 });
+  addSpaciousHotelFlat(interiorG, mats, 4.2, y2, 0.15, 7.6, 8.4, '302', { subtitle: 'ROYAL STANDARD', ceilingH: 3.55 });
 
   /* ==========================================================================
    * 6. CLEAN ARCHITECTURAL PODIUM ROOF TERRACE (y = 11.65m — ZERO FAKE TREES!)
@@ -1324,10 +1263,8 @@ export function buildHotelRoyalStandalone3D() {
     const am = ARC_START + (i + 0.5) * stepAng;
     const segW = R_OUT * stepAng + 0.12;
     addRotBox(exteriorG, [segW, 0.92, 0.24], [Math.sin(am) * (R_OUT - 0.12), roofY + 0.46, Math.cos(am) * (R_OUT - 0.12)], mats.podiumConc, am);
-    // Clean granite coping cap along parapet rim
     addRotBox(exteriorG, [segW + 0.03, 0.08, 0.32], [Math.sin(am) * (R_OUT - 0.12), roofY + 0.94, Math.cos(am) * (R_OUT - 0.12)], mats.blackGranite, am);
   }
-  // Sleek Architectural Glass Skylight Lantern & Warm Deck Bollard Lights on Podium Terrace
   box(exteriorG, [6.4, 0.38, 3.4], [2.4, roofY + 0.19, 2.2], mats.blackGranite);
   box(exteriorG, [6.0, 0.56, 3.0], [2.4, roofY + 0.64, 2.2], mats.clearGlass);
   for (let sx = -0.4; sx <= 5.2; sx += 1.4) {
@@ -1339,58 +1276,51 @@ export function buildHotelRoyalStandalone3D() {
   }
 
   /* ==========================================================================
-   * 7. HIGH-REALISTIC, FULLY HOLLOW & WALKABLE 10-STORY MAIN TOWER
-   *    Positioned cleanly behind Podium back wall:
-   *      X: -14.2 .. +3.8 (width = 18.0m, center = -5.2)
-   *      Z: -25.8 .. -9.8 (depth = 16.0m, center = -17.8)
+   * 7. SPACIOUS, HIGH-REALISTIC & FULLY WALKABLE 10-STORY MAIN TOWER
+   *    Generous Real-Hotel Footprint (2–3 Spacious Rentable Flats per Floor!):
+   *      X: -16.2 .. +5.8 (width = 22.0m, center = -5.2)
+   *      Z: -27.8 .. -9.8 (depth = 18.0m, center = -18.8)
    *    10 Real Walkable Floors:
    *      F1=0.25, F2=4.05, F3=7.85 (match Podium), F4=11.65 .. F10=32.05 (3.4m each), Roof=35.45
    * ======================================================================== */
-  const twX0 = -14.2;
-  const twX1 = 3.8;
+  const twX0 = -16.2;
+  const twX1 = 5.8;
   const twCX = (twX0 + twX1) * 0.5; // -5.2
-  const twW = twX1 - twX0;          // 18.0
-  const twZ0 = -25.8;
+  const twW = twX1 - twX0;          // 22.0
+  const twZ0 = -27.8;
   const twZ1 = -9.8;
-  const twCZ = (twZ0 + twZ1) * 0.5; // -17.8
-  const twD = twZ1 - twZ0;          // 16.0
+  const twCZ = (twZ0 + twZ1) * 0.5; // -18.8
+  const twD = twZ1 - twZ0;          // 18.0
 
   const towerFloorYs = [0.25, 4.05, 7.85, 11.65, 15.05, 18.45, 21.85, 25.25, 28.65, 32.05];
   const towerRoofY = 35.45;
 
-  // --- A) Hollow Floor Slabs (with real stairwell cutout at x = -14.0..-10.2, z = -25.6..-20.2) ---
+  // --- A) Hollow Floor Slabs (with stairwell cutout in Rear-Left: x = -16.0..-12.2, z = -27.6..-22.0) ---
   for (let f = 0; f < towerFloorYs.length; f++) {
     const fy = towerFloorYs[f];
-    const slabMat = f === 0 || f === 1 || f === 9 ? mats.marbleFloor : mats.marbleFloor;
     if (f === 0) {
-      // Ground floor solid marble slab
-      box(towerIntG, [twW - 0.2, 0.26, twD - 0.2], [twCX, fy - 0.13, twCZ], slabMat, { uvScale: 5.5 });
+      box(towerIntG, [twW - 0.2, 0.26, twD - 0.2], [twCX, fy - 0.13, twCZ], mats.marbleFloor, { uvScale: 6.5 });
     } else {
-      // Upper floor slabs with stairwell cutout in Rear-Left corner (x = -14.0..-10.2, z = -25.6..-20.2)
-      box(towerIntG, [twW - 0.2, 0.22, 10.4], [twCX, fy - 0.11, -15.0], slabMat, { uvScale: 4.5 });
-      box(towerIntG, [13.8, 0.22, 5.6], [-3.2, fy - 0.11, -22.9], slabMat, { uvScale: 3.5 });
+      box(towerIntG, [twW - 0.2, 0.22, 12.2], [twCX, fy - 0.11, -15.9], mats.marbleFloor, { uvScale: 5.5 });
+      box(towerIntG, [17.8, 0.22, 5.8], [-3.2, fy - 0.11, -24.8], mats.marbleFloor, { uvScale: 4.0 });
     }
-    // Ceiling underside soffit
     const nextY = f < towerFloorYs.length - 1 ? towerFloorYs[f + 1] : towerRoofY;
-    box(towerIntG, [twW - 0.4, 0.08, 10.2], [twCX, nextY - 0.24, -15.0], mats.whiteWall);
-    box(towerIntG, [13.6, 0.08, 5.4], [-3.2, nextY - 0.24, -22.9], mats.whiteWall);
+    box(towerIntG, [twW - 0.4, 0.08, 12.0], [twCX, nextY - 0.24, -15.9], mats.whiteWall);
+    box(towerIntG, [17.6, 0.08, 5.6], [-3.2, nextY - 0.24, -24.8], mats.whiteWall);
   }
-  // Tower Rooftop Slab (with stairwell roof access opening)
-  box(towerShellG, [twW + 0.2, 0.30, 10.6], [twCX, towerRoofY - 0.15, -15.0], mats.roofTile, { uvScale: 5.0 });
-  box(towerShellG, [14.0, 0.30, 5.8], [-3.2, towerRoofY - 0.15, -22.9], mats.roofTile, { uvScale: 4.0 });
+  box(towerShellG, [twW + 0.2, 0.30, 12.4], [twCX, towerRoofY - 0.15, -15.9], mats.roofTile, { uvScale: 5.5 });
+  box(towerShellG, [18.0, 0.30, 6.0], [-3.2, towerRoofY - 0.15, -24.8], mats.roofTile, { uvScale: 4.5 });
 
   // --- B) Signature Off-White Front-Left Architectural Spine + Vertical Gold "HOTEL ROYAL" Signage ---
-  // Spans x = -14.2..-7.8 on Front (+Z) face above Podium (y = 11.65..35.45) + flanking piers below
-  box(towerShellG, [6.4, towerRoofY - 11.4, 0.44], [-11.0, (towerRoofY + 11.4) * 0.5, twZ1 + 0.12], mats.towerWhite, { uvScale: 2.5 });
-  // Vertical decorative recessed reveal bands on the white spine
-  box(towerShellG, [0.16, towerRoofY - 11.4, 0.50], [-14.0, (towerRoofY + 11.4) * 0.5, twZ1 + 0.14], mats.towerTaupe);
-  box(towerShellG, [0.16, towerRoofY - 11.4, 0.50], [-7.9, (towerRoofY + 11.4) * 0.5, twZ1 + 0.14], mats.towerTaupe);
+  box(towerShellG, [6.6, towerRoofY - 11.4, 0.44], [-12.9, (towerRoofY + 11.4) * 0.5, twZ1 + 0.12], mats.towerWhite, { uvScale: 2.5 });
+  box(towerShellG, [0.16, towerRoofY - 11.4, 0.50], [-16.0, (towerRoofY + 11.4) * 0.5, twZ1 + 0.14], mats.towerTaupe);
+  box(towerShellG, [0.16, towerRoofY - 11.4, 0.50], [-9.7, (towerRoofY + 11.4) * 0.5, twZ1 + 0.14], mats.towerTaupe);
   const vGoldTex = makeVerticalGoldHotelRoyalTex();
   const vGoldMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(3.8, 18.2),
     new THREE.MeshStandardMaterial({ map: vGoldTex, emissive: 0xffe066, emissiveMap: vGoldTex, emissiveIntensity: 0.36 }),
   );
-  vGoldMesh.position.set(-11.0, towerRoofY - 10.6, twZ1 + 0.38);
+  vGoldMesh.position.set(-12.9, towerRoofY - 10.6, twZ1 + 0.38);
   towerShellG.add(vGoldMesh);
 
   // --- C) Hollow High-Realistic 4-Sided Facade with Real Window Openings, Cornices & KDA Ave Balconies ---
@@ -1403,285 +1333,331 @@ export function buildHotelRoyalStandalone3D() {
     const winCY = fy + sillH + winH * 0.5;
     const headH = flH - sillH - winH;
 
-    // Horizontal exterior architectural floor cornice band wrapping all 4 sides
     if (f >= 3) {
       box(towerShellG, [twW + 0.36, 0.24, 0.28], [twCX, fy, twZ1 + 0.08], mats.towerWhite);
       box(towerShellG, [twW + 0.36, 0.24, 0.28], [twCX, fy, twZ0 - 0.08], mats.towerWhite);
       box(towerShellG, [0.28, 0.24, twD + 0.36], [twX1 + 0.08, fy, twCZ], mats.towerWhite);
     }
 
-    // 1) FRONT (+Z) WALL (Only above Podium for f >= 3; below f=3 it shares the Podium back wall with archway!)
+    // 1) FRONT (+Z) WALL (x = -9.6..+5.8, width 15.4m above Podium) with 4 Real Recessed Windows
     if (f >= 3) {
-      // Right portion of front wall (x = -7.8..+3.8, width 11.6m) with 3 real recessed windows!
-      box(towerShellG, [11.6, sillH, 0.34], [-2.0, fy + sillH * 0.5, twZ1], mats.towerTaupe);
-      box(towerShellG, [11.6, headH, 0.34], [-2.0, nextY - headH * 0.5, twZ1], mats.towerTaupe);
-      // Solid piers between front windows
-      for (const [px0, px1] of [[-7.8, -6.6], [-4.2, -3.0], [-0.4, 0.8], [3.0, 3.8]]) {
+      box(towerShellG, [15.4, sillH, 0.34], [-1.9, fy + sillH * 0.5, twZ1], mats.towerTaupe);
+      box(towerShellG, [15.4, headH, 0.34], [-1.9, nextY - headH * 0.5, twZ1], mats.towerTaupe);
+      for (const [px0, px1] of [[-9.6, -8.5], [-5.9, -4.7], [-2.1, -0.9], [1.7, 2.9], [5.1, 5.8]]) {
         box(towerShellG, [px1 - px0, winH, 0.34], [(px0 + px1) * 0.5, winCY, twZ1], mats.towerTaupe);
       }
-      // 3 Real Recessed Front Window Bays
-      addArchitecturalWindowBay(towerShellG, mats, [-5.4, winCY, twZ1], 2.4, winH, 0, f % 2 === 1);
-      addArchitecturalWindowBay(towerShellG, mats, [-1.7, winCY, twZ1], 2.6, winH, 0, false);
-      addArchitecturalWindowBay(towerShellG, mats, [1.9, winCY, twZ1], 2.2, winH, 0, f % 2 === 0);
+      addArchitecturalWindowBay(towerShellG, mats, [-7.2, winCY, twZ1], 2.6, winH, 0, f % 2 === 1);
+      addArchitecturalWindowBay(towerShellG, mats, [-3.4, winCY, twZ1], 2.6, winH, 0, false);
+      addArchitecturalWindowBay(towerShellG, mats, [0.4, winCY, twZ1], 2.6, winH, 0, f % 2 === 0);
+      addArchitecturalWindowBay(towerShellG, mats, [4.0, winCY, twZ1], 2.2, winH, 0, false);
     }
 
-    // 2) LEFT (-X, KDA AVENUE) WALL — Walkable Cantilevered Balconies on Floors 4–10 (f >= 3)!
+    // 2) LEFT (-X, KDA AVENUE) WALL — Walkable Cantilevered Balconies on Floors 4–10
     if (f >= 3) {
-      // Cantilevered Balcony Slab + Clean Parapet + Glass & Chrome Top Rail
-      box(towerShellG, [1.75, 0.22, twD - 0.8], [twX0 - 0.86, fy - 0.11, twCZ], mats.towerWhite);
-      box(towerShellG, [0.16, 0.58, twD - 0.8], [twX0 - 1.66, fy + 0.29, twCZ], mats.towerWhite);
-      box(towerShellG, [0.06, 0.44, twD - 0.9], [twX0 - 1.66, fy + 0.80, twCZ], mats.clearGlass);
-      box(towerShellG, [0.08, 0.06, twD - 0.8], [twX0 - 1.66, fy + 1.04, twCZ], mats.chrome);
-      // Left wall with wide glass sliding doors onto balcony (walkable gap on Floors 4, 6, 10!)
+      box(towerShellG, [1.85, 0.22, twD - 0.8], [twX0 - 0.90, fy - 0.11, twCZ], mats.towerWhite);
+      box(towerShellG, [0.16, 0.58, twD - 0.8], [twX0 - 1.76, fy + 0.29, twCZ], mats.towerWhite);
+      box(towerShellG, [0.06, 0.44, twD - 0.9], [twX0 - 1.76, fy + 0.80, twCZ], mats.clearGlass);
+      box(towerShellG, [0.08, 0.06, twD - 0.8], [twX0 - 1.76, fy + 1.04, twCZ], mats.chrome);
+
       box(towerShellG, [0.34, headH, twD], [twX0, nextY - headH * 0.5, twCZ], mats.towerTaupe);
-      // Rear stairwell solid wall segment (z = -25.8..-20.0)
-      box(towerShellG, [0.34, flH, 5.8], [twX0, fy + flH * 0.5, -22.9], mats.towerTaupe);
-      // Pier between balcony openings
-      box(towerShellG, [0.34, flH, 1.4], [twX0, fy + flH * 0.5, -14.8], mats.towerTaupe);
+      box(towerShellG, [0.34, flH, 6.2], [twX0, fy + flH * 0.5, -24.7], mats.towerTaupe);
+      box(towerShellG, [0.34, flH, 1.4], [twX0, fy + flH * 0.5, -16.0], mats.towerTaupe);
       box(towerShellG, [0.34, flH, 1.0], [twX0, fy + flH * 0.5, -10.3], mats.towerTaupe);
-      // Wide Balcony Sliding Glass Bays (openable doorway gap on Floors 4, 6, 10 so you can walk out!)
+
       const isWalkableBalcony = (f === 3 || f === 5 || f === 9);
       if (!isWalkableBalcony) {
-        addArchitecturalWindowBay(towerShellG, mats, [twX0, fy + (flH - headH) * 0.5, -17.6], 4.2, flH - headH, -Math.PI * 0.5, false);
-        addArchitecturalWindowBay(towerShellG, mats, [twX0, fy + (flH - headH) * 0.5, -12.4], 3.2, flH - headH, -Math.PI * 0.5, false);
+        addArchitecturalWindowBay(towerShellG, mats, [twX0, fy + (flH - headH) * 0.5, -19.2], 4.8, flH - headH, -Math.PI * 0.5, false);
+        addArchitecturalWindowBay(towerShellG, mats, [twX0, fy + (flH - headH) * 0.5, -13.0], 4.4, flH - headH, -Math.PI * 0.5, false);
       } else {
-        // Framed open sliding glass door panels (pushed aside so player walks right onto KDA Avenue balcony!)
-        box(towerShellG, [0.08, flH - headH, 1.5], [twX0, fy + (flH - headH) * 0.5, -19.2], mats.clearGlass);
-        box(towerShellG, [0.08, flH - headH, 1.2], [twX0, fy + (flH - headH) * 0.5, -11.4], mats.clearGlass);
+        box(towerShellG, [0.08, flH - headH, 1.6], [twX0, fy + (flH - headH) * 0.5, -20.8], mats.clearGlass);
+        box(towerShellG, [0.08, flH - headH, 1.4], [twX0, fy + (flH - headH) * 0.5, -11.5], mats.clearGlass);
       }
     } else {
-      // Lower Floors (1–3) Left (-X) Wall with recessed windows
+      // Lower Floors (1–3) Left Wall + Left-Front closure (x = -16.2..-12.2 at z = -9.8)
+      box(towerShellG, [4.2, flH, 0.36], [-14.1, fy + flH * 0.5, twZ1], mats.podiumConc);
       box(towerShellG, [0.34, sillH, twD], [twX0, fy + sillH * 0.5, twCZ], mats.towerTaupe);
       box(towerShellG, [0.34, headH, twD], [twX0, nextY - headH * 0.5, twCZ], mats.towerTaupe);
-      for (const [pz0, pz1] of [[-25.8, -20.0], [-16.6, -15.2], [-11.8, -9.8]]) {
+      for (const [pz0, pz1] of [[-27.8, -22.0], [-18.2, -16.6], [-12.6, -9.8]]) {
         box(towerShellG, [0.34, winH, pz1 - pz0], [twX0, winCY, (pz0 + pz1) * 0.5], mats.towerTaupe);
       }
-      addArchitecturalWindowBay(towerShellG, mats, [twX0, winCY, -18.3], 3.4, winH, -Math.PI * 0.5, false);
-      addArchitecturalWindowBay(towerShellG, mats, [twX0, winCY, -13.5], 3.4, winH, -Math.PI * 0.5, false);
+      addArchitecturalWindowBay(towerShellG, mats, [twX0, winCY, -20.1], 3.8, winH, -Math.PI * 0.5, false);
+      addArchitecturalWindowBay(towerShellG, mats, [twX0, winCY, -14.6], 4.0, winH, -Math.PI * 0.5, false);
     }
 
     // 3) RIGHT (+X) WALL with 3 Recessed Windows per floor
     box(towerShellG, [0.34, sillH, twD], [twX1, fy + sillH * 0.5, twCZ], mats.towerTaupe);
     box(towerShellG, [0.34, headH, twD], [twX1, nextY - headH * 0.5, twCZ], mats.towerTaupe);
-    for (const [pz0, pz1] of [[-25.8, -24.4], [-21.4, -20.0], [-16.6, -15.2], [-11.8, -9.8]]) {
+    for (const [pz0, pz1] of [[-27.8, -26.0], [-22.4, -20.8], [-17.2, -15.6], [-12.0, -9.8]]) {
       box(towerShellG, [0.34, winH, pz1 - pz0], [twX1, winCY, (pz0 + pz1) * 0.5], mats.towerTaupe);
     }
-    addArchitecturalWindowBay(towerShellG, mats, [twX1, winCY, -22.9], 3.0, winH, Math.PI * 0.5, false);
-    addArchitecturalWindowBay(towerShellG, mats, [twX1, winCY, -18.3], 3.4, winH, Math.PI * 0.5, f >= 3 && f % 2 === 0);
-    addArchitecturalWindowBay(towerShellG, mats, [twX1, winCY, -13.5], 3.4, winH, Math.PI * 0.5, false);
+    addArchitecturalWindowBay(towerShellG, mats, [twX1, winCY, -24.2], 3.6, winH, Math.PI * 0.5, false);
+    addArchitecturalWindowBay(towerShellG, mats, [twX1, winCY, -19.0], 3.6, winH, Math.PI * 0.5, f >= 3 && f % 2 === 0);
+    addArchitecturalWindowBay(towerShellG, mats, [twX1, winCY, -13.8], 3.6, winH, Math.PI * 0.5, false);
 
-    // 4) REAR (-Z) WALL with 3 Recessed Windows per floor
+    // 4) REAR (-Z) WALL with 4 Recessed Windows per floor
     box(towerShellG, [twW, sillH, 0.34], [twCX, fy + sillH * 0.5, twZ0], mats.towerTaupe);
     box(towerShellG, [twW, headH, 0.34], [twCX, nextY - headH * 0.5, twZ0], mats.towerTaupe);
-    for (const [px0, px1] of [[-14.2, -9.6], [-6.6, -5.2], [-2.2, -0.8], [2.2, 3.8]]) {
+    for (const [px0, px1] of [[-16.2, -11.4], [-8.0, -6.6], [-3.2, -1.8], [1.6, 3.0], [5.2, 5.8]]) {
       box(towerShellG, [px1 - px0, winH, 0.34], [(px0 + px1) * 0.5, winCY, twZ0], mats.towerTaupe);
     }
-    addArchitecturalWindowBay(towerShellG, mats, [-8.1, winCY, twZ0], 3.0, winH, Math.PI, false);
-    addArchitecturalWindowBay(towerShellG, mats, [-3.7, winCY, twZ0], 3.0, winH, Math.PI, f >= 3 && f % 2 === 1);
-    addArchitecturalWindowBay(towerShellG, mats, [0.7, winCY, twZ0], 3.0, winH, Math.PI, false);
+    addArchitecturalWindowBay(towerShellG, mats, [-9.7, winCY, twZ0], 3.4, winH, Math.PI, false);
+    addArchitecturalWindowBay(towerShellG, mats, [-4.9, winCY, twZ0], 3.4, winH, Math.PI, f >= 3 && f % 2 === 1);
+    addArchitecturalWindowBay(towerShellG, mats, [-0.1, winCY, twZ0], 3.4, winH, Math.PI, false);
+    addArchitecturalWindowBay(towerShellG, mats, [4.1, winCY, twZ0], 2.2, winH, Math.PI, false);
   }
 
   // --- D) TOWER VERTICAL CORE: 10-STORY WALKABLE GRANITE STAIRCASE + DOUBLE ELEVATORS ---
   const buildTowerStairFlight = (yBot, yTop) => {
     const yMid = (yBot + yTop) * 0.5;
     const steps = 9;
-    // Flight 1 going -Z (x = -13.1, z = -20.6 -> -24.2)
     for (let i = 0; i < steps; i++) {
       const t = (i + 0.5) / steps;
-      const sz = THREE.MathUtils.lerp(-20.6, -24.2, t);
+      const sz = THREE.MathUtils.lerp(-22.4, -26.2, t);
       const sy = THREE.MathUtils.lerp(yBot, yMid, (i + 1) / steps);
-      box(towerIntG, [1.55, 0.20, 0.42], [-13.1, sy - 0.10, sz], mats.blackGranite);
+      box(towerIntG, [1.55, 0.20, 0.42], [-15.1, sy - 0.10, sz], mats.blackGranite);
     }
-    // Mid-landing (z = -24.9)
-    box(towerIntG, [3.4, 0.20, 1.15], [-12.15, yMid - 0.10, -24.95], mats.blackGranite);
-    // Flight 2 going +Z (x = -11.2, z = -24.2 -> -20.6)
+    box(towerIntG, [3.4, 0.20, 1.15], [-14.15, yMid - 0.10, -26.95], mats.blackGranite);
     for (let i = 0; i < steps; i++) {
       const t = (i + 0.5) / steps;
-      const sz = THREE.MathUtils.lerp(-24.2, -20.6, t);
+      const sz = THREE.MathUtils.lerp(-26.2, -22.4, t);
       const sy = THREE.MathUtils.lerp(yMid, yTop, (i + 1) / steps);
-      box(towerIntG, [1.55, 0.20, 0.42], [-11.2, sy - 0.10, sz], mats.blackGranite);
+      box(towerIntG, [1.55, 0.20, 0.42], [-13.2, sy - 0.10, sz], mats.blackGranite);
     }
-    rodBetween(towerIntG, [-12.15, yBot + 0.88, -20.6], [-12.15, yMid + 0.88, -24.2], 0.032, mats.chrome);
-    rodBetween(towerIntG, [-12.15, yMid + 0.88, -24.2], [-12.15, yTop + 0.88, -20.6], 0.032, mats.chrome);
+    rodBetween(towerIntG, [-14.15, yBot + 0.88, -22.4], [-14.15, yMid + 0.88, -26.2], 0.032, mats.chrome);
+    rodBetween(towerIntG, [-14.15, yMid + 0.88, -26.2], [-14.15, yTop + 0.88, -22.4], 0.032, mats.chrome);
   };
   for (let f = 0; f < towerFloorYs.length; f++) {
     const fy = towerFloorYs[f];
     const nextY = f < towerFloorYs.length - 1 ? towerFloorYs[f + 1] : towerRoofY;
     buildTowerStairFlight(fy, nextY);
 
-    // Double Brushed-Steel Tower Elevators on Rear Wall of Elevator Lobby (x = -9.2..-5.8, z = -25.4)
-    for (const ex of [-8.4, -6.4]) {
+    for (const ex of [-10.2, -8.2]) {
       box(towerIntG, [1.65, 2.38, 0.12], [ex, fy + 1.19, twZ0 + 0.28], mats.chrome);
       const eMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.40, 2.22), mats.elevDoor);
       eMesh.position.set(ex, fy + 1.12, twZ0 + 0.36);
       towerIntG.add(eMesh);
     }
-    box(towerIntG, [3.8, 0.02, 1.2], [-7.4, fy + 0.015, twZ0 + 1.1], mats.redCarpet);
+    box(towerIntG, [3.8, 0.02, 1.2], [-9.2, fy + 0.015, twZ0 + 1.1], mats.redCarpet);
     const flPlateTex = makeSignPlateTex(`FLOOR ${String(f + 1).padStart(2, '0')}`, 'TOWER ELEVATORS', '#1e293b', '#facc15');
     const flPlate = new THREE.Mesh(
       new THREE.PlaneGeometry(1.25, 0.34),
       new THREE.MeshStandardMaterial({ map: flPlateTex, emissive: 0xffffff, emissiveMap: flPlateTex, emissiveIntensity: 0.45 }),
     );
-    flPlate.position.set(-7.4, fy + 2.62, twZ0 + 0.38);
+    flPlate.position.set(-9.2, fy + 2.62, twZ0 + 0.38);
     towerIntG.add(flPlate);
 
-    // Corridor ceiling panel downlights on every tower floor
-    for (const lx of [-10.0, -5.2, -0.5]) {
-      box(towerIntG, [0.58, 0.05, 0.58], [lx, nextY - 0.30, -18.0], mats.ledWhite);
+    for (const lx of [-11.0, -5.2, 0.8]) {
+      box(towerIntG, [0.58, 0.05, 0.58], [lx, nextY - 0.30, -19.2], mats.ledWhite);
     }
   }
 
-  // --- E) FLOOR-BY-FLOOR WALKABLE TOWER INTERIORS ---
+  // --- E) SPACIOUS FLOOR-BY-FLOOR WALKABLE TOWER INTERIORS (2–3 FLATS PER FLOOR!) ---
 
   // 1) GROUND FLOOR TOWER (y = 0.25m): ROYAL GRAND BANQUET & CONFERENCE HALL
   {
     const fy = towerFloorYs[0];
-    // Warm coffered ceiling LED beams
-    for (const lx of [-9.5, -4.5, 0.5]) {
-      box(towerIntG, [0.36, 0.06, 12.5], [lx, fy + 3.48, -17.2], mats.ledWarm);
+    for (const lx of [-10.5, -5.0, 0.5]) {
+      box(towerIntG, [0.36, 0.06, 13.5], [lx, fy + 3.48, -18.2], mats.ledWarm);
     }
-    // Raised Stage + Backlit Backdrop on East Side
-    box(towerIntG, [2.6, 0.32, 7.6], [2.1, fy + 0.16, -17.2], mats.mahogany);
-    box(towerIntG, [0.22, 3.2, 6.8], [3.3, fy + 1.75, -17.2], mats.warmWood);
+    box(towerIntG, [2.8, 0.32, 8.2], [4.0, fy + 0.16, -18.2], mats.mahogany);
+    box(towerIntG, [0.22, 3.2, 7.4], [5.3, fy + 1.75, -18.2], mats.warmWood);
     const banqTex = makeSignPlateTex('ROYAL GRAND BANQUET', 'CONFERENCE & CONVENTION HALL', '#3b1f14', '#facc15');
     const banqSign = new THREE.Mesh(
       new THREE.PlaneGeometry(4.8, 1.2),
       new THREE.MeshStandardMaterial({ map: banqTex, emissive: 0xffffff, emissiveMap: banqTex, emissiveIntensity: 0.55 }),
     );
-    banqSign.position.set(3.14, fy + 2.35, -17.2);
+    banqSign.position.set(5.14, fy + 2.35, -18.2);
     banqSign.rotation.y = -Math.PI * 0.5;
     towerIntG.add(banqSign);
-    // Speaker Lectern on Stage
-    box(towerIntG, [0.55, 1.15, 0.65], [1.35, fy + 0.88, -17.2], mats.mahogany);
+    box(towerIntG, [0.55, 1.15, 0.65], [3.15, fy + 0.88, -18.2], mats.mahogany);
 
-    // Grand Executive Conference Table + 10 Chairs
-    box(towerIntG, [6.4, 0.10, 2.2], [-3.8, fy + 0.78, -16.8], mats.mahogany);
-    box(towerIntG, [5.6, 0.72, 1.2], [-3.8, fy + 0.36, -16.8], mats.blackGranite);
-    for (let cx = -6.2; cx <= -1.4; cx += 1.2) {
-      for (const [cz, ry] of [[-18.35, 0], [-15.25, Math.PI]]) {
-        const cg = new THREE.Group();
-        cg.position.set(cx, fy, cz);
-        cg.rotation.y = ry;
-        box(cg, [0.48, 0.08, 0.48], [0, 0.45, 0], mats.goldVelvet);
-        box(cg, [0.46, 0.56, 0.08], [0, 0.76, -0.20], mats.mahogany);
-        cylinder(cg, 0.04, 0.04, 0.44, [0, 0.22, 0], mats.chrome, 6);
-        towerIntG.add(cg);
+    // Grand Executive Conference Table + 10 Zero-Z-Fighting Carved Chairs!
+    box(towerIntG, [7.6, 0.10, 2.3], [-3.2, fy + 0.78, -17.8], mats.mahogany);
+    box(towerIntG, [6.6, 0.72, 1.2], [-3.2, fy + 0.36, -17.8], mats.blackGranite);
+    for (let cx = -6.2; cx <= -0.2; cx += 1.5) {
+      for (const [cz, ry] of [[-19.45, 0], [-16.15, Math.PI]]) {
+        const ch = createCarvedDiningChair(mats);
+        ch.position.set(cx, fy, cz);
+        ch.rotation.y = ry;
+        towerIntG.add(ch);
       }
     }
-    // Pre-function lounge sofa near Podium archway
-    addTuftedSofa(towerIntG, mats, -11.6, fy, -14.2, 3.6, Math.PI * 0.5);
+    placeSofa(towerIntG, mats, -13.2, fy, -14.8, 4.0, Math.PI * 0.5);
   }
 
   // 2) 2ND FLOOR TOWER (y = 4.05m): VIP PRIVATE DINING & EXECUTIVE LOUNGE
   {
     const fy = towerFloorYs[1];
-    for (const [tx, tz] of [[-5.6, -13.6], [0.2, -13.6], [-5.6, -19.2], [0.2, -19.2]]) {
-      addDiningTableSet(towerIntG, mats, tx, fy, tz);
+    for (const [tx, tz] of [[-6.4, -14.2], [0.8, -14.2], [-6.4, -20.8], [0.8, -20.8]]) {
+      placeDiningSet(towerIntG, mats, tx, fy, tz);
     }
-    // Coffee & Espresso Bar Counter along North-East Wall
-    box(towerIntG, [5.4, 1.05, 0.95], [-1.0, fy + 0.52, -24.4], mats.blackGranite);
-    box(towerIntG, [0.65, 0.55, 0.52], [-2.4, fy + 1.32, -24.4], mats.chrome);
-    addTuftedSofa(towerIntG, mats, -11.6, fy, -15.0, 3.8, Math.PI * 0.5);
+    box(towerIntG, [6.4, 1.05, 0.95], [-1.0, fy + 0.52, -26.4], mats.blackGranite);
+    box(towerIntG, [0.65, 0.55, 0.52], [-2.6, fy + 1.32, -26.4], mats.chrome);
+    placeSofa(towerIntG, mats, -13.2, fy, -15.5, 4.2, Math.PI * 0.5);
   }
 
-  // 3) 3RD & 4TH FLOORS TOWER (y = 7.85m & 11.65m): WALKABLE DELUXE GUEST ROOMS
-  for (const [fIdx, prefix] of [[2, '30'], [3, '40']]) {
+  // 3) 3RD & 4TH FLOORS TOWER (y = 7.85m & 11.65m): 3 SPACIOUS RENTABLE FLATS PER FLOOR!
+  //    Central Corridor at z = -20.4..-18.0 (width 2.4m), serving:
+  //      - Flat A (South-West Balcony Flat): x = -16.0..-5.4, z = -18.0..-10.0 (10.6m × 8.0m!)
+  //      - Flat B (South-East Family Flat):  x = -5.2..+5.6,  z = -18.0..-10.0 (10.8m × 8.0m!)
+  //      - Flat C (North-East Executive Flat): x = -5.2..+5.6, z = -27.6..-20.4 (10.8m × 7.2m!)
+  for (const [fIdx, nums] of [[2, ['304', '305', '306']], [3, ['401', '402', '403']]]) {
     const fy = towerFloorYs[fIdx];
-    // Central corridor bumper rail & room partition wall at z = -17.2 (with wide open doorways)
-    box(towerIntG, [11.4, 3.25, 0.20], [-2.0, fy + 1.62, -17.2], mats.whiteWall);
-    box(towerIntG, [0.20, 3.25, 7.2], [-2.2, fy + 1.62, -13.5], mats.whiteWall);
-    addRoyalGuestRoom(towerIntG, mats, -9.2, fy, -16.8, 6.8, 6.6, `${prefix}4`, -1);
-    addRoyalGuestRoom(towerIntG, mats, -2.0, fy, -16.8, 5.6, 6.6, `${prefix}5`, -1);
+    const flH = fIdx === 2 ? 3.55 : 3.16;
+    // South corridor wall (z = -18.0) with 2 wide open doorways into Flat A (-10.8..-9.0) & Flat B (0.0..+1.8)
+    for (const [wx0, wx1] of [[-16.0, -10.8], [-9.0, 0.0], [1.8, 5.6]]) {
+      box(towerIntG, [wx1 - wx0, flH, 0.20], [(wx0 + wx1) * 0.5, fy + flH * 0.5, -18.0], mats.whiteWall);
+      box(towerIntG, [wx1 - wx0, 0.20, 0.24], [(wx0 + wx1) * 0.5, fy + 1.05, -18.0], mats.mahogany);
+    }
+    // Divider wall between Flat A & Flat B (x = -5.3)
+    box(towerIntG, [0.20, flH, 8.0], [-5.3, fy + flH * 0.5, -14.0], mats.whiteWall);
+
+    // North corridor wall (z = -20.4) separating Flat C (with wide open doorway at x = -1.6..+0.2)
+    for (const [wx0, wx1] of [[-5.3, -1.6], [0.2, 5.6]]) {
+      box(towerIntG, [wx1 - wx0, flH, 0.20], [(wx0 + wx1) * 0.5, fy + flH * 0.5, -20.4], mats.whiteWall);
+      box(towerIntG, [wx1 - wx0, 0.20, 0.24], [(wx0 + wx1) * 0.5, fy + 1.05, -20.4], mats.mahogany);
+    }
+    box(towerIntG, [0.20, flH, 7.2], [-5.3, fy + flH * 0.5, -24.0], mats.whiteWall);
+
+    // Furnish all 3 spacious rentable flats with high-detail 3D modular furniture!
+    addSpaciousHotelFlat(towerIntG, mats, -15.8, fy, -17.8, 10.2, 7.6, nums[0], {
+      subtitle: 'DELUXE BALCONY FLAT',
+      includeSecondSingleBed: false,
+      includeLoungeSofa: true,
+      ceilingH: flH,
+    });
+    addSpaciousHotelFlat(towerIntG, mats, -5.0, fy, -17.8, 10.4, 7.6, nums[1], {
+      subtitle: 'FAMILY SUITE FLAT',
+      includeSecondSingleBed: true,
+      includeLoungeSofa: true,
+      ceilingH: flH,
+    });
+    addSpaciousHotelFlat(towerIntG, mats, -5.0, fy, -27.4, 10.4, 6.8, nums[2], {
+      subtitle: 'EXECUTIVE FLAT',
+      doorFaceZ: 1,
+      includeSecondSingleBed: false,
+      includeLoungeSofa: true,
+      ceilingH: flH,
+    });
   }
 
-  // 4) 6TH FLOOR TOWER (y = 18.45m): HERO ROYAL PRESIDENTIAL EXECUTIVE SUITE (ROOM 601!)
+  // 4) 6TH FLOOR TOWER (y = 18.45m): 2 GRAND LUXURY PRESIDENTIAL FLATS (601 & 602!)
   {
     const fy = towerFloorYs[5];
-    // Open-Plan Grand Living Lounge (West/Balcony Side) + King Master Bedroom (East Side)
-    // Decorative walnut-slat divider screen between lounge & bedroom
-    for (let lz = -16.6; lz <= -11.4; lz += 0.52) {
-      box(towerIntG, [0.16, 3.25, 0.14], [-4.8, fy + 1.62, lz], mats.warmWood);
+    const flH = 3.16;
+    // Central corridor wall separating Flat 601 (West KDA Avenue Grand Flat, 10.8m × 8.2m) & Flat 602 (East Royal Flat, 10.6m × 8.2m)
+    for (const [wx0, wx1] of [[-16.0, -11.0], [-9.0, -0.4], [1.6, 5.6]]) {
+      box(towerIntG, [wx1 - wx0, flH, 0.20], [(wx0 + wx1) * 0.5, fy + flH * 0.5, -18.2], mats.whiteWall);
+      box(towerIntG, [wx1 - wx0, 0.20, 0.24], [(wx0 + wx1) * 0.5, fy + 1.05, -18.2], mats.mahogany);
     }
-    // Presidential Lounge: L-Shaped Champagne-Gold Velvet Sofas + Marble Coffee Table + Giant TV Wall
-    addTuftedSofa(towerIntG, mats, -9.8, fy, -12.0, 4.4, Math.PI);
-    addTuftedSofa(towerIntG, mats, -12.4, fy, -15.0, 3.8, Math.PI * 0.5);
-    box(towerIntG, [1.8, 0.42, 1.1], [-9.8, fy + 0.21, -14.8], mats.marbleFloor);
-    box(towerIntG, [3.6, 3.1, 0.14], [-9.8, fy + 1.55, -18.6], mats.mahogany);
-    box(towerIntG, [2.2, 1.15, 0.08], [-9.8, fy + 1.72, -18.48], mats.blackGloss);
-    // Warm area rug under Presidential Lounge
-    box(towerIntG, [5.2, 0.025, 4.4], [-9.8, fy + 0.015, -14.6], mats.redCarpet);
+    // Soundproof solid divider between Flat 601 & Flat 602 (x = -5.0)
+    box(towerIntG, [0.22, flH, 8.2], [-5.0, fy + flH * 0.5, -14.0], mats.whiteWall);
 
-    // King Master Bedroom (East Wing)
-    box(towerIntG, [0.14, 1.55, 4.6], [3.5, fy + 0.85, -14.2], mats.mahogany);
-    box(towerIntG, [2.4, 0.38, 2.2], [2.1, fy + 0.19, -14.2], mats.mahogany);
-    box(towerIntG, [2.3, 0.28, 2.1], [2.1, fy + 0.50, -14.2], mats.crispWhite);
-    box(towerIntG, [0.46, 0.18, 0.82], [2.95, fy + 0.72, -13.7], mats.crispWhite);
-    box(towerIntG, [0.46, 0.18, 0.82], [2.95, fy + 0.72, -14.7], mats.crispWhite);
-    // Executive Study Desk & Formal 4-Seat Suite Dining Table
-    addDiningTableSet(towerIntG, mats, -0.8, fy, -21.8);
-    box(towerIntG, [1.8, 0.76, 0.78], [-1.8, fy + 0.38, -11.2], mats.mahogany);
-    addCeilingFan(towerIntG, mats, -9.8, fy + 3.15, -14.8);
-    addCeilingFan(towerIntG, mats, 0.6, fy + 3.15, -14.2);
+    // --- FLAT 601 (WEST GRAND PRESIDENTIAL SUITE: x = -16.0..-5.0, z = -18.0..-9.8) ---
+    // Decorative walnut-slat divider between living salon & king sleeping area
+    for (let lz = -17.4; lz <= -12.6; lz += 0.56) {
+      box(towerIntG, [0.14, flH - 0.05, 0.14], [-10.2, fy + flH * 0.5, lz], mats.warmWood);
+    }
+    // Living Salon (West Side opening onto KDA Avenue Balcony!)
+    placeSofa(towerIntG, mats, -13.2, fy, -11.4, 3.8, Math.PI);
+    placeSofa(towerIntG, mats, -14.8, fy, -14.6, 3.2, Math.PI * 0.5);
+    box(towerIntG, [1.65, 0.42, 1.0], [-12.8, fy + 0.21, -14.4], mats.marbleFloor);
+    box(towerIntG, [4.6, 0.025, 4.0], [-13.0, fy + 0.015, -14.0], mats.redCarpet);
+    const presTV = createSmartTVConsole(mats, 2.6, 1.65);
+    presTV.position.set(-12.8, fy, -18.02);
+    towerIntG.add(presTV);
 
-    const presTex = makeSignPlateTex('601 · PRESIDENTIAL SUITE', 'ROYAL EXECUTIVE FLOOR', '#3b1f14', '#facc15');
+    // Master King Bedroom inside Flat 601 (Center-East half of 601)
+    const king601 = createLuxuryHotelBed(mats, { width: 2.08, length: 2.22, withNightstands: true });
+    king601.position.set(-6.45, fy, -13.4);
+    king601.rotation.y = Math.PI; // Headboard on east divider wall!
+    towerIntG.add(king601);
+    const desk601 = createExecutiveStudyDesk(mats);
+    desk601.position.set(-7.6, fy, -10.5);
+    desk601.rotation.y = Math.PI;
+    towerIntG.add(desk601);
+    const bath601 = createModernBathroom(mats);
+    bath601.position.set(-6.4, fy, -16.8);
+    towerIntG.add(bath601);
+    addCeilingFan(towerIntG, mats, -12.8, fy + flH - 0.06, -14.2);
+    addCeilingFan(towerIntG, mats, -7.6, fy + flH - 0.06, -13.4);
+
+    const presTex = makeSignPlateTex('601 · PRESIDENTIAL FLAT', 'WEST KDA BALCONY SUITE', '#3b1f14', '#facc15');
     const presSign = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.6, 0.44),
+      new THREE.PlaneGeometry(1.1, 0.34),
       new THREE.MeshStandardMaterial({ map: presTex, emissive: 0xffffff, emissiveMap: presTex, emissiveIntensity: 0.45 }),
     );
-    presSign.position.set(-4.8, fy + 2.35, -18.5);
+    presSign.position.set(-10.0, fy + 2.35, -18.36);
+    presSign.rotation.y = Math.PI;
     towerIntG.add(presSign);
+
+    // --- FLAT 602 (EAST ROYAL EXECUTIVE FLAT: x = -4.8..+5.6, z = -18.0..-9.8) ---
+    addSpaciousHotelFlat(towerIntG, mats, -4.8, fy, -17.9, 10.4, 7.8, '602', {
+      subtitle: 'ROYAL EXECUTIVE FLAT',
+      includeSecondSingleBed: false,
+      includeLoungeSofa: true,
+      ceilingH: flH,
+    });
+    // Bonus Private Dining Nook in North-East Executive Wing of 6th Floor!
+    placeDiningSet(towerIntG, mats, 1.2, fy, -23.6);
+    placeSofa(towerIntG, mats, -3.2, fy, -25.8, 3.4, 0);
   }
 
-  // 5) 5TH, 7TH, 8TH, 9TH FLOORS: FURNISHED WALKABLE CORRIDORS + SUITE DOORS + WINDOW ROOMS
+  // 5) 5TH, 7TH, 8TH, 9TH FLOORS: 3-FLAT CORRIDOR + REAL 3D BEDS & SOFAS INSIDE EACH FLAT
   for (const fIdx of [4, 6, 7, 8]) {
     const fy = towerFloorYs[fIdx];
     const fNum = fIdx + 1;
-    // Corridor mahogany bumper rail & suite door frames
-    box(towerIntG, [13.2, 0.22, 0.14], [-3.0, fy + 1.05, -17.2], mats.mahogany);
-    for (const [rx, rNum] of [[-7.2, `${fNum}01`], [-1.8, `${fNum}02`], [2.0, `${fNum}03`]]) {
-      box(towerIntG, [1.05, 2.25, 0.12], [rx, fy + 1.12, -17.15], mats.mahogany);
-      const rTex = makeSignPlateTex(rNum, 'EXECUTIVE', '#1e293b', '#f8fafc');
-      const rPlate = new THREE.Mesh(new THREE.PlaneGeometry(0.38, 0.18), new THREE.MeshBasicMaterial({ map: rTex }));
-      rPlate.position.set(rx, fy + 1.80, -17.24);
+    const flH = 3.16;
+    // South corridor wall with 2 doorways + East-West flat divider
+    for (const [wx0, wx1] of [[-16.0, -10.8], [-9.0, 0.0], [1.8, 5.6]]) {
+      box(towerIntG, [wx1 - wx0, flH, 0.20], [(wx0 + wx1) * 0.5, fy + flH * 0.5, -18.0], mats.whiteWall);
+      box(towerIntG, [wx1 - wx0, 0.20, 0.24], [(wx0 + wx1) * 0.5, fy + 1.05, -18.0], mats.mahogany);
+    }
+    box(towerIntG, [0.20, flH, 8.0], [-5.3, fy + flH * 0.5, -14.0], mats.whiteWall);
+
+    for (const [rx, rNum] of [[-9.9, `${fNum}01`], [0.9, `${fNum}02`], [-1.2, `${fNum}03`]]) {
+      const rTex = makeSignPlateTex(rNum, 'RENTAL FLAT', '#1e293b', '#f8fafc');
+      const rPlate = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.20), new THREE.MeshBasicMaterial({ map: rTex }));
+      rPlate.position.set(rx, fy + 2.35, -18.14);
       rPlate.rotation.y = Math.PI;
       towerIntG.add(rPlate);
     }
-    // Furnished bed & warm lounge inside visible front rooms so exterior glass looks richly inhabited
-    box(towerIntG, [2.1, 0.48, 1.7], [-5.2, fy + 0.24, -12.6], mats.crispWhite);
-    box(towerIntG, [2.1, 0.48, 1.7], [0.8, fy + 0.24, -12.6], mats.crispWhite);
-    addTuftedSofa(towerIntG, mats, -11.4, fy, -14.2, 2.8, Math.PI * 0.5);
+    // Place real sculpted 3D luxury beds & sofas in each flat so every floor looks 100% real inside & out!
+    const b1 = createLuxuryHotelBed(mats, { width: 1.90, length: 2.15, withNightstands: true });
+    b1.position.set(-14.2, fy, -13.6);
+    towerIntG.add(b1);
+    const b2 = createLuxuryHotelBed(mats, { width: 1.90, length: 2.15, withNightstands: true });
+    b2.position.set(-3.4, fy, -13.6);
+    towerIntG.add(b2);
+    placeSofa(towerIntG, mats, 2.2, fy, -11.4, 2.8, Math.PI);
   }
 
   // 6) 10TH FLOOR TOWER (y = 32.05m): ROYAL SKY LOUNGE & PANORAMIC OBSERVATION DECK
   {
     const fy = towerFloorYs[9];
-    // Warm timber ceiling slats + glowing cove LEDs
-    for (let sx = -12.5; sx <= 2.5; sx += 1.5) {
-      box(towerIntG, [0.22, 0.14, 13.5], [sx, fy + 3.12, -16.8], mats.warmWood);
+    for (let sx = -14.5; sx <= 4.5; sx += 1.6) {
+      box(towerIntG, [0.22, 0.14, 15.0], [sx, fy + 3.12, -17.6], mats.warmWood);
     }
-    for (const lx of [-9.0, -3.0, 1.5]) {
-      box(towerIntG, [0.18, 0.05, 12.5], [lx, fy + 3.06, -16.8], mats.ledWarm);
+    for (const lx of [-10.5, -4.0, 2.0]) {
+      box(towerIntG, [0.18, 0.05, 13.5], [lx, fy + 3.06, -17.6], mats.ledWarm);
     }
-    // Panoramic Sky Café & Mocktail Bar Counter
-    box(towerIntG, [6.2, 1.08, 1.05], [-1.0, fy + 0.54, -22.8], mats.blackGranite);
-    box(towerIntG, [6.4, 0.08, 1.25], [-1.0, fy + 1.12, -22.8], mats.marbleFloor);
+    box(towerIntG, [7.2, 1.08, 1.05], [-0.5, fy + 0.54, -24.6], mats.blackGranite);
+    box(towerIntG, [7.4, 0.08, 1.25], [-0.5, fy + 1.12, -24.6], mats.marbleFloor);
     const skyTex = makeSignPlateTex('ROYAL SKY LOUNGE', '10TH FLOOR PANORAMIC DECK · KHULNA', '#0f172a', '#facc15');
     const skySign = new THREE.Mesh(
-      new THREE.PlaneGeometry(4.6, 1.1),
+      new THREE.PlaneGeometry(4.8, 1.15),
       new THREE.MeshStandardMaterial({ map: skyTex, emissive: 0xffffff, emissiveMap: skyTex, emissiveIntensity: 0.60 }),
     );
-    skySign.position.set(-1.0, fy + 2.35, -25.4);
+    skySign.position.set(-0.5, fy + 2.35, -27.4);
     towerIntG.add(skySign);
-    // Lounge Seating Clusters facing KDA Avenue & Royal Mor
-    addTuftedSofa(towerIntG, mats, -9.2, fy, -12.4, 3.6, Math.PI);
-    addTuftedSofa(towerIntG, mats, -1.8, fy, -12.4, 3.6, Math.PI);
-    for (const [tx, tz] of [[-9.2, -15.6], [-1.8, -15.6], [1.4, -18.2]]) {
-      addDiningTableSet(towerIntG, mats, tx, fy, tz);
+    placeSofa(towerIntG, mats, -10.8, fy, -12.4, 3.8, Math.PI);
+    placeSofa(towerIntG, mats, -2.0, fy, -12.4, 3.8, Math.PI);
+    for (const [tx, tz] of [[-10.8, -16.2], [-2.0, -16.2], [2.4, -18.8]]) {
+      placeDiningSet(towerIntG, mats, tx, fy, tz);
     }
   }
 
   // --- F) HIGH-REALISTIC TOWER ROOFTOP (y = 35.45m — ZERO FAKE TREES!) ---
-  // Clean Parapet Walls with Granite Coping around perimeter
   box(towerShellG, [twW + 0.4, 1.15, 0.30], [twCX, towerRoofY + 0.58, twZ1], mats.towerTaupe);
   box(towerShellG, [twW + 0.4, 1.15, 0.30], [twCX, towerRoofY + 0.58, twZ0], mats.towerTaupe);
   box(towerShellG, [0.30, 1.15, twD + 0.4], [twX0, towerRoofY + 0.58, twCZ], mats.towerTaupe);
@@ -1691,16 +1667,13 @@ export function buildHotelRoyalStandalone3D() {
   box(towerShellG, [0.38, 0.08, twD + 0.5], [twX0, towerRoofY + 1.18, twCZ], mats.blackGranite);
   box(towerShellG, [0.38, 0.08, twD + 0.5], [twX1, towerRoofY + 1.18, twCZ], mats.blackGranite);
 
-  // Stairhead & Elevator Machine Room Housing (with walkable doorway onto rooftop!)
-  box(towerShellG, [8.4, 3.4, 6.2], [-9.8, towerRoofY + 1.7, -22.6], mats.towerTaupe, { uvScale: 2.0 });
-  box(towerShellG, [8.7, 0.22, 6.5], [-9.8, towerRoofY + 3.46, -22.6], mats.towerWhite);
-  // Industrial Rooftop HVAC Chiller Units
-  for (const hx of [-2.2, 0.6]) {
-    box(towerShellG, [2.1, 1.45, 2.8], [hx, towerRoofY + 0.72, -22.4], mats.acUnit);
-    cylinder(towerShellG, 0.62, 0.62, 0.14, [hx, towerRoofY + 1.48, -22.4], mats.blackGloss, 14);
+  box(towerShellG, [9.2, 3.4, 6.4], [-11.4, towerRoofY + 1.7, -24.4], mats.towerTaupe, { uvScale: 2.0 });
+  box(towerShellG, [9.5, 0.22, 6.7], [-11.4, towerRoofY + 3.46, -24.4], mats.towerWhite);
+  for (const hx of [-2.2, 1.2]) {
+    box(towerShellG, [2.2, 1.45, 2.8], [hx, towerRoofY + 0.72, -24.2], mats.acUnit);
+    cylinder(towerShellG, 0.62, 0.62, 0.14, [hx, towerRoofY + 1.48, -24.2], mats.blackGloss, 14);
   }
-  // 3 Detailed Telecom Antenna Masts with Microwave Dishes + Red Aviation Warning Beacons
-  for (const [mx, mz, mh] of [[-11.8, -21.2, 5.6], [-8.0, -23.4, 6.4], [-10.0, -24.4, 5.0]]) {
+  for (const [mx, mz, mh] of [[-13.4, -23.0, 5.6], [-9.4, -25.2, 6.4], [-11.4, -26.2, 5.0]]) {
     cylinder(towerShellG, 0.08, 0.14, mh, [mx, towerRoofY + 3.5 + mh * 0.5, mz], mats.chrome, 8);
     const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.14, 12), mats.crispWhite);
     dish.rotation.x = Math.PI * 0.5;
@@ -1716,8 +1689,6 @@ export function buildHotelRoyalStandalone3D() {
     towerShellG,
     towerIntG,
     setCutaway(enabled) {
-      // Hides outer shells of BOTH the 3-story curved podium AND the 10-story rear tower
-      // so the user can inspect all 10 walkable floors clearly!
       exteriorG.visible = !enabled;
       towerShellG.visible = !enabled;
     },
