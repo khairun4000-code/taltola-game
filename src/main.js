@@ -64,7 +64,7 @@ const carDoorButtons = Array.from(document.querySelectorAll('[data-car-door]'));
 const carHornBtn = document.querySelector('#car-horn-btn');
 const carExitBtn = document.querySelector('#car-exit-btn');
 let carDoorCursorMode = false;
-let freeCursorMode = false;
+let freeCursorMode = true;
 let lastCanvasClickTime = 0;
 let mouseAttackHeld = false;
 const hudToggleButton = document.querySelector('#hud-toggle-button');
@@ -187,16 +187,18 @@ function applyTimeOfDay(nextId) {
     }
     environment?.setNightFactor?.(preset.nightFactor);
   }
-  const selectiveEnv = (quality === 'ultra' || quality === 'high') ? null : (skySystem?.getEnvTexture?.() || null);
-  const staticEnv = quality === 'low' ? null : selectiveEnv;
+  // Full real PBR sky environment reflections on Ultra & High (and keep hero character clean across ALL tiers including Low!)
+  const selectiveEnv = quality === 'low' ? null : (skySystem?.getEnvTexture?.() || null);
+  const heroEnv = skySystem?.getEnvTexture?.() || null;
+  const staticEnv = (quality === 'ultra' || quality === 'high') ? selectiveEnv : null;
   sceneMaterials?.setEnvironmentMap?.(staticEnv);
   environment?.tower?.setEnvironmentMap?.(staticEnv);
   if (Object.keys(characterActors).length) {
     for (const actor of Object.values(characterActors)) {
-      actor?.setEnvironmentMap?.(selectiveEnv);
+      actor?.setEnvironmentMap?.(heroEnv);
     }
   } else {
-    playerCharacter?.setEnvironmentMap?.(selectiveEnv);
+    playerCharacter?.setEnvironmentMap?.(heroEnv);
   }
   const vehicleEnv = skySystem?.getEnvTexture?.() || null;
   for (const c of cars) c?.setEnvironmentMap?.(vehicleEnv);
@@ -214,15 +216,9 @@ function cycleTimeOfDay() {
 timeToggleButton?.addEventListener('click', cycleTimeOfDay);
 
 function renderActiveScene() {
-  const needsBloom = Boolean(
-    bloomPass && bloomPass.strength > 0.05
-    && (timeOfDayId === 'sunset' || timeOfDayId === 'night')
-  );
-  if (composer && !inStudio && !ultraFastMode && quality !== 'low' && needsBloom) {
-    composer.render();
-  } else {
-    renderer.render(scene, camera);
-  }
+  // Render directly through hardware MSAA swapchain for razor-sharp full resolution & 60 FPS across ALL times of day
+  // (avoids 13-pass HalfFloat UnrealBloomPass overhead that halved FPS in Sunset & Night!)
+  renderer.render(scene, camera);
 }
 
 const controls = new FirstPersonControls(camera, renderer.domElement);
@@ -403,20 +399,21 @@ function syncCursorVisibility() {
   const hideCursor = !hasModalOpen;
   document.documentElement.classList.toggle('gta-cursor-hidden', hideCursor);
   document.body.classList.toggle('gta-cursor-hidden', hideCursor);
-  controls.setFreeMoveHover?.(hideCursor);
+  controls.setFreeMoveHover?.(hideCursor && started);
+  controls.setMouseLookEnabled?.(hideCursor && started && !getDrivingCar() && !freeCam.active);
 }
 
 function toggleFreeCursorMode() {
-  if (inStudio || !started || khulnaMapUI?.isOpen || liftKeypadOpen || referenceModal?.open) return;
+  if (inStudio || khulnaMapUI?.isOpen || liftKeypadOpen || referenceModal?.open) return;
   if (gtaPhoneUI?.isOpen) return;
   if (document.activeElement && document.activeElement !== document.body) {
     document.activeElement.blur?.();
   }
-  // If cursor is currently shown OR browser hasn't engaged true pointer lock yet, pressing [?] locks & hides cursor for 360° look!
-  if (freeCursorMode || carDoorCursorMode || !controls.pointerLocked) {
+  // Clean deterministic [?] toggle: show cursor when hidden, hide & lock cursor when shown!
+  if (freeCursorMode || carDoorCursorMode) {
     freeCursorMode = false;
     carDoorCursorMode = false;
-    controls.lock();
+    if (started) controls.lock();
     syncCursorVisibility();
     gtaPhoneUI?.showToast?.('🎮 Free Move — Mouse Hidden ([?] to show cursor)');
   } else {
@@ -1282,7 +1279,7 @@ function setMode(studioMode) {
     camHideMeshState = false;
     isThirdPersonEyeFallback = false;
     smoothedCamDist = 1.95;
-    beginWalking();
+    beginWalking(true);
     syncCursorVisibility();
     if (wasInStudio || Math.hypot(autonomousPartner.position.x, autonomousPartner.position.z) < 2.0) {
       autonomousPartner.relocateNearPlayer(playerPos, cars, environment, true);
@@ -1325,7 +1322,9 @@ function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynam
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
   const anchorMoved = Math.abs(snapX - lastSunAnchorX) > 0.65 || Math.abs(snapZ - lastSunAnchorZ) > 0.65;
-  const shadowCadenceMs = quality === 'low' ? 220 : (quality === 'medium' ? 180 : (quality === 'high' ? 170 : 180));
+  const activeDrivingSpeed = Math.abs(getDrivingCar()?.state?.speed || 0);
+  const baseCadence = quality === 'low' ? 240 : (quality === 'medium' ? 220 : (quality === 'high' ? 210 : 220));
+  const shadowCadenceMs = activeDrivingSpeed > 4.0 ? Math.max(baseCadence, 320) : baseCadence;
   const elapsedSinceShadow = nowPerf - lastShadowUpdateAt;
   if (anchorMoved && (lastShadowUpdateAt === 0 || elapsedSinceShadow >= shadowCadenceMs)) {
     lastSunAnchorX = snapX;
@@ -1356,15 +1355,14 @@ function applyQuality(nextQuality) {
   const isLow = quality === 'low';
   const isUltra = quality === 'ultra';
   const isHigh = quality === 'high';
-  // Crisp full native PC pixel ratios (ZERO resolution drop across ALL tiers including Smooth/Low!)
+  // Crisp native Retina/PC pixel ratios paired with hardware MSAA & fast shadow map sizes (razor-sharp resolution + locked 60 FPS!)
   const ratios = {
     low: Math.min(dpr, 1.0),
-    medium: Math.min(dpr, 1.0),
-    high: Math.min(dpr, 1.35),
-    ultra: Math.min(dpr, 1.65),
+    medium: Math.min(dpr, 1.1),
+    high: Math.min(dpr, 1.25),
+    ultra: Math.min(dpr, 1.5),
   };
-  // Tighter 22m shadow frustum at 1536px gives SHARPER texel density (2.86cm/texel vs 2.93cm) with 44% less GPU shadow fillrate (zero Ultra walk stutter!)
-  const shadowSizes = { low: 1024, medium: 1024, high: 1280, ultra: 1536 };
+  const shadowSizes = { low: 768, medium: 1024, high: 1024, ultra: 1536 };
   const useShadows = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : !isLow);
   const activeRatio = ratios[quality] ?? ratios.high;
 
@@ -1390,18 +1388,17 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = isLow ? 130 : (quality === 'medium' ? 195 : (isUltra ? 310 : 250));
-    scene.fog.far = isLow ? 295 : (quality === 'medium' ? 470 : (isUltra ? 780 : 650));
-    camera.far = isLow ? 340 : (quality === 'medium' ? 540 : (isUltra ? 820 : 700));
+    scene.fog.near = isLow ? 120 : (quality === 'medium' ? 175 : (isUltra ? 260 : 215));
+    scene.fog.far = isLow ? 275 : (quality === 'medium' ? 410 : (isUltra ? 620 : 510));
+    camera.far = isLow ? 320 : (quality === 'medium' ? 460 : (isUltra ? 660 : 550));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
 
-  // Keep studioKeyLight strictly in Character Studio (saves a full directional PBR light pass on every pixel outdoors!)
-  const useExtraLights = !isLow || inStudio;
+  // Keep studioKeyLight & fillDirLight strictly in Character Studio (folding outdoor fill into hemisphereLight saves a full PBR directional light pass on EVERY pixel!)
   if (studioKeyLight) studioKeyLight.visible = inStudio;
   if (fillDirLight) {
-    fillDirLight.visible = useExtraLights;
+    fillDirLight.visible = inStudio;
     fillDirLight.intensity = isUltra ? 0.76 : 0.60;
   }
   if (indoorLight) {
@@ -1410,13 +1407,13 @@ function applyQuality(nextQuality) {
   }
   if (ambientLight) {
     ambientLight.visible = true;
-    ambientLight.intensity = isLow && !inStudio ? 0.52 : (isUltra ? 0.46 : 0.39);
+    ambientLight.intensity = isLow && !inStudio ? 0.56 : (isUltra ? 0.52 : 0.46);
   }
   if (hemisphereLight) {
     hemisphereLight.visible = true;
-    hemisphereLight.intensity = isLow && !inStudio ? 1.10 : (isUltra ? 0.94 : 0.88);
+    hemisphereLight.intensity = isLow && !inStudio ? 1.18 : (isUltra ? 1.12 : 1.06);
     hemisphereLight.color.setHex(0xbad9f7);
-    hemisphereLight.groundColor.setHex(0x625645);
+    hemisphereLight.groundColor.setHex(0x685b4a);
   }
   if (sun) {
     sun.visible = true;
@@ -1447,10 +1444,19 @@ function applyQuality(nextQuality) {
     }
   }
 
-  // Disable expensive dual-lobe clearcoat on world MeshPhysicalMaterials in Smooth/Low mode (NEVER touch character meshes!)
+  // Keep showroom dual-lobe clearcoat ONLY on hero vehicles & hero character (strips expensive dual-lobe clearcoat from static world buildings for ~40% faster world fragment shaders!)
   const seenPhysMats = new Set();
+  const isInsideVehicle = (obj) => {
+    let cur = obj;
+    while (cur) {
+      if (cur.name && cur.name.startsWith('DrivableCar_')) return true;
+      cur = cur.parent;
+    }
+    return false;
+  };
   scene.traverse((obj) => {
     if (!obj.isMesh || !obj.material || obj.userData?._isCharacterMesh) return;
+    const isVeh = isInsideVehicle(obj);
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
     for (let i = 0; i < mats.length; i++) {
       const mat = mats[i];
@@ -1459,7 +1465,7 @@ function applyQuality(nextQuality) {
       if (mat.userData._origClearcoat === undefined) {
         mat.userData._origClearcoat = mat.clearcoat || 0;
       }
-      const wantCC = isLow ? 0 : mat.userData._origClearcoat;
+      const wantCC = (!isLow && isVeh) ? mat.userData._origClearcoat : 0;
       if (mat.clearcoat !== wantCC) {
         mat.clearcoat = wantCC;
         mat.needsUpdate = true;
@@ -2154,6 +2160,7 @@ const vehicleTransition = {
   doorOpenedCue: false,
   doorClosedCue: false,
   beltCue: false,
+  kickstandCue: false,
   startPos: new THREE.Vector3(),
   endPos: new THREE.Vector3(),
   handTarget: new THREE.Vector3(),
@@ -2176,28 +2183,42 @@ function startVehicleTransition(type, car, seatMode = 'driver', passengerSeatInd
   vehicleTransition.doorOpenedCue = false;
   vehicleTransition.doorClosedCue = false;
   vehicleTransition.beltCue = false;
+  vehicleTransition.kickstandCue = false;
   if (vehicleFadeEl) vehicleFadeEl.style.opacity = '0';
 
   if (type === 'bike_mount') {
-    vehicleTransition.duration = 0.72;
-    vehicleTransition.startPos.set(st.pos.x + rx * 0.74 - sinH * 0.18, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.74 - cosH * 0.18);
-    vehicleTransition.endPos.set(st.pos.x - sinH * 0.18, st.pos.y + 0.04 + EYE_HEIGHT, st.pos.z - cosH * 0.18);
+    vehicleTransition.duration = 1.15;
+    vehicleTransition.startPos.set(st.pos.x + rx * 0.72 - sinH * 0.22, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.72 - cosH * 0.22);
+    vehicleTransition.endPos.set(st.pos.x - sinH * 0.22, st.pos.y + 0.04 + EYE_HEIGHT, st.pos.z - cosH * 0.22);
   } else if (type === 'bike_dismount') {
-    vehicleTransition.duration = 0.64;
-    vehicleTransition.startPos.set(st.pos.x - sinH * 0.18, st.pos.y + 0.04 + EYE_HEIGHT, st.pos.z - cosH * 0.18);
-    vehicleTransition.endPos.set(st.pos.x + rx * 0.88 - sinH * 0.18, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.88 - cosH * 0.18);
+    vehicleTransition.duration = 1.12;
+    vehicleTransition.startPos.set(st.pos.x - sinH * 0.22, st.pos.y + 0.04 + EYE_HEIGHT, st.pos.z - cosH * 0.22);
+    vehicleTransition.endPos.set(st.pos.x + rx * 0.84 - sinH * 0.22, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.84 - cosH * 0.22);
   } else if (type === 'rickshaw_mount_driver') {
-    const seatBack = st.isBicycle ? 0.28 : (st.isVan ? 0.08 : 0.05);
+    const seatBack = st.isBicycle ? 0.30 : (st.isVan ? 0.08 : 0.05);
     const seatLift = st.isBicycle ? 0.08 : (st.isVan ? 0.10 : 0.16);
-    vehicleTransition.duration = 0.78;
-    vehicleTransition.startPos.set(st.pos.x + rx * 0.78 - sinH * seatBack, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.78 - cosH * seatBack);
-    vehicleTransition.endPos.set(st.pos.x - sinH * seatBack, st.pos.y + seatLift + EYE_HEIGHT, st.pos.z - cosH * seatBack);
+    if (st.isBicycle) {
+      // Stand right beside LEFT (+rx) rear kickstand so right foot hooks & flicks it UP smoothly with zero over-reach!
+      vehicleTransition.duration = 1.18;
+      vehicleTransition.startPos.set(st.pos.x + rx * 0.54 - sinH * 0.50, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.54 - cosH * 0.50);
+      vehicleTransition.endPos.set(st.pos.x - sinH * seatBack, st.pos.y + seatLift + EYE_HEIGHT, st.pos.z - cosH * seatBack);
+    } else {
+      vehicleTransition.duration = 0.78;
+      vehicleTransition.startPos.set(st.pos.x + rx * 0.78 - sinH * seatBack, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.78 - cosH * seatBack);
+      vehicleTransition.endPos.set(st.pos.x - sinH * seatBack, st.pos.y + seatLift + EYE_HEIGHT, st.pos.z - cosH * seatBack);
+    }
   } else if (type === 'rickshaw_dismount_driver') {
-    const seatBack = st.isBicycle ? 0.28 : (st.isVan ? 0.08 : 0.05);
+    const seatBack = st.isBicycle ? 0.30 : (st.isVan ? 0.08 : 0.05);
     const seatLift = st.isBicycle ? 0.08 : (st.isVan ? 0.10 : 0.16);
-    vehicleTransition.duration = 0.68;
-    vehicleTransition.startPos.set(st.pos.x - sinH * seatBack, st.pos.y + seatLift + EYE_HEIGHT, st.pos.z - cosH * seatBack);
-    vehicleTransition.endPos.set(st.pos.x + rx * 0.92 - sinH * seatBack, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * seatBack);
+    if (st.isBicycle) {
+      vehicleTransition.duration = 1.12;
+      vehicleTransition.startPos.set(st.pos.x - sinH * seatBack, st.pos.y + seatLift + EYE_HEIGHT, st.pos.z - cosH * seatBack);
+      vehicleTransition.endPos.set(st.pos.x + rx * 0.56 - sinH * 0.50, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.56 - cosH * 0.50);
+    } else {
+      vehicleTransition.duration = 0.68;
+      vehicleTransition.startPos.set(st.pos.x - sinH * seatBack, st.pos.y + seatLift + EYE_HEIGHT, st.pos.z - cosH * seatBack);
+      vehicleTransition.endPos.set(st.pos.x + rx * 0.92 - sinH * seatBack, st.pos.y + EYE_HEIGHT, st.pos.z + rz * 0.92 - cosH * seatBack);
+    }
   } else if (type === 'rickshaw_mount_passenger') {
     vehicleTransition.duration = 0.54;
     const vanPose = st.isVan ? car.getVanSeatPose?.(passengerSeatIndex) : null;
@@ -2326,7 +2347,100 @@ function updateVehicleTransition(delta) {
   let facingYaw = st.heading;
   let hideMesh = false;
 
-  if (vt.type === 'bike_mount' || vt.type === 'bike_dismount' || vt.type === 'rickshaw_mount_driver' || vt.type === 'rickshaw_dismount_driver') {
+  if (vt.type === 'bike_mount') {
+    // Motorcycle Mount: 1) Swing right leg over seat & sit (0..0.56) -> 2) Left boot flicks side-stand UP (0.56..1.0)
+    if (p < 0.56) {
+      phase = 'mount_leg';
+      phaseProgress = p / 0.56;
+      const mEase = phaseProgress * phaseProgress * (3 - 2 * phaseProgress);
+      playerPos.lerpVectors(vt.startPos, vt.endPos, mEase);
+      car.setKickstandDeploy?.(1.0, false);
+    } else {
+      phase = 'kickstand_up';
+      phaseProgress = (p - 0.56) / 0.44;
+      playerPos.copy(vt.endPos);
+      const ksU = THREE.MathUtils.clamp((phaseProgress - 0.18) / 0.54, 0, 1);
+      const ksEase = ksU * ksU * (3 - 2 * ksU);
+      if (ksU > 0.05 && !vt.kickstandCue) {
+        vt.kickstandCue = true;
+        car.playKickstandSound?.(false);
+      }
+      car.setKickstandDeploy?.(1.0 - ksEase, false);
+    }
+    clip = 'Idle';
+    timeScale = 0.0;
+    facingYaw = st.heading;
+  } else if (vt.type === 'bike_dismount') {
+    // Motorcycle Dismount: 1) Left boot kicks side-stand DOWN (0..0.44) -> 2) Swing right leg off & step down (0.44..1.0)
+    if (p < 0.44) {
+      phase = 'kickstand_down';
+      phaseProgress = p / 0.44;
+      playerPos.copy(vt.startPos);
+      const ksU = THREE.MathUtils.clamp((phaseProgress - 0.20) / 0.56, 0, 1);
+      const ksEase = ksU * ksU * (3 - 2 * ksU);
+      if (ksU > 0.05 && !vt.kickstandCue) {
+        vt.kickstandCue = true;
+        car.playKickstandSound?.(true);
+      }
+      car.setKickstandDeploy?.(ksEase, false);
+    } else {
+      phase = 'dismount_leg';
+      phaseProgress = (p - 0.44) / 0.56;
+      const dEase = phaseProgress * phaseProgress * (3 - 2 * phaseProgress);
+      playerPos.lerpVectors(vt.startPos, vt.endPos, dEase);
+      car.setKickstandDeploy?.(1.0, false);
+    }
+    clip = 'Idle';
+    timeScale = 0.0;
+    facingYaw = st.heading;
+  } else if (vt.type === 'rickshaw_mount_driver' && st.isBicycle) {
+    // Bicycle Mount: 1) Stand on right side & flick existing rear kickstand UP with foot (0..0.42) -> 2) Swing leg over & mount (0.42..1.0)
+    if (p < 0.42) {
+      phase = 'kickstand_up';
+      phaseProgress = p / 0.42;
+      playerPos.copy(vt.startPos);
+      const ksU = THREE.MathUtils.clamp((phaseProgress - 0.28) / 0.56, 0, 1);
+      const ksEase = ksU * ksU * (3 - 2 * ksU);
+      if (ksU > 0.05 && !vt.kickstandCue) {
+        vt.kickstandCue = true;
+        car.playKickstandSound?.(false);
+      }
+      car.setKickstandDeploy?.(1.0 - ksEase, false);
+    } else {
+      phase = 'mount_leg';
+      phaseProgress = (p - 0.42) / 0.58;
+      const mEase = phaseProgress * phaseProgress * (3 - 2 * phaseProgress);
+      playerPos.lerpVectors(vt.startPos, vt.endPos, mEase);
+      car.setKickstandDeploy?.(0.0, false);
+    }
+    clip = 'Idle';
+    timeScale = 0.0;
+    facingYaw = st.heading;
+  } else if (vt.type === 'rickshaw_dismount_driver' && st.isBicycle) {
+    // Bicycle Dismount: 1) Swing leg off onto right side (0..0.52) -> 2) Push existing rear kickstand DOWN with foot (0.52..1.0)
+    if (p < 0.52) {
+      phase = 'dismount_leg';
+      phaseProgress = p / 0.52;
+      const dEase = phaseProgress * phaseProgress * (3 - 2 * phaseProgress);
+      playerPos.lerpVectors(vt.startPos, vt.endPos, dEase);
+      car.setKickstandDeploy?.(0.0, false);
+    } else {
+      phase = 'kickstand_down';
+      phaseProgress = (p - 0.52) / 0.48;
+      playerPos.copy(vt.endPos);
+      const ksU = THREE.MathUtils.clamp((phaseProgress - 0.22) / 0.58, 0, 1);
+      const ksEase = ksU * ksU * (3 - 2 * ksU);
+      if (ksU > 0.05 && !vt.kickstandCue) {
+        vt.kickstandCue = true;
+        car.playKickstandSound?.(true);
+      }
+      car.setKickstandDeploy?.(ksEase, false);
+    }
+    clip = 'Idle';
+    timeScale = 0.0;
+    facingYaw = st.heading;
+  } else if (vt.type === 'rickshaw_mount_driver' || vt.type === 'rickshaw_dismount_driver') {
+    // Rickshaw & Cargo Van: direct mount/dismount with ZERO kickstand
     playerPos.lerpVectors(vt.startPos, vt.endPos, ease);
     clip = 'Idle';
     timeScale = 0.0;
@@ -2420,15 +2534,16 @@ function updateVehicleTransition(delta) {
     }
   }
 
-  // Smooth cinematic camera framing the mount/dismount/door-open/seatbelt animation clearly!
-  const camDist = (st.isRickshaw || st.isBike) ? 3.2 : 4.2;
-  const camSide = (st.isRickshaw || st.isBike) ? 1.85 : 2.35;
+  // Smooth cinematic camera framing the mount/dismount/kickstand/door-open/seatbelt animation clearly!
+  const camDist = (st.isRickshaw || st.isBike) ? 3.0 : 4.2;
+  const camSide = (st.isRickshaw || st.isBike) ? 1.95 : 2.35; // Both Bicycle & Motorcycle kickstands sit on LEFT (+rx) side!
+  const camH = st.isBicycle ? 1.38 : (st.isBike ? 1.46 : 1.75);
   carCamDesired.set(
-    st.pos.x + rx * camSide - sinH * (camDist * 0.55),
-    st.pos.y + 1.75,
-    st.pos.z + rz * camSide - cosH * (camDist * 0.55),
+    st.pos.x + rx * camSide - sinH * (camDist * 0.58),
+    st.pos.y + camH,
+    st.pos.z + rz * camSide - cosH * (camDist * 0.58),
   );
-  carCamLookTarget.set(playerPos.x, playerPos.y - 0.50, playerPos.z);
+  carCamLookTarget.set(playerPos.x, playerPos.y - (st.isBicycle || st.isBike ? 0.68 : 0.50), playerPos.z);
   camera.position.lerp(carCamDesired, Math.min(1, delta * 7.5));
   camera.lookAt(carCamLookTarget);
 
@@ -2472,9 +2587,13 @@ function updateVehicleTransition(delta) {
       updateHUDPrompt();
     } else {
       playerPos.copy(vt.endPos);
+      if (st.hasKickstand && (doneType === 'bike_dismount' || (doneType === 'rickshaw_dismount_driver' && st.isBicycle))) {
+        car.setKickstandDeploy?.(1.0, false);
+      }
       controls.euler.set(-0.04, st.heading + Math.PI, 0, 'YXZ');
       camera.quaternion.setFromEuler(controls.euler);
       if (baseCamNear > 0) syncCameraNear(baseCamNear);
+      syncCursorVisibility();
       syncCarHUD();
       updateHUDPrompt();
     }
@@ -2849,13 +2968,103 @@ function bindGtaPauseSettingsUI() {
   syncGtaPauseSettingsUI();
 }
 
+const LOADING_SLIDE_DURATION_MS = 7500;
+function startGtaLoadingShowcase() {
+  const slides = Array.from(document.querySelectorAll('.gta-loading-slide'));
+  const totalSlides = Math.max(1, slides.length);
+  const totalDurationMs = totalSlides * LOADING_SLIDE_DURATION_MS;
+  const startedAt = performance.now();
+  let currentIndex = 0;
+  let assetProgress = 0.03;
+  let assetsReady = false;
+  let finished = false;
+
+  const showSlide = (nextIdx) => {
+    if (nextIdx === currentIndex || !slides.length) return;
+    const prevSlide = slides[currentIndex];
+    const nextSlide = slides[nextIdx];
+    if (prevSlide) {
+      prevSlide.classList.remove('is-active');
+      prevSlide.classList.add('is-exiting');
+      setTimeout(() => prevSlide.classList.remove('is-exiting'), 1150);
+    }
+    if (nextSlide) {
+      nextSlide.classList.remove('is-exiting');
+      // Restart Ken Burns motion cleanly on entry
+      void nextSlide.offsetWidth;
+      nextSlide.classList.add('is-active');
+    }
+    currentIndex = nextIdx;
+  };
+
+  const updateBar = () => {
+    if (initFailed || finished) return;
+    const elapsed = performance.now() - startedAt;
+    const timeProgress = Math.min(1, elapsed / totalDurationMs);
+    const combined = assetsReady
+      ? Math.max(assetProgress * 0.45 + timeProgress * 0.55, timeProgress)
+      : (assetProgress * 0.45 + timeProgress * 0.52);
+    if (loadingBar) {
+      loadingBar.style.width = `${Math.min(99, Math.max(3, combined * 100)).toFixed(1)}%`;
+    }
+  };
+
+  const progressTimer = setInterval(updateBar, 120);
+
+  const allSlidesDone = new Promise((resolve) => {
+    if (slides.length <= 1) {
+      setTimeout(resolve, LOADING_SLIDE_DURATION_MS);
+      return;
+    }
+    let step = 0;
+    const advance = () => {
+      step++;
+      if (step < slides.length) {
+        showSlide(step);
+        setTimeout(advance, LOADING_SLIDE_DURATION_MS);
+      } else {
+        resolve();
+      }
+    };
+    setTimeout(advance, LOADING_SLIDE_DURATION_MS);
+  });
+
+  return {
+    setAssetProgress(ratio, statusText) {
+      assetProgress = Math.max(assetProgress, Math.min(1, ratio));
+      if (statusText && loadingStatus && !initFailed) {
+        loadingStatus.textContent = statusText;
+      }
+      updateBar();
+    },
+    markAssetsReady() {
+      assetsReady = true;
+      assetProgress = 1;
+      if (loadingStatus && !initFailed) {
+        loadingStatus.textContent = 'Khulna City Ready · Finishing scene…';
+      }
+      updateBar();
+    },
+    async waitForAllSlides() {
+      await allSlidesDone;
+      finished = true;
+      clearInterval(progressTimer);
+      if (loadingBar) loadingBar.style.width = '100%';
+      if (loadingStatus && !initFailed) {
+        loadingStatus.textContent = 'Entering Khulna City…';
+      }
+    },
+  };
+}
+
 let initFailed = false;
 async function initialize() {
+  const loadingShowcase = startGtaLoadingShowcase();
   const manager = new THREE.LoadingManager();
   manager.onProgress = (url, loaded, total) => {
     if (initFailed) return;
-    loadingBar.style.width = `${Math.max(4, (loaded / total) * 100)}%`;
-    loadingStatus.textContent = `${loaded} / ${total} assets loaded`;
+    const ratio = total > 0 ? loaded / total : 0.05;
+    loadingShowcase.setAssetProgress(ratio, `${loaded} / ${total} assets loaded`);
   };
   manager.onError = (url) => {
     if (initFailed) return;
@@ -3129,6 +3338,7 @@ async function initialize() {
       const activeCarNow = getDrivingCar();
       if (activeCarNow) {
         activeCarNow.exitCar(playerPos);
+        if (activeCarNow.state.hasKickstand) activeCarNow.setKickstandDeploy?.(1.0, false);
         syncCarHUD();
       }
       if (sittingState.active) standUpFromSeat();
@@ -3200,10 +3410,10 @@ async function initialize() {
       updateHUDPrompt();
     },
   });
-  // Spawn ONLY 1 bicycle right in front of Taltola House for maximum FPS; all 16 vehicles spawn on demand via the [P] iFruit Phone dial pad!
+  // Spawn starter Atlas Roadster Bicycle + 125cc Naked Sport Motorcycle right in front of Taltola House; all 16 vehicles spawn on demand via [P] iFruit Phone!
   cars = [];
   bmwCar = null;
-  const starterVehicleIds = ['atlas_roadster_bicycle'];
+  const starterVehicleIds = ['atlas_roadster_bicycle', 'bike_125cc'];
   const vehicleEnvStartup = skySystem?.getEnvTexture?.() || null;
   for (const vid of starterVehicleIds) {
     const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);
@@ -3266,14 +3476,38 @@ async function initialize() {
   }
   syncHUDButtons(false, true);
   if (typeof renderer.compileAsync === 'function') {
+    // Temporarily reveal all static world districts/corridors/landmarks during startup shader warmup
+    // so 100% of Khulna City shaders compile BEFORE gameplay (eliminates first-visit freezes on Haji Mohsin Rd & South Central Rd!)
+    const prevVis = [];
+    const revealForWarmup = (obj) => {
+      if (!obj || obj.visible) return;
+      prevVis.push(obj);
+      obj.visible = true;
+    };
+    revealForWarmup(environment?.tower?.districtGroup);
+    revealForWarmup(environment?.detailsGroup);
+    revealForWarmup(environment?.roadBaseGroup);
+    revealForWarmup(environment?.farGroup);
+    if (environment?.corridors?.group) {
+      for (const ch of environment.corridors.group.children) revealForWarmup(ch);
+    }
+    if (environment?.landmarks?.group) {
+      for (const ch of environment.landmarks.group.children) {
+        revealForWarmup(ch);
+        for (const sub of ch.children) revealForWarmup(sub);
+      }
+    }
     await Promise.race([
       renderer.compileAsync(scene, camera).catch(() => {}),
-      new Promise((resolve) => setTimeout(resolve, 1200)),
+      new Promise((resolve) => setTimeout(resolve, 2200)),
     ]);
+    for (let i = 0; i < prevVis.length; i++) prevVis[i].visible = false;
+    syncSceneVisibility(true);
   }
 
-  loadingBar.style.width = '100%';
-  loadingStatus.textContent = '3D Human Character Ready.';
+  loadingShowcase.markAssetsReady();
+  renderActiveScene();
+  await loadingShowcase.waitForAllSlides();
   ready = true;
   window.__TALTOLA__ = {
     scene,
@@ -3324,7 +3558,7 @@ async function initialize() {
   renderActiveScene();
   loading.classList.add('complete');
   header?.classList.toggle('hidden', !inStudio);
-  setTimeout(() => loading.classList.add('hidden'), 450);
+  setTimeout(() => loading.classList.add('hidden'), 880);
 }
 
 function setStudioCameraPreset(preset) {
@@ -3456,21 +3690,7 @@ canvas.addEventListener('pointerdown', (event) => {
     return;
   }
   if (freeCursorMode || carDoorCursorMode) {
-    // Cursor is intentionally shown ([?] mode) so clicking UI buttons stays safe; double-click canvas or press [?] to hide cursor again
-    if (event.button === 0) {
-      const now = performance.now();
-      const isDoubleClick = (now - lastCanvasClickTime) < 340;
-      lastCanvasClickTime = isDoubleClick ? 0 : now;
-      if (isDoubleClick) {
-        freeCursorMode = false;
-        carDoorCursorMode = false;
-        if (!started) beginWalking();
-        else controls.lock();
-        syncCursorVisibility();
-      } else if (!controls.isLocked) {
-        controls.enableFallback?.();
-      }
-    }
+    // Cursor is intentionally shown via [?] mode (NO double-tap toggle — press [?] again to hide cursor!)
     return;
   }
   // GTA V Free Move mode (mouse cursor hidden): single click engages full 360° pointer lock seamlessly without firing punch
@@ -3501,6 +3721,14 @@ canvas.addEventListener('pointerdown', (event) => {
 
 let lastWinLookX = null;
 let lastWinLookY = null;
+window.addEventListener('blur', () => {
+  lastWinLookX = null;
+  lastWinLookY = null;
+});
+document.addEventListener('pointerlockchange', () => {
+  lastWinLookX = null;
+  lastWinLookY = null;
+});
 window.addEventListener('mousemove', (event) => {
   if (inStudio || !started) return;
   if (gtaCharacterSwitch?.handleMouseMove(event)) return;
@@ -3510,20 +3738,25 @@ window.addEventListener('mousemove', (event) => {
     lastWinLookY = null;
     return;
   }
-  let mx = event.movementX || 0;
-  let my = event.movementY || 0;
-  if (!controls.pointerLocked) {
-    if (lastWinLookX !== null && (mx === 0 && my === 0)) {
-      mx = event.clientX - lastWinLookX;
-      my = event.clientY - lastWinLookY;
-    }
-    lastWinLookX = event.clientX;
-    lastWinLookY = event.clientY;
-  } else {
+  let mx = 0;
+  let my = 0;
+  if (controls.pointerLocked) {
+    mx = event.movementX || 0;
+    my = event.movementY || 0;
     lastWinLookX = null;
     lastWinLookY = null;
+  } else {
+    if (lastWinLookX === null) {
+      lastWinLookX = event.clientX;
+      lastWinLookY = event.clientY;
+      return;
+    }
+    mx = event.clientX - lastWinLookX;
+    my = event.clientY - lastWinLookY;
+    lastWinLookX = event.clientX;
+    lastWinLookY = event.clientY;
   }
-  if (Math.abs(mx) > 260 || Math.abs(my) > 260) return;
+  if (Math.abs(mx) > 120 || Math.abs(my) > 120) return;
   if (freeCam.active) {
     freeCam.euler.y -= mx * 0.0024 * mouseSensitivity;
     freeCam.euler.x = THREE.MathUtils.clamp(freeCam.euler.x - my * 0.0024 * mouseSensitivity, -Math.PI * 0.48, Math.PI * 0.48);
@@ -3603,8 +3836,14 @@ let lastVisSyncZ = 1e9;
 let lastVisSyncResult = { nearTaltolaVis: true, deepInTowerUpper: false, isLow: false };
 function syncSceneVisibility(force = false) {
   const nowVis = performance.now();
-  const movedVis = Math.abs(playerPos.x - lastVisSyncX) > 1.4 || Math.abs(playerPos.z - lastVisSyncZ) > 1.4;
-  if (!force && !movedVis && (nowVis - lastVisSyncAt) < 140) {
+  const isDrivingNow = Boolean(getDrivingCar());
+  const distThresh = isDrivingNow ? 8.0 : 1.8;
+  const minInterval = isDrivingNow ? 120 : 140;
+  const movedVis = Math.abs(playerPos.x - lastVisSyncX) > distThresh || Math.abs(playerPos.z - lastVisSyncZ) > distThresh;
+  if (!force && ((nowVis - lastVisSyncAt) < minInterval && !movedVis)) {
+    return lastVisSyncResult;
+  }
+  if (!force && (nowVis - lastVisSyncAt) < 90) {
     return lastVisSyncResult;
   }
   lastVisSyncAt = nowVis;
@@ -3655,6 +3894,7 @@ function syncSceneVisibility(force = false) {
       environment.farGroup.visible = wantFar;
     }
   }
+  const parkedCarVisSq = (isDrivingNow ? 68 : 92) ** 2;
   for (let i = 0; i < cars.length; i++) {
     const c = cars[i];
     if (!c) continue;
@@ -3662,8 +3902,10 @@ function syncSceneVisibility(force = false) {
     const dx = cPos.x - playerPos.x;
     const dz = cPos.z - playerPos.z;
     const dSq = dx * dx + dz * dz;
-    const wantVis = Boolean(c.state.driving) || dSq < 150 * 150;
-    const wantShadow = Boolean(c.state.driving) || dSq < 36 * 36;
+    const wantVis = Boolean(c.state.driving) || dSq < parkedCarVisSq;
+    // Only the actively driven vehicle (or very close parked vehicle while on foot) casts dynamic sun shadow;
+    // parked cars already have grounded contactShadow meshes, saving millions of shadow-pass triangles!
+    const wantShadow = Boolean(c.state.driving) || (!isDrivingNow && dSq < 15 * 15);
     c.setVisibilityAndShadow?.(wantVis, wantShadow);
   }
   if (environment?.city) {
@@ -3872,13 +4114,15 @@ function warpToLandmark(lm, lockControls = false) {
   syncCursorVisibility();
 }
 
-function beginWalking() {
-  freeCursorMode = false;
+function beginWalking(preserveCursor = false) {
+  if (!preserveCursor) {
+    freeCursorMode = false;
+  }
   carDoorCursorMode = false;
   if (!started) {
     const spawnId = spawnSelect?.value || 'taltola_house';
     const lm = khulnaMapUI?.landmarks?.find((l) => l.id === spawnId) || { id: 'taltola_house' };
-    warpToLandmark(lm, true);
+    warpToLandmark(lm, !freeCursorMode);
     syncCursorVisibility();
     return;
   }
@@ -3887,7 +4131,8 @@ function beginWalking() {
   intro?.classList.add('hidden');
   pause?.classList.add('hidden');
   walkHud?.classList.remove('hidden');
-  controls.lock();
+  if (!freeCursorMode) controls.lock();
+  else controls.enableFallback?.();
   syncCursorVisibility();
 }
 
@@ -4190,9 +4435,7 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  if (!started) return;
-
-  // [?] / [/] GTA V-style Mouse Cursor Toggle (hidden by default in Free Move)
+  // [?] / [/] GTA V-style Mouse Cursor Toggle (hidden by default from initial loading screen onward)
   const activeTag = document.activeElement?.tagName;
   const isTypingField = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || Boolean(document.activeElement?.isContentEditable);
   if (!isTypingField && !event.repeat && (event.code === 'Slash' || event.code === 'NumpadDivide' || event.key === '?' || event.key === '/')) {
@@ -4200,6 +4443,8 @@ window.addEventListener('keydown', (event) => {
     toggleFreeCursorMode();
     return;
   }
+
+  if (!ready || !started) return;
 
   // GTA V-style Character Switch Wheel ([Hold Ctrl] + Mouse / Arrows / 1-2)
   if (!freeCam.active && gtaCharacterSwitch?.handleKeyDown(event)) {
@@ -5657,9 +5902,11 @@ function updateMovement(delta) {
 
       const isBikePov = st.isBike && st.cameraMode === 'pov';
       const isInteriorPov = st.cameraMode === 'interior' && !st.isRickshaw && !st.isBike;
-      const targetFov = (isInteriorPov || isBikePov)
-        ? THREE.MathUtils.clamp(68 + speedKmh * 0.05, 68, 75)
-        : THREE.MathUtils.clamp(57 + speedKmh * 0.025, 57, 62);
+      const targetFov = isBikePov
+        ? THREE.MathUtils.clamp(74 + speedKmh * 0.055, 74, 80)
+        : (isInteriorPov
+          ? THREE.MathUtils.clamp(68 + speedKmh * 0.05, 68, 75)
+          : THREE.MathUtils.clamp(57 + speedKmh * 0.025, 57, 62));
       if (Math.abs(camera.fov - targetFov) > 0.05) {
         camera.fov += (targetFov - camera.fov) * Math.min(1, delta * 7.5);
         camera.updateProjectionMatrix();
@@ -5706,8 +5953,8 @@ function updateMovement(delta) {
           }
           const sinO = Math.sin(carChaseHeading);
           const cosO = Math.cos(carChaseHeading);
-          // Keep 3rd-person camera snug & close to the vehicle even at high speed (zero trailing speed-lag!)
-          const backDist = Math.max(st.isBike ? 2.65 : 3.85, st.camBack * 0.88 - Math.min(0.45, speedKmh * 0.0035));
+          // Keep 3rd-person camera comfortably framed (never too cramped on bikes or cars!)
+          const backDist = Math.max(st.isBike ? 3.25 : 3.85, st.camBack * 0.90 - Math.min(0.45, speedKmh * 0.0035));
           const horizDist = backDist * Math.cos(carOrbitPitch);
           const camY = Math.max(st.pos.y + 0.65, st.pos.y + 0.94 + backDist * Math.sin(carOrbitPitch) + (st.camHeight - 2.15) * 0.42);
           carCamDesired.set(st.pos.x - sinO * horizDist, camY, st.pos.z - cosO * horizDist);
@@ -5743,6 +5990,8 @@ function updateMovement(delta) {
               roll: st.roll,
               sportLean: Boolean(st.bikeSportLean),
               speed: st.speed,
+              isReversing: Boolean(st.isReversing),
+              groundY: st.pos.y,
               anchors: drivingCar.getBikeRiderAnchors?.(),
             },
           });
@@ -5782,6 +6031,8 @@ function updateMovement(delta) {
               standingBlend: st.standingBlend || 0,
               standingPedal: Boolean(st.standingPedal),
               speed: st.speed,
+              isReversing: Boolean(st.isReversing),
+              groundY: st.pos.y,
               anchors,
             },
           });
@@ -6322,7 +6573,9 @@ function animate() {
     updateStudioCamera(rawDelta);
     renderer.render(scene, camera);
   } else {
-    if (environment?.tower) environment.tower.update(delta, playerPos, isLow);
+    const distHajiSqNow = playerPos.x * playerPos.x + playerPos.z * playerPos.z;
+    const distAltapoleSqNow = (playerPos.x - 166) ** 2 + (playerPos.z + 408) ** 2;
+    if (environment?.tower && distHajiSqNow < 155 * 155) environment.tower.update(delta, playerPos, isLow);
     if (gtaCharacterSwitch?.isCameraOverridden) {
       gtaCharacterSwitch.update(rawDelta);
     } else {
@@ -6371,9 +6624,11 @@ function animate() {
       controls.updateEdgeTurn?.(delta);
     }
     if (house && nearTaltolaVis && !deepInTowerUpper) house.update(delta, playerPos, isLow);
-    if (environment?.altapole && !deepInTowerUpper) environment.altapole.update(delta, playerPos, isLow);
-    if (environment?.altapoleTower && !deepInTowerUpper) environment.altapoleTower.update(delta, playerPos, isLow);
-    if (environment?.altapoleGoli && !deepInTowerUpper) environment.altapoleGoli.update(delta, playerPos, isLow);
+    if (distAltapoleSqNow < 185 * 185 && !deepInTowerUpper) {
+      if (environment?.altapole) environment.altapole.update(delta, playerPos, isLow);
+      if (environment?.altapoleTower) environment.altapoleTower.update(delta, playerPos, isLow);
+      if (environment?.altapoleGoli) environment.altapoleGoli.update(delta, playerPos, isLow);
+    }
     if (skySystem) skySystem.update(elapsed, camera.position);
     if (environment && !deepInTowerUpper) environment.update(elapsed, playerPos, isLow, true);
 

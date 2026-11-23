@@ -27,11 +27,43 @@
     <div id="gta-cheat-toast" class="gta-cheat-toast hidden" role="status"></div>
     <div id="corner-fps" class="corner-fps" aria-live="off"><span class="fps-dot"></span><span id="corner-fps-val">-- FPS</span></div>
 
-    <section id="loading" class="loading-screen">
-      <div class="loading-mark">KHULNA<span>/</span>VI</div>
-      <p class="eyebrow">LOADING OPEN-WORLD ENGINE</p>
-      <div class="loading-track"><div id="loading-bar"></div></div>
-      <p id="loading-status">Streaming city assets…</p>
+    <section id="loading" class="loading-screen" aria-label="Loading Gangland Auto Bangladesh">
+      <div class="gta-loading-stage" id="gta-loading-stage">
+        <div class="gta-loading-slide is-active ken-a" data-slide="0">
+          <img class="gta-loading-img" src="./assets/loading/loading-1.jpg" alt="Gangland Auto Bangladesh Loading Screen 1" decoding="async" fetchpriority="high" />
+          <div class="gta-loading-corner-mask" aria-hidden="true"></div>
+        </div>
+        <div class="gta-loading-slide ken-b" data-slide="1">
+          <img class="gta-loading-img" src="./assets/loading/loading-2.jpg" alt="Gangland Auto Bangladesh Loading Screen 2" decoding="async" />
+          <div class="gta-loading-corner-mask" aria-hidden="true"></div>
+        </div>
+        <div class="gta-loading-slide ken-a" data-slide="2">
+          <img class="gta-loading-img" src="./assets/loading/loading-3.jpg" alt="Gangland Auto Bangladesh Loading Screen 3" decoding="async" />
+          <div class="gta-loading-corner-mask" aria-hidden="true"></div>
+        </div>
+        <div class="gta-loading-slide ken-b" data-slide="3">
+          <img class="gta-loading-img" src="./assets/loading/loading-4.jpg" alt="Gangland Auto Bangladesh Loading Screen 4" decoding="async" />
+          <div class="gta-loading-corner-mask" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div class="gta-loading-vignette" aria-hidden="true"></div>
+
+      <div class="gta-loading-hud" role="status" aria-live="polite">
+        <div class="gta-loading-row">
+          <div class="gta-loading-meta">
+            <span class="gta-loading-title">Loading Story Mode</span>
+            <span id="loading-status" class="gta-loading-sub">Streaming Khulna city assets…</span>
+          </div>
+          <div class="gta-spinner" aria-hidden="true">
+            <svg viewBox="0 0 44 44" class="gta-spinner-svg">
+              <circle class="gta-spinner-track" cx="22" cy="22" r="17" fill="none" stroke-width="4.5" />
+              <circle class="gta-spinner-arc" cx="22" cy="22" r="17" fill="none" stroke-width="4.5" stroke-linecap="round" />
+            </svg>
+          </div>
+        </div>
+        <div class="loading-track"><div id="loading-bar"></div></div>
+      </div>
     </section>
 
     <header id="hud-header" class="hud-header hidden">
