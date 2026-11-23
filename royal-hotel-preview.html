@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hotel Royal International Khulna — Standalone 3D Model Preview</title>
+  <title>Hotel Royal International Khulna — Photorealistic 3D Model Preview</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #0f172a; font-family: "Manrope", "Noto Sans Bengali", system-ui, sans-serif; color: #f8fafc; }
     #canvas-wrap { position: fixed; inset: 0; }
     #hud {
       position: fixed; top: 14px; left: 14px; z-index: 20;
-      background: rgba(15, 23, 42, 0.84); backdrop-filter: blur(12px);
-      border: 1px solid rgba(250, 204, 21, 0.35); border-radius: 14px;
-      padding: 14px 16px; max-width: 340px; box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+      background: rgba(15, 23, 42, 0.86); backdrop-filter: blur(14px);
+      border: 1px solid rgba(250, 204, 21, 0.38); border-radius: 14px;
+      padding: 14px 16px; max-width: 355px; box-shadow: 0 12px 34px rgba(0,0,0,0.48);
     }
     #hud h1 { font-size: 16px; font-weight: 800; color: #facc15; margin-bottom: 4px; }
     #hud p { font-size: 12px; color: #cbd5e1; line-height: 1.45; margin-bottom: 10px; }
@@ -20,7 +20,7 @@
     button {
       cursor: pointer; border: 1px solid rgba(148, 163, 184, 0.35);
       background: rgba(30, 41, 59, 0.9); color: #f8fafc;
-      padding: 7px 9px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      padding: 7px 8px; border-radius: 8px; font-size: 11.5px; font-weight: 600;
       transition: all 0.16s ease;
     }
     button:hover { background: rgba(51, 65, 85, 0.95); border-color: #facc15; }
@@ -36,26 +36,29 @@
 <body>
   <div id="canvas-wrap"></div>
   <div id="hud">
-    <h1>হোটেল রয়্যাল ইন্টারন্যাশনাল (3D মডেল)</h1>
-    <p>মাউস ড্র্যাগ করে ঘোরান, স্ক্রল করে জুম করুন, অথবা <b>W A S D</b> চেপে ভেতরে হাঁটুন।</p>
+    <h1>হোটেল রয়্যাল ইন্টারন্যাশনাল (ফটোরিয়ালিস্টিক 3D)</h1>
+    <p>মাউস ড্র্যাগ করে ঘোরান, স্ক্রল করে জুম করুন, অথবা <b>W A S D / Q E</b> চেপে পোডিয়াম ও ১০ তলা টাওয়ারের ভেতরে হাঁটুন।</p>
     <div class="btn-grid">
       <button id="btn-ext" class="active">বাইরের ভিউ</button>
       <button id="btn-lobby">রিসেপশন লবি</button>
+      <button id="btn-banquet">ব্যাংকুয়েট (টাওয়ার ১ম)</button>
       <button id="btn-rest">স্যাফায়ার রেস্টুরেন্ট</button>
-      <button id="btn-room">রুম ৩০৩ (স্যুট)</button>
-      <button id="btn-roof">রুফটপ গার্ডেন</button>
+      <button id="btn-room">রুম ৩০৩ (পোডিয়াম)</button>
+      <button id="btn-pres">প্রেসিডেন্সিয়াল (৬ষ্ঠ)</button>
+      <button id="btn-sky">স্কাই লাউঞ্জ (১০ম তলা)</button>
       <button id="btn-cut">কাটঅ্যাওয়ে (ভেতর)</button>
-      <button id="btn-night">দিন / রাত</button>
+      <button id="btn-tod">আলো: গোল্ডেন আওয়ার</button>
       <button id="btn-reset">রিসেট ভিউ</button>
     </div>
     <button id="btn-glb" class="primary">ডাউনলোড .GLB মডেল</button>
-    <div id="status">লোড সম্পন্ন · ৬০ FPS রেডি</div>
+    <div id="status">লোড সম্পন্ন · PBR + IBL রিফ্লেকশন চালু</div>
   </div>
 
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+    import { createAtmosphericSkyAndPMREM } from './src/aaa-shaders.js';
     import { buildHotelRoyalStandalone3D } from './src/hotel-royal-standalone.js';
 
     const wrap = document.getElementById('canvas-wrap');
@@ -67,42 +70,58 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.12;
+    renderer.toneMappingExposure = 1.06;
     wrap.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x9ec5e8);
-    scene.fog = new THREE.FogExp2(0x9ec5e8, 0.0045);
+    scene.fog = new THREE.FogExp2(0xdccbb6, 0.0028);
 
-    const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.15, 300);
-    camera.position.set(22, 13, 30);
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.15, 360);
+    camera.position.set(28, 16, 36);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.07;
-    controls.target.set(0, 6.5, 2);
+    controls.target.set(-2, 11.0, -3);
 
-    // Rich Day/Night Lighting Rig + Warm Interior Lights
-    const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x475569, 0.95);
+    // Photorealistic Atmospheric Sky Dome + Baked HDR PMREM Environment Reflections
+    const skySystem = createAtmosphericSkyAndPMREM(scene, renderer);
+
+    const hemiLight = new THREE.HemisphereLight(0x9ec8f2, 0x5c4f3d, 1.02);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff6e5, 2.2);
-    sunLight.position.set(28, 42, 30);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.22);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffd199, 2.5);
+    sunLight.position.set(36, 46, 34);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(2048, 2048);
-    sunLight.shadow.camera.left = -35;
-    sunLight.shadow.camera.right = 35;
-    sunLight.shadow.camera.top = 35;
-    sunLight.shadow.camera.bottom = -35;
+    sunLight.shadow.camera.near = 2;
+    sunLight.shadow.camera.far = 140;
+    sunLight.shadow.camera.left = -42;
+    sunLight.shadow.camera.right = 42;
+    sunLight.shadow.camera.top = 45;
+    sunLight.shadow.camera.bottom = -38;
+    sunLight.shadow.bias = -0.0004;
+    sunLight.shadow.normalBias = 0.025;
     scene.add(sunLight);
 
-    // Warm interior point lights so Lobby, Sapphire Restaurant & Room 303 glow beautifully
+    // Warm Interior Architectural Lighting across BOTH Podium & 10-Story Rear Tower
     const interiorLights = [
-      [0, 3.2, 4.5, 0xfff3d6, 18, 22],
-      [-7.5, 3.2, -2.5, 0xffe8b8, 14, 16],
-      [7.5, 3.2, 2.0, 0xffe8b8, 14, 16],
-      [0, 7.0, 4.0, 0xfff0cc, 18, 22],
+      // Podium Ground, 2nd & 3rd
+      [0, 3.2, 4.5, 0xfff3d6, 16, 22],
+      [-7.5, 3.2, -2.5, 0xffe8b8, 13, 16],
+      [7.5, 3.2, 2.0, 0xffe8b8, 13, 16],
+      [0, 7.0, 4.0, 0xfff0cc, 16, 22],
       [0, 10.8, 4.8, 0xfff3d6, 14, 16],
+      // 10-Story Rear Tower Interiors (Banquet, VIP Dining, 4th, 6th Presidential Suite, 10th Sky Lounge)
+      [-4.2, 3.2, -16.8, 0xffeec8, 18, 24],
+      [-4.2, 7.0, -16.8, 0xffeec8, 15, 22],
+      [-4.2, 14.2, -14.2, 0xfff2d2, 14, 18],
+      [-6.5, 21.1, -14.8, 0xfff0cc, 18, 22],
+      [0.8, 21.1, -14.2, 0xffe8b8, 14, 18],
+      [-5.2, 34.7, -15.5, 0xffe9be, 18, 24],
     ];
     for (const [x, y, z, col, intensity, dist] of interiorLights) {
       const pl = new THREE.PointLight(col, intensity, dist, 1.5);
@@ -113,17 +132,40 @@
     const hotel = buildHotelRoyalStandalone3D();
     scene.add(hotel.root);
 
-    // Camera Presets
+    // Time-of-day cycling (Golden Hour -> Midday -> Sunset -> Night)
+    const todOrder = [
+      { id: 'golden', label: 'আলো: গোল্ডেন আওয়ার', sunPos: [36, 42, 34] },
+      { id: 'daylight', label: 'আলো: দুপুর', sunPos: [28, 62, 26] },
+      { id: 'sunset', label: 'আলো: সন্ধ্যা', sunPos: [48, 18, 26] },
+      { id: 'night', label: 'আলো: রাত', sunPos: [-26, 44, 28] },
+    ];
+    let todIdx = 0;
+    function applyTimeOfDay(idx) {
+      todIdx = idx % todOrder.length;
+      const item = todOrder[todIdx];
+      sunLight.position.set(...item.sunPos);
+      skySystem.applyPreset(item.id, {
+        sun: sunLight,
+        hemisphereLight: hemiLight,
+        ambientLight,
+        quality: 'ultra',
+      });
+      document.getElementById('btn-tod').textContent = item.label;
+    }
+    applyTimeOfDay(0);
+
+    // Camera Presets for BOTH 3-Story Podium & Walkable 10-Story Rear Tower
     const presets = {
-      ext: { pos: [22, 13, 30], target: [0, 6.5, 2], cut: false },
+      ext: { pos: [28, 16, 36], target: [-2, 11.0, -3], cut: false },
       lobby: { pos: [0, 1.9, 10.6], target: [-2.5, 1.8, -3.5], cut: false },
+      banquet: { pos: [-9.6, 2.0, -11.4], target: [-2.2, 1.8, -17.2], cut: false },
       rest: { pos: [-7.5, 5.8, 8.2], target: [5.5, 5.4, 1.2], cut: false },
       room: { pos: [0.0, 9.6, 0.8], target: [-0.2, 9.2, 6.5], cut: false },
-      roof: { pos: [14, 17.5, 17], target: [0, 12.0, 4], cut: false },
+      pres: { pos: [-11.4, 20.1, -13.2], target: [-2.0, 19.7, -14.8], cut: false },
+      sky: { pos: [-11.8, 33.7, -11.5], target: [-1.5, 33.3, -19.5], cut: false },
     };
 
     let cutaway = false;
-    let isNight = false;
 
     function setActiveBtn(id) {
       for (const el of document.querySelectorAll('#hud button')) el.classList.remove('active');
@@ -145,29 +187,23 @@
     document.getElementById('btn-ext').onclick = () => goPreset('ext', 'btn-ext');
     document.getElementById('btn-reset').onclick = () => goPreset('ext', 'btn-ext');
     document.getElementById('btn-lobby').onclick = () => goPreset('lobby', 'btn-lobby');
+    document.getElementById('btn-banquet').onclick = () => goPreset('banquet', 'btn-banquet');
     document.getElementById('btn-rest').onclick = () => goPreset('rest', 'btn-rest');
     document.getElementById('btn-room').onclick = () => goPreset('room', 'btn-room');
-    document.getElementById('btn-roof').onclick = () => goPreset('roof', 'btn-roof');
+    document.getElementById('btn-pres').onclick = () => goPreset('pres', 'btn-pres');
+    document.getElementById('btn-sky').onclick = () => goPreset('sky', 'btn-sky');
     document.getElementById('btn-cut').onclick = () => {
       cutaway = !cutaway;
       hotel.setCutaway(cutaway);
       if (cutaway) {
-        camera.position.set(16, 13, 21);
-        controls.target.set(0, 5.2, 1);
+        camera.position.set(24, 20, 26);
+        controls.target.set(-4, 12.0, -8);
         setActiveBtn('btn-cut');
       } else {
         setActiveBtn('btn-ext');
       }
     };
-    document.getElementById('btn-night').onclick = () => {
-      isNight = !isNight;
-      const bg = isNight ? 0x090f1d : 0x9ec5e8;
-      scene.background.setHex(bg);
-      scene.fog.color.setHex(bg);
-      sunLight.intensity = isNight ? 0.25 : 2.2;
-      hemiLight.intensity = isNight ? 0.30 : 0.95;
-      renderer.toneMappingExposure = isNight ? 1.25 : 1.12;
-    };
+    document.getElementById('btn-tod').onclick = () => applyTimeOfDay(todIdx + 1);
 
     // One-Click .GLB Export
     document.getElementById('btn-glb').onclick = () => {
@@ -196,7 +232,7 @@
       );
     };
 
-    // Smooth WASD Free-Walk Movement inside Lobby / Restaurant / Rooms
+    // Smooth WASD + Q/E Free-Walk Movement inside Podium & 10-Story Tower
     const keys = {};
     window.addEventListener('keydown', (e) => { keys[e.code] = true; });
     window.addEventListener('keyup', (e) => { keys[e.code] = false; });
@@ -204,11 +240,13 @@
     const fwd = new THREE.Vector3();
     const right = new THREE.Vector3();
     const clock = new THREE.Clock();
+    let elapsed = 0;
 
     function animate() {
       requestAnimationFrame(animate);
       const dt = Math.min(0.05, clock.getDelta());
-      const speed = (keys.ShiftLeft || keys.ShiftRight ? 10 : 4.5) * dt;
+      elapsed += dt;
+      const speed = (keys.ShiftLeft || keys.ShiftRight ? 11 : 4.8) * dt;
       camera.getWorldDirection(fwd);
       fwd.y = 0;
       fwd.normalize();
@@ -227,6 +265,7 @@
         controls.target.add(move);
       }
       controls.update();
+      skySystem.update(elapsed, camera.position);
       renderer.render(scene, camera);
     }
     animate();
