@@ -12,6 +12,7 @@ export default defineConfig({
         priusPreview: resolve(__dirname, 'prius-preview.html'),
         tata2515Preview: resolve(__dirname, 'tata-2515-preview.html'),
         circuitHousePreview: resolve(__dirname, 'circuit-house-preview.html'),
+        whitePalacePreview: resolve(__dirname, 'white-heritage-palace-preview.html'),
       },
     },
   },

@@ -498,13 +498,15 @@ export function createKhulnaTraffic(parent) {
       prevElapsed = elapsed;
 
       const visCullDistSq = 110 * 110;
-      for (const pk of parkedVehicles) {
-        if (!playerPos) {
-          pk.visible = true;
-        } else {
-          const dxk = pk.userData.px - playerPos.x;
-          const dzk = pk.userData.pz - playerPos.z;
-          pk.visible = (dxk * dxk + dzk * dzk) <= visCullDistSq;
+      if (!playerPos || ((Math.floor(elapsed * 12) % 3) === 0)) {
+        for (const pk of parkedVehicles) {
+          if (!playerPos) {
+            pk.visible = true;
+          } else {
+            const dxk = pk.userData.px - playerPos.x;
+            const dzk = pk.userData.pz - playerPos.z;
+            pk.visible = (dxk * dxk + dzk * dzk) <= visCullDistSq;
+          }
         }
       }
 

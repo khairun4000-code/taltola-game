@@ -1958,7 +1958,6 @@ export function createUserDreamHome(parent, shared, cfg = {}) {
     const nearInt = distSq < 54 * 54;
     const pFootY = playerPos ? (playerPos.y - 1.68) : 0;
     const curFl = nearestFloorIndex(pFootY);
-    if (gateGlowLight) gateGlowLight.visible = !isLow && distSq < 60 * 60;
     for (let k = 0; k < floors; k++) {
       const grp = floorInteriorGroups[k];
       const dGrp = floorDynamicGroups[k];

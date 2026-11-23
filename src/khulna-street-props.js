@@ -559,7 +559,9 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
   const swayingPoles = new Set();
   const poleStateById = new Map();
 
-  function addCatenaryWire(buf, pinBuf, x0, y0, z0, x1, y1, z1, sag, segs = 4, swayX = 0, swayZ = 0) {
+  let wireCursor = 0;
+  function addCatenaryWireDirect(x0, y0, z0, x1, y1, z1, sag, segs = 3, swayX = 0, swayZ = 0) {
+    if (wireCursor + segs * 2 > MAX_WIRE_VERTS) return;
     for (let s = 0; s < segs; s++) {
       const t0 = s / segs;
       const t1 = (s + 1) / segs;
@@ -567,12 +569,16 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
       const sag1 = 4 * t1 * (1 - t1) * sag;
       const sw0 = Math.sin(t0 * Math.PI);
       const sw1 = Math.sin(t1 * Math.PI);
-      buf.push(
-        x0 + (x1 - x0) * t0 + swayX * sw0, y0 + (y1 - y0) * t0 - sag0, z0 + (z1 - z0) * t0 + swayZ * sw0,
-        x0 + (x1 - x0) * t1 + swayX * sw1, y0 + (y1 - y0) * t1 - sag1, z0 + (z1 - z0) * t1 + swayZ * sw1,
-      );
-      // 0.0 at pole attachment points, 1.0 at mid-span sag so wind sway stays anchored to poles!
-      pinBuf.push(sw0, sw1);
+      const o = wireCursor * 3;
+      wirePosArr[o] = x0 + (x1 - x0) * t0 + swayX * sw0;
+      wirePosArr[o + 1] = y0 + (y1 - y0) * t0 - sag0;
+      wirePosArr[o + 2] = z0 + (z1 - z0) * t0 + swayZ * sw0;
+      wirePosArr[o + 3] = x0 + (x1 - x0) * t1 + swayX * sw1;
+      wirePosArr[o + 4] = y0 + (y1 - y0) * t1 - sag1;
+      wirePosArr[o + 5] = z0 + (z1 - z0) * t1 + swayZ * sw1;
+      wirePinArr[wireCursor] = sw0;
+      wirePinArr[wireCursor + 1] = sw1;
+      wireCursor += 2;
     }
   }
 
@@ -580,7 +586,7 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
     const cx = Math.floor(px / chunkSize);
     const cz = Math.floor(pz / chunkSize);
     const rad = 1;
-    const maxR = (quality === 'low' || quality === 'medium') ? 240 : 290;
+    const maxR = (quality === 'low' || quality === 'medium') ? 195 : 240;
     const key = `${cx},${cz},${maxR}`;
     if (key === lastChunkKey) return;
     lastChunkKey = key;
@@ -728,11 +734,10 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
       baseNetaInsts[k].instanceMatrix.needsUpdate = true;
     }
 
-    // Build SUPER MESSY Bangladeshi Khulna pole-to-pole tangled overhead wires + house service drops!
-    const wireVerts = [];
-    const wirePins = [];
-    const wireStrands = quality === 'low' ? 6 : 8;
-    const dropCount = quality === 'low' ? 3 : 4;
+    // Build SUPER MESSY Bangladeshi Khulna pole-to-pole tangled overhead wires + house service drops (zero-GC direct TypedArray write!)
+    wireCursor = 0;
+    const wireStrands = quality === 'low' ? 5 : 6;
+    const dropCount = quality === 'low' ? 2 : 3;
 
     for (let i = 0; i < activePoles.length && i < MAX_POLES; i++) {
       const p = activePoles[i];
@@ -753,13 +758,11 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
               const sag = s < 3 ? (0.45 + r3 * 0.30) : (0.76 + r3 * 1.32);
               const swayX = (r1 - 0.5) * 0.52;
               const swayZ = (r2 - 0.5) * 0.52;
-              addCatenaryWire(
-                wireVerts,
-                wirePins,
+              addCatenaryWireDirect(
                 prev.x + prev.nx * latA, yA, prev.z + prev.nz * latA,
                 p.x + p.nx * latB, yB, p.z + p.nz * latB,
                 sag,
-                4,
+                3,
                 swayX,
                 swayZ,
               );
@@ -782,23 +785,18 @@ export function createKhulnaStreetPropsSystem(scene, worldData, shaderUniforms =
         const startY = 4.30 + rd1 * 1.85;
         const endY = 3.2 + rd3 * 5.6;
         const dropSag = 0.44 + rd2 * 1.05;
-        addCatenaryWire(
-          wireVerts,
-          wirePins,
+        addCatenaryWireDirect(
           p.x + (rd1 - 0.5) * 0.28, startY, p.z + (rd2 - 0.5) * 0.28,
           endX, endY, endZ,
           dropSag,
-          4,
+          3,
         );
       }
     }
 
-    const vCount = Math.min(Math.floor(wireVerts.length / 3), MAX_WIRE_VERTS);
-    for (let vi = 0; vi < vCount * 3; vi++) wirePosArr[vi] = wireVerts[vi];
-    for (let pi = 0; pi < vCount; pi++) wirePinArr[pi] = wirePins[pi];
     wirePosAttr.needsUpdate = true;
     wirePinAttr.needsUpdate = true;
-    wireGeom.setDrawRange(0, vCount);
+    wireGeom.setDrawRange(0, wireCursor);
   }
 
   function writeSwayingPoleMatrices(rec) {

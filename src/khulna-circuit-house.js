@@ -36,10 +36,10 @@ const GATE_OPEN_Z = 14.25;
 const GATE_CLOSED_Z = 11.20;
 
 const QUALITY_VIS_DIST = {
-  low: 200,
-  medium: 280,
-  high: 370,
-  ultra: 440,
+  low: 170,
+  medium: 220,
+  high: 265,
+  ultra: 300,
 };
 
 function localToWorld(lx, ly, lz, out = new THREE.Vector3()) {
@@ -178,8 +178,10 @@ export function buildKhulnaCircuitHouse(parent, m, renderer = null, botanicalFol
         const model = gltf.scene;
         model.name = 'KhulnaCircuitHouse_GLB_Scene';
         model.updateMatrixWorld(true);
-        // Share exact Circuit House botanical tree, Norfolk Pine, Palm & swaying bush prototypes across all of Khulna City!
-        botanicalFoliage?.ingestCircuitHouseGLB?.(model);
+        // Defer cross-city foliage cloning slightly so Circuit House GLB attach never stalls a riding frame!
+        setTimeout(() => {
+          botanicalFoliage?.ingestCircuitHouseGLB?.(model);
+        }, 65);
 
         const dynamicRoot = new THREE.Group();
         dynamicRoot.name = 'KhulnaCircuitHouse_Dynamic';

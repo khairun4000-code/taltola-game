@@ -1815,7 +1815,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
   mergeStaticMeshes(staticG);
 
-  const maxDistSq = 340 * 340;
+  const maxDistSq = 260 * 260;
 
   function getGroundHeight(pos, grounded = true, verticalVelocity = 0) {
     if (!pos) return 0.0;

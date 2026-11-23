@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>খুলনা সার্কিট হাউস — ৩৬ আপার যশোর রোড · রিয়েলিস্টিক 3D মডেল</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0d1420; }
+    body { font-family: "Manrope", "Noto Sans Bengali", system-ui, -apple-system, sans-serif; color: #f8fafc; }
+    #viewport { position: fixed; inset: 0; }
+    #viewport canvas { display: block; }
+
+    #panel {
+      position: fixed; top: 16px; left: 16px; z-index: 20; width: 330px;
+      background: rgba(12, 20, 32, 0.82);
+      backdrop-filter: blur(16px) saturate(1.2);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 16px; padding: 16px 16px 14px;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    }
+    #panel .kicker {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 10.5px; letter-spacing: 1.4px; font-weight: 700;
+      color: #fbbf24; text-transform: uppercase; margin-bottom: 7px;
+    }
+    #panel .kicker span { width: 6px; height: 6px; border-radius: 999px; background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
+    #panel h1 { font-size: 16.5px; font-weight: 800; line-height: 1.32; margin-bottom: 5px; }
+    #panel .sub { font-size: 11.5px; color: #94a3b8; line-height: 1.55; margin-bottom: 12px; }
+    #panel .sub b { color: #e2e8f0; font-weight: 600; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .btn {
+      cursor: pointer; font-family: inherit; font-size: 11.5px; font-weight: 600;
+      padding: 8px 9px; border-radius: 9px; text-align: left; line-height: 1.25;
+      color: #e2e8f0; background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.26);
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+    }
+    .btn:hover { background: rgba(51, 65, 85, 0.95); border-color: rgba(251, 191, 36, 0.6); }
+    .btn:active { transform: translateY(1px); }
+    .btn.active { background: linear-gradient(135deg, #b45309, #92400e); border-color: #fbbf24; color: #fff7ed; }
+    .btn small { display: block; font-size: 9.5px; font-weight: 500; color: #94a3b8; margin-top: 2px; letter-spacing: 0.2px; }
+    .btn.active small { color: #fde68a; }
+
+    .btn.wide { grid-column: 1 / -1; text-align: center; }
+    .btn.primary {
+      width: 100%; text-align: center; margin-top: 2px;
+      background: linear-gradient(135deg, #15803d, #166534);
+      border-color: #4ade80; color: #f0fdf4; font-size: 12px; padding: 10px;
+      letter-spacing: 0.2px;
+    }
+    .btn.primary:hover { filter: brightness(1.12); }
+
+    .hints {
+      margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px 10px;
+      font-size: 10px; color: #64748b; line-height: 1.5;
+    }
+    .hints kbd {
+      font-family: inherit; font-size: 9.5px; padding: 1px 5px; border-radius: 4px;
+      background: rgba(148, 163, 184, 0.14); border: 1px solid rgba(148, 163, 184, 0.28); color: #cbd5e1;
+    }
+    #status { margin-top: 9px; font-size: 10.5px; color: #7dd3a0; min-height: 14px; }
+
+    #loader {
+      position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+      background: radial-gradient(circle at 50% 42%, #1e293b, #0b1220 70%);
+      transition: opacity 0.6s ease; text-align: center;
+    }
+    #loader.hidden { opacity: 0; pointer-events: none; }
+    #loader .mark { font-size: 12px; letter-spacing: 4px; color: #fbbf24; font-weight: 700; margin-bottom: 10px; }
+    #loader h2 { font-size: 19px; font-weight: 700; margin-bottom: 6px; }
+    #loader p { font-size: 12px; color: #94a3b8; }
+    #loader .bar { width: 220px; height: 3px; border-radius: 999px; background: rgba(148, 163, 184, 0.2); margin: 16px auto 0; overflow: hidden; }
+    #loader .bar i { display: block; height: 100%; width: 38%; background: linear-gradient(90deg, #fbbf24, #f59e0b); border-radius: 999px; animation: slide 1.15s ease-in-out infinite; }
+    @keyframes slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(330%); } }
+
+    #credit {
+      position: fixed; right: 14px; bottom: 12px; z-index: 20;
+      font-size: 10px; color: rgba(226, 232, 240, 0.6);
+      background: rgba(12, 20, 32, 0.6); border: 1px solid rgba(148, 163, 184, 0.2);
+      padding: 6px 10px; border-radius: 8px; letter-spacing: 0.3px;
+    }
+    @media (max-width: 720px) {
+      #panel { width: calc(100% - 24px); left: 12px; top: 12px; padding: 12px; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      #credit { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="viewport"></div>
+
+  <div id="panel">
+    <div class="kicker"><span></span> KHULNA · UPPER JESSORE ROAD</div>
+    <h1>খুলনা সার্কিট হাউস<br />৩৬ আপার যশোর রোড</h1>
+    <p class="sub">
+      সাদা কলোনিয়াল ভবন — <b>৮টি গোল কলাম</b>, খিলান-জানালা, সবুজ লুভার শাটার,
+      পদ্ম-মোটিফ প্রাচীর, কালো-হলুদ কার্ব ও রাস্তার গাছ। মে ২০২৪ স্ট্রিট ভিউ ছবি অবলম্বনে পুনর্নির্মিত।
+    </p>
+
+    <div class="grid">
+      <button class="btn active" id="btn-street">স্ট্রিট ভিউ<small>পাশ থেকে রাস্তার দৃশ্য</small></button>
+      <button class="btn" id="btn-facade">সামনের ফ্যাসাড<small>পূর্ণ সম্মুখভাগ</small></button>
+      <button class="btn" id="btn-wall">প্রাচীর ও গেট<small>পদ্ম-মোটিফ স্ক্রিন</small></button>
+      <button class="btn" id="btn-veranda">বারান্দা ও স্তম্ভ<small>নিচতলার ক্লোজ-আপ</small></button>
+      <button class="btn" id="btn-roof">ছাদ ও পারাপেট<small>উপর থেকে পুরো ভবন</small></button>
+      <button class="btn" id="btn-compound">পুরো কম্পাউন্ড<small>চত্বর ও রাস্তা</small></button>
+    </div>
+
+    <button class="btn wide" id="btn-time">সময়: দুপুর (DAYLIGHT)</button>
+    <button class="btn primary" id="btn-glb">⬇ .GLB মডেল ডাউনলোড</button>
+
+    <div class="hints">
+      <span>ড্র্যাগ = ঘোরানো</span>
+      <span>স্ক্রল = জুম</span>
+      <span><kbd>W A S D</kbd> = হাঁটা</span>
+      <span><kbd>Q</kbd>/<kbd>E</kbd> = নিচে/উপরে</span>
+    </div>
+    <div id="status">মডেল লোড হচ্ছে…</div>
+  </div>
+
+  <div id="loader">
+    <div>
+      <div class="mark">CIRCUIT HOUSE · KHULNA</div>
+      <h2>৩ডি মডেল তৈরি হচ্ছে</h2>
+      <p>PBR টেক্সচার, খোদাই করা প্রাচীর ও বাস্তব আলো সেটআপ চলছে…</p>
+      <div class="bar"><i></i></div>
+    </div>
+  </div>
+
+  <div id="credit">Circuit House · 36 Upper Jessore Rd · Khulna</div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+    import { createAtmosphericSkyAndPMREM } from './src/aaa-shaders.js';
+    import { buildWhiteHeritagePalace3D } from './src/white-heritage-palace.js';
+
+    const viewport = document.getElementById('viewport');
+    const statusEl = document.getElementById('status');
+    const loaderEl = document.getElementById('loader');
+
+    /* ------------------------------- renderer ------------------------------- */
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.06;
+    viewport.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0xd6e2ea, 0.0021);
+
+    const camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 500);
+    camera.position.set(25.5, 4.4, 27.0);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.minDistance = 3;
+    controls.maxDistance = 130;
+    controls.maxPolarAngle = Math.PI * 0.495;
+    controls.target.set(-2.0, 5.6, 6.5);
+
+    /* -------------------------------- lighting ------------------------------ */
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.26);
+    scene.add(ambientLight);
+
+    const hemiLight = new THREE.HemisphereLight(0xbcdcf7, 0x6b6353, 1.02);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff3e2, 2.5);
+    sunLight.position.set(38, 58, 34);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.bias = -0.0005;
+    sunLight.shadow.normalBias = 0.03;
+    sunLight.shadow.camera.left = -60;
+    sunLight.shadow.camera.right = 60;
+    sunLight.shadow.camera.top = 60;
+    sunLight.shadow.camera.bottom = -60;
+    sunLight.shadow.camera.near = 1;
+    sunLight.shadow.camera.far = 190;
+    scene.add(sunLight);
+
+    const skySystem = createAtmosphericSkyAndPMREM(scene, renderer);
+
+    /* --------------------------------- model -------------------------------- */
+    const palace = buildWhiteHeritagePalace3D();
+    scene.add(palace.root);
+
+    /* ------------------------------ camera presets -------------------------- */
+    const presets = {
+      street:   { pos: [25.5, 4.4, 27.0], target: [-2.0, 5.6, 6.5] },
+      facade:   { pos: [0.0, 6.4, 34.0],  target: [0.0, 6.2, 2.0] },
+      wall:     { pos: [10.0, 2.2, 23.5], target: [15.0, 1.9, 14.6] },
+      veranda:  { pos: [4.5, 2.4, 12.0],  target: [-2.0, 3.4, 2.0] },
+      roof:     { pos: [-21.0, 21.0, 29.0], target: [0.0, 8.0, -2.0] },
+      compound: { pos: [-34.0, 17.0, 36.0], target: [2.0, 5.0, 2.0] },
+    };
+
+    const timeModes = [
+      { id: 'daylight', label: 'সময়: দুপুর (DAYLIGHT)', night: 0 },
+      { id: 'golden',   label: 'সময়: বিকেল (GOLDEN HOUR)', night: 0 },
+      { id: 'sunset',   label: 'সময়: সন্ধ্যা (SUNSET)', night: 0.55 },
+      { id: 'night',    label: 'সময়: রাত (NIGHT)', night: 1 },
+    ];
+
+    let timeIndex = 0;
+
+    function applyTime(mode) {
+      skySystem.applyPreset(mode.id, {
+        sun: sunLight,
+        hemisphereLight: hemiLight,
+        ambientLight,
+        quality: 'ultra',
+      });
+      palace.setNightFactor(mode.night);
+      document.getElementById('btn-time').textContent = mode.label;
+    }
+    applyTime(timeModes[0]);
+
+    function setActive(id) {
+      for (const el of document.querySelectorAll('#panel .grid .btn')) el.classList.remove('active');
+      const btn = document.getElementById(id);
+      if (btn) btn.classList.add('active');
+    }
+
+    function goPreset(key, btnId) {
+      const p = presets[key];
+      if (!p) return;
+      camera.position.set(...p.pos);
+      controls.target.set(...p.target);
+      controls.update();
+      setActive(btnId);
+    }
+
+    document.getElementById('btn-street').onclick = () => goPreset('street', 'btn-street');
+    document.getElementById('btn-facade').onclick = () => goPreset('facade', 'btn-facade');
+    document.getElementById('btn-wall').onclick = () => goPreset('wall', 'btn-wall');
+    document.getElementById('btn-veranda').onclick = () => goPreset('veranda', 'btn-veranda');
+    document.getElementById('btn-roof').onclick = () => goPreset('roof', 'btn-roof');
+    document.getElementById('btn-compound').onclick = () => goPreset('compound', 'btn-compound');
+
+    document.getElementById('btn-time').onclick = () => {
+      timeIndex = (timeIndex + 1) % timeModes.length;
+      applyTime(timeModes[timeIndex]);
+    };
+
+    /* -------------------------------- GLB export ---------------------------- */
+    function exportPalaceGLB() {
+      return new Promise((resolve, reject) => {
+        statusEl.textContent = 'GLB এক্সপোর্ট হচ্ছে…';
+        new GLTFExporter().parse(
+          palace.root,
+          (result) => resolve(result),
+          (err) => reject(err),
+          { binary: true },
+        );
+      });
+    }
+    // Exposed so the model can also be exported without the download button.
+    window.__exportPalaceGLB = exportPalaceGLB;
+
+    document.getElementById('btn-glb').onclick = async () => {
+      try {
+        const result = await exportPalaceGLB();
+        const blob = new Blob([result], { type: 'model/gltf-binary' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'khulna_circuit_house_upper_jessore_rd.glb';
+        a.click();
+        URL.revokeObjectURL(url);
+        statusEl.textContent = 'খুলনা সার্কিট হাউস মডেল ডাউনলোড হয়েছে (.glb)';
+      } catch (err) {
+        statusEl.textContent = 'এক্সপোর্টে সমস্যা: ' + err.message;
+      }
+    };
+
+    /* ------------------------------- walk controls -------------------------- */
+    const keys = Object.create(null);
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) e.preventDefault();
+    });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    const forward = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const move = new THREE.Vector3();
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.05, clock.getDelta());
+      const t = clock.elapsedTime;
+
+      palace.update(t);
+      skySystem.update(t, camera.position);
+
+      const speed = (keys.ShiftLeft || keys.ShiftRight ? 13 : 5.5) * dt;
+      camera.getWorldDirection(forward);
+      forward.y = 0;
+      forward.normalize();
+      right.crossVectors(forward, camera.up).normalize();
+
+      move.set(0, 0, 0);
+      if (keys.KeyW || keys.ArrowUp) move.add(forward);
+      if (keys.KeyS || keys.ArrowDown) move.sub(forward);
+      if (keys.KeyD || keys.ArrowRight) move.add(right);
+      if (keys.KeyA || keys.ArrowLeft) move.sub(right);
+      if (keys.KeyE) move.y += 1;
+      if (keys.KeyQ) move.y -= 1;
+      if (move.lengthSq() > 0) {
+        move.normalize().multiplyScalar(speed);
+        camera.position.add(move);
+        controls.target.add(move);
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    renderer.render(scene, camera);
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    loaderEl.classList.add('hidden');
+    setTimeout(() => loaderEl.remove(), 700);
+    statusEl.textContent = 'প্রস্তুত · প্রাচীরের পদ্ম-মোটিফ আর স্তম্ভগুলো কাছ থেকে দেখুন';
+  </script>
+</body>
+</html>

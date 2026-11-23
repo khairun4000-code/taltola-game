@@ -504,7 +504,7 @@ function buildCabDoor(sideSign, mats) {
   return pivot;
 }
 
-function buildTruckInterior(parent, mats) {
+function buildTruckInterior(parent, mats, enableRealLights = true) {
   const g = new THREE.Group();
   g.name = 'Tata2515_Interior';
   parent.add(g);
@@ -611,9 +611,12 @@ function buildTruckInterior(parent, mats) {
   domeLens.position.set(0, 2.715, 3.32);
   g.add(domeLens);
 
-  const domePoint = new THREE.PointLight(0xffe6b3, 1.0, 3.0, 1.8);
-  domePoint.position.set(0, 2.64, 3.30);
-  g.add(domePoint);
+  let domePoint = null;
+  if (enableRealLights) {
+    domePoint = new THREE.PointLight(0xffe6b3, 1.0, 3.0, 1.8);
+    domePoint.position.set(0, 2.64, 3.30);
+    g.add(domePoint);
+  }
 
   const rvMirror = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.08, 0.03), mats.darkMetal);
   rvMirror.position.set(-0.08, 2.64, 3.84);
@@ -622,7 +625,7 @@ function buildTruckInterior(parent, mats) {
   return { steeringPivot, domePoint };
 }
 
-function buildExteriorSteelAndLights(parent, mats) {
+function buildExteriorSteelAndLights(parent, mats, enableRealLights = true) {
   const g = new THREE.Group();
   g.name = 'Tata2515_ExteriorSteelAndLights';
   parent.add(g);
@@ -877,27 +880,29 @@ function buildExteriorSteelAndLights(parent, mats) {
     g.add(mk);
   }
 
-  for (const sx of [-1, 1]) {
-    const spot = new THREE.SpotLight(0xfff4d6, 3.2, 34, Math.PI * 0.24, 0.45, 1.3);
-    spot.position.set(sx * 0.88, 0.82, 4.62);
-    const target = new THREE.Object3D();
-    target.position.set(sx * 0.72, 0.0, 16.0);
-    g.add(target);
-    spot.target = target;
-    g.add(spot);
-    if (sx > 0) lights.headSpotL = spot;
-    else lights.headSpotR = spot;
-  }
+  if (enableRealLights) {
+    for (const sx of [-1, 1]) {
+      const spot = new THREE.SpotLight(0xfff4d6, 3.2, 34, Math.PI * 0.24, 0.45, 1.3);
+      spot.position.set(sx * 0.88, 0.82, 4.62);
+      const target = new THREE.Object3D();
+      target.position.set(sx * 0.72, 0.0, 16.0);
+      g.add(target);
+      spot.target = target;
+      g.add(spot);
+      if (sx > 0) lights.headSpotL = spot;
+      else lights.headSpotR = spot;
+    }
 
-  const tailGlow = new THREE.PointLight(0xff2222, 0.65, 4.2, 1.8);
-  tailGlow.position.set(0, 0.76, -4.75);
-  g.add(tailGlow);
-  lights.tailGlow = tailGlow;
+    const tailGlow = new THREE.PointLight(0xff2222, 0.65, 4.2, 1.8);
+    tailGlow.position.set(0, 0.76, -4.75);
+    g.add(tailGlow);
+    lights.tailGlow = tailGlow;
+  }
 
   return lights;
 }
 
-export function loadHighQualityTata2515(assetUrl = './assets/tata_2515.glb') {
+export function loadHighQualityTata2515(assetUrl = './assets/tata_2515.glb', { enableRealLights = true } = {}) {
   return new Promise((resolve, reject) => {
     const loader = new GLTFLoader();
     loader.load(
@@ -1067,8 +1072,8 @@ export function loadHighQualityTata2515(assetUrl = './assets/tata_2515.glb') {
         const doorFR = buildCabDoor(-1, mats);
         root.add(doorFL, doorFR);
 
-        const { steeringPivot, domePoint } = buildTruckInterior(root, mats);
-        const lights = buildExteriorSteelAndLights(root, mats);
+        const { steeringPivot, domePoint } = buildTruckInterior(root, mats, enableRealLights);
+        const lights = buildExteriorSteelAndLights(root, mats, enableRealLights);
 
         const wheelNodes = {
           flSteer: new THREE.Group(),
@@ -1155,7 +1160,7 @@ export function loadHighQualityTata2515(assetUrl = './assets/tata_2515.glb') {
             if (lights.headSpotL) lights.headSpotL.intensity = headlights ? (highBeam ? 7.5 : 3.6) : 0.0;
             if (lights.headSpotR) lights.headSpotR.intensity = headlights ? (highBeam ? 7.5 : 3.6) : 0.0;
             if (lights.tailGlow) lights.tailGlow.intensity = brake ? 1.8 : (headlights ? 0.65 : 0.0);
-            domePoint.intensity = cabinLight ? 1.0 : 0.0;
+            if (domePoint) domePoint.intensity = cabinLight ? 1.0 : 0.0;
             domeLight.emissiveIntensity = cabinLight ? 1.6 : 0.1;
           },
         };

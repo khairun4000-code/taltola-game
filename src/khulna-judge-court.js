@@ -34,10 +34,10 @@ const COS_R = Math.cos(ROT_Y); // 0
 const SIN_R = Math.sin(ROT_Y); // -1
 
 const QUALITY_VIS_DIST = {
-  low: 210,
-  medium: 300,
-  high: 400,
-  ultra: 480,
+  low: 185,
+  medium: 240,
+  high: 290,
+  ultra: 335,
 };
 
 function localToWorld(lx, ly, lz, out = new THREE.Vector3()) {

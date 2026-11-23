@@ -1801,7 +1801,7 @@ export function buildSatrastaMoreDistrict(parent, m, botanicalFoliage = null) {
   // ============================================================================
   // 10) RUNTIME API (MULTI-FLOOR STAIRS, COLLISIONS, DOORS, SEATS, ZONE, 60 FPS)
   // ============================================================================
-  const maxDistSq = 370 * 370;
+  const maxDistSq = 275 * 275;
 
   function inBounds(pos) {
     if (!pos) return false;

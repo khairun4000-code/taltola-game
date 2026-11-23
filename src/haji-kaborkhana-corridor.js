@@ -1355,9 +1355,9 @@ export function buildHajiKaborkhanaCorridor(parent, m) {
     return s;
   }
 
-  const kaborkhanaSlice = makeSlice('Slice_Kaborkhana_KhanJahanAli', 70, 155, 290);
-  const hajiExtSlice = makeSlice('Slice_HajiMohsin_Extended', 0, -130, 310);
-  const southCentralSlice = makeSlice('Slice_SouthCentral_AltapoleLink', 80, -315, 290);
+  const kaborkhanaSlice = makeSlice('Slice_Kaborkhana_KhanJahanAli', 70, 155, 240);
+  const hajiExtSlice = makeSlice('Slice_HajiMohsin_Extended', 0, -130, 265);
+  const southCentralSlice = makeSlice('Slice_SouthCentral_AltapoleLink', 80, -315, 245);
 
   buildKaborkhanaMoreAndKhanJahanAli(kaborkhanaSlice.staticG, kaborkhanaSlice.dynamicG, bank, phys);
   buildHajiMohsinRoadExtended(hajiExtSlice.staticG, hajiExtSlice.dynamicG, bank, phys);

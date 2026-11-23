@@ -2442,11 +2442,11 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
     return { name, cx, cz, maxDistSq: maxDist * maxDist, root, staticG, dynamicG, treesG };
   }
 
-  const hajiSlice = makeSlice('KhulnaSlice_HajiMohsin', 0, 0, 215);
-  const rupshaSlice = makeSlice('KhulnaSlice_RupshaWaterfront', 1160, 320, 440);
-  const taltolaSlice = makeSlice('KhulnaSlice_TaltolaHouse', TALTOLA_HOUSE_OFFSET.x, TALTOLA_HOUSE_OFFSET.z, 320);
-  const altapoleSlice = makeSlice('KhulnaSlice_AltapoleLane', 166, -408, 250);
-  const circuitRoadsSlice = makeSlice('KhulnaSlice_CircuitStadiumRoads', -95, -735, 660);
+  const hajiSlice = makeSlice('KhulnaSlice_HajiMohsin', 0, 0, 195);
+  const rupshaSlice = makeSlice('KhulnaSlice_RupshaWaterfront', 1160, 320, 360);
+  const taltolaSlice = makeSlice('KhulnaSlice_TaltolaHouse', TALTOLA_HOUSE_OFFSET.x, TALTOLA_HOUSE_OFFSET.z, 255);
+  const altapoleSlice = makeSlice('KhulnaSlice_AltapoleLane', 166, -408, 225);
+  const circuitRoadsSlice = makeSlice('KhulnaSlice_CircuitStadiumRoads', -95, -735, 480);
 
   buildHajiMohsinCorridor(hajiSlice.staticG, hajiSlice.dynamicG, bank, m, helpers, hajiSlice.treesG);
   const riverVessels = buildRupshaWaterfrontCorridor(rupshaSlice.staticG, rupshaSlice.dynamicG, bank, m, helpers);

@@ -1699,7 +1699,7 @@ export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliag
   }
 
   // Keep only the top high-detail Khulna showcase landmarks (Alia Madrasah & Model Mosque, Circuit House, Judge Court, Stadium, Boro Maath, Shaheed Hadis Park, Royal More, PTI More)
-  const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -100, -700, 820);
+  const circuitHadisSlice = makeSlice('KhulnaLandmark_CircuitHadis', -100, -700, 480);
 
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
   const circuitHouse = buildKhulnaCircuitHouse(group, m, renderer, botanicalFoliage);
@@ -1734,7 +1734,7 @@ export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliag
   }
 
   function setQualityMode(q = 'medium') {
-    const d = q === 'low' ? 340 : (q === 'medium' ? 480 : (q === 'high' ? 640 : 780));
+    const d = q === 'low' ? 260 : (q === 'medium' ? 350 : (q === 'high' ? 430 : 510));
     circuitHadisSlice.maxDistSq = d * d;
     circuitHouse.setQualityMode?.(q);
     judgeCourt.setQualityMode?.(q);

@@ -2418,7 +2418,7 @@ export function buildPtiMoreDistrict(parent, m) {
     staticG.add(mesh);
   }
 
-  const maxDistSq = 340 * 340;
+  const maxDistSq = 265 * 265;
 
   function getNearbyPrompt(pos) {
     if (!pos || pos.y > 3.2) return null;

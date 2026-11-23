@@ -3343,7 +3343,7 @@ export function buildRoyalMoreDistrict(parent, m, botanicalFoliage = null) {
     staticG.add(mesh);
   }
 
-  const maxDistSq = 380 * 380;
+  const maxDistSq = 285 * 285;
 
   return {
     root,
