@@ -1,0 +1,108 @@
+name: Build Android APK (Gangland Auto Bangladesh One)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies & build web bundle
+        run: |
+          npm ci
+          npm run build
+
+      - name: Setup Capacitor Android project
+        run: |
+          npm install --no-save @capacitor/core @capacitor/cli @capacitor/android
+          cat << 'EOF' > capacitor.config.json
+          {
+            "appId": "com.factforge.ganglandautobangladeshone",
+            "appName": "Gangland Auto Bangladesh One",
+            "webDir": "dist",
+            "bundledWebRuntime": false,
+            "android": {
+              "allowMixedContent": true,
+              "backgroundColor": "#0d1312"
+            }
+          }
+          EOF
+          npx cap add android
+          npx cap sync android
+
+      - name: Apply Gangland Auto Bangladesh One Emblem as Android Launcher Icon
+        run: |
+          python3 - << 'PY'
+          import os, subprocess
+          src = "public/icons/app-logo.png"
+          sizes = {
+            "mipmap-mdpi": 48,
+            "mipmap-hdpi": 72,
+            "mipmap-xhdpi": 96,
+            "mipmap-xxhdpi": 144,
+            "mipmap-xxxhdpi": 192,
+          }
+          fg_sizes = {
+            "mipmap-mdpi": 108,
+            "mipmap-hdpi": 162,
+            "mipmap-xhdpi": 216,
+            "mipmap-xxhdpi": 324,
+            "mipmap-xxxhdpi": 432,
+          }
+          res_dir = "android/app/src/main/res"
+          for folder, px in sizes.items():
+            out_dir = os.path.join(res_dir, folder)
+            os.makedirs(out_dir, exist_ok=True)
+            for name in ("ic_launcher.png", "ic_launcher_round.png"):
+              subprocess.run(["convert", src, "-resize", f"{px}x{px}!", os.path.join(out_dir, name)], check=True)
+            fpx = fg_sizes[folder]
+            subprocess.run(["convert", src, "-resize", f"{fpx}x{fpx}!", os.path.join(out_dir, "ic_launcher_foreground.png")], check=True)
+          PY
+
+      - name: Configure Landscape Fullscreen in AndroidManifest
+        run: |
+          python3 - << 'PY'
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path, "r") as f:
+            txt = f.read()
+          if 'android:screenOrientation' not in txt:
+            txt = txt.replace(
+              'android:name=".MainActivity"',
+              'android:name=".MainActivity"\n            android:screenOrientation="sensorLandscape"'
+            )
+          with open(path, "w") as f:
+            f.write(txt)
+          PY
+
+      - name: Build Debug APK with Gradle
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ../Gangland-Auto-Bangladesh-One.apk
+
+      - name: Upload Gangland-Auto-Bangladesh-One.apk Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gangland-Auto-Bangladesh-One-APK
+          path: Gangland-Auto-Bangladesh-One.apk
+          retention-days: 90

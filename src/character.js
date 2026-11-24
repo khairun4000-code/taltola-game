@@ -829,10 +829,20 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       srcMat.transparent = false;
       srcMat.depthWrite = true;
       srcMat.alphaTest = isHair ? 0.34 : isFacialHair ? 0.20 : 0;
-      // DoubleSide keeps open-hem panjabi & lashes solid; keep eyeballs & oral teeth FrontSide for crisp studio shading
+      // DoubleSide keeps open-hem panjabi & lashes solid; FrontSide shadowSide prevents thin fingers/hands from self-shadowing black!
       srcMat.side = (isTeeth || isTongue || isEyeBall) ? THREE.FrontSide : THREE.DoubleSide;
+      srcMat.shadowSide = THREE.FrontSide;
+      const isHeadMat = matName.includes('head') || matName.includes('face') || matName.includes('skin_head');
+      const isKurtaBodyMat = options.id === 'kurta_blue' && !isHeadMat && !isAlphaDetail && !isEyelash && !isEyeBall && !isInnerMouth && !isTeeth && !isTongue;
       if (options.id === 'kurta_blue' && 'metalness' in srcMat) {
         srcMat.metalness = 0.0;
+      }
+      if (isKurtaBodyMat) {
+        // Fix dark/black smudges on Huzzatullah's hands: remove noisy metallic/roughness map & soften hand normal crease artifacts
+        if ('metalnessMap' in srcMat) srcMat.metalnessMap = null;
+        if ('roughnessMap' in srcMat) srcMat.roughnessMap = null;
+        if ('roughness' in srcMat) srcMat.roughness = 0.76;
+        if ('envMapIntensity' in srcMat) srcMat.envMapIntensity = 0.35;
       }
       obj.userData._isCharacterMesh = true;
       if (srcMat.map) {
@@ -859,8 +869,15 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         srcMat.roughness = isTeeth ? 0.34 : 0.42;
       }
       if ('normalScale' in srcMat && srcMat.normalScale) {
-        srcMat.normalScale.set(0.75, 0.75);
+        if (isKurtaBodyMat) {
+          srcMat.normalScale.set(0.28, 0.28);
+        } else if (options.id === 'kurta_blue' && isHeadMat) {
+          srcMat.normalScale.set(0.55, 0.55);
+        } else {
+          srcMat.normalScale.set(0.75, 0.75);
+        }
       }
+      srcMat.needsUpdate = true;
 
       if (obj.morphTargetDictionary && obj.morphTargetInfluences) {
         morphMeshes.push(obj);

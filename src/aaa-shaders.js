@@ -446,18 +446,18 @@ export const TIME_OF_DAY_PRESETS = {
     shortLabel: 'GOLDEN',
     sunPos: [92, 54, -76],
     sunColor: 0xffd199,
-    sunIntensity: 2.50,
+    sunIntensity: 2.55,
     hemiSky: 0x9ec8f2,
     hemiGround: 0x5c4f3d,
-    hemiIntensity: 1.02,
-    ambientIntensity: 0.26,
+    hemiIntensity: 1.04,
+    ambientIntensity: 0.27,
     skyTop: 0x255a96,
     skyHorizon: 0xf4c898,
     skySunGlow: 0xffb368,
     fogColor: 0xdccbb6,
-    exposure: 1.04,
-    bloomStrength: 0.24,
-    bloomThreshold: 0.81,
+    exposure: 1.08,
+    bloomStrength: 0.32,
+    bloomThreshold: 0.76,
     isNight: false,
     nightFactor: 0.0,
     starAlpha: 0.0,
@@ -469,7 +469,7 @@ export const TIME_OF_DAY_PRESETS = {
     shortLabel: 'DAYLIGHT',
     sunPos: [68, 112, -52],
     sunColor: 0xfff5e4,
-    sunIntensity: 2.35,
+    sunIntensity: 2.40,
     hemiSky: 0xb6daf7,
     hemiGround: 0x5d6554,
     hemiIntensity: 1.08,
@@ -478,9 +478,9 @@ export const TIME_OF_DAY_PRESETS = {
     skyHorizon: 0xd2e4ef,
     skySunGlow: 0xffe4b8,
     fogColor: 0xcfe0ea,
-    exposure: 1.02,
-    bloomStrength: 0.17,
-    bloomThreshold: 0.85,
+    exposure: 1.05,
+    bloomStrength: 0.24,
+    bloomThreshold: 0.80,
     isNight: false,
     nightFactor: 0.0,
     starAlpha: 0.0,
@@ -492,18 +492,18 @@ export const TIME_OF_DAY_PRESETS = {
     shortLabel: 'SUNSET',
     sunPos: [118, 22, -60],
     sunColor: 0xff8c5a,
-    sunIntensity: 2.10,
+    sunIntensity: 2.15,
     hemiSky: 0x7b6ea8,
     hemiGround: 0x3b2c32,
-    hemiIntensity: 0.86,
-    ambientIntensity: 0.24,
+    hemiIntensity: 0.88,
+    ambientIntensity: 0.25,
     skyTop: 0x1a2248,
     skyHorizon: 0xe67a5c,
     skySunGlow: 0xff6e38,
     fogColor: 0x946c70,
-    exposure: 1.04,
-    bloomStrength: 0.28,
-    bloomThreshold: 0.77,
+    exposure: 1.08,
+    bloomStrength: 0.37,
+    bloomThreshold: 0.72,
     isNight: true,
     nightFactor: 0.65,
     starAlpha: 0.20,
@@ -515,18 +515,18 @@ export const TIME_OF_DAY_PRESETS = {
     shortLabel: 'NIGHT',
     sunPos: [-52, 74, 48],
     sunColor: 0xa8bdd8,
-    sunIntensity: 0.72,
+    sunIntensity: 0.76,
     hemiSky: 0x1c2942,
     hemiGround: 0x101318,
-    hemiIntensity: 0.64,
-    ambientIntensity: 0.22,
+    hemiIntensity: 0.66,
+    ambientIntensity: 0.23,
     skyTop: 0x04070e,
     skyHorizon: 0x111724,
     skySunGlow: 0x2a3b56,
     fogColor: 0x0b101a,
-    exposure: 1.04,
-    bloomStrength: 0.35,
-    bloomThreshold: 0.72,
+    exposure: 1.08,
+    bloomStrength: 0.45,
+    bloomThreshold: 0.66,
     isNight: true,
     nightFactor: 1.0,
     starAlpha: 0.88,
@@ -741,7 +741,7 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
     const lowFillMult = quality === 'low' ? 1.12 : (quality === 'medium' ? 1.08 : 1.0);
     if (sun) {
       sun.color.setHex(preset.sunColor);
-      sun.intensity = preset.sunIntensity * (quality === 'ultra' ? 1.08 : 1.0);
+      sun.intensity = preset.sunIntensity * (quality === 'ultra' ? 1.12 : 1.0);
     }
     if (hemisphereLight) {
       hemisphereLight.color.setHex(preset.hemiSky);
@@ -755,17 +755,17 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
       scene.fog.color.setHex(preset.fogColor);
     }
     scene.background = new THREE.Color(preset.fogColor);
-    renderer.toneMappingExposure = preset.exposure;
+    renderer.toneMappingExposure = quality === 'ultra' ? preset.exposure : Math.max(1.02, preset.exposure - 0.03);
 
     if (composerPasses?.bloom) {
       if (quality === 'ultra') {
         composerPasses.bloom.strength = preset.bloomStrength;
-        composerPasses.bloom.radius = 0.44;
+        composerPasses.bloom.radius = 0.52;
         composerPasses.bloom.threshold = preset.bloomThreshold;
       } else if (quality === 'high') {
-        composerPasses.bloom.strength = preset.bloomStrength * 0.62;
-        composerPasses.bloom.radius = 0.34;
-        composerPasses.bloom.threshold = Math.min(0.95, preset.bloomThreshold + 0.04);
+        composerPasses.bloom.strength = preset.bloomStrength * 0.60;
+        composerPasses.bloom.radius = 0.36;
+        composerPasses.bloom.threshold = Math.min(0.95, preset.bloomThreshold + 0.05);
       } else {
         composerPasses.bloom.strength = 0;
         composerPasses.bloom.threshold = preset.bloomThreshold;
