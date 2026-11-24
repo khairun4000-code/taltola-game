@@ -65,6 +65,18 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
 
   const visibleLandmarks = [
     {
+      id: 'rupsha_bridge',
+      n: '🌉 Khan Jahan Ali (Rupsha) Bridge · রূপসা সেতু',
+      bn: 'খান জাহান আলী (রূপসা) সেতু · টোল প্লাজা ও নদী ভিউ',
+      c: 'hero',
+      x: 1320.0,
+      z: 820.0,
+      spawnX: 1175.0,
+      spawnZ: 820.0,
+      lookX: 1395.0,
+      lookZ: 820.0,
+    },
+    {
       id: 'khulna_judge_court',
       n: '⚖️ Khulna Judge Court · জজ কোর্ট',
       bn: 'খুলনা জেলা ও দায়রা জজ আদালত (কে.ডি. ঘোষ রোড)',

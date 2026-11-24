@@ -262,6 +262,14 @@ let landRecoveryClip = null;
 let landingCamDip = 0;
 let landingCamDipVel = 0;
 let inWater = false;
+let wasInWater = false;
+let curWaterSurfaceY = -0.012;
+let swimStrokeTimer = 0;
+let vehicleSplashTimer = 0;
+let nearWaterHintCached = false;
+let lastNearWaterProbeAt = 0;
+const waterAimDir = new THREE.Vector3();
+const waterThrowOrigin = new THREE.Vector3();
 let wallAhead = false;
 const wallProbePos = new THREE.Vector3();
 const ledgeHangState = {
@@ -3579,6 +3587,8 @@ async function initialize() {
     khulnaMapUI,
     setQuality: applyQuality,
     setTimeOfDay: applyTimeOfDay,
+    waterSystem: environment?.waterSystem,
+    waterHub: environment?.waterHub,
     measureSceneStats() {
       syncSceneVisibility(true);
       renderer.render(scene, camera);
@@ -3993,6 +4003,11 @@ function warpToLandmark(lm, lockControls = false) {
     sz = -684.0;
     lx = 133.5;
     lz = -684.5;
+  } else if (lm.id === 'rupsha_bridge') {
+    sx = 1175.0;
+    sz = 820.0;
+    lx = 1395.0;
+    lz = 820.0;
   }
 
   if (activeCar) {
@@ -4013,12 +4028,13 @@ function warpToLandmark(lm, lockControls = false) {
     for (const [ox, oz] of probeOffsets) {
       const tx = sx + ox;
       const tz = sz + oz;
-      if (environment?.city?.isInWater?.(tx, tz)) continue;
-      probeVec.set(tx, EYE_HEIGHT, tz);
+      const deckY = computeGroundHeight(new THREE.Vector3(tx, 24.0, tz), true, 0);
+      if (deckY <= 0.3 && environment?.city?.isInWater?.(tx, tz)) continue;
+      probeVec.set(tx, deckY + EYE_HEIGHT, tz);
       const beforeX = probeVec.x;
       const beforeZ = probeVec.z;
-      environment?.landmarks?.applyCollisions?.(probeVec, Math.max(activeCar.state.halfWidth, 1.05), 0);
-      environment?.altapoleGoli?.applyPlayerCollisions?.(probeVec, Math.max(activeCar.state.halfWidth, 1.05), 0);
+      environment?.landmarks?.applyCollisions?.(probeVec, Math.max(activeCar.state.halfWidth, 1.05), deckY);
+      environment?.altapoleGoli?.applyPlayerCollisions?.(probeVec, Math.max(activeCar.state.halfWidth, 1.05), deckY);
       if (Math.hypot(probeVec.x - beforeX, probeVec.z - beforeZ) < 0.08) {
         bestX = tx;
         bestZ = tz;
@@ -4027,8 +4043,8 @@ function warpToLandmark(lm, lockControls = false) {
     }
 
     activeCar.spawnAt(bestX, bestZ, heading);
-    const groundY = Math.max(0, computeGroundHeight(new THREE.Vector3(bestX, EYE_HEIGHT, bestZ)));
-    if (groundY >= 0 && groundY < 2.2) {
+    const groundY = Math.max(0, computeGroundHeight(new THREE.Vector3(bestX, 24.0, bestZ), true, 0));
+    if (groundY >= 0 && groundY < 22.0) {
       activeCar.state.pos.y = groundY + 0.006;
       activeCar.group.position.y = groundY + 0.006;
     }
@@ -4083,12 +4099,14 @@ function warpToLandmark(lm, lockControls = false) {
     return;
   }
 
-  playerPos.set(sx, EYE_HEIGHT, sz);
+  playerPos.set(sx, 24.0, sz);
   horizontalVelocity.set(0, 0);
   verticalVelocity = 0;
   grounded = true;
+  inWater = false;
+  wasInWater = false;
   environment?.city?.refreshActiveChunks?.(playerPos.x, playerPos.z, quality);
-  const groundY = computeGroundHeight(playerPos);
+  const groundY = computeGroundHeight(playerPos, true, 0);
   playerPos.y = groundY + EYE_HEIGHT;
   syncSceneVisibility(true);
   if (sun?.castShadow) {
@@ -4826,6 +4844,42 @@ window.addEventListener('keydown', (event) => {
     } else {
       playerCharacter?.playCombatVoice?.({ force: true });
     }
+  } else if (event.code === 'KeyH' && !event.repeat) {
+    event.preventDefault();
+    if (isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence();
+    } else if (environment?.waterSystem) {
+      camera.getWorldDirection(waterAimDir);
+      waterThrowOrigin.copy(playerPos);
+      waterThrowOrigin.y -= 0.14;
+      environment.waterSystem.throwObject(waterThrowOrigin, waterAimDir, 1.05);
+      playerCharacter?.triggerAttack?.(1);
+    }
+  } else if (event.code === 'KeyJ' && !event.repeat) {
+    event.preventDefault();
+    if (isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence();
+    } else if (environment?.waterSystem) {
+      camera.getWorldDirection(waterAimDir);
+      const hit = environment.waterSystem.raycastBulletWaterHit(camera.position, waterAimDir, 210.0, 1.15);
+      if (!hit) {
+        gtaPhoneUI?.showToast?.('🔫 পুকুর বা নদীর পানির দিকে তাকিয়ে [J] চাপুন — গুলির আঘাতে পানি ছিটকে উঠবে!');
+      }
+    }
+  } else if (event.code === 'KeyU' && !event.repeat) {
+    event.preventDefault();
+    if (isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence();
+    } else if (environment?.waterSystem) {
+      camera.getWorldDirection(waterAimDir);
+      waterThrowOrigin.copy(playerPos);
+      waterThrowOrigin.y -= 0.10;
+      environment.waterSystem.throwBomb(waterThrowOrigin, waterAimDir, 1.15);
+      playerCharacter?.triggerAttack?.(1);
+      setTimeout(() => {
+        landingCamDipVel -= 1.35;
+      }, 950);
+    }
   }
 
   shiftHeld = event.shiftKey || event.code === 'ShiftLeft' || event.code === 'ShiftRight';
@@ -5252,7 +5306,10 @@ function computeGroundHeight(pos, isGroundedOverride = grounded, velYOverride = 
     ((lz >= -5.12 && lz <= -1.48) || (lz >= 1.52 && lz <= 5.12));
 
   if (!insideMainSlab && !inFrontBalconyZone) {
-    return environment?.landmarks?.getGroundHeight?.(pos) ?? 0.0;
+    return Math.max(
+      environment?.landmarks?.getGroundHeight?.(pos) ?? 0.0,
+      environment?.corridors?.getGroundHeight?.(pos) ?? 0.0,
+    );
   }
 
   let bestHouseY = 0.0;
@@ -5306,8 +5363,9 @@ function applyWorldCollisions(pos, isProbe = false) {
   }
 
   const footY = pos.y - EYE_HEIGHT;
-  // Solid showcase landmark colliders (Chingri Chattar, Royal More buildings, buses & medians)
+  // Solid showcase landmark & Rupsha Bridge parapet colliders
   environment?.landmarks?.applyCollisions?.(pos, PLAYER_RADIUS, footY);
+  environment?.corridors?.applyCollisions?.(pos, PLAYER_RADIUS, footY);
   // Enterable Altapole Lane realistic houses, 6-story head tower & opposite goli colliders
   environment?.altapole?.applyCollisions?.(pos, PLAYER_RADIUS, footY);
   environment?.altapoleTower?.applyPlayerCollisions?.(pos, PLAYER_RADIUS, footY);
@@ -5734,13 +5792,24 @@ function updateHUDPrompt(force = true) {
       } else if (nearSeat) {
         promptText = `[E / F] Sit on ${nearSeat.label}`;
       } else if (inWater) {
-        promptText = '[SPACE] Jump Out · [WASD] Swim';
+        promptText = '[SPACE] Jump Out · [WASD] Swim · [H] Stone · [J] Shot · [U] Bomb';
       } else if (ledgeHangState.active) {
         promptText = '[W / SPACE] Climb Over · [S] Drop';
       } else if (wallAhead && !climbState.active) {
         promptText = '[SPACE / F] Grab Ledge';
       } else {
-        promptText = carPrompt || null;
+        const nowW = performance.now();
+        if (nowW - lastNearWaterProbeAt > 250) {
+          lastNearWaterProbeAt = nowW;
+          nearWaterHintCached = false;
+          for (const [ox, oz] of [[4.5, 0], [-4.5, 0], [0, 4.5], [0, -4.5], [6.5, 6.5], [-6.5, 6.5], [6.5, -6.5], [-6.5, -6.5]]) {
+            if (environment?.city?.isInWater?.(playerPos.x + ox, playerPos.z + oz)) {
+              nearWaterHintCached = true;
+              break;
+            }
+          }
+        }
+        promptText = carPrompt || (nearWaterHintCached ? '[H] Throw Stone · [J] Bullet Splash · [U] Water Bomb' : null);
       }
     }
   }
@@ -6110,6 +6179,26 @@ function updateMovement(delta) {
         }
       }
 
+      const carSpdAbs = Math.abs(st.speed);
+      if (carSpdAbs > 0.75 && environment?.waterSystem && environment?.city?.getWaterInfo) {
+        const cw = environment.city.getWaterInfo(st.pos.x, st.pos.z);
+        if (cw.inWater && st.pos.y <= cw.surfaceY + 0.35) {
+          vehicleSplashTimer -= delta;
+          if (vehicleSplashTimer <= 0) {
+            vehicleSplashTimer = THREE.MathUtils.clamp(0.28 - carSpdAbs * 0.012, 0.09, 0.28);
+            environment.waterSystem.triggerSwimStroke(
+              st.pos.x,
+              st.pos.z,
+              cw.surfaceY,
+              Math.min(6.5, carSpdAbs * 0.65),
+              sinH,
+              cosH,
+              true,
+            );
+          }
+        }
+      }
+
       syncCarHUD();
       updateHUDPrompt(false);
       return;
@@ -6315,9 +6404,44 @@ function updateMovement(delta) {
   const groundY = computeGroundHeight(playerPos);
   const targetEyeY = groundY + EYE_HEIGHT;
 
-  // Detect water entry (Hadis Park Lake, Alia Madrasah Pond, Rupsha River — only when not standing high on piers/bridges!)
-  const overWaterPoly = Boolean(environment?.city?.isInWater?.(playerPos.x, playerPos.z));
-  inWater = overWaterPoly && groundY <= 0.22 && !climbState.active && playerPos.y <= EYE_HEIGHT + 0.35;
+  // Detect water entry (Hadis Park Lake, Alia Madrasah Ponds, City Ponds, Rupsha River — only when not standing high on piers/bridges!)
+  const wInfoNow = environment?.city?.getWaterInfo
+    ? environment.city.getWaterInfo(playerPos.x, playerPos.z)
+    : { inWater: Boolean(environment?.city?.isInWater?.(playerPos.x, playerPos.z)), surfaceY: -0.012 };
+  const overWaterPoly = Boolean(wInfoNow.inWater);
+  curWaterSurfaceY = wInfoNow.surfaceY ?? -0.012;
+  const prevVertVelBeforeWater = verticalVelocity;
+  inWater = overWaterPoly && groundY <= curWaterSurfaceY + 0.24 && !climbState.active && playerPos.y <= curWaterSurfaceY + EYE_HEIGHT + 0.38;
+
+  if (inWater && !wasInWater && environment?.waterSystem) {
+    const downwardSpd = Math.max(0, -prevVertVelBeforeWater);
+    const impactSpd = downwardSpd > 2.2 ? downwardSpd : (1.1 + horizontalVelocity.length() * 0.28);
+    environment.waterSystem.triggerWaterPlunge(playerPos.x, playerPos.z, curWaterSurfaceY, impactSpd);
+    swimStrokeTimer = 0.22;
+  }
+  if (inWater && environment?.waterSystem) {
+    const swimSpd = horizontalVelocity.length();
+    swimStrokeTimer -= delta;
+    if (swimStrokeTimer <= 0) {
+      if (swimSpd > 0.32) {
+        swimStrokeTimer = THREE.MathUtils.lerp(0.46, 0.23, Math.min(1, swimSpd / 4.4));
+        const invS = 1.0 / Math.max(0.01, swimSpd);
+        environment.waterSystem.triggerSwimStroke(
+          playerPos.x,
+          playerPos.z,
+          curWaterSurfaceY,
+          swimSpd,
+          horizontalVelocity.x * invS,
+          horizontalVelocity.y * invS,
+          true,
+        );
+      } else {
+        swimStrokeTimer = 1.05;
+        environment.waterSystem.triggerSwimStroke(playerPos.x, playerPos.z, curWaterSurfaceY, 0.22, 0, 1, false);
+      }
+    }
+  }
+  wasInWater = inWater;
 
   // Probe wall ahead for interactive Wall Climb ([SPACE] against wall or [F] Wall Climb) — throttled to ~20Hz
   if (inWater || climbState.active) {
@@ -6358,10 +6482,14 @@ function updateMovement(delta) {
       doubleSpaceJumpPending = false;
       const doFlip = isSprinting && !inWater && !diveState.active && !isHighJump;
       const jumpBoost = specialAbility?.jumpMultiplier ?? 1.0;
+      if (inWater && environment?.waterSystem) {
+        environment.waterSystem.triggerWaterPlunge(playerPos.x, playerPos.z, curWaterSurfaceY, 3.6);
+      }
       verticalVelocity = (inWater ? 6.45 : (isHighJump ? 8.35 : (doFlip ? 6.95 : 6.25))) * jumpBoost;
       isFlipping = doFlip;
       grounded = false;
       inWater = false;
+      wasInWater = false;
       coyoteTimer = 0;
       jumpBuffer = 0;
       airPeakY = playerPos.y;
@@ -6386,7 +6514,7 @@ function updateMovement(delta) {
   if (climbState.active || ledgeHangState.active) {
     // Climb arc controls playerPos.y directly
   } else if (inWater) {
-    const waterEyeY = EYE_HEIGHT - 0.55;
+    const waterEyeY = curWaterSurfaceY + EYE_HEIGHT - 0.56;
     playerPos.y += (waterEyeY - playerPos.y) * Math.min(1, delta * 9.0);
     verticalVelocity = 0;
     grounded = true;

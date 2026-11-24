@@ -9,6 +9,7 @@ import {
   createRupshaRiverShader,
   upgradeWetAsphaltMaterial,
 } from './aaa-shaders.js';
+import { subdivideWaterPolygonGeometry } from './hyper-water.js';
 
 const FLOOR_HEIGHT = 3.05;
 const COLLISION_CELL = 32.0;
@@ -613,7 +614,7 @@ function pointInFlatPoly(x, z, flat) {
   return inside;
 }
 
-export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUniforms = null, taltolaRoadMat = null) {
+export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUniforms = null, taltolaRoadMat = null, waterHub = null) {
   const group = new THREE.Group();
   group.name = 'KhulnaCityWorld';
   parent.add(group);
@@ -622,13 +623,20 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
   const [minX, maxX, minZ, maxZ] = worldData.meta.bounds;
 
   // 1. Sub-surface Riverbed + Khulna City Landmass (punched cleanly along major River channel!)
-  const subFloorMat = new THREE.MeshStandardMaterial({ color: 0x1e3844, roughness: 0.92, metalness: 0.04 });
+  const subFloorMat = new THREE.MeshStandardMaterial({
+    color: 0x162b35,
+    roughness: 0.94,
+    metalness: 0.02,
+    polygonOffset: true,
+    polygonOffsetFactor: 6,
+    polygonOffsetUnits: 6,
+  });
   const subFloor = new THREE.Mesh(
     new THREE.PlaneGeometry(maxX - minX + 600, maxZ - minZ + 600),
     subFloorMat
   );
   subFloor.rotation.x = -Math.PI / 2;
-  subFloor.position.set((minX + maxX) * 0.5, -0.75, (minZ + maxZ) * 0.5);
+  subFloor.position.set((minX + maxX) * 0.5, -1.65, (minZ + maxZ) * 0.5);
   group.add(subFloor);
 
   const landShape = new THREE.Shape([
@@ -662,7 +670,12 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
   const waterShaderMat = skySystem?.sharedUniforms
     ? createRupshaRiverShader(skySystem.sharedUniforms)
     : null;
-  const waterMat = waterShaderMat || waterLowMat;
+  const riverWaterMat = waterHub
+    ? waterHub.createWaterMaterial('river', { polygonOffset: false })
+    : (waterShaderMat || waterLowMat);
+  const pondWaterMat = waterHub
+    ? waterHub.createWaterMaterial('pond', { polygonOffsetFactor: 2, polygonOffsetUnits: 2 })
+    : (waterShaderMat || waterLowMat);
 
   // Sort waters largest-first; punch only giant river channels safely into landShape.holes
   const riverWaters = worldData.waters.filter((w) => w.k === 'river');
@@ -682,14 +695,14 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
 
     const wShape = buildFlatPolygonShape(w.p);
     if (wShape) {
-      const wGeo = new THREE.ShapeGeometry(wShape);
-      wGeo.rotateX(-Math.PI / 2);
-      const uv = wGeo.attributes.uv;
-      const pos = wGeo.attributes.position;
-      for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) * 0.035, pos.getZ(i) * 0.035);
-      const wm = new THREE.Mesh(wGeo, waterMat);
+      const baseGeo = new THREE.ShapeGeometry(wShape);
+      baseGeo.rotateX(-Math.PI / 2);
+      const wGeo = subdivideWaterPolygonGeometry(baseGeo, w.p, 11.0, 5);
+      baseGeo.dispose();
+      const wm = new THREE.Mesh(wGeo, riverWaterMat);
       wm.position.y = -0.34;
       wm.receiveShadow = true;
+      wm.userData.waterMat = riverWaterMat;
       waterMeshes.push(wm);
       group.add(wm);
     }
@@ -713,27 +726,30 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
   landMesh.receiveShadow = true;
   group.add(landMesh);
 
-  // Merge Ponds into 1 draw call + store polygons for real-time swimming detection
+  // Merge Ponds into 1 draw call + store polygons for real-time swimming & splash detection
   const pondGeos = [];
   const pondPolys = [];
   for (const pw of pondWaters) {
+    if (pw.n && pw.n.toLowerCase().includes('alia')) continue;
     pondPolys.push(computeFlatPolyBounds(pw.p));
     const s = buildFlatPolygonShape(pw.p);
     if (s) {
-      const g = new THREE.ShapeGeometry(s).toNonIndexed();
-      g.rotateX(-Math.PI / 2);
-      g.translate(0, -0.012, 0);
-      pondGeos.push(g);
+      const basePondGeo = new THREE.ShapeGeometry(s);
+      basePondGeo.rotateX(-Math.PI / 2);
+      basePondGeo.translate(0, -0.012, 0);
+      const subPondGeo = subdivideWaterPolygonGeometry(basePondGeo, pw.p, 3.6, 5);
+      basePondGeo.dispose();
+      pondGeos.push(subPondGeo.toNonIndexed());
+      subPondGeo.dispose();
     }
   }
   if (pondGeos.length > 0) {
     const mergedPonds = mergeGeometries(pondGeos, false);
+    for (const g of pondGeos) g.dispose();
     if (mergedPonds) {
-      const uv = mergedPonds.attributes.uv;
-      const pos = mergedPonds.attributes.position;
-      for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) * 0.05, pos.getZ(i) * 0.05);
-      const m = new THREE.Mesh(mergedPonds, waterMat);
+      const m = new THREE.Mesh(mergedPonds, pondWaterMat);
       m.receiveShadow = true;
+      m.userData.waterMat = pondWaterMat;
       waterMeshes.push(m);
       group.add(m);
     }
@@ -844,28 +860,47 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
   refreshActiveChunks(TALTOLA_HOUSE_OFFSET.x, TALTOLA_HOUSE_OFFSET.z, 'high');
 
   function applyCityCollisions(pos, radius) {
-    clampToKhulnaBounds(pos, worldData.meta.bounds);
+    // Allow full crossing across Khan Jahan Ali (Rupsha) Bridge (x up to 1668 around z = 795..845)!
+    const onRupshaBridgeAxis = pos.z >= 795 && pos.z <= 845;
+    if (!onRupshaBridgeAxis) {
+      clampToKhulnaBounds(pos, worldData.meta.bounds);
+    } else if (pos.x > 1668) {
+      pos.x = 1668;
+    }
 
     // Allow swimming out into Rupsha River near ghats while preventing leaving world east edge
-    if (pos.x > 1285) {
-      pos.x = 1285;
+    const maxEastX = onRupshaBridgeAxis ? 1668 : 1380;
+    if (pos.x > maxEastX) {
+      pos.x = maxEastX;
     }
   }
 
-  function isInWater(x, z) {
+  function getWaterInfo(x, z) {
+    if (x >= 199.8 && x <= 235.8 && z >= 141.8 && z <= 169.2) {
+      return { inWater: true, surfaceY: 0.02, kind: 'pond' };
+    }
+    if (x >= 203.2 && x <= 237.8 && z >= 178.2 && z <= 198.3) {
+      return { inWater: true, surfaceY: 0.024, kind: 'algae' };
+    }
     for (let i = 0; i < pondPolys.length; i++) {
       const p = pondPolys[i];
       if (x < p.minX || x > p.maxX || z < p.minZ || z > p.maxZ) continue;
-      if (pointInFlatPoly(x, z, p.flat)) return true;
-    }
-    if (x > 960 || z < -780) {
-      for (let i = 0; i < riverPolys.length; i++) {
-        const r = riverPolys[i];
-        if (x < r.minX || x > r.maxX || z < r.minZ || z > r.maxZ) continue;
-        if (pointInFlatPoly(x, z, r.flat)) return true;
+      if (pointInFlatPoly(x, z, p.flat)) {
+        return { inWater: true, surfaceY: -0.012, kind: 'pond' };
       }
     }
-    return false;
+    for (let i = 0; i < riverPolys.length; i++) {
+      const r = riverPolys[i];
+      if (x < r.minX || x > r.maxX || z < r.minZ || z > r.maxZ) continue;
+      if (pointInFlatPoly(x, z, r.flat)) {
+        return { inWater: true, surfaceY: -0.34, kind: 'river' };
+      }
+    }
+    return { inWater: false, surfaceY: 0.0, kind: null };
+  }
+
+  function isInWater(x, z) {
+    return getWaterInfo(x, z).inWater;
   }
 
   let cachedRoadCellKey = '';
@@ -900,7 +935,8 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
       }
     }
     let district = 'KHULNA CITY';
-    if (z > 740) district = 'SOUTH TOOTPARA · TALTOLA';
+    if (x > 1045 && z > 760 && z < 880) district = 'KHAN JAHAN ALI (RUPSHA) BRIDGE';
+    else if (z > 740) district = 'SOUTH TOOTPARA · TALTOLA';
     else if (x > 920) district = 'RUPSHA GHAT & STRAND RD';
     else if (z < -420) district = x < -200 ? 'HADIS PARK · JESSORE RD' : 'CIRCUIT HOUSE & BORO MAATH';
     else if (x < -210) district = z < -210 ? 'ROYAL MORE · TALTOLA LN' : 'PTI MORE · BABU KHAN RD';
@@ -933,9 +969,9 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
 
   function setQualityMode(qualityMode) {
     const isLow = qualityMode === 'low';
-    const nextWaterMat = isLow ? waterLowMat : (waterShaderMat || waterLowMat);
     for (const wm of waterMeshes) {
-      if (wm.material !== nextWaterMat) wm.material = nextWaterMat;
+      const targetMat = wm.userData.waterMat || (isLow ? waterLowMat : (waterShaderMat || waterLowMat));
+      if (wm.material !== targetMat) wm.material = targetMat;
     }
     const maxA = renderer?.capabilities?.getMaxAnisotropy?.() || 16;
     const nextAniso = isLow ? 2 : (qualityMode === 'medium' ? Math.min(4, maxA) : (qualityMode === 'high' ? Math.min(8, maxA) : Math.min(16, maxA)));
@@ -967,6 +1003,7 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
     applyPoleCollisions: (pos, radius, opts) => streetProps.applyPoleCollisions(pos, radius, opts),
     updatePoles: (dt) => streetProps.updatePoles(dt),
     isInWater,
+    getWaterInfo,
     findNearestRoadAndDistrict,
     animateWater,
     setNightFactor,

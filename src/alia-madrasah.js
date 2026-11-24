@@ -1631,7 +1631,7 @@ function resolveCircleAABB(pos, radius, minX, maxX, minZ, maxZ) {
   }
 }
 
-export function buildAliaMadrasahDistrict(parent, m) {
+export function buildAliaMadrasahDistrict(parent, m, waterHub = null) {
   const root = new THREE.Group();
   root.name = 'KhulnaLandmark_Alia';
   const staticG = new THREE.Group();
@@ -1714,7 +1714,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
   // 5) Central Pond Brick Ghat + High-Graphics Campus Roads + SW Main Gate + Darwan Post + Walkable Etimkhana
   buildMainGateAndPondGhat(staticG, dynamicG, bank);
-  const blockout = buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank);
+  const blockout = buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank, waterHub);
   const mainGate = blockout.swMainGate;
   let gateTarget = 1;
   let gateRatio = 1;
@@ -1859,7 +1859,14 @@ export function buildAliaMadrasahDistrict(parent, m) {
       }
     }
 
-    // 2) Khulna District Model Mosque 3-Level Walkable Interior & Grand Staircase
+    // 2) Covered Tin-Shed Pukur Ghat Platform & Stepped Entry into Clean Bathing Pond (x = 194.0..203.2, z = 150.0..161.0)
+    if (pos.x >= 194.0 && pos.x <= 203.2 && pos.z >= 150.0 && pos.z <= 161.0) {
+      if (pos.x <= 199.8) return 0.22;
+      const st = THREE.MathUtils.clamp((pos.x - 199.8) / 3.2, 0, 1);
+      return 0.22 * (1.0 - st);
+    }
+
+    // 3) Khulna District Model Mosque 3-Level Walkable Interior & Grand Staircase
     const mosqueY = getModelMosqueGroundHeight(pos, grounded, verticalVelocity);
     if (mosqueY > 0) return mosqueY;
     return 0.0;

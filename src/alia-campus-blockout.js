@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { box, cylinder, rodBetween } from './scene-utils.js';
 import { attachDerivedPBRMaps } from './aaa-shaders.js';
+import { createSubdividedRectWaterGeometry } from './hyper-water.js';
 
 /**
  * KHULNA ALIA KAMIL MADRASAH — 1:1 REAL-LIFE LAYOUT (USER SATELLITE SCREENSHOT + REAL CAMPUS VIDEO 4Pxw4clRnRM)
@@ -372,7 +373,7 @@ function makeDustyBrickPathTex(seedVal = 5519) {
   return tex;
 }
 
-function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, colliders) {
+function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, colliders, waterHub = null) {
   /* ---- A) NORTH CLEAN BATHING POND (পরিষ্কার পুকুর — wider West & East!) ---- */
   const cX0 = 199.5;
   const cX1 = 236.0;
@@ -383,16 +384,26 @@ function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, colliders
   const cW = cX1 - cX0;
   const cD = cZ1 - cZ0;
 
-  const cleanWaterMat = new THREE.MeshPhysicalMaterial({
-    color: 0x265c42, // Natural greenish-teal Bangladeshi pond water seen in video 02:07-02:15!
-    roughness: 0.14,
-    metalness: 0.06,
-    clearcoat: 0.90,
-    transparent: true,
-    opacity: 0.94,
-  });
-  const cleanWater = new THREE.Mesh(new THREE.PlaneGeometry(cW, cD), cleanWaterMat);
-  cleanWater.rotation.x = -Math.PI * 0.5;
+  const pondBed = new THREE.Mesh(
+    new THREE.PlaneGeometry(cW + 0.6, cD + 0.6),
+    new THREE.MeshStandardMaterial({ color: 0x0d2624, roughness: 0.96 }),
+  );
+  pondBed.rotation.x = -Math.PI * 0.5;
+  pondBed.position.set(cCx, -0.32, cCz);
+  staticG.add(pondBed);
+
+  const cleanWaterMat = waterHub
+    ? waterHub.createWaterMaterial('pond', { polygonOffsetFactor: 1, polygonOffsetUnits: 1 })
+    : new THREE.MeshPhysicalMaterial({
+      color: 0x265c42,
+      roughness: 0.14,
+      metalness: 0.06,
+      clearcoat: 0.90,
+      transparent: true,
+      opacity: 0.94,
+    });
+  const cleanWaterGeo = createSubdividedRectWaterGeometry(cW, cD, 56, 44);
+  const cleanWater = new THREE.Mesh(cleanWaterGeo, cleanWaterMat);
   cleanWater.position.set(cCx, 0.02, cCz);
   cleanWater.receiveShadow = true;
   dynamicG.add(cleanWater);
@@ -498,8 +509,11 @@ function buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, colliders
   const gW = gX1 - gX0;
   const gD = gZ1 - gZ0;
 
-  const greenPondMesh = new THREE.Mesh(new THREE.PlaneGeometry(gW, gD), mats.greenAlgaePond);
-  greenPondMesh.rotation.x = -Math.PI * 0.5;
+  const greenPondMat = waterHub
+    ? waterHub.createWaterMaterial('algae', { algaeMap: mats.greenAlgaeTex, polygonOffsetFactor: 1, polygonOffsetUnits: 1 })
+    : mats.greenAlgaePond;
+  const greenPondGeo = createSubdividedRectWaterGeometry(gW, gD, 52, 34);
+  const greenPondMesh = new THREE.Mesh(greenPondGeo, greenPondMat);
   greenPondMesh.position.set(gCx, 0.024, gCz);
   greenPondMesh.receiveShadow = true;
   dynamicG.add(greenPondMesh);
@@ -610,7 +624,7 @@ function buildFootballGoalpost(staticG, bank, cx, cz, facingSign = 1) {
   box(staticG, [gw, 0.06, 0.06], [cx, 0.05, cz - facingSign * gd], bank.marbleWhite);
 }
 
-export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
+export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank, waterHub = null) {
   const concreteRoadTex = makeConcreteCampusRoadTex(9104);
   const concreteRoadMat = new THREE.MeshStandardMaterial({
     map: concreteRoadTex,
@@ -659,6 +673,7 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
     dustyBrick: dustyBrickMat,
     curb: bank.darkConcrete,
     greenAlgaePond: greenAlgaeMat,
+    greenAlgaeTex,
     demoBody: new THREE.MeshStandardMaterial({ color: 0xd8dee6, roughness: 0.86, metalness: 0.04 }),
     demoHostel: new THREE.MeshStandardMaterial({ color: 0xebe0c8, roughness: 0.86, metalness: 0.04 }),
     demoOchre: new THREE.MeshStandardMaterial({ color: 0xc29e4c, roughness: 0.85, metalness: 0.04 }), // Real ochre-yellow Etimkhana (video 00:01-00:30)!
@@ -802,7 +817,7 @@ export function buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank) {
   /* ==========================================================================
    * 2. TWIN PONDS + DIRT ROAD + POND-FRONT GARAGE + COVERED TIN-SHED PUKUR GHAT!
    * ======================================================================== */
-  buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, demoColliders);
+  buildTwinPondsAndRealPukurGhat(staticG, dynamicG, bank, mats, demoColliders, waterHub);
 
   /* ==========================================================================
    * 3. REAL-VIDEO MAIN GATE ON KHAN JAHAN ALI ROAD (gx = 184.0, gz = 201.5 — 100% clear of road & sidewalk!)

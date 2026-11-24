@@ -1742,7 +1742,7 @@ function buildSingleGoldaPrawnGeometries(rotYAngle) {
   return { prawnGeos, whiskerGeos, eyeGeos };
 }
 
-function buildChingriChattarMonument(staticG, dynamicG, bank, phys) {
+function buildChingriChattarMonument(staticG, dynamicG, bank, phys, waterHub = null) {
   const CX = ROYAL_MORE_CENTER.x;
   const CZ = ROYAL_MORE_CENTER.z;
 
@@ -1980,8 +1980,13 @@ function buildChingriChattarMonument(staticG, dynamicG, bank, phys) {
   addMerged(allWhiskerGeos, bank.prawnWhisker, false, false);
   addMerged(allEyeGeos, bank.prawnEye, false, false);
 
-  const waterDisc = new THREE.Mesh(new THREE.CylinderGeometry(3.48, 3.48, 0.08, 36), bank.fountainWater);
-  waterDisc.position.y = 0.66;
+  const fountainSurfMat = waterHub
+    ? waterHub.createWaterMaterial('fountain', { polygonOffsetFactor: 1, polygonOffsetUnits: 1 })
+    : bank.fountainWater;
+  const waterDiscGeo = new THREE.CircleGeometry(3.48, 42);
+  waterDiscGeo.rotateX(-Math.PI * 0.5);
+  const waterDisc = new THREE.Mesh(waterDiscGeo, fountainSurfMat);
+  waterDisc.position.y = 0.70;
   mon.add(waterDisc);
 
   for (let i = 0; i < 6; i++) {
@@ -2934,7 +2939,7 @@ function buildKmpTrafficBox(staticG, dynamicG, bank, phys, x, z) {
  * Builds the complete Photo-Accurate, Ultra-Detailed, 60+ FPS Royal More District.
  */
 let royalBotanicalFoliage = null;
-export function buildRoyalMoreDistrict(parent, m, botanicalFoliage = null) {
+export function buildRoyalMoreDistrict(parent, m, botanicalFoliage = null, waterHub = null) {
   royalBotanicalFoliage = botanicalFoliage;
   const root = new THREE.Group();
   root.name = 'KhulnaLandmark_RoyalMore';
@@ -2950,7 +2955,7 @@ export function buildRoyalMoreDistrict(parent, m, botanicalFoliage = null) {
   buildRoyalMoreRoadsAndFootpaths(staticG, dynamicG, bank, phys);
 
   // 2) Authentic Chingri Chattar Dual-Boundary Island + 3 Prawns + Full 3-Sided Billboard Mast
-  const fountainJets = buildChingriChattarMonument(staticG, dynamicG, bank, phys);
+  const fountainJets = buildChingriChattarMonument(staticG, dynamicG, bank, phys, waterHub);
 
   // 3) KDA Avenue Royal Bengal Tiger Median (Photo S07)
   buildKdaTigerMedian(staticG, dynamicG, bank, phys);

@@ -12,6 +12,7 @@ import { createKhulnaTraffic } from './khulna-vehicles.js';
 import { buildKhulnaWildlife } from './khulna-wildlife.js';
 import { createCityBotanicalFoliage } from './botanical-foliage.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
+import { createHyperWaterHub, createWaterReactionSystem } from './hyper-water.js';
 
 function leafClusterTexture() {
   const random = seededRandom(71513);
@@ -342,11 +343,12 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
   mergeStaticMeshes(wiresStaticGroup);
   mergeStaticMeshes(taltolaWiresGroup);
 
-  const city = buildKhulnaCity(group, renderer, skySystem, m.shaderUniforms, m.road);
+  const waterHub = createHyperWaterHub(skySystem?.sharedUniforms);
+  const city = buildKhulnaCity(group, renderer, skySystem, m.shaderUniforms, m.road, waterHub);
   const botanicalFoliage = createCityBotanicalFoliage(group, renderer);
-  const landmarks = buildKhulnaLandmarks(group, m, renderer, botanicalFoliage);
+  const landmarks = buildKhulnaLandmarks(group, m, renderer, botanicalFoliage, waterHub);
   const tower = buildHajiMohsinRoad(group, m);
-  const wildlife = buildKhulnaWildlife(group);
+  const wildlife = buildKhulnaWildlife(group, waterHub);
 
   const animated = [];
   const zoneFoliageSlices = [];
@@ -442,6 +444,10 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     },
   };
   const corridors = buildKhulnaCorridors(group, m, corridorHelpers);
+  const waterSystem = createWaterReactionSystem(group, waterHub, {
+    getWaterInfo: (x, z) => city.getWaterInfo(x, z),
+    getGroundHeight: (p) => Math.max(landmarks.getGroundHeight(p) ?? 0, corridors.getGroundHeight?.(p) ?? 0),
+  });
   const altapole = buildAltapoleEnterableHouses(group, m, corridorHelpers);
   const altapoleTower = buildAltapoleHeadTower(group, m);
   const altapoleGoli = buildAltapoleOppositeGoli(group, m, corridorHelpers);
@@ -462,6 +468,8 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
 
   return {
     city,
+    waterHub,
+    waterSystem,
     landmarks,
     corridors,
     altapole,
@@ -482,12 +490,15 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
       m.setNightFactor?.(nf);
     },
     setQualityMode(qualityMode) {
+      waterHub.setQualityMode(qualityMode);
+      waterSystem.setQualityMode(qualityMode);
       city.setQualityMode?.(qualityMode);
       landmarks.setQualityMode?.(qualityMode);
       botanicalFoliage.setQualityMode?.(qualityMode);
       traffic.setVisible?.(true);
     },
     setFogBounds(near, far) {
+      waterHub.setFogBounds(near, far);
       city.setFogBounds?.(near, far);
     },
     update(time, playerPos = null, isLow = false, skipSyncVisibility = false) {
@@ -496,6 +507,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
       m.setShaderTime?.(time);
       botanicalFoliage.update(time);
       city.animateWater(time);
+      waterSystem.update(envDt);
       city.updatePoles?.(envDt);
       landmarks.update(time, playerPos, skipSyncVisibility);
       if (!skipSyncVisibility) syncVisibility(playerPos);
