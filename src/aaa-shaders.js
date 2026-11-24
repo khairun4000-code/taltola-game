@@ -456,8 +456,8 @@ export const TIME_OF_DAY_PRESETS = {
     skySunGlow: 0xffb368,
     fogColor: 0xdccbb6,
     exposure: 1.04,
-    bloomStrength: 0.12,
-    bloomThreshold: 0.93,
+    bloomStrength: 0.24,
+    bloomThreshold: 0.81,
     isNight: false,
     nightFactor: 0.0,
     starAlpha: 0.0,
@@ -479,8 +479,8 @@ export const TIME_OF_DAY_PRESETS = {
     skySunGlow: 0xffe4b8,
     fogColor: 0xcfe0ea,
     exposure: 1.02,
-    bloomStrength: 0.08,
-    bloomThreshold: 0.96,
+    bloomStrength: 0.17,
+    bloomThreshold: 0.85,
     isNight: false,
     nightFactor: 0.0,
     starAlpha: 0.0,
@@ -502,8 +502,8 @@ export const TIME_OF_DAY_PRESETS = {
     skySunGlow: 0xff6e38,
     fogColor: 0x946c70,
     exposure: 1.04,
-    bloomStrength: 0.15,
-    bloomThreshold: 0.90,
+    bloomStrength: 0.28,
+    bloomThreshold: 0.77,
     isNight: true,
     nightFactor: 0.65,
     starAlpha: 0.20,
@@ -525,8 +525,8 @@ export const TIME_OF_DAY_PRESETS = {
     skySunGlow: 0x2a3b56,
     fogColor: 0x0b101a,
     exposure: 1.04,
-    bloomStrength: 0.18,
-    bloomThreshold: 0.88,
+    bloomStrength: 0.35,
+    bloomThreshold: 0.72,
     isNight: true,
     nightFactor: 1.0,
     starAlpha: 0.88,
@@ -760,12 +760,12 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
     if (composerPasses?.bloom) {
       if (quality === 'ultra') {
         composerPasses.bloom.strength = preset.bloomStrength;
-        composerPasses.bloom.radius = 0.32;
+        composerPasses.bloom.radius = 0.44;
         composerPasses.bloom.threshold = preset.bloomThreshold;
       } else if (quality === 'high') {
-        composerPasses.bloom.strength = preset.bloomStrength * 0.72;
-        composerPasses.bloom.radius = 0.28;
-        composerPasses.bloom.threshold = Math.min(0.98, preset.bloomThreshold + 0.03);
+        composerPasses.bloom.strength = preset.bloomStrength * 0.62;
+        composerPasses.bloom.radius = 0.34;
+        composerPasses.bloom.threshold = Math.min(0.95, preset.bloomThreshold + 0.04);
       } else {
         composerPasses.bloom.strength = 0;
         composerPasses.bloom.threshold = preset.bloomThreshold;

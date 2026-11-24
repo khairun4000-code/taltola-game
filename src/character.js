@@ -226,13 +226,71 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   cCtx.fillRect(0, 0, 64, 64);
   const cTex = new THREE.CanvasTexture(cCanvas);
   const contactShadowMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.95, 0.95),
-    new THREE.MeshBasicMaterial({ map: cTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }),
+    new THREE.PlaneGeometry(0.82, 0.82),
+    new THREE.MeshBasicMaterial({ map: cTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
   );
   contactShadowMesh.rotation.x = -Math.PI / 2;
-  contactShadowMesh.position.y = 0.018;
+  contactShadowMesh.position.y = 0.0055;
   contactShadowMesh.visible = false;
   root.add(contactShadowMesh);
+
+  // Subtle pooled underfoot ground-friction dust puffs during sprinting & landings (zero FPS hit across all tiers)
+  const footDustPool = [];
+  const dustCanvas = document.createElement('canvas');
+  dustCanvas.width = dustCanvas.height = 48;
+  const dustCtx = dustCanvas.getContext('2d');
+  const dustGrad = dustCtx.createRadialGradient(24, 24, 2, 24, 24, 22);
+  dustGrad.addColorStop(0, 'rgba(195, 182, 162, 0.42)');
+  dustGrad.addColorStop(0.55, 'rgba(176, 165, 148, 0.18)');
+  dustGrad.addColorStop(1, 'rgba(160, 150, 136, 0)');
+  dustCtx.fillStyle = dustGrad;
+  dustCtx.fillRect(0, 0, 48, 48);
+  const footDustTex = new THREE.CanvasTexture(dustCanvas);
+  for (let i = 0; i < 8; i++) {
+    const sp = new THREE.Sprite(
+      new THREE.SpriteMaterial({ map: footDustTex, transparent: true, opacity: 0, depthWrite: false }),
+    );
+    sp.visible = false;
+    scene.add(sp);
+    footDustPool.push({ sprite: sp, age: 1, life: 0.42, vx: 0, vy: 0, vz: 0, baseScale: 0.18 });
+  }
+  let footDustCursor = 0;
+  let footDustCooldown = 0;
+  let prevGroundedState = true;
+  function spawnFootFrictionDust(wx, wy, wz, vx = 0, vz = 0, scale = 0.20) {
+    const p = footDustPool[footDustCursor];
+    footDustCursor = (footDustCursor + 1) % footDustPool.length;
+    p.age = 0;
+    p.life = 0.36 + Math.random() * 0.14;
+    p.vx = vx + (Math.random() - 0.5) * 0.25;
+    p.vy = 0.22 + Math.random() * 0.16;
+    p.vz = vz + (Math.random() - 0.5) * 0.25;
+    p.baseScale = scale;
+    p.sprite.position.set(wx, wy + 0.04, wz);
+    p.sprite.scale.setScalar(scale);
+    p.sprite.material.opacity = 0.45;
+    p.sprite.visible = true;
+  }
+  function updateFootFrictionDust(dt) {
+    for (let i = 0; i < footDustPool.length; i++) {
+      const p = footDustPool[i];
+      if (!p.sprite.visible) continue;
+      p.age += dt;
+      if (p.age >= p.life) {
+        p.sprite.visible = false;
+        continue;
+      }
+      const u = p.age / p.life;
+      p.sprite.position.x += p.vx * dt;
+      p.sprite.position.y += p.vy * dt;
+      p.sprite.position.z += p.vz * dt;
+      p.vx *= Math.max(0, 1 - dt * 3.5);
+      p.vz *= Math.max(0, 1 - dt * 3.5);
+      p.vy *= Math.max(0, 1 - dt * 2.2);
+      p.sprite.scale.setScalar(p.baseScale * (1 + u * 1.45));
+      p.sprite.material.opacity = (1 - u) * (1 - u) * 0.42;
+    }
+  }
 
   const state = {
     loaded: false,
@@ -266,10 +324,14 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   let idleFootDownBlend = 0;
   let reverseWalkBlend = 0;
   let reverseWalkPhase = 0;
-  let baseGroundY = 0.005;
+  let baseGroundY = 0.007;
+  let soleLiftOffset = 0;
   let calibratedFootToSole = 0.095;
+  let calibratedToeToSole = 0.032;
   const _footCheckL = new THREE.Vector3();
   const _footCheckR = new THREE.Vector3();
+  const _toeCheckL = new THREE.Vector3();
+  const _toeCheckR = new THREE.Vector3();
   let headBone = null;
   let neckBone = null;
   let jawBone = null;
@@ -282,9 +344,11 @@ export function createPlayerCharacter(scene, manager, options = {}) {
   let leftUpLeg = null;
   let leftLeg = null;
   let leftFoot = null;
+  let leftToe = null;
   let rightUpLeg = null;
   let rightLeg = null;
   let rightFoot = null;
+  let rightToe = null;
   let leftArm = null;
   let leftForeArm = null;
   let leftHand = null;
@@ -821,9 +885,11 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     leftUpLeg = findBoneBySuffix(model, 'LeftUpLeg');
     leftLeg = findBoneBySuffix(model, 'LeftLeg');
     leftFoot = findBoneBySuffix(model, 'LeftFoot');
+    leftToe = findBoneBySuffix(model, 'LeftToeBase');
     rightUpLeg = findBoneBySuffix(model, 'RightUpLeg');
     rightLeg = findBoneBySuffix(model, 'RightLeg');
     rightFoot = findBoneBySuffix(model, 'RightFoot');
+    rightToe = findBoneBySuffix(model, 'RightToeBase');
     leftArm = findBoneBySuffix(model, 'LeftArm');
     leftForeArm = findBoneBySuffix(model, 'LeftForeArm');
     leftHand = findBoneBySuffix(model, 'LeftHand');
@@ -985,7 +1051,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       }
     }
 
-    // Measure TRUE skinned shoe-sole lowest Y in live Idle pose (Box3.setFromObject ignores bone skinning!)
+    // Measure TRUE skinned shoe-sole lowest Y in live Idle pose (must call skeleton.update() before getVertexPosition!)
     root.updateMatrixWorld(true);
     const invHolder = new THREE.Matrix4().copy(modelHolder.matrixWorld).invert();
     const skinnedVert = new THREE.Vector3();
@@ -993,39 +1059,48 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     model.traverse((obj) => {
       if (!obj.isMesh || !obj.geometry?.attributes?.position) return;
       const posAttr = obj.geometry.attributes.position;
-      const step = posAttr.count > 6000 ? 3 : 1;
+      const step = posAttr.count > 6000 ? 2 : 1;
       if (obj.isSkinnedMesh && typeof obj.getVertexPosition === 'function') {
+        obj.skeleton?.update?.();
         for (let i = 0; i < posAttr.count; i += step) {
           obj.getVertexPosition(i, skinnedVert);
           skinnedVert.applyMatrix4(obj.matrixWorld).applyMatrix4(invHolder);
-          if (skinnedVert.y < trueMinY) trueMinY = skinnedVert.y;
+          if (Number.isFinite(skinnedVert.y) && skinnedVert.y < trueMinY) trueMinY = skinnedVert.y;
         }
       } else {
         for (let i = 0; i < posAttr.count; i += step) {
           skinnedVert.fromBufferAttribute(posAttr, i).applyMatrix4(obj.matrixWorld).applyMatrix4(invHolder);
-          if (skinnedVert.y < trueMinY) trueMinY = skinnedVert.y;
+          if (Number.isFinite(skinnedVert.y) && skinnedVert.y < trueMinY) trueMinY = skinnedVert.y;
         }
       }
     });
-    const ROAD_FLUSH_CLEARANCE = 0.005; // Keeps shoe soles flush ON TOP of +0.002..+0.0035m road asphalt (zero sinking, zero floating!)
-    if (Number.isFinite(trueMinY) && Math.abs(trueMinY) < 0.45) {
+    const ROAD_FLUSH_CLEARANCE = 0.007; // Keeps shoe soles flush ON TOP of +0.002..+0.004m road asphalt & junction pads (zero sinking, zero floating!)
+    if (Number.isFinite(trueMinY) && Math.abs(trueMinY) < 0.55) {
       baseGroundY = -trueMinY + ROAD_FLUSH_CLEARANCE;
       modelHolder.position.y = baseGroundY;
     } else {
       const box = new THREE.Box3().setFromObject(model);
-      if (Number.isFinite(box.min.y) && Math.abs(box.min.y) < 0.25) {
+      if (Number.isFinite(box.min.y) && Math.abs(box.min.y) < 0.35) {
         baseGroundY = -box.min.y + ROAD_FLUSH_CLEARANCE;
         modelHolder.position.y = baseGroundY;
       }
     }
-    // Calibrate exact ankle-bone-to-sole vertical height in Idle so live Walk/Run/IdleLook animations NEVER dip soles into asphalt!
+    // Calibrate exact ankle-to-sole AND toe-to-sole vertical heights in Idle so Walk/Run/IdleLook/Emotes NEVER dip heels or toes into asphalt!
     root.updateMatrixWorld(true);
     if (leftFoot && rightFoot) {
       leftFoot.getWorldPosition(_footCheckL);
       rightFoot.getWorldPosition(_footCheckR);
       const minFootRelY = Math.min(_footCheckL.y, _footCheckR.y) - root.position.y;
-      if (Number.isFinite(minFootRelY) && minFootRelY > 0.02 && minFootRelY < 0.28) {
-        calibratedFootToSole = Math.max(0.02, minFootRelY - ROAD_FLUSH_CLEARANCE);
+      if (Number.isFinite(minFootRelY) && minFootRelY > 0.02 && minFootRelY < 0.30) {
+        calibratedFootToSole = Math.max(0.025, minFootRelY - ROAD_FLUSH_CLEARANCE);
+      }
+    }
+    if (leftToe && rightToe) {
+      leftToe.getWorldPosition(_toeCheckL);
+      rightToe.getWorldPosition(_toeCheckR);
+      const minToeRelY = Math.min(_toeCheckL.y, _toeCheckR.y) - root.position.y;
+      if (Number.isFinite(minToeRelY) && minToeRelY > 0.01 && minToeRelY < 0.22) {
+        calibratedToeToSole = Math.max(0.024, minToeRelY - ROAD_FLUSH_CLEARANCE);
       }
     }
 
@@ -2236,7 +2311,9 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     vehicleAnim = null,
     customClip = null,
   }) {
-    const dt = Math.min(Math.max(delta || 0.016, 0.001), 0.05);
+    const rawDt = Number.isFinite(delta) ? delta : 0.016;
+    const dt = Math.min(Math.max(rawDt, 0.001), 0.05);
+    updateFootFrictionDust(dt);
     const isRidingRickshaw = Boolean(rickshawRide && rickshawRide.active);
     const isRidingBike = Boolean(bikeRide && bikeRide.active);
     const isDrivingCar = Boolean(carDrive && carDrive.active);
@@ -2244,7 +2321,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
     const isVehicleAnim = Boolean(vehicleAnim && vehicleAnim.type);
     const shouldShow = !hideMesh && (inStudio || isRidingRickshaw || isRidingBike || isDrivingCar || isLedgeHanging || isVehicleAnim || state.cameraMode !== 'first');
     root.visible = shouldShow;
-    // Only show Low-quality ground contact shadow when standing/walking on solid ground (NEVER floating through bicycles/bikes/vehicles or in mid-air!)
+    // Only show Low-quality ground contact shadow when standing/walking on solid ground (flush beneath shoe soles, NEVER cutting through shoes!)
     contactShadowMesh.visible = Boolean(
       shouldShow
       && currentQuality === 'low'
@@ -2258,7 +2335,7 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       && !isVehicleAnim
     );
 
-    if (!inStudio && position) {
+    if (!inStudio && position && Number.isFinite(position.x) && Number.isFinite(position.y) && Number.isFinite(position.z)) {
       root.position.set(position.x, position.y - PLAYER_EYE_HEIGHT, position.z);
     } else if (inStudio) {
       if (studioPos) {
@@ -2266,12 +2343,16 @@ export function createPlayerCharacter(scene, manager, options = {}) {
       } else {
         root.position.set(0, 0, 0);
       }
-      root.rotation.y = studioYaw || 0;
+      root.rotation.y = Number.isFinite(studioYaw) ? studioYaw : 0;
     }
 
-    // Smooth vertical holder offset for swimming (zero tilt-lift vertical bouncing while walking/running!)
-    const targetHolderY = (!inStudio && isSwimming) ? (baseGroundY - 0.42) : baseGroundY;
-    modelHolder.position.y += (targetHolderY - modelHolder.position.y) * Math.min(1, dt * 12.0);
+    // Clean base vertical holder offset (separated from soleLiftOffset to eliminate vertical feedback jitter!)
+    const baseHolderY = (!inStudio && isSwimming) ? (baseGroundY - 0.42) : baseGroundY;
+    if (!Number.isFinite(soleLiftOffset)) soleLiftOffset = 0;
+    if (inStudio || isSwimming || isVehicleAnim || isRidingRickshaw || isRidingBike || isDrivingCar || isLedgeHanging || !grounded) {
+      soleLiftOffset = THREE.MathUtils.lerp(soleLiftOffset, 0, Math.min(1, dt * 14.0));
+    }
+    modelHolder.position.y = baseHolderY;
 
     if (state.attackTimer > 0) {
       state.attackTimer = Math.max(0, state.attackTimer - dt);
@@ -2490,18 +2571,49 @@ export function createPlayerCharacter(scene, manager, options = {}) {
         const vert = _hipsDelta.dot(restHipsUpLocal);
         hipsBone.position.copy(restHipsPos).addScaledVector(restHipsUpLocal, vert);
       }
-      // Real-time shoe-sole anti-sinking floor guard: keeps both soles cleanly ON TOP of asphalt during Idle, Walk, Run & IdleLook!
+      // Real-time heel + toe anti-sinking floor guard: keeps BOTH soles & toe tips cleanly ON TOP of road asphalt during Idle, Walk, Run & Emotes (zero jitter, zero sinking!)
       if (grounded && !isSwimming && !inStudio && !isVehicleAnim && !isRidingRickshaw && !isRidingBike && !isDrivingCar && !isLedgeHanging && state.emote !== 'sit' && leftFoot && rightFoot) {
         root.updateMatrixWorld(true);
         leftFoot.getWorldPosition(_footCheckL);
         rightFoot.getWorldPosition(_footCheckR);
-        const minSoleY = Math.min(_footCheckL.y, _footCheckR.y) - calibratedFootToSole;
-        const roadFloorY = root.position.y + 0.0045;
-        if (minSoleY < roadFloorY) {
-          const lift = Math.min(0.12, roadFloorY - minSoleY);
-          modelHolder.position.y += lift;
+        let minSoleY = Math.min(_footCheckL.y, _footCheckR.y) - calibratedFootToSole;
+        if (leftToe && rightToe) {
+          leftToe.getWorldPosition(_toeCheckL);
+          rightToe.getWorldPosition(_toeCheckR);
+          const minToeSoleY = Math.min(_toeCheckL.y, _toeCheckR.y) - calibratedToeToSole;
+          if (Number.isFinite(minToeSoleY) && minToeSoleY < minSoleY) {
+            minSoleY = minToeSoleY;
+          }
         }
+        const roadFloorY = root.position.y + 0.0068;
+        if (Number.isFinite(minSoleY) && minSoleY < roadFloorY) {
+          const neededLift = THREE.MathUtils.clamp(roadFloorY - minSoleY, 0, 0.14);
+          // Instant upward protection (never sinks a single frame), smooth downward release (zero bobbing/jitter!)
+          soleLiftOffset = neededLift >= soleLiftOffset
+            ? neededLift
+            : THREE.MathUtils.lerp(soleLiftOffset, neededLift, Math.min(1, dt * 16.0));
+        } else {
+          soleLiftOffset = THREE.MathUtils.lerp(soleLiftOffset, 0, Math.min(1, dt * 14.0));
+          if (soleLiftOffset < 0.0005) soleLiftOffset = 0;
+        }
+        modelHolder.position.y = baseHolderY + soleLiftOffset;
+
+        // Subtle grounded foot-friction dust on fast sprint steps & jump landings
+        footDustCooldown = Math.max(0, footDustCooldown - dt);
+        if (!prevGroundedState && grounded) {
+          spawnFootFrictionDust(_footCheckL.x, root.position.y, _footCheckL.z, -moveDirX * 0.3, -moveDirZ * 0.3, 0.28);
+          spawnFootFrictionDust(_footCheckR.x, root.position.y, _footCheckR.z, -moveDirX * 0.3, -moveDirZ * 0.3, 0.28);
+        } else if (isSprinting && horizSpeed > 4.6 && footDustCooldown <= 0) {
+          const lowerFoot = _footCheckL.y <= _footCheckR.y ? _footCheckL : _footCheckR;
+          if (lowerFoot.y - calibratedFootToSole <= roadFloorY + 0.035) {
+            spawnFootFrictionDust(lowerFoot.x, root.position.y, lowerFoot.z, -moveDirX * 0.45, -moveDirZ * 0.45, 0.21);
+            footDustCooldown = 0.20;
+          }
+        }
+      } else {
+        modelHolder.position.y = baseHolderY + soleLiftOffset;
       }
+      prevGroundedState = Boolean(grounded);
     }
 
     if (isVehicleAnim) {

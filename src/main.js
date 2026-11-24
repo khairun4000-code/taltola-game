@@ -143,12 +143,12 @@ function setupPostProcessing() {
   composer.addPass(new RenderPass(scene, camera));
   bloomPass = new UnrealBloomPass(
     new THREE.Vector2(
-      Math.max(192, Math.floor(window.innerWidth * 0.25)),
-      Math.max(108, Math.floor(window.innerHeight * 0.25))
+      Math.max(320, Math.floor(window.innerWidth * 0.5)),
+      Math.max(180, Math.floor(window.innerHeight * 0.5))
     ),
-    0.12,
-    0.32,
-    0.93
+    0.24,
+    0.44,
+    0.81
   );
   composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
@@ -1384,8 +1384,8 @@ function applyQuality(nextQuality) {
     composer.setPixelRatio(activeRatio);
     composer.setSize(window.innerWidth, window.innerHeight);
     bloomPass?.setSize?.(
-      Math.max(192, Math.floor(window.innerWidth * 0.25)),
-      Math.max(108, Math.floor(window.innerHeight * 0.25))
+      Math.max(320, Math.floor(window.innerWidth * 0.5)),
+      Math.max(180, Math.floor(window.innerHeight * 0.5))
     );
   }
   renderer.shadowMap.enabled = useShadows;
@@ -6269,16 +6269,21 @@ function updateMovement(delta) {
   } else {
     const targetVx = wishDir.x * maxSpeed;
     const targetVz = wishDir.z * maxSpeed;
-    // GTA VI weighted character momentum: grounded start/stop inertia + realistic mid-air steering
+    // Realistic grounded foot-to-asphalt friction: planted static grip on stop, weighted sprint momentum, crisp pivot traction
     const airFactor = (!grounded && !inWater) ? (specialAbility?.active && specialAbility?.charId === 'sabit' ? 0.85 : 0.42) : 1.0;
     const curSpd = horizontalVelocity.length();
-    const sharpPivot = isMovingInput && curSpd > 3.5 && ((horizontalVelocity.x * wishDir.x + horizontalVelocity.y * wishDir.z) < 0.25);
+    const alignDot = curSpd > 0.05 ? (horizontalVelocity.x * wishDir.x + horizontalVelocity.y * wishDir.z) / curSpd : 1.0;
+    const sharpPivot = isMovingInput && curSpd > 2.8 && alignDot < 0.22;
     const baseRate = isMovingInput
-      ? (inWater ? 9.5 : (sharpPivot ? 10.5 : (isSprinting ? 14.5 : 18.5)))
-      : (inWater ? 5.5 : 12.5);
+      ? (inWater ? 9.5 : (sharpPivot ? 12.5 : (isSprinting ? 15.5 : 19.5)))
+      : (inWater ? 5.8 : (curSpd > 3.5 ? 14.2 : 17.5));
     const accel = baseRate * airFactor * delta;
     horizontalVelocity.x += (targetVx - horizontalVelocity.x) * Math.min(1, accel);
     horizontalVelocity.y += (targetVz - horizontalVelocity.y) * Math.min(1, accel);
+    // Static shoe-sole friction settle so character comes to a solid planted stop without ice-skating drift
+    if (!isMovingInput && grounded && !inWater && horizontalVelocity.lengthSq() < 0.008) {
+      horizontalVelocity.set(0, 0);
+    }
 
     playerPos.x += horizontalVelocity.x * delta;
     playerPos.z += horizontalVelocity.y * delta;
@@ -6618,8 +6623,8 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer?.setSize(window.innerWidth, window.innerHeight);
   bloomPass?.setSize?.(
-    Math.max(192, Math.floor(window.innerWidth * 0.25)),
-    Math.max(108, Math.floor(window.innerHeight * 0.25))
+    Math.max(320, Math.floor(window.innerWidth * 0.5)),
+    Math.max(180, Math.floor(window.innerHeight * 0.5))
   );
 });
 

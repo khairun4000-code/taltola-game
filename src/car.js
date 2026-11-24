@@ -4728,7 +4728,7 @@ export function createDrivableCar(scene, manager, config) {
     if (contactShadow) {
       contactShadow.rotation.x = -Math.PI * 0.5 + state.terrainPitch;
       contactShadow.rotation.y = -state.terrainRoll;
-      contactShadow.position.y = Math.max(0.025, 0.025 + Math.abs(Math.sin(state.terrainPitch)) * 0.14);
+      contactShadow.position.y = Math.max(0.012, 0.012 + Math.abs(Math.sin(state.terrainPitch)) * 0.12);
     }
     if (carDriverRig) {
       carDriverRig.rigGroup.visible = (state.driving && state.cameraMode !== 'interior') || state.aiDriving;
@@ -5091,7 +5091,7 @@ export function createDrivableCar(scene, manager, config) {
       hRight = (hFR + hRR) * 0.5;
       avgWheelY = (hFL + hFR + hRL + hRR) * 0.25;
     }
-    const groundOffset = typeof config.groundOffset === 'number' ? Math.max(0.006, config.groundOffset) : 0.006;
+    const groundOffset = typeof config.groundOffset === 'number' ? Math.max(0.0075, config.groundOffset) : 0.0075;
     let targetGroundY = Math.max(hC, avgWheelY) + groundOffset;
     // Deadzone sub-1.2cm asphalt seam micro-steps while grounded so vehicle & rider never vertically vibrate on flat roads!
     if (state.grounded && Math.abs(state.velY) < 0.05 && Math.abs(targetGroundY - state.pos.y) < 0.012) {
@@ -5651,10 +5651,19 @@ export function createDrivableCar(scene, manager, config) {
     const baseEngineF = (config.engineForce || 14.5) * (boost > 1 ? 1.18 : 1.0);
     const engineForce = baseEngineF * torqueCurve * shiftMult;
     const brakeForce = config.isBike ? 26.5 : (config.isTata2515 ? 20.5 : 25.5);
-    // Aerodynamic drag reaches equilibrium smoothly right at maxForwardSpeed (zero wall-bounce or 3rd-gear stall!)
-    const rollingDrag = (config.isBicycle ? 0.24 : (config.isRickshaw ? 0.30 : 0.28)) * state.speed;
+    // Realistic tire-asphalt rolling resistance + Coulomb low-speed stiction + lateral tire-scrub friction + aero drag
+    const rollingCoeff = config.isBicycle ? 0.26 : (config.isRickshaw ? 0.34 : (config.isTata2515 ? 0.36 : 0.30));
+    const rollingDrag = rollingCoeff * state.speed;
+    const coulombStiction = (!throttle && state.grounded && Math.abs(state.speed) > 0.02 && Math.abs(state.speed) < 2.2)
+      ? (0.55 * Math.sign(state.speed))
+      : 0;
+    const lateralScrubDrag = (state.grounded && Math.abs(state.lateralVel) > 0.35 && Math.abs(state.speed) > 0.5)
+      ? (Math.min(4.8, Math.abs(state.lateralVel) * (handbrake ? 0.58 : 0.28)) * Math.sign(state.speed))
+      : 0;
     const aeroDrag = (baseEngineF * 0.86) * Math.pow(speedFrac, 1.9) * Math.sign(state.speed);
-    const drag = throttle > 0 ? aeroDrag : (rollingDrag + aeroDrag * 0.35);
+    const drag = throttle > 0
+      ? (aeroDrag + lateralScrubDrag)
+      : (rollingDrag + coulombStiction + lateralScrubDrag + aeroDrag * 0.35);
 
     let accel = 0;
     if (throttle > 0) accel += engineForce;
@@ -5662,17 +5671,22 @@ export function createDrivableCar(scene, manager, config) {
       if (state.speed > 0.6) accel -= brakeForce;
       else accel -= (config.isBike ? 4.4 : (config.isBicycle ? 3.2 : 9.5));
     }
-    if (handbrake && Math.abs(state.speed) > 0.4) {
-      accel -= Math.sign(state.speed) * 15.5;
+    if (handbrake && Math.abs(state.speed) > 0.25) {
+      accel -= Math.sign(state.speed) * (Math.abs(state.speed) > 2.0 ? 16.5 : 11.0);
     }
 
     // Realistic hill/stair slope gravity component (nose up = uphill load, nose down = downhill push)
     const slopeGravity = state.grounded ? Math.sin(state.terrainPitch) * 8.8 : 0;
+    const prevSpeedSign = Math.sign(state.speed);
     state.speed += (accel + slopeGravity - drag) * dt;
+    // Prevent Coulomb/handbrake friction from overshooting past zero into reverse jitter
+    if (!throttle && !brake && prevSpeedSign !== 0 && Math.sign(state.speed) !== prevSpeedSign && Math.abs(state.terrainPitch) < 0.04) {
+      state.speed = 0;
+    }
     // Realistic foot-push reverse speed cap on Motorcycles (-2.35 m/s) & Bicycles (-1.75 m/s) for GTA V reverse duck-walk!
     const maxReverseSpeed = config.isBike ? -2.35 : (config.isBicycle ? -1.75 : -11.5);
     state.speed = THREE.MathUtils.clamp(state.speed, maxReverseSpeed, maxForwardSpeed);
-    if (!throttle && !brake && Math.abs(state.speed) < 0.14 && Math.abs(state.terrainPitch) < 0.04) {
+    if (!throttle && !brake && Math.abs(state.speed) < 0.10 && Math.abs(state.terrainPitch) < 0.04) {
       state.speed = 0;
     }
     state.isReversing = Boolean(state.driving && (state.speed < -0.06 || (brake > 0 && state.speed <= 0.15)));
@@ -5690,8 +5704,8 @@ export function createDrivableCar(scene, manager, config) {
     // Progressive Pacejka-Style Tire Grip, Weight-Transfer Bite & BMW Power-Oversteer Drift
     const isDrifting = handbrake && absSpd > 4.8;
     const powerSlide = config.isBMW && throttle > 0 && boost > 1.0 && Math.abs(state.steerAngle) > 0.18 && absSpd > 8.0;
-    const baseGrip = config.isBMW ? 9.6 : (config.isBike ? 10.2 : (config.isCNG ? 6.8 : 7.8));
-    const brakeWeightBite = (brake > 0 && absSpd > 3.0) ? 1.12 : 1.0;
+    const baseGrip = config.isBMW ? 9.6 : (config.isBike ? 10.4 : (config.isCNG ? 7.0 : 8.0));
+    const brakeWeightBite = (brake > 0 && absSpd > 3.0) ? 1.14 : 1.0;
     const grip = isDrifting ? 2.15 : (powerSlide ? 4.2 : baseGrip * brakeWeightBite);
 
     const turnRate = state.steerAngle
@@ -5702,9 +5716,10 @@ export function createDrivableCar(scene, manager, config) {
     state.heading += turnRate * dt;
 
     const slipFactor = isDrifting ? 0.42 : (powerSlide ? 0.24 : (absSpd > 14 ? 0.13 : 0.08));
-    const centrifugal = turnRate * state.speed * slipFactor;
-    state.lateralVel = THREE.MathUtils.lerp(state.lateralVel, centrifugal, Math.min(1, dt * grip));
-    state.slipIntensity = THREE.MathUtils.clamp((Math.abs(state.lateralVel) - 0.85) / 5.5 + (isDrifting ? 0.45 : 0), 0, 1);
+    const centrifugal = absSpd > 0.35 ? (turnRate * state.speed * slipFactor) : 0;
+    state.lateralVel = THREE.MathUtils.lerp(state.lateralVel, centrifugal, Math.min(1, dt * (absSpd <= 0.35 ? 16.0 : grip)));
+    if (absSpd <= 0.20 && Math.abs(state.lateralVel) < 0.03) state.lateralVel = 0;
+    state.slipIntensity = THREE.MathUtils.clamp((Math.abs(state.lateralVel) - 0.80) / 5.2 + (isDrifting ? 0.45 : 0), 0, 1);
 
     fwd.set(Math.sin(state.heading), 0, Math.cos(state.heading));
     rgt.set(Math.cos(state.heading), 0, -Math.sin(state.heading));
@@ -5922,7 +5937,7 @@ export function createDrivableCar(scene, manager, config) {
     getBikeRiderAnchors,
     getBikePovCameraPose,
     spawnAt(x, z, heading = 0) {
-      const groundOffset = typeof config.groundOffset === 'number' ? Math.max(0.006, config.groundOffset) : 0.006;
+      const groundOffset = typeof config.groundOffset === 'number' ? Math.max(0.0075, config.groundOffset) : 0.0075;
       state.pos.set(x, groundOffset, z);
       state.heading = heading;
       state.speed = 0;
