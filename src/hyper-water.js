@@ -313,9 +313,32 @@ export function createHyperWaterHub(sharedUniforms) {
   const uFogNear = { value: 210.0 };
   const uFogFar = { value: 540.0 };
   const uDetailScale = { value: 1.0 };
+  const uActiveRippleCount = { value: 0 };
 
+  const rippleSlots = Array.from({ length: MAX_WATER_RIPPLES }, () => ({
+    x: 0, z: 0, start: -9999, amp: 0,
+    speed: 2.4, freqK: 7.5, decay: 1.2, foam: 0.24,
+  }));
   let rippleCursor = 0;
   const materials = [];
+
+  function refreshActiveRipples() {
+    const now = fallbackUniforms.uTime.value;
+    let count = 0;
+    for (let i = 0; i < MAX_WATER_RIPPLES; i++) {
+      const s = rippleSlots[i];
+      if (s.amp <= 0.0005) continue;
+      const age = now - s.start;
+      if (age < 0 || age * s.decay >= 5.2) {
+        s.amp = 0;
+        continue;
+      }
+      uRipples.value[count].set(s.x, s.z, s.start, s.amp);
+      uRippleMeta.value[count].set(s.speed, s.freqK, s.decay, s.foam);
+      count++;
+    }
+    uActiveRippleCount.value = count;
+  }
 
   function spawnRipple({
     x,
@@ -330,10 +353,9 @@ export function createHyperWaterHub(sharedUniforms) {
     let slot = -1;
     for (let i = 0; i < MAX_WATER_RIPPLES; i++) {
       const idx = (rippleCursor + i) % MAX_WATER_RIPPLES;
-      const r = uRipples.value[idx];
-      const meta = uRippleMeta.value[idx];
-      const age = now - r.z;
-      if (r.w <= 0.0005 || age < 0 || age * meta.z > 5.2) {
+      const r = rippleSlots[idx];
+      const age = now - r.start;
+      if (r.amp <= 0.0005 || age < 0 || age * r.decay > 5.2) {
         slot = idx;
         break;
       }
@@ -341,8 +363,16 @@ export function createHyperWaterHub(sharedUniforms) {
     if (slot < 0) slot = rippleCursor;
     rippleCursor = (slot + 1) % MAX_WATER_RIPPLES;
 
-    uRipples.value[slot].set(x, z, now, amplitude);
-    uRippleMeta.value[slot].set(speed, freqK, decay, foam);
+    const target = rippleSlots[slot];
+    target.x = x;
+    target.z = z;
+    target.start = now;
+    target.amp = amplitude;
+    target.speed = speed;
+    target.freqK = freqK;
+    target.decay = decay;
+    target.foam = foam;
+    refreshActiveRipples();
     return slot;
   }
 
@@ -368,6 +398,7 @@ export function createHyperWaterHub(sharedUniforms) {
       uFogNear,
       uFogFar,
       uDetailScale,
+      uActiveRippleCount,
       uAlgaeMap: { value: extraOpts.algaeMap || dummyTex },
       uWaterKind: { value: kindCode },
       uRipples,
@@ -385,6 +416,7 @@ export function createHyperWaterHub(sharedUniforms) {
 
         uniform float uTime;
         uniform float uWaterKind;
+        uniform int uActiveRippleCount;
         uniform vec4 uRipples[${MAX_WATER_RIPPLES}];
         uniform vec4 uRippleMeta[${MAX_WATER_RIPPLES}];
 
@@ -411,23 +443,22 @@ export function createHyperWaterHub(sharedUniforms) {
             ambientH = sin(r * 4.2 - uTime * 3.6) * 0.009 * smoothstep(3.4, 0.4, r);
           }
 
-          // Real-time 3D interactive wave displacement (swimming, stone drop, bullets, water bomb!)
+          // Real-time 3D interactive wave displacement (0 iterations when idle -> 0 GPU cost!)
           float rippleH = 0.0;
-          for (int i = 0; i < ${MAX_WATER_RIPPLES}; i++) {
-            vec4 rp = uRipples[i];
-            float amp = rp.w;
-            if (amp > 0.0005) {
+          if (uActiveRippleCount > 0) {
+            for (int i = 0; i < ${MAX_WATER_RIPPLES}; i++) {
+              if (i >= uActiveRippleCount) break;
+              vec4 rp = uRipples[i];
+              float amp = rp.w;
               vec4 rm = uRippleMeta[i];
               float age = uTime - rp.z;
-              if (age >= 0.0 && age * rm.z < 5.2) {
-                float dist = length(wp.xz - rp.xy);
-                float front = age * rm.x;
-                float band = 1.30 + age * 0.52;
-                float diff = dist - front;
-                if (abs(diff) < band * 2.4) {
-                  float env = exp(-(diff * diff) / (band * band)) * exp(-age * rm.z) / (1.0 + dist * 0.085);
-                  rippleH += amp * env * sin(diff * rm.y - 0.6);
-                }
+              float dist = length(wp.xz - rp.xy);
+              float front = age * rm.x;
+              float band = 1.30 + age * 0.52;
+              float diff = dist - front;
+              if (abs(diff) < band * 2.4) {
+                float env = exp(-(diff * diff) / (band * band)) * exp(-age * rm.z) / (1.0 + dist * 0.085);
+                rippleH += amp * env * sin(diff * rm.y - 0.6);
               }
             }
           }
@@ -458,6 +489,7 @@ export function createHyperWaterHub(sharedUniforms) {
         uniform float uFogNear;
         uniform float uFogFar;
         uniform float uDetailScale;
+        uniform int uActiveRippleCount;
         uniform sampler2D uAlgaeMap;
         uniform float uWaterKind;
         uniform vec4 uRipples[${MAX_WATER_RIPPLES}];
@@ -488,21 +520,21 @@ export function createHyperWaterHub(sharedUniforms) {
         // tuned cleanly for flowing Rivers (gentle rolling current) vs calm Ponds (soft gentle wavelets)!
         float waveHeight(vec2 p, float t, float isRiver) {
           if (isRiver > 0.5) {
-            // Downstream (+Z) floating river waves ("ভাসতে ভাসতে যায়")
-            float h = 0.0;
-            h += sin(p.x * 0.28 + p.y * 0.16 - t * 1.48) * 0.24;
-            h += sin(p.x * -0.19 + p.y * 0.38 - t * 1.24) * 0.19;
-            h += sin(p.x * 0.72 + p.y * 0.56 - t * 2.25) * 0.10;
-            h += noise2(p * 0.45 + vec2(0.12 * t, -0.36 * t)) * 0.36;
-            h += noise2(p * 1.75 + vec2(-0.28 * t, -0.64 * t)) * 0.16 * uDetailScale;
+            float h = sin(p.x * 0.28 + p.y * 0.16 - t * 1.48) * 0.24
+                    + sin(p.x * -0.19 + p.y * 0.38 - t * 1.24) * 0.19
+                    + sin(p.x * 0.72 + p.y * 0.56 - t * 2.25) * 0.10;
+            if (uDetailScale > 0.35) {
+              h += noise2(p * 0.45 + vec2(0.12 * t, -0.36 * t)) * 0.36;
+              h += noise2(p * 1.75 + vec2(-0.28 * t, -0.64 * t)) * 0.16 * uDetailScale;
+            }
             return h;
           } else {
-            // Soft, calm, gentle pond wavelets ("হালকা ঢেউ খায়, হালকা নরম আরকি")
-            float h = 0.0;
-            h += sin(p.x * 0.36 + p.y * 0.28 + t * 0.82) * 0.14;
-            h += sin(p.x * -0.26 + p.y * 0.42 - t * 0.68) * 0.11;
-            h += noise2(p * 0.52 + vec2(t * 0.16, -t * 0.14)) * 0.22;
-            h += noise2(p * 1.65 + vec2(-t * 0.28, t * 0.22)) * 0.09 * uDetailScale;
+            float h = sin(p.x * 0.36 + p.y * 0.28 + t * 0.82) * 0.14
+                    + sin(p.x * -0.26 + p.y * 0.42 - t * 0.68) * 0.11;
+            if (uDetailScale > 0.35) {
+              h += noise2(p * 0.52 + vec2(t * 0.16, -t * 0.14)) * 0.22;
+              h += noise2(p * 1.65 + vec2(-t * 0.28, t * 0.22)) * 0.09 * uDetailScale;
+            }
             return h;
           }
         }
@@ -521,33 +553,31 @@ export function createHyperWaterHub(sharedUniforms) {
           float nScale = mix(0.92, 1.45, isRiver) * distSlopeFade;
           vec2 baseSlope = vec2((h0 - hx) * nScale, (h0 - hz) * nScale);
 
-          // Real-Time Analytical 3D Interactive Ripples (swimming, thrown stones, gunshots, water bombs!)
+          // Real-Time Analytical 3D Interactive Ripples (0 iterations when idle -> 0 GPU cost!)
           vec2 rippleSlope = vec2(0.0);
           float crestFoamRing = 0.0;
 
-          for (int i = 0; i < ${MAX_WATER_RIPPLES}; i++) {
-            vec4 rp = uRipples[i];
-            float amp = rp.w;
-            if (amp > 0.0005) {
+          if (uActiveRippleCount > 0) {
+            for (int i = 0; i < ${MAX_WATER_RIPPLES}; i++) {
+              if (i >= uActiveRippleCount) break;
+              vec4 rp = uRipples[i];
+              float amp = rp.w;
               vec4 rm = uRippleMeta[i];
               float age = uTime - rp.z;
-              if (age >= 0.0 && age * rm.z < 5.2) {
-                vec2 delta = p - rp.xy;
-                float dist = length(delta);
-                float front = age * rm.x;
-                float band = 1.25 + age * 0.52;
-                float diff = dist - front;
-                if (abs(diff) < band * 2.5) {
-                  vec2 dir = dist > 0.001 ? (delta / dist) : vec2(1.0, 0.0);
-                  float env = exp(-(diff * diff) / (band * band)) * exp(-age * rm.z) / (1.0 + dist * 0.08);
-                  float phase = diff * rm.y - 0.6;
-                  float sOsc = sin(phase);
-                  float cOsc = cos(phase);
-                  float dHdr = amp * env * (cOsc * rm.y - sOsc * (2.0 * diff / (band * band)));
-                  rippleSlope += dir * clamp(dHdr * 2.45, -1.45, 1.45);
-                  // Crisp, delicate whitewater shimmer ONLY right on the sharpest wave-ring crests (never milky!)
-                  crestFoamRing += smoothstep(0.55, 0.98, sOsc) * env * rm.w * (1.35 + amp * 6.0);
-                }
+              vec2 delta = p - rp.xy;
+              float dist = length(delta);
+              float front = age * rm.x;
+              float band = 1.25 + age * 0.52;
+              float diff = dist - front;
+              if (abs(diff) < band * 2.5) {
+                vec2 dir = dist > 0.001 ? (delta / dist) : vec2(1.0, 0.0);
+                float env = exp(-(diff * diff) / (band * band)) * exp(-age * rm.z) / (1.0 + dist * 0.08);
+                float phase = diff * rm.y - 0.6;
+                float sOsc = sin(phase);
+                float cOsc = cos(phase);
+                float dHdr = amp * env * (cOsc * rm.y - sOsc * (2.0 * diff / (band * band)));
+                rippleSlope += dir * clamp(dHdr * 2.45, -1.45, 1.45);
+                crestFoamRing += smoothstep(0.55, 0.98, sOsc) * env * rm.w * (1.35 + amp * 6.0);
               }
             }
           }
@@ -559,24 +589,37 @@ export function createHyperWaterHub(sharedUniforms) {
           float nightW = smoothstep(0.72, 0.98, uNightFactor);
           float sunsetW = smoothstep(0.18, 0.62, uNightFactor) * (1.0 - smoothstep(0.74, 0.96, uNightFactor));
 
-          // Fresnel & Sky Reflection (exact Rupsha Studio crisp reflection — biased toward deep skyTop so water NEVER washes out white!)
+          // Fresnel & Sky Reflection (exact Schlick 5th-power + sqrt sky curve -> zero transcendental pow() stalls!)
           float NoV = clamp(dot(N, V), 0.001, 1.0);
-          float fresnel = 0.03 + 0.97 * pow(1.0 - NoV, 4.4);
+          float om = 1.0 - NoV;
+          float om2 = om * om;
+          float fresnel = 0.03 + 0.97 * (om2 * om2 * om);
 
           vec3 R = reflect(-V, N);
           float rUp = clamp(abs(R.y), 0.0, 1.0);
           // Bias horizon blend toward rich azure/twilight skyTop so ponds & rivers stay deeply saturated!
           vec3 cleanHorizon = mix(uSkyHorizon, uSkyTop, mix(0.32, 0.14, sunsetW + nightW));
-          vec3 reflSky = mix(cleanHorizon, uSkyTop, pow(rUp, 0.46));
+          vec3 reflSky = mix(cleanHorizon, uSkyTop, sqrt(rUp));
 
           float reflSun = max(dot(R, L), 0.0);
-          reflSky += uSunColor * pow(reflSun, 42.0) * mix(0.95, 0.35, nightW);
+          float rs2 = reflSun * reflSun;
+          float rs4 = rs2 * rs2;
+          float rs8 = rs4 * rs4;
+          float rs16 = rs8 * rs8;
+          float rs42 = (rs16 * rs16) * rs8 * rs2;
+          reflSky += uSunColor * rs42 * mix(0.95, 0.35, nightW);
 
-          // Razor-sharp diamond sun & moon sparkles across wavelets
+          // Razor-sharp diamond sun & moon sparkles across wavelets (pure multiply chain!)
           vec3 H = normalize(L + V);
           float NoH = max(dot(N, H), 0.0);
-          float specTight = pow(NoH, 220.0) * mix(2.4, 3.1, isRiver);
-          float specBroad = pow(NoH, 28.0) * mix(0.18, 0.26, isRiver);
+          float nh2 = NoH * NoH;
+          float nh4 = nh2 * nh2;
+          float nh8 = nh4 * nh4;
+          float nh16 = nh8 * nh8;
+          float nh32 = nh16 * nh16;
+          float nh64 = nh32 * nh32;
+          float specTight = (nh64 * nh64 * nh64 * nh32) * mix(2.4, 3.1, isRiver);
+          float specBroad = (nh16 * nh8 * nh4) * mix(0.18, 0.26, isRiver);
           vec3 glintColor = mix(uSunColor, vec3(0.74, 0.85, 0.98), nightW);
           vec3 specular = glintColor * (specTight + specBroad) * mix(1.0, 0.42, nightW);
 
@@ -666,15 +709,17 @@ export function createHyperWaterHub(sharedUniforms) {
   }
 
   function setQualityMode(qualityMode = 'high') {
-    uDetailScale.value = qualityMode === 'low' ? 0.35 : (qualityMode === 'medium' ? 0.75 : 1.0);
+    uDetailScale.value = qualityMode === 'low' ? 0.20 : (qualityMode === 'medium' ? 0.75 : 1.0);
   }
 
   return {
     sharedUniforms: fallbackUniforms,
     uRipples,
     uRippleMeta,
+    uActiveRippleCount,
     materials,
     spawnRipple,
+    refreshActiveRipples,
     createWaterMaterial,
     setFogBounds,
     setQualityMode,
@@ -1314,6 +1359,9 @@ export function createWaterReactionSystem(scene, waterHub, { getWaterInfo, getGr
 
   function update(dt) {
     const stepDt = Math.min(dt, 0.05);
+    if (waterHub.uActiveRippleCount?.value > 0) {
+      waterHub.refreshActiveRipples?.();
+    }
 
     const nf = waterHub.sharedUniforms.uNightFactor?.value ?? 0.0;
     const sunC = waterHub.sharedUniforms.uSunColor?.value;

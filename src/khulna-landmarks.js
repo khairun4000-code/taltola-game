@@ -1219,7 +1219,7 @@ function buildCircuitHouseAndStadium(staticG, dynamicG, lm, m) {
     const grnd = () => { gs = (gs * 1664525 + 1013904223) >>> 0; return gs / 4294967296; };
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
-    const perMesh = 420;
+    const perMesh = 120;
     for (const { geom, mat } of templates) {
       const inst = new THREE.InstancedMesh(geom, mat, perMesh);
       inst.castShadow = false;

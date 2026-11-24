@@ -974,7 +974,17 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
       if (wm.material !== targetMat) wm.material = targetMat;
     }
     const maxA = renderer?.capabilities?.getMaxAnisotropy?.() || 16;
-    const nextAniso = isLow ? 2 : (qualityMode === 'medium' ? Math.min(4, maxA) : (qualityMode === 'high' ? Math.min(8, maxA) : Math.min(16, maxA)));
+    const nextAniso = isLow ? 1 : (qualityMode === 'medium' ? Math.min(4, maxA) : (qualityMode === 'high' ? Math.min(8, maxA) : Math.min(16, maxA)));
+    for (const mat of [landMat, grassMat, pitchMat, sidewalkMat]) {
+      if (!mat || !mat.userData?.pbrNormalMap) continue;
+      const wantNorm = isLow ? null : mat.userData.pbrNormalMap;
+      const wantRough = (isLow || qualityMode === 'medium') ? null : mat.userData.pbrRoughnessMap;
+      if (mat.normalMap !== wantNorm || mat.roughnessMap !== wantRough) {
+        mat.normalMap = wantNorm;
+        mat.roughnessMap = wantRough;
+        mat.needsUpdate = true;
+      }
+    }
     for (const t of [tex.roadMajorTex, tex.roadMidTex, tex.roadLaneTex, tex.sidewalkTex, tex.grassTex, tex.pitchTex, tex.landTex]) {
       if (t && t.anisotropy !== nextAniso) {
         t.anisotropy = nextAniso;

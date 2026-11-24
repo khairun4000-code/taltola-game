@@ -1672,7 +1672,7 @@ export function buildAliaMadrasahDistrict(parent, m, waterHub = null) {
     if (!clumpTemplates.length) return;
 
     const rand = seeded(195201);
-    const perClumpCount = 260;
+    const perClumpCount = 84;
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
 
@@ -1686,9 +1686,9 @@ export function buildAliaMadrasahDistrict(parent, m, waterHub = null) {
         const gz = 82.4 + rand() * 47.2;
         dummy.position.set(gx, 0.02, gz);
         dummy.rotation.set((rand() - 0.5) * 0.06, rand() * Math.PI * 2, (rand() - 0.5) * 0.06);
-        const sx = 1.15 + rand() * 0.55;
+        const sx = 1.65 + rand() * 0.75;
         const sy = 0.09 + rand() * 0.045;
-        const sz = 1.15 + rand() * 0.55;
+        const sz = 1.65 + rand() * 0.75;
         dummy.scale.set(sx, sy, sz);
         dummy.updateMatrix();
         inst.setMatrixAt(i, dummy.matrix);

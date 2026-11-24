@@ -408,7 +408,7 @@ export function buildKhulnaWildlife(parent, waterHub = null) {
   });
 
   let lastTime = 0;
-  const maxActiveDistSq = 240 * 240;
+  let maxActiveDistSq = 135 * 135;
 
   function update(time, playerPos = null) {
     const dt = lastTime > 0 ? Math.min(0.05, Math.max(0.001, time - lastTime)) : 0.016;
@@ -593,6 +593,10 @@ export function buildKhulnaWildlife(parent, waterHub = null) {
     update,
     setVisible(visible) {
       root.visible = visible;
+    },
+    setQualityMode(q = 'high') {
+      const dist = q === 'low' ? 68 : (q === 'medium' ? 105 : 135);
+      maxActiveDistSq = dist * dist;
     },
   };
 }

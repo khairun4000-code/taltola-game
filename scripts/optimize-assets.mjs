@@ -52,8 +52,10 @@ function countTriangles(doc) {
 //   weld + 1024/2048px WebP + Draco!
 // Remaining GLBs + tighter simplify error on 4046-mesh Alphard:
 const TARGETS = [
+  { file: 'alia_grass_clumps.glb', simplifyTargetTris: 400, maxError: 0.35, texSize: 256, stripTransmission: false },
+  { file: 'durba_grass_3d.glb', simplifyTargetTris: 400, maxError: 0.35, texSize: 256, stripTransmission: false },
   { file: 'krishnachura_tree.glb', simplifyTargetTris: null, maxError: 0.001, texSize: 1024, stripTransmission: false },
-  { file: 'snow_goose.glb', simplifyTargetTris: null, maxError: 0.001, texSize: 512, stripTransmission: false },
+  { file: 'snow_goose.glb', simplifyTargetTris: 3000, maxError: 0.08, texSize: 512, stripTransmission: false },
   { file: 'shaheed_minar_red_sun.glb', simplifyTargetTris: null, maxError: 0.001, texSize: 1024, stripTransmission: false },
   { file: 'khulna_circuit_house.glb', simplifyTargetTris: null, maxError: 0.0005, texSize: 1024, stripTransmission: true },
   { file: 'khulna_judge_court.glb', simplifyTargetTris: null, maxError: 0.0005, texSize: 1024, stripTransmission: true },

@@ -1464,7 +1464,7 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
         { x0: ox + 3.1,  x1: ox + 7.3, z0: oz + 7.0,  z1: oz + 14.2 },
         { x0: ox - 11.2, x1: ox - 4.4, z0: oz + 33.4, z1: oz + 43.5 },
       ];
-      const count = 80;
+      const count = 32;
       const dummy = new THREE.Object3D();
       const col = new THREE.Color();
 
@@ -2457,7 +2457,7 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
     scale: 0.96,
     shipTravelRangeZ: 210,
     enableDeckTraffic: true,
-    enablePointLights: true,
+    enablePointLights: false,
   });
   bridgeSlice.dynamicG.add(khanJahanAliBridge.root);
 

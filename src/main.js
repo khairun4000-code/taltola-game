@@ -103,9 +103,24 @@ const crosshairEl = document.querySelector('.crosshair');
 const brandTitle = document.querySelector('#brand-title');
 const brandSubtitle = document.querySelector('#brand-subtitle');
 
+const isEarlySoftwareGpu = (() => {
+  try {
+    const probe = document.createElement('canvas');
+    const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+    if (!gl) return false;
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    const glName = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return /SwiftShader|llvmpipe|Basic Render|Software|Subzero/i.test(String(glName || ''));
+  } catch {
+    return false;
+  }
+})();
+const urlForcedQuality = new URLSearchParams(window.location.search).has('quality');
+
 const renderer = new THREE.WebGLRenderer({
   canvas,
-  antialias: true,
+  antialias: !isEarlySoftwareGpu,
   powerPreference: 'high-performance',
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -534,8 +549,8 @@ let smoothedCamDist = 1.95;
 let camHideMeshState = false;
 let isThirdPersonEyeFallback = false;
 let lastResolvedCamMode = null;
-let ultraFastMode = false;
-let softwareRendererDetected = false;
+let ultraFastMode = isEarlySoftwareGpu && !urlForcedQuality;
+let softwareRendererDetected = isEarlySoftwareGpu;
 let lowFpsStreak = 0;
 let khulnaMapUI = null;
 let gtaPhoneUI = null;
@@ -1375,14 +1390,23 @@ function applyQuality(nextQuality) {
   const isUltra = quality === 'ultra';
   const isHigh = quality === 'high';
   // 4 Game-Style Presets: sharp QHD+ resolution with 60 FPS GPU fillrate balance across Low Smooth -> Ultra 4K
-  const ratios = {
-    low: Math.min(dpr, 1.15),
-    medium: Math.min(dpr, 1.25),
-    high: Math.min(dpr, 1.40),
-    ultra: Math.min(dpr, 1.55),
-  };
+  const ratios = (softwareRendererDetected && !urlForcedQuality)
+    ? {
+      low: 0.56,
+      medium: 0.65,
+      high: 0.72,
+      ultra: 0.80,
+    }
+    : {
+      low: Math.min(dpr, 1.15),
+      medium: Math.min(dpr, 1.25),
+      high: Math.min(dpr, 1.40),
+      ultra: Math.min(dpr, 1.55),
+    };
   const shadowSizes = { low: 1024, medium: 1024, high: 1024, ultra: 1536 };
-  const useShadows = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : !isLow);
+  const useShadows = shadowsOverride === 'on'
+    ? true
+    : (shadowsOverride === 'off' ? false : (!isLow && !(softwareRendererDetected && !urlForcedQuality)));
   const activeRatio = ratios[quality] ?? ratios.high;
 
   renderer.setPixelRatio(activeRatio);
@@ -1408,9 +1432,10 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = isLow ? 145 : (quality === 'medium' ? 180 : (isUltra ? 215 : 195));
-    scene.fog.far = isLow ? 340 : (quality === 'medium' ? 420 : (isUltra ? 495 : 460));
-    camera.far = isLow ? 390 : (quality === 'medium' ? 460 : (isUltra ? 535 : 500));
+    const softFast = softwareRendererDetected && !urlForcedQuality && isLow;
+    scene.fog.near = softFast ? 135 : (isLow ? 145 : (quality === 'medium' ? 180 : (isUltra ? 215 : 195)));
+    scene.fog.far = softFast ? 330 : (isLow ? 340 : (quality === 'medium' ? 420 : (isUltra ? 495 : 460)));
+    camera.far = softFast ? 375 : (isLow ? 390 : (quality === 'medium' ? 460 : (isUltra ? 535 : 500)));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
@@ -1494,7 +1519,7 @@ function applyQuality(nextQuality) {
     }
   });
 
-  sceneMaterials?.setQualityMode?.(quality);
+  sceneMaterials?.setQualityMode?.(quality, softwareRendererDetected && !urlForcedQuality);
   environment?.setQualityMode?.(quality);
   environment?.tower?.setQualityMode?.(quality);
   environment?.city?.refreshActiveChunks?.(playerPos.x, playerPos.z, quality);
@@ -3479,13 +3504,19 @@ async function initialize() {
       localStorage.setItem('taltola_quality', quality);
       localStorage.setItem('taltola_quality_manual', '1');
     } catch {}
+  } else if (isEarlySoftwareGpu) {
+    softwareRendererDetected = true;
+    quality = 'low';
+    ultraFastMode = true;
+    setTimeout(() => {
+      gtaPhoneUI?.showToast?.('⚡ Windows-এ AMD Radeon ড্রাইভার বন্ধ থাকায় CPU Smooth Boost চালু হয়েছে! (Device Manager-এ চালু করলে 120 FPS পাবেন)');
+    }, 2200);
   } else {
     try {
       const gl = renderer.getContext();
       const dbgExt = gl.getExtension('WEBGL_debug_renderer_info');
       const glRenderer = dbgExt ? gl.getParameter(dbgExt.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
-      if (/SwiftShader|llvmpipe|Basic Render|Software|Subzero/i.test(String(glRenderer || ''))
-        && !localStorage.getItem('taltola_quality_manual')) {
+      if (/SwiftShader|llvmpipe|Basic Render|Software|Subzero/i.test(String(glRenderer || ''))) {
         softwareRendererDetected = true;
         quality = 'low';
         ultraFastMode = true;
@@ -6004,11 +6035,13 @@ function updateMovement(delta) {
       const dxV = car.state.pos.x - refX;
       const dzV = car.state.pos.z - refZ;
       const dSq = dxV * dxV + dzV * dzV;
-      const vis = car.state.driving || car.state.aiDriving || dSq < 150 * 150;
-      if (vis || dSq < 190 * 190) car.ensureLoaded?.();
-      if (car.group.visible !== vis) car.group.visible = vis;
-      if (vis || Math.abs(car.state.speed) > 0.05) {
+      if (car.state.driving || car.state.aiDriving || dSq < 115 * 115) {
+        car.ensureLoaded?.();
+      }
+      const isActiveVeh = car.state.driving || car.state.aiDriving || Math.abs(car.state.speed) > 0.04;
+      if (isActiveVeh || dSq < 16 * 16 || (car._settledFrames || 0) < 48) {
         car.update(delta, keys, house, environment, cars, computeGroundHeight);
+        car._settledFrames = isActiveVeh ? 0 : ((car._settledFrames || 0) + 1);
       }
     }
     if (updateVehicleTransition(delta)) {

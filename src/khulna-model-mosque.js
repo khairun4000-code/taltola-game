@@ -865,8 +865,8 @@ export function buildKhulnaModelMosque3D(outerStaticG, outerDynamicG, bank) {
     if (!templates.length) return;
 
     const planterY = MOSQUE_BASE_Y + 2.52 * MOSQUE_AAA_SCALE; // ~2.64m (sits deep inside soil so zero gap/box shows!)
-    const cols = 8;
-    const rows = 8;
+    const cols = 4;
+    const rows = 4;
     const count = cols * rows;
     const dummy = new THREE.Object3D();
     for (const { geom, mat } of templates) {

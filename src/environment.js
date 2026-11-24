@@ -530,6 +530,7 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
       city.setQualityMode?.(qualityMode);
       landmarks.setQualityMode?.(qualityMode);
       botanicalFoliage.setQualityMode?.(qualityMode);
+      wildlife.setQualityMode?.(qualityMode);
       traffic.setVisible?.(true);
     },
     setFogBounds(near, far) {
