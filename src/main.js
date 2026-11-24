@@ -1508,7 +1508,7 @@ function applyQuality(nextQuality) {
   for (const c of cars) {
     c?.setQualityMode?.(quality);
   }
-  if (environment?.farGroup) environment.farGroup.visible = true;
+  environment?.syncVisibility?.(playerPos);
   if (!inStudio && skySystem) {
     if (skySystem.skyDome) skySystem.skyDome.visible = true;
     applyTimeOfDay(timeOfDayId);
@@ -3460,7 +3460,7 @@ async function initialize() {
   for (const vid of starterVehicleIds) {
     const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);
     if (!vCfg) continue;
-    const starterVeh = createDrivableCar(scene, undefined, vCfg);
+    const starterVeh = createDrivableCar(scene, undefined, { ...vCfg, deferLoad: true });
     starterVeh.setQualityMode?.(quality);
     starterVeh.setEnvironmentMap?.(vehicleEnvStartup);
     cars.push(starterVeh);
@@ -6005,6 +6005,7 @@ function updateMovement(delta) {
       const dzV = car.state.pos.z - refZ;
       const dSq = dxV * dxV + dzV * dzV;
       const vis = car.state.driving || car.state.aiDriving || dSq < 150 * 150;
+      if (vis || dSq < 190 * 190) car.ensureLoaded?.();
       if (car.group.visible !== vis) car.group.visible = vis;
       if (vis || Math.abs(car.state.speed) > 0.05) {
         car.update(delta, keys, house, environment, cars, computeGroundHeight);

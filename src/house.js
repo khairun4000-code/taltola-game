@@ -1714,6 +1714,15 @@ export function buildHouse(scene, m) {
     },
     update(delta, playerPosition = null, isLowQuality = false) {
       const lp = toLocal(playerPosition);
+      if (lp) {
+        const nearHouseDistrict = (lp.x * lp.x + lp.z * lp.z) <= 285 * 285;
+        if (group.visible !== nearHouseDistrict) group.visible = nearHouseDistrict;
+        if (!nearHouseDistrict) {
+          if (bathReflector) bathReflector.visible = false;
+          if (wardrobeReflector) wardrobeReflector.visible = false;
+          return;
+        }
+      }
       const step = Math.min(1, 6.0 * delta);
       const targetGate = state.gateOpen ? Math.PI * 0.48 : 0;
       const targetFront = state.frontDoorOpen ? Math.PI * 0.54 : 0;
@@ -1799,11 +1808,11 @@ export function buildHouse(scene, m) {
           }
         }
 
-        // Real-Time Reflective Mirror: snap single Reflector to the closest mirror within 5.2m on the same floor!
+        // Real-Time Reflective Mirror: snap single Reflector to the closest mirror within 3.2m indoors!
         if (bathReflector && wardrobeReflector) {
           let bestMirror = null;
-          let bestMDist = 5.2;
-          if (insideOrNear) {
+          let bestMDist = 3.2;
+          if (insideOrNear && !isLowQuality) {
             for (const ms of mirrorSlots) {
               if (Math.abs(footY - ms.fy) > 1.55) continue;
               const d = Math.hypot(lp.x - ms.x, lp.z - ms.z);

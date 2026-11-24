@@ -78,21 +78,79 @@ export function seededRandom(seed = 1234567) {
   };
 }
 
-export function mergeStaticMeshes(root) {
+export function mergeStaticMeshes(root, { skipPredicate = null } = {}) {
   root.updateWorldMatrix(true, true);
   const inverseRoot = root.matrixWorld.clone().invert();
   const buckets = new Map();
+
+  const shouldSkip = (obj) => {
+    if (!skipPredicate) return false;
+    let cur = obj;
+    while (cur && cur !== root) {
+      if (skipPredicate(cur)) return true;
+      cur = cur.parent;
+    }
+    return false;
+  };
+
   root.traverse((object) => {
-    if (!object.isMesh || object.isInstancedMesh || Array.isArray(object.material)) return;
-    const key = `${object.material.uuid}-${object.castShadow}-${object.receiveShadow}`;
-    if (!buckets.has(key)) buckets.set(key, { material: object.material, cast: object.castShadow, receive: object.receiveShadow, meshes: [], geometries: [] });
-    const bucket = buckets.get(key);
+    if (!object.isMesh || object.isInstancedMesh || object.isSkinnedMesh) return;
+    if (shouldSkip(object)) return;
+    const mat = Array.isArray(object.material)
+      ? (object.material.length === 1 ? object.material[0] : null)
+      : object.material;
+    if (!mat || !object.geometry || !object.geometry.attributes?.position) return;
+
     const transform = inverseRoot.clone().multiply(object.matrixWorld);
-    const geometry = object.geometry.clone().applyMatrix4(transform);
+    let geometry = object.geometry.clone();
     geometry.clearGroups();
+    geometry.morphAttributes = {};
+
+    // De-interleave any InterleavedBufferAttribute before matrix transform / merging
+    for (const attrName of Object.keys(geometry.attributes)) {
+      const attr = geometry.attributes[attrName];
+      if (attr && attr.isInterleavedBufferAttribute) {
+        const count = attr.count;
+        const itemSize = attr.itemSize;
+        const out = new Float32Array(count * itemSize);
+        for (let i = 0; i < count; i++) {
+          for (let c = 0; c < itemSize; c++) {
+            out[i * itemSize + c] = attr.getComponent(i, c);
+          }
+        }
+        geometry.setAttribute(attrName, new THREE.BufferAttribute(out, itemSize, false));
+      }
+    }
+
+    if (!mat.vertexTangents && geometry.attributes.tangent) {
+      geometry.deleteAttribute('tangent');
+    }
+
+    geometry.applyMatrix4(transform);
+
+    const attrSig = Object.keys(geometry.attributes)
+      .sort()
+      .map((k) => {
+        const a = geometry.attributes[k];
+        return `${k}:${a.itemSize}:${a.normalized ? 1 : 0}:${a.array?.constructor?.name || 'Arr'}`;
+      })
+      .join('|');
+
+    const key = `${mat.uuid}-${object.castShadow}-${object.receiveShadow}-${attrSig}`;
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        material: mat,
+        cast: object.castShadow,
+        receive: object.receiveShadow,
+        meshes: [],
+        geometries: [],
+      });
+    }
+    const bucket = buckets.get(key);
     bucket.meshes.push(object);
     bucket.geometries.push(geometry);
   });
+
   for (const bucket of buckets.values()) {
     if (bucket.meshes.length < 2) {
       for (const g of bucket.geometries) g.dispose();
@@ -107,18 +165,27 @@ export function mergeStaticMeshes(root) {
     const hasIndexed = geoms.some((g) => Boolean(g.index));
     const hasNonIndexed = geoms.some((g) => !g.index);
     if (hasIndexed && hasNonIndexed) {
-      geoms = geoms.map((g) => (g.index ? g.toNonIndexed() : g));
+      geoms = geoms.map((g) => {
+        if (!g.index) return g;
+        const ni = g.toNonIndexed();
+        g.dispose();
+        return ni;
+      });
     }
-    const commonAttrs = Object.keys(geoms[0].attributes).filter((attr) =>
-      geoms.every((g) => Boolean(g.attributes[attr]))
-    );
-    for (const g of geoms) {
-      for (const attr of Object.keys(g.attributes)) {
-        if (!commonAttrs.includes(attr)) g.deleteAttribute(attr);
+    let geometry = null;
+    try {
+      geometry = mergeGeometries(geoms, false);
+    } catch {
+      geometry = null;
+    }
+    for (const g of geoms) g.dispose();
+    if (!geometry) {
+      for (const m of bucket.meshes) {
+        m.matrixAutoUpdate = false;
+        m.updateMatrix();
       }
+      continue;
     }
-    const geometry = mergeGeometries(geoms, false);
-    if (!geometry) throw new Error('Static geometry batching failed');
     const mesh = new THREE.Mesh(geometry, bucket.material);
     mesh.castShadow = bucket.cast;
     mesh.receiveShadow = bucket.receive;

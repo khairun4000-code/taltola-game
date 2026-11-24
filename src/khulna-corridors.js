@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { attachDerivedPBRMaps, upgradeWetAsphaltMaterial } from './aaa-shaders.js';
 import { buildBanglaTruck, buildCNGAuto } from './khulna-vehicles.js';
@@ -1429,7 +1429,7 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   addBox(staticG, [7.2, 0.08, 10.5], [ox - 7.8, 0.015, oz + 38.5], m.grass, { castShadow: false, uvScale: 2.5 });
 
   // Populate Taltola House lawns & roadside verges with the new 3D Durba Grass Model (durba_grass_3d.glb)
-  const durbaLoader = new GLTFLoader();
+  const durbaLoader = createConfiguredGLTFLoader();
   durbaLoader.load(
     './assets/durba_grass_3d.glb',
     (gltf) => {

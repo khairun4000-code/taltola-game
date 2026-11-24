@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 /**
@@ -264,7 +264,7 @@ export function buildKhulnaWildlife(parent, waterHub = null) {
   root.name = 'KhulnaLivingWildlife';
   parent.add(root);
 
-  const loader = new GLTFLoader();
+  const loader = createConfiguredGLTFLoader();
   const flocks = [];
   const geese = [];
   const mixers = [];

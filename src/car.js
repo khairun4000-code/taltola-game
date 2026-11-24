@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeStaticMeshes } from './scene-utils.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { rigAllCarDoors, createInteriorCockpitRig } from './car-interior.js';
 import { loadHighQualityTata2515 } from './tata-2515-truck.js';
@@ -3098,10 +3098,13 @@ export function createDrivableCar(scene, manager, config) {
       });
   }
 
-  // Load GLB asynchronously so startup stays fast (do not pass LoadingManager for optional extra cars so loading screen doesn't hang on 84MB Alphard)
-  const loader = new GLTFLoader(config.isBMW ? manager : undefined);
-  loader.setMeshoptDecoder(MeshoptDecoder);
-  if (!config.isTata2515) loader.load(
+  // Load GLB asynchronously on demand using shared Draco + Meshopt worker pool
+  let loadStarted = false;
+  function ensureLoaded() {
+    if (loadStarted || config.isTata2515) return;
+    loadStarted = true;
+    const loader = createConfiguredGLTFLoader(config.isBMW ? manager : undefined);
+    loader.load(
     config.assetUrl,
     (gltf) => {
       const model = gltf.scene;
@@ -3873,6 +3876,22 @@ export function createDrivableCar(scene, manager, config) {
             kickstandPivot,
             kickstandTipAnchor,
           };
+          // Batch rigid sub-assemblies (spokes, frame tubes, lugs, rims) while keeping steering, wheels, pedals, chain & kickstand 100% dynamic!
+          const saddleSet = new Set(saddleMeshes);
+          const frameStaticNode = model.getObjectByName('Frame_Static');
+          if (frameStaticNode) {
+            mergeStaticMeshes(frameStaticNode, {
+              skipPredicate: (o) => o === kickstandPivot || o === saddleAsm || saddleSet.has(o),
+            });
+          }
+          if (steering) {
+            mergeStaticMeshes(steering, {
+              skipPredicate: (o) => o === wheelFront || o === gripAnchorL || o === gripAnchorR || saddleSet.has(o),
+            });
+          }
+          for (const wNode of [wheelFront, wheelRear, wheelRearL, wheelRearR]) {
+            if (wNode) mergeStaticMeshes(wNode);
+          }
         } else if (config.isBike) {
           const res = rigMotorcycleWheels(orientedWrapper, config);
           riggedWheels = res.wheels;
@@ -4456,6 +4475,8 @@ export function createDrivableCar(scene, manager, config) {
       console.warn(`Could not load car model (${config.name}):`, err);
     },
   );
+  }
+  if (!config.deferLoad) ensureLoaded();
 
   const steerAxisY = new THREE.Vector3(0, 1, 0);
   const steerDeltaQ = new THREE.Quaternion();
@@ -6022,6 +6043,7 @@ export function createDrivableCar(scene, manager, config) {
       });
       if (root.parent) root.parent.remove(root);
     },
+    ensureLoaded,
     setVisibilityAndShadow,
     setEnvironmentMap,
     setQualityMode,

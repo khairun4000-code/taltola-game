@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
 
 /**
  * TATA LPT 2515 (10-WHEELER HIGHWAY TRUCK) — PHOTOREALISTIC PBR UPGRADE
@@ -904,7 +904,7 @@ function buildExteriorSteelAndLights(parent, mats, enableRealLights = true) {
 
 export function loadHighQualityTata2515(assetUrl = './assets/tata_2515.glb', { enableRealLights = true } = {}) {
   return new Promise((resolve, reject) => {
-    const loader = new GLTFLoader();
+    const loader = createConfiguredGLTFLoader();
     loader.load(
       assetUrl,
       (gltf) => {

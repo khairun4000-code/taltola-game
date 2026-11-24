@@ -458,6 +458,41 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     if (!playerPos) return;
     landmarks.syncVisibility?.(playerPos);
     corridors.syncVisibility?.(playerPos);
+
+    // Stream/cull Altapole enterable houses, 6-story head tower & 8-house opposite goli when out of range
+    if (altapole?.group) {
+      const dxA = playerPos.x - 178.0;
+      const dzA = playerPos.z - (-448.0);
+      const wantA = (dxA * dxA + dzA * dzA) <= 215 * 215;
+      if (altapole.group.visible !== wantA) altapole.group.visible = wantA;
+    }
+    if (altapoleTower?.group) {
+      const dxAT = playerPos.x - 157.0;
+      const dzAT = playerPos.z - (-510.0);
+      const wantAT = (dxAT * dxAT + dzAT * dzAT) <= 170 * 170;
+      if (altapoleTower.group.visible !== wantAT) altapoleTower.group.visible = wantAT;
+    }
+    if (altapoleGoli?.group) {
+      const dxAG = playerPos.x - 194.0;
+      const dzAG = playerPos.z - (-404.0);
+      const wantAG = (dxAG * dxAG + dzAG * dzAG) <= 215 * 215;
+      if (altapoleGoli.group.visible !== wantAG) altapoleGoli.group.visible = wantAG;
+    }
+
+    // Stream/cull Haji Mohsin Road & 10-Story Sk Arshan Tower exterior (around 0,0) when > 290m away
+    const hajiDistSq = playerPos.x * playerPos.x + playerPos.z * playerPos.z;
+    const showHaji = hajiDistSq <= 290 * 290;
+    if (tower?.districtGroup && tower.districtGroup.visible !== showHaji) tower.districtGroup.visible = showHaji;
+    if (roadBaseGroup.visible !== showHaji) roadBaseGroup.visible = showHaji;
+    if (farGroup.visible !== showHaji) farGroup.visible = showHaji;
+    if (detailsGroup.visible !== showHaji) detailsGroup.visible = showHaji;
+
+    // Stream/cull Taltola House street wires & foliage when > 290m away
+    const dxT = playerPos.x - tx;
+    const dzT = playerPos.z - tz;
+    const showTaltola = (dxT * dxT + dzT * dzT) <= 290 * 290;
+    if (taltolaDetailsGroup.visible !== showTaltola) taltolaDetailsGroup.visible = showTaltola;
+
     for (const z of zoneFoliageSlices) {
       const dx = playerPos.x - z.cx;
       const dz = playerPos.z - z.cz;

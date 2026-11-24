@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { box, cylinder, rodBetween } from './scene-utils.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
+import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { attachDerivedPBRMaps } from './aaa-shaders.js';
 
 /**
@@ -767,7 +767,7 @@ export function buildKhulnaModelMosque3D(outerStaticG, outerDynamicG, bank) {
 
   // Load the user's new repaired & textured Tripo 3D Khulna District Model Mosque exterior
   // Positioned at the exact Khulna District Model Mosque plaza (cx = 175.0, cz = 166.0) facing East (+X) toward the courtyard!
-  const mosqueLoader = new GLTFLoader();
+  const mosqueLoader = createConfiguredGLTFLoader();
   mosqueLoader.load(
     './assets/khulna_model_mosque_tripo.glb',
     (gltf) => {
@@ -818,6 +818,7 @@ export function buildKhulnaModelMosque3D(outerStaticG, outerDynamicG, bank) {
 
       mScene.position.set(0, 0, -0.5 * scale);
       mScene.scale.setScalar(scale);
+      mergeStaticMeshes(mScene);
       wrapper.add(mScene);
 
       // In Blender, Front faced -Y -> in glTF (+Y up), Front faces +Z.
@@ -839,7 +840,7 @@ export function buildKhulnaModelMosque3D(outerStaticG, outerDynamicG, bank) {
   box(staticG, [32.6, 0.24, 34.0], [174.4, 0.12, 166.0], plazaMat, { castShadow: false });
 
   // Lush 3D Durba Grass planted inside the Central Marble Staircase Planter Box (X=180.95..183.42, Z=164.88..167.12, Y=2.66m!)
-  const planterGrassLoader = new GLTFLoader();
+  const planterGrassLoader = createConfiguredGLTFLoader();
   planterGrassLoader.load('./assets/alia_grass_clumps.glb', (gltf) => {
     const templates = [];
     gltf.scene.updateMatrixWorld(true);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
+import { mergeStaticMeshes } from './scene-utils.js';
 
 /**
  * Exact arched road-deck height profile Y(localX) sampled from
@@ -479,13 +480,15 @@ export function buildKhanJahanAliBridge(options = {}) {
     }
   }
 
-  const loader = new GLTFLoader();
+  const loader = createConfiguredGLTFLoader();
   loader.load(
     glbUrl,
     (gltf) => {
       const model = gltf.scene;
       model.traverse((obj) => {
         if (obj.name && obj.name.startsWith('Toll_Barrier_Arm_')) {
+          obj.userData._keepDynamic = true;
+          obj.traverse((sub) => { sub.userData._keepDynamic = true; });
           tollBarriers.push({
             obj,
             phase: tollBarriers.length * 1.15,
@@ -526,6 +529,7 @@ export function buildKhanJahanAliBridge(options = {}) {
       });
 
       modelAnchor.add(model);
+      mergeStaticMeshes(model, { skipPredicate: (m) => Boolean(m.userData?._keepDynamic) });
       applyNightFactor(currentNightFactor);
     },
     undefined,
