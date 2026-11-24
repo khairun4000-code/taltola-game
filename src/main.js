@@ -3,6 +3,8 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { FirstPersonControls } from './controls.js';
 import { createMaterials } from './materials.js';
 import { buildHouse } from './house.js';
@@ -143,9 +145,18 @@ if (!TIME_OF_DAY_PRESETS[timeOfDayId]) timeOfDayId = 'golden';
 let skySystem = null;
 let composer = null;
 let bloomPass = null;
+let fxaaPass = null;
+
+function updateFxaaResolution() {
+  if (!fxaaPass) return;
+  const pr = renderer.getPixelRatio();
+  const w = Math.max(1, window.innerWidth * pr);
+  const h = Math.max(1, window.innerHeight * pr);
+  fxaaPass.material.uniforms['resolution'].value.set(1 / w, 1 / h);
+}
 
 function setupPostProcessing() {
-  // Fast non-MSAA HalfFloat render target + quarter-res UnrealBloomPass eliminates heavy WebGL2 MSAA resolve lag for smooth 60 FPS on Ultra!
+  // Fast non-MSAA HalfFloat render target + half-res UnrealBloomPass + crisp FXAA anti-aliasing!
   const composerRT = new THREE.WebGLRenderTarget(
     Math.max(1, window.innerWidth),
     Math.max(1, window.innerHeight),
@@ -167,6 +178,9 @@ function setupPostProcessing() {
   );
   composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
+  fxaaPass = new ShaderPass(FXAAShader);
+  composer.addPass(fxaaPass);
+  updateFxaaResolution();
 }
 
 function updateSunPositionFromAnchor(ax, az) {
@@ -230,15 +244,20 @@ function cycleTimeOfDay() {
 timeToggleButton?.addEventListener('click', cycleTimeOfDay);
 
 function renderActiveScene() {
-  // Full-resolution 4x MSAA EffectComposer + half-res UnrealBloomPass glow on Ultra & High across ALL times of day!
-  const useBloom = Boolean(
+  // Full-resolution EffectComposer + FXAA anti-aliasing (+ Bloom on High & Ultra 4K; also FXAA on Medium when software renderer lacks hardware MSAA!)
+  const useComposer = Boolean(
     !inStudio
     && composer
     && bloomPass
-    && (quality === 'ultra' || quality === 'high')
-    && bloomPass.strength > 0.02
+    && (
+      ((quality === 'ultra' || quality === 'high') && bloomPass.strength > 0.02)
+      || (quality === 'medium' && softwareRendererDetected)
+    )
   );
-  if (useBloom) {
+  if (useComposer) {
+    if (bloomPass) {
+      bloomPass.enabled = (quality === 'ultra' || quality === 'high') && bloomPass.strength > 0.02;
+    }
     composer.render();
   } else {
     renderer.render(scene, camera);
@@ -1390,23 +1409,17 @@ function applyQuality(nextQuality) {
   const isUltra = quality === 'ultra';
   const isHigh = quality === 'high';
   // 4 Game-Style Presets: sharp QHD+ resolution with 60 FPS GPU fillrate balance across Low Smooth -> Ultra 4K
-  const ratios = (softwareRendererDetected && !urlForcedQuality)
-    ? {
-      low: 0.56,
-      medium: 0.65,
-      high: 0.72,
-      ultra: 0.80,
-    }
-    : {
-      low: Math.min(dpr, 1.15),
-      medium: Math.min(dpr, 1.25),
-      high: Math.min(dpr, 1.40),
-      ultra: Math.min(dpr, 1.55),
-    };
-  const shadowSizes = { low: 1024, medium: 1024, high: 1024, ultra: 1536 };
+  // ONLY Low Smooth uses dynamic CPU scaling on software renderers; Medium, High & Ultra 4K ALWAYS render at full 100%+ sharp resolution with real shadows & PBR!
+  const ratios = {
+    low: (softwareRendererDetected && !urlForcedQuality) ? 0.62 : Math.min(dpr, 1.15),
+    medium: Math.max(1.0, Math.min(dpr, 1.25)),
+    high: Math.max(1.10, Math.min(dpr, 1.40)),
+    ultra: Math.max(1.35, Math.min(dpr * 1.35, 1.65)),
+  };
+  const shadowSizes = { low: 1024, medium: 1024, high: 1536, ultra: 2048 };
   const useShadows = shadowsOverride === 'on'
     ? true
-    : (shadowsOverride === 'off' ? false : (!isLow && !(softwareRendererDetected && !urlForcedQuality)));
+    : (shadowsOverride === 'off' ? false : !isLow);
   const activeRatio = ratios[quality] ?? ratios.high;
 
   renderer.setPixelRatio(activeRatio);
@@ -1419,6 +1432,7 @@ function applyQuality(nextQuality) {
       Math.max(320, Math.floor(window.innerWidth * 0.5)),
       Math.max(180, Math.floor(window.innerHeight * 0.5))
     );
+    updateFxaaResolution();
   }
   renderer.shadowMap.enabled = useShadows;
   // Hardware 4-tap PCFShadowMap + radius=2.2 gives crisp soft shadows at ~2x higher fragment FPS than 9-tap PCFSoftShadowMap!
@@ -1519,7 +1533,7 @@ function applyQuality(nextQuality) {
     }
   });
 
-  sceneMaterials?.setQualityMode?.(quality, softwareRendererDetected && !urlForcedQuality);
+  sceneMaterials?.setQualityMode?.(quality, isLow && softwareRendererDetected && !urlForcedQuality);
   environment?.setQualityMode?.(quality);
   environment?.tower?.setQualityMode?.(quality);
   environment?.city?.refreshActiveChunks?.(playerPos.x, playerPos.z, quality);
@@ -3504,13 +3518,13 @@ async function initialize() {
       localStorage.setItem('taltola_quality', quality);
       localStorage.setItem('taltola_quality_manual', '1');
     } catch {}
-  } else if (isEarlySoftwareGpu) {
+  } else if (isEarlySoftwareGpu && !localStorage.getItem('taltola_quality_manual')) {
     softwareRendererDetected = true;
     quality = 'low';
     ultraFastMode = true;
-    setTimeout(() => {
-      gtaPhoneUI?.showToast?.('⚡ Windows-এ AMD Radeon ড্রাইভার বন্ধ থাকায় CPU Smooth Boost চালু হয়েছে! (Device Manager-এ চালু করলে 120 FPS পাবেন)');
-    }, 2200);
+  } else if (isEarlySoftwareGpu) {
+    softwareRendererDetected = true;
+    ultraFastMode = quality === 'low';
   } else {
     try {
       const gl = renderer.getContext();
@@ -5833,10 +5847,12 @@ function updateHUDPrompt(force = true) {
         if (nowW - lastNearWaterProbeAt > 250) {
           lastNearWaterProbeAt = nowW;
           nearWaterHintCached = false;
-          for (const [ox, oz] of [[4.5, 0], [-4.5, 0], [0, 4.5], [0, -4.5], [6.5, 6.5], [-6.5, 6.5], [6.5, -6.5], [-6.5, -6.5]]) {
-            if (environment?.city?.isInWater?.(playerPos.x + ox, playerPos.z + oz)) {
-              nearWaterHintCached = true;
-              break;
+          if ((playerPos.y - EYE_HEIGHT) < 3.6) {
+            for (const [ox, oz] of [[4.5, 0], [-4.5, 0], [0, 4.5], [0, -4.5], [6.5, 6.5], [-6.5, 6.5], [6.5, -6.5], [-6.5, -6.5]]) {
+              if (environment?.city?.isInWater?.(playerPos.x + ox, playerPos.z + oz)) {
+                nearWaterHintCached = true;
+                break;
+              }
             }
           }
         }
@@ -6788,6 +6804,7 @@ window.addEventListener('resize', () => {
     Math.max(320, Math.floor(window.innerWidth * 0.5)),
     Math.max(180, Math.floor(window.innerHeight * 0.5))
   );
+  updateFxaaResolution();
 });
 
 let fpsFrames = 0;

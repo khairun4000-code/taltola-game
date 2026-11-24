@@ -421,7 +421,7 @@ export function createMaterials(renderer, manager) {
     for (const mat of allMaterials) {
       if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
       if (mat.userData && mat.userData.pbrNormalMap) {
-        const nextNorm = (isLow || softwareFast) ? null : mat.userData.pbrNormalMap;
+        const nextNorm = softwareFast ? null : mat.userData.pbrNormalMap;
         const nextRough = (isLow || quality === 'medium' || softwareFast) ? null : mat.userData.pbrRoughnessMap;
         if (mat.normalMap !== nextNorm || mat.roughnessMap !== nextRough) {
           mat.normalMap = nextNorm;
