@@ -5,6 +5,7 @@ import { attachDerivedPBRMaps, upgradeWetAsphaltMaterial } from './aaa-shaders.j
 import { buildBanglaTruck, buildCNGAuto } from './khulna-vehicles.js';
 import { decorateCorridorPole, addBigNetaWallPoster } from './khulna-street-props.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
+import { buildKhanJahanAliBridge } from './khan-jahan-ali-bridge.js';
 
 function seeded(seed = 7731) {
   let s = seed >>> 0;
@@ -2444,20 +2445,29 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
 
   const hajiSlice = makeSlice('KhulnaSlice_HajiMohsin', 0, 0, 195);
   const rupshaSlice = makeSlice('KhulnaSlice_RupshaWaterfront', 1160, 320, 360);
+  const bridgeSlice = makeSlice('KhulnaSlice_KhanJahanAliBridge', 1395, 820, 680);
   const taltolaSlice = makeSlice('KhulnaSlice_TaltolaHouse', TALTOLA_HOUSE_OFFSET.x, TALTOLA_HOUSE_OFFSET.z, 255);
   const altapoleSlice = makeSlice('KhulnaSlice_AltapoleLane', 166, -408, 225);
   const circuitRoadsSlice = makeSlice('KhulnaSlice_CircuitStadiumRoads', -95, -735, 480);
 
   buildHajiMohsinCorridor(hajiSlice.staticG, hajiSlice.dynamicG, bank, m, helpers, hajiSlice.treesG);
   const riverVessels = buildRupshaWaterfrontCorridor(rupshaSlice.staticG, rupshaSlice.dynamicG, bank, m, helpers);
+  const khanJahanAliBridge = buildKhanJahanAliBridge({
+    position: [1395, -0.35, 820],
+    scale: 0.96,
+    shipTravelRangeZ: 210,
+    enableDeckTraffic: true,
+    enablePointLights: true,
+  });
+  bridgeSlice.dynamicG.add(khanJahanAliBridge.root);
   buildTaltolaNeighborhoodCorridor(taltolaSlice.staticG, taltolaSlice.dynamicG, bank, m, helpers, taltolaSlice.treesG);
   buildAltapoleLaneCorridor(altapoleSlice.staticG, altapoleSlice.dynamicG, bank, m, helpers, altapoleSlice.treesG);
   buildCircuitStadiumRoadNetwork(circuitRoadsSlice.staticG, circuitRoadsSlice.dynamicG, bank, m, helpers, circuitRoadsSlice.treesG);
 
-  const slices = [hajiSlice, rupshaSlice, taltolaSlice, altapoleSlice, circuitRoadsSlice];
+  const slices = [hajiSlice, rupshaSlice, bridgeSlice, taltolaSlice, altapoleSlice, circuitRoadsSlice];
   for (const s of slices) {
     mergeCorridorStatic(s.staticG);
-    if (s !== rupshaSlice) mergeCorridorStatic(s.dynamicG);
+    if (s !== rupshaSlice && s !== bridgeSlice) mergeCorridorStatic(s.dynamicG);
     helpers.finalizeTrees?.(s.treesG);
   }
 
@@ -2479,6 +2489,7 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
       for (const e of bank.emissiveMaterials) {
         e.mat.emissiveIntensity = e.day + (e.night - e.day) * nf;
       }
+      khanJahanAliBridge.setNightFactor(nf);
     },
     update(time, playerPos = null, skipSyncVisibility = false) {
       if (playerPos && !skipSyncVisibility) syncVisibility(playerPos);
@@ -2487,6 +2498,9 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
           v.obj.position.y = v.baseY + Math.sin(time * v.speed + v.phase) * v.amp;
           v.obj.rotation.z = Math.cos(time * v.speed * 0.8 + v.phase) * 0.022;
         }
+      }
+      if (bridgeSlice.root.visible) {
+        khanJahanAliBridge.update(time);
       }
     },
     setVisible(visible) {

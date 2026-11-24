@@ -12,6 +12,7 @@ import {
   buildSedanCar,
   buildBanglaTruck,
 } from './khulna-vehicles.js';
+import { buildKhanJahanAliBridge } from './khan-jahan-ali-bridge.js';
 
 function seeded(seed = 202611) {
   let s = seed >>> 0;
@@ -1571,33 +1572,16 @@ export function buildRupshaMap3D(sharedUniforms) {
   }
 
   // ==========================================================================
-  // 6) ICONIC KHAN JAHAN ALI BRIDGE (রূপসা সেতু) ON SOUTHERN HORIZON (z = +195)
+  // 6) ULTRA-REALISTIC KHAN JAHAN ALI BRIDGE (রূপসা সেতু · GLB + SHIPS + NIGHT LIGHTS)
   // ==========================================================================
-  {
-    const bz = 195;
-    // Elevated prestressed concrete box-girder deck spanning across the Rupsha River
-    addBox(staticBridge, [340, 2.4, 14.5], [135, 16.5, bz], bank.concrete, { uvScale: 8.0 });
-    addBox(staticBridge, [340, 0.18, 12.2], [135, 17.78, bz], bank.roadPlain, { castShadow: false, uvScale: 10.0 });
-    // Bridge parapets
-    addBox(staticBridge, [340, 1.15, 0.45], [135, 18.25, bz - 6.9], bank.cream);
-    addBox(staticBridge, [340, 1.15, 0.45], [135, 18.25, bz + 6.9], bank.cream);
-    // Signature twin-fluted river concrete piers & haunched spans
-    for (let px = 15; px <= 265; px += 42) {
-      addBox(staticBridge, [4.6, 17.5, 3.2], [px, 7.6, bz - 4.0], bank.concrete, { uvScale: 4.0 });
-      addBox(staticBridge, [4.6, 17.5, 3.2], [px, 7.6, bz + 4.0], bank.concrete, { uvScale: 4.0 });
-      addBox(staticBridge, [6.2, 2.2, 12.6], [px, 14.8, bz], bank.cream);
-      // Warm bridge streetlamps + red river navigation beacons
-      addCyl(staticBridge, 0.10, 0.14, 6.2, [px, 21.0, bz - 6.4], bank.aluminum, 6);
-      const bLamp = new THREE.Mesh(new THREE.SphereGeometry(0.38, 8, 6), bank.lampWarm);
-      bLamp.position.set(px, 24.2, bz - 6.0);
-      dynamicGroup.add(bLamp);
-      const navB = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), bank.beaconRed);
-      navB.position.set(px, 3.5, bz - 6.2);
-      dynamicGroup.add(navB);
-    }
-    // Bridge west approach ramp descending toward Khulna
-    addBox(staticBridge, [95, 2.2, 14.2], [-80, 9.2, bz], bank.concrete, { rotZ: 0.155, uvScale: 8.0 });
-  }
+  const khanJahanAliBridge = buildKhanJahanAliBridge({
+    position: [135, -0.35, 195],
+    scale: 0.72,
+    shipTravelRangeZ: 150,
+    enableDeckTraffic: true,
+    enablePointLights: true,
+  });
+  dynamicGroup.add(khanJahanAliBridge.root);
 
   // ==========================================================================
   // 7) LUSH TROPICAL FOLIAGE, STREETLAMPS & OVERHEAD KHULNA WIRES
@@ -1772,6 +1756,7 @@ export function buildRupshaMap3D(sharedUniforms) {
     for (const e of bank.emissives) {
       e.mat.emissiveIntensity = e.day + (e.night - e.day) * f;
     }
+    khanJahanAliBridge.setNightFactor(f);
   }
 
   function setWetness(w) {
@@ -1785,6 +1770,9 @@ export function buildRupshaMap3D(sharedUniforms) {
   }
 
   function update(elapsed, dt, cameraPos) {
+    // 0) Animate Khan Jahan Ali Bridge ships underneath, deck traffic & toll plaza barriers
+    khanJahanAliBridge.update(elapsed);
+
     // 1) Gently bob moored Launch & Ferry
     for (const v of bobbingVessels) {
       v.obj.position.y = v.baseY + Math.sin(elapsed * v.speed + v.phase) * v.amp;

@@ -114,6 +114,7 @@
       <button id="btn-traffic">রূপসা ট্রাফিক মোড়</button>
       <button id="btn-fish">পাইকারি মৎস্য বাজার</button>
       <button id="btn-river">নদী থেকে ভিউ (বোট)</button>
+      <button id="btn-bridge">রূপসা সেতু (ব্রিজ)</button>
       <button id="btn-drone">ড্রোন ট্যুর: বন্ধ</button>
     </div>
 
@@ -267,6 +268,7 @@
       traffic: { pos: [-56, 18, 22],  target: [-88, 4, -14] },
       fish:    { pos: [-26, 14, -36], target: [4, 2.5, -62] },
       river:   { pos: [112, 14, 48],  target: [12, 4, 18] },
+      bridge:  { pos: [48, 26, 128],  target: [135, 11, 195] },
     };
 
     let droneMode = false;
@@ -274,7 +276,7 @@
     let camLerp = null;
 
     function setActiveCamBtn(id) {
-      for (const bId of ['btn-aerial', 'btn-ghat', 'btn-park', 'btn-cafe', 'btn-traffic', 'btn-fish', 'btn-river']) {
+      for (const bId of ['btn-aerial', 'btn-ghat', 'btn-park', 'btn-cafe', 'btn-traffic', 'btn-fish', 'btn-river', 'btn-bridge']) {
         document.getElementById(bId)?.classList.remove('active');
       }
       document.getElementById(id)?.classList.add('active');
@@ -304,6 +306,7 @@
     document.getElementById('btn-traffic').onclick = () => flyTo('traffic', 'btn-traffic');
     document.getElementById('btn-fish').onclick = () => flyTo('fish', 'btn-fish');
     document.getElementById('btn-river').onclick = () => flyTo('river', 'btn-river');
+    document.getElementById('btn-bridge').onclick = () => flyTo('bridge', 'btn-bridge');
 
     document.getElementById('btn-drone').onclick = () => {
       droneMode = !droneMode;
