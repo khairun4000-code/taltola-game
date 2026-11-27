@@ -3994,6 +3994,11 @@ function warpToLandmark(lm, lockControls = false) {
     sz = -684.0;
     lx = 133.5;
     lz = -684.5;
+  } else if (lm.id === 'circuit_house_maidan') {
+    sx = 40.0;
+    sz = -520.2;
+    lx = 40.0;
+    lz = -548.0;
   }
 
   if (activeCar) {
@@ -5827,6 +5832,8 @@ function updateHUDPrompt(force = true) {
       zone = environment?.altapoleGoli?.getZoneName?.(x, z, footY) || environment?.altapoleTower?.getZoneName?.(x, z, footY) || environment?.altapole?.getZoneName?.(x, z) || 'ALTAPOLE LANE · KHULNA';
     } else if (environment?.landmarks?.circuitHouse?.getZoneName?.(x, z, footY)) {
       zone = environment.landmarks.circuitHouse.getZoneName(x, z, footY);
+    } else if (environment?.landmarks?.circuitHouseMaidan?.getZoneName?.(x, z, footY)) {
+      zone = environment.landmarks.circuitHouseMaidan.getZoneName(x, z, footY);
     } else if (environment?.landmarks?.judgeCourt?.getZoneName?.(x, z, footY)) {
       zone = environment.landmarks.judgeCourt.getZoneName(x, z, footY);
     } else if (environment?.landmarks?.satrastaMore?.getZoneName?.(x, z, footY)) {

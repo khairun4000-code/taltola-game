@@ -2149,7 +2149,7 @@ function buildAltapoleLaneCorridor(staticG, dynamicG, bank, m, helpers, treesG =
  * zero Z-fighting), smooth circular pitch junction pads, red-brick footpaths & cream curbs.
  */
 function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, treesG = staticG) {
-  function buildPitchStyledRoad(pts, roadWidth = 6.2, { withPoles = true, poleSide = 1, poleStep = 38, skipSidewalkZRange = null } = {}) {
+  function buildPitchStyledRoad(pts, roadWidth = 6.2, { withPoles = true, poleSide = 1, poleStep = 38, skipSidewalkZRange = null, skipSidewalkXRange = null } = {}) {
     // 1) Continuous mitered Taltola House wet-asphalt carriageway (flush at y = 0.002 — ZERO wheel/foot sinking!)
     addPitchRoadAlongPolyline(staticG, pts, roadWidth * 0.5, m.road, 0.002);
 
@@ -2170,8 +2170,11 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
       const mx = (x0 + x1) * 0.5;
       const mz = (z0 + z1) * 0.5;
 
-      // Skip procedural 16cm raised brick footpaths where real 3D GLB landmarks (Circuit House & Judge Court) provide their own footpaths!
-      const inSkipZone = skipSidewalkZRange && mz >= skipSidewalkZRange[0] && mz <= skipSidewalkZRange[1];
+      // Skip procedural 16cm raised brick footpaths where real 3D GLB landmarks (Circuit House, Maidan & Judge Court) provide their own footpaths!
+      const inSkipZone = (
+        (skipSidewalkZRange && mz >= skipSidewalkZRange[0] && mz <= skipSidewalkZRange[1])
+        || (skipSidewalkXRange && mx >= skipSidewalkXRange[0] && mx <= skipSidewalkXRange[1])
+      );
       if (!inSkipZone) {
         // 2) Continuous Red-Brick Footpaths + Cream Concrete Curbs on BOTH sides (micro-staggered so joints never Z-fight)
         const swOffset = roadWidth * 0.5 + 0.78;
@@ -2202,7 +2205,11 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
           const t = d / segLen;
           const px = x0 + dx * t + nx * poleSide * (roadWidth * 0.5 + 1.05);
           const pz = z0 + dz * t + nz * poleSide * (roadWidth * 0.5 + 1.05);
-          if (!(skipSidewalkZRange && pz >= skipSidewalkZRange[0] && pz <= skipSidewalkZRange[1])) {
+          const poleSkipped = (
+            (skipSidewalkZRange && pz >= skipSidewalkZRange[0] && pz <= skipSidewalkZRange[1])
+            || (skipSidewalkXRange && px >= skipSidewalkXRange[0] && px <= skipSidewalkXRange[1])
+          );
+          if (!poleSkipped) {
             const armDir = -Math.sign(nx * poleSide || 1);
             const tier = (poleCoords.length % 2 === 0) ? 2 : 0;
             addUtilityPoleAndLamp(staticG, dynamicG, bank, px, pz, armDir, false, poleCoords, tier);
@@ -2223,7 +2230,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     }
   }
 
-  // 1) South Main Road in front of Boro Maath (Upper Jessore Rd: Shamsur Rahman Rd -> Boro Maath Gate -> Circuit House Rd -> Altapole Ln)
+  // 1) South Main Road in front of Circuit House Maidan (Upper Jessore Rd: Shamsur Rahman Rd -> Maidan Main Gate -> Circuit House Rd -> Altapole Ln)
   buildPitchStyledRoad([
     [-165, -515],
     [-110, -518],
@@ -2231,10 +2238,10 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [40, -522],
     [109, -521],
     [166, -519],
-  ], 6.8, { withPoles: true, poleSide: -1, poleStep: 36 });
+  ], 6.8, { withPoles: true, poleSide: -1, poleStep: 36, skipSidewalkXRange: [-96, 138] });
 
-  // 2) East Road between Khulna Circuit House (West) & Khulna Judge Court (East) (সার্কিট হাউজ রোড)
-  // Skip procedural 16cm double-sidewalks along z = [-730, -640] so characters NEVER sink/pop between road & real 3D GLB footpaths!
+  // 2) East Road between Khulna Circuit House / Maidan (West) & Khulna Judge Court (East) (সার্কিট হাউজ রোড)
+  // Skip procedural 16cm double-sidewalks along z = [-730, -520] so characters NEVER sink/pop between road & real 3D GLB footpaths!
   buildPitchStyledRoad([
     [109, -521],
     [118, -567],
@@ -2244,7 +2251,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [166, -760],
     [184, -814],
     [204, -862],
-  ], 7.4, { withPoles: true, poleSide: 1, poleStep: 36, skipSidewalkZRange: [-730, -640] });
+  ], 7.4, { withPoles: true, poleSide: 1, poleStep: 36, skipSidewalkZRange: [-730, -520] });
 
   // 3) Small Connecting Road right between Circuit House (z=-726) & Khulna District Stadium (z=-741)
   //    Runs from Circuit House Rd past Stadium Gate No. 1 all the way West to the Stadium West Side Road
@@ -2260,7 +2267,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
   // Short paved approach apron from the small road straight into Stadium Grand Portal Gate No. 1 (105.5, -752)
   addPitchRoadAlongPolyline(staticG, [[105.5, -733.5], [105.5, -754.0]], 4.2, m.road, 0.002);
 
-  // 4) West Road alongside Boro Maath & wrapping cleanly along the West side of Khulna District Stadium
+  // 4) West Road alongside Circuit House Maidan & wrapping cleanly along the West side of Khulna District Stadium
   buildPitchStyledRoad([
     [-38, -516],
     [-27, -551],
@@ -2270,7 +2277,7 @@ function buildCircuitStadiumRoadNetwork(staticG, dynamicG, bank, m, helpers, tre
     [-14, -733.5],
     [-14, -834],
     [-14, -938],
-  ], 6.0, { withPoles: true, poleSide: -1, poleStep: 38 });
+  ], 6.0, { withPoles: true, poleSide: -1, poleStep: 38, skipSidewalkZRange: [-732, -516] });
 
   // 5) North Stadium Perimeter Road (wrapping North of relocated Stadium from Circuit House Rd -> Shaheed Hadis Park East Rd!)
   buildPitchStyledRoad([

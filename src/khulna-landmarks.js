@@ -11,6 +11,7 @@ import { buildKjaCorridorDistrict } from './kja-corridor.js';
 import { buildHajiKaborkhanaCorridor } from './haji-kaborkhana-corridor.js';
 import { buildKhulnaJudgeCourt } from './khulna-judge-court.js';
 import { buildKhulnaCircuitHouse } from './khulna-circuit-house.js';
+import { buildKhulnaCircuitHouseMaidan } from './khulna-circuit-house-maidan.js';
 
 function makeSignTexture({
   title,
@@ -1113,151 +1114,9 @@ function buildCircuitHouseAndStadium(staticG, dynamicG, lm, m) {
     }
   }
 
-  // 3) KHULNA BORO MAATH (Circuit House Ground) — Professional Mowed-Stripe Cricket Outfield, Boundary Rope, 30-Yard Circle & Dugouts!
-  const boroTurfMat = createProTurfMaterial(7211, 16, 2.0, 2.0);
-  // Manicured pro turf covering Boro Maath playing field (x = -14..+82, z = -696..-534, cleanly above base park mesh!)
-  const boroTurfGeo = new THREE.PlaneGeometry(96.0, 162.0);
-  boroTurfGeo.rotateX(-Math.PI / 2);
-  const boroTurfMesh = new THREE.Mesh(boroTurfGeo, boroTurfMat);
-  boroTurfMesh.position.set(34.0, 0.012, -615.0);
-  boroTurfMesh.receiveShadow = true;
-  staticG.add(boroTurfMesh);
-
-  // Crisp White Cricket Boundary Rope & 30-Yard Inner Fielding Circle centered on Boro Maath pitch (38, -618)
-  const boundaryRope = new THREE.Mesh(new THREE.RingGeometry(41.6, 42.15, 56), lm.chalkLine);
-  boundaryRope.rotation.x = -Math.PI / 2;
-  boundaryRope.position.set(38.0, 0.022, -618.0);
-  boundaryRope.receiveShadow = true;
-  staticG.add(boundaryRope);
-
-  // Dashed 30-yard inner fielding circle markers around the cricket pitch
-  for (let d = 0; d < 28; d++) {
-    const a = (d / 28) * Math.PI * 2;
-    rotBox(
-      staticG,
-      [0.24, 0.014, 1.65],
-      [38.0 + Math.cos(a) * 23.0, 0.022, -618.0 + Math.sin(a) * 25.0],
-      lm.chalkLine,
-      -a,
-      { castShadow: false }
-    );
-  }
-
-  // Paved South Entry Esplanade & Low Ornamental Boundary Wall (z = -532)
-  box(staticG, [62.0, 0.06, 8.5], [40.0, 0.018, -536.0], m.brick, { castShadow: false, uvScale: 2.8 });
-  box(staticG, [10.0, 0.06, 46.0], [40.0, 0.017, -559.0], m.brick, { castShadow: false, uvScale: 2.8 });
-  for (const [wx0, wx1] of [[-12, 33], [47, 92]]) {
-    const wlen = wx1 - wx0;
-    const wmid = (wx0 + wx1) * 0.5;
-    box(staticG, [wlen, 0.72, 0.36], [wmid, 0.36, -531.5], m.brick);
-    box(staticG, [wlen + 0.2, 0.14, 0.46], [wmid, 0.78, -531.5], lm.colonialCream);
-    addRailingSpan(staticG, lm, wx0, -531.5, wx1, -531.5, 8, 0.62, 0.85);
-  }
-  for (const gx of [33.5, 46.5]) {
-    box(staticG, [1.2, 3.8, 1.2], [gx, 1.9, -531.5], lm.colonialCream);
-    box(staticG, [1.5, 0.32, 1.5], [gx, 3.9, -531.5], lm.terracottaTile);
-    addParkLamp(staticG, dynamicG, lm, gx + (gx < 40 ? -2.2 : 2.2), -533.8, 4.4);
-  }
-  for (const [bx, bz] of [[24.0, -535.0], [56.0, -535.0], [32.0, -565.0], [48.0, -565.0]]) {
-    addParkBench(staticG, lm, bx, bz, bz < -550 ? Math.PI * 0.5 : 0);
-  }
-
-  // Central Boro Maath Pro Rolled Clay Cricket Square, Creases, Stumps, Bails & Sight-Screens (x = 38, z = -618)
-  box(staticG, [9.2, 0.025, 24.5], [38.0, 0.016, -618.0], lm.moss, { castShadow: false });
-  box(staticG, [3.2, 0.036, 22.4], [38.0, 0.020, -618.0], lm.warmOchre, { castShadow: false, uvScale: 2.2 });
-  for (const cSign of [-1, 1]) {
-    const czBase = -618.0 + cSign * 10.06;
-    // Popping crease, bowling crease & return creases
-    box(staticG, [3.6, 0.014, 0.12], [38.0, 0.042, czBase - cSign * 1.22], lm.chalkLine, { castShadow: false });
-    box(staticG, [2.64, 0.014, 0.10], [38.0, 0.042, czBase], lm.chalkLine, { castShadow: false });
-    for (const rxOff of [-1.32, 1.32]) {
-      box(staticG, [0.10, 0.014, 2.44], [38.0 + rxOff, 0.042, czBase], lm.chalkLine, { castShadow: false });
-    }
-    // 3 Wooden Stumps + Bails
-    for (const sxOff of [-0.12, 0, 0.12]) {
-      cylinder(staticG, 0.020, 0.022, 0.72, [38.0 + sxOff, 0.38, czBase], lm.teakWood, 6);
-    }
-    box(staticG, [0.28, 0.025, 0.025], [38.0, 0.75, czBase], lm.goldMat);
-  }
-
-  // Classic White Cricket Sight-Screen at North End of Boro Maath + Emerald Sponsor Boards + East Team Dugouts
-  box(staticG, [9.5, 4.4, 0.35], [38.0, 2.35, -664.0], lm.whitePlaster);
-  box(staticG, [9.8, 0.35, 0.85], [38.0, 0.25, -664.0], lm.steelMat);
-  for (const bx of [14, 25, 51, 62]) {
-    box(staticG, [8.4, 0.96, 0.32], [bx, 0.48, -664.0], lm.emeraldMat);
-  }
-  for (const dz of [-606.0, -630.0]) {
-    box(staticG, [2.4, 0.22, 7.2], [81.2, 0.11, dz], lm.concrete);
-    box(staticG, [0.16, 2.35, 7.0], [82.3, 1.28, dz], lm.emeraldDark);
-    box(staticG, [2.5, 0.14, 7.4], [81.2, 2.48, dz], lm.emeraldMat);
-    box(staticG, [0.65, 0.48, 6.4], [81.6, 0.46, dz], lm.teakWood);
-  }
-
-  // Subtle GPU-instanced 3D Grass Clumps along the outer border edges of Boro Maath (3 draw calls, high realism!)
-  const boroGrassLoader = new GLTFLoader();
-  boroGrassLoader.load('./assets/alia_grass_clumps.glb', (gltf) => {
-    const templates = [];
-    gltf.scene.updateMatrixWorld(true);
-    gltf.scene.traverse((child) => {
-      if (!child.isMesh || !child.geometry) return;
-      const geom = child.geometry.clone();
-      geom.computeBoundingBox();
-      if (geom.boundingBox) {
-        const bb = geom.boundingBox;
-        geom.translate(-(bb.min.x + bb.max.x) * 0.5, -bb.min.y, -(bb.min.z + bb.max.z) * 0.5);
-      }
-      const mat = new THREE.MeshStandardMaterial({
-        color: 0x3b842b,
-        roughness: 0.90,
-        metalness: 0.0,
-        side: THREE.DoubleSide,
-      });
-      templates.push({ geom, mat });
-    });
-    if (!templates.length) return;
-    let gs = 741901;
-    const grnd = () => { gs = (gs * 1664525 + 1013904223) >>> 0; return gs / 4294967296; };
-    const dummy = new THREE.Object3D();
-    const col = new THREE.Color();
-    const perMesh = 420;
-    for (const { geom, mat } of templates) {
-      const inst = new THREE.InstancedMesh(geom, mat, perMesh);
-      inst.castShadow = false;
-      inst.receiveShadow = true;
-      for (let i = 0; i < perMesh; i++) {
-        // Ring outside the 43m cricket boundary rope so the mowed playing outfield stays super clean!
-        const ang = grnd() * Math.PI * 2;
-        const rad = 43.2 + grnd() * 14.0;
-        const gx = THREE.MathUtils.clamp(38.0 + Math.cos(ang) * rad, -11.0, 79.0);
-        const gz = THREE.MathUtils.clamp(-618.0 + Math.sin(ang) * rad, -692.0, -542.0);
-        dummy.position.set(gx, 0.015, gz);
-        dummy.rotation.set(0, grnd() * Math.PI * 2, 0);
-        const sc = 0.10 + grnd() * 0.07;
-        dummy.scale.set(sc, 0.042 + grnd() * 0.032, sc);
-        dummy.updateMatrix();
-        inst.setMatrixAt(i, dummy.matrix);
-        col.setHSL(0.28 + (grnd() - 0.5) * 0.04, 0.56 + grnd() * 0.14, 0.30 + grnd() * 0.12);
-        inst.setColorAt(i, col);
-      }
-      inst.instanceMatrix.needsUpdate = true;
-      if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
-      dynamicG.add(inst);
-    }
-  }, undefined, () => {});
-
-  // Boro Maath Signboard on West Side of Spawn Walkway
-  box(staticG, [8.2, 0.35, 1.4], [25.0, 0.175, -530.0], m.brick);
-  for (const dPos of [-2.8, 2.8]) {
-    cylinder(staticG, 0.10, 0.12, 4.0, [25.0 + dPos, 2.0, -530.0], lm.steelMat, 8);
-  }
-  addSignBoard(
-    dynamicG,
-    { title: 'খুলনা বড় মাঠ · সার্কিট হাউস ও জেলা স্টেডিয়াম', subtitle: 'KHULNA CIRCUIT HOUSE GROUND & STADIUM · UPPER JESSORE RD', bg: '#0f3d2e', accent: '#bef264' },
-    [25.0, 4.6, -530.0],
-    0,
-    7.6,
-    1.8
-  );
+  // 3) KHULNA CIRCUIT HOUSE MAIDAN (খুলনা সার্কিট হাউজ ময়দান)
+  // Legacy procedural Boro Maath placeholder replaced by full-fidelity Street-View & Satellite 3D GLB module
+  // in ./khulna-circuit-house-maidan.js (built around the game's existing Circuit House without touching it!).
 
   // 4) SHAHEED HADIS PARK & REAL 3D SHAHEED MINAR (Complete Park Grounds + Flower Gardens + 3 Approach Paths + Elevated 6-Step Shaheed Minar + Main & Back Black Gates with Black Locks & Open Pocket Gates)
   const blackGateMat = new THREE.MeshStandardMaterial({ color: 0x101216, roughness: 0.38, metalness: 0.78 });
@@ -1703,6 +1562,7 @@ export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliag
 
   buildCircuitHouseAndStadium(circuitHadisSlice.staticG, circuitHadisSlice.dynamicG, lm, m);
   const circuitHouse = buildKhulnaCircuitHouse(group, m, renderer, botanicalFoliage);
+  const circuitHouseMaidan = buildKhulnaCircuitHouseMaidan(group, m, renderer);
   const judgeCourt = buildKhulnaJudgeCourt(group, m, renderer);
   const aliaMadrasah = buildAliaMadrasahDistrict(group, m);
   const royalMore = buildRoyalMoreDistrict(group, m, botanicalFoliage);
@@ -1724,6 +1584,7 @@ export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliag
       if (s.root.visible !== want) s.root.visible = want;
     }
     circuitHouse.syncVisibility(playerPos);
+    circuitHouseMaidan.syncVisibility(playerPos);
     judgeCourt.syncVisibility(playerPos);
     aliaMadrasah.syncVisibility(playerPos);
     royalMore.syncVisibility(playerPos);
@@ -1737,12 +1598,14 @@ export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliag
     const d = q === 'low' ? 260 : (q === 'medium' ? 350 : (q === 'high' ? 430 : 510));
     circuitHadisSlice.maxDistSq = d * d;
     circuitHouse.setQualityMode?.(q);
+    circuitHouseMaidan.setQualityMode?.(q);
     judgeCourt.setQualityMode?.(q);
   }
 
   return {
     group,
     circuitHouse,
+    circuitHouseMaidan,
     judgeCourt,
     aliaMadrasah,
     royalMore,
@@ -1781,6 +1644,7 @@ export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliag
       return Math.max(
         hadisY,
         circuitHouse.getGroundHeight?.(pos) ?? 0,
+        circuitHouseMaidan.getGroundHeight?.(pos) ?? 0,
         judgeCourt.getGroundHeight?.(pos) ?? 0,
         aliaMadrasah.getGroundHeight?.(pos) ?? 0,
         royalMore.getGroundHeight?.(pos) ?? 0,
@@ -1809,6 +1673,7 @@ export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliag
         blockBox(-334.5, -329.5, -958.4, -957.6); // Back Gate locked double-leaf (Pocket Gate at -336.6..-335.0 stays OPEN!)
       }
       circuitHouse.applyCollisions?.(pos, radius, footY, isVehicle);
+      circuitHouseMaidan.applyCollisions?.(pos, radius, footY, isVehicle);
       judgeCourt.applyCollisions?.(pos, radius, footY, isVehicle);
       aliaMadrasah.applyCollisions?.(pos, radius, footY, isVehicle);
       royalMore.applyCollisions?.(pos, radius, footY);
@@ -1819,6 +1684,7 @@ export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliag
     },
     setNightFactor(nf) {
       circuitHouse.setNightFactor(nf);
+      circuitHouseMaidan.setNightFactor(nf);
       judgeCourt.setNightFactor(nf);
       aliaMadrasah.setNightFactor(nf);
       royalMore.setNightFactor(nf);
@@ -1830,6 +1696,7 @@ export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliag
     update(time, playerPos = null, skipSyncVisibility = false) {
       if (playerPos && !skipSyncVisibility) syncVisibility(playerPos);
       circuitHouse.update(time, playerPos, skipSyncVisibility);
+      circuitHouseMaidan.update(time, playerPos, skipSyncVisibility);
       judgeCourt.update(time, playerPos, skipSyncVisibility);
       aliaMadrasah.update(time, playerPos);
       royalMore.update(time, playerPos);

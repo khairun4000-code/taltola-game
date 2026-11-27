@@ -387,24 +387,19 @@ export function buildEnvironment(scene, m, renderer = null, skySystem = null) {
     [[199, 158, 0.55, 331], [199, 174, 0.55, 332], [214, 118, 0.58, 334]]
   );
 
-  // Shaheed Hadis Park, Boro Maath & Stadium Ring — dense lush swaying Circuit House Shade Trees, Norfolk Pines & Garden Bushes!
+  // Shaheed Hadis Park & Stadium Ring — dense lush swaying Shade Trees, Norfolk Pines & Garden Bushes!
   registerBotanicalZone(
-    [[16, -540, 12.6, 161], [66, -540, 12.8, 167], [78, -650, 12.4, 169], [78, -700, 12.6, 175], [-277, -837, 12.2, 171], [-386, -885, 13.0, 179]],
+    [[78, -650, 12.4, 169], [78, -700, 12.6, 175], [-277, -837, 12.2, 171], [-386, -885, 13.0, 179]],
     [
       [-388, -870, 9.8, 263], [-384, -928, 10.2, 265], [-264, -858, 9.4, 269], [-276, -834, 9.6, 273],
       [-310, -844, 9.5, 274], [-350, -844, 9.8, 276], [-368, -942, 9.6, 278], [-284, -942, 9.4, 280],
-      [15, -620, 9.8, 271], [-18, -565, 9.2, 275], [88, -555, 9.5, 279], [82, -625, 9.8, 285], [-22, -640, 9.4, 287],
-      [45, -534, 9.2, 288], [18, -714, 9.6, 290], [66, -714, 9.4, 292],
     ],
     [
       [-295, -844, 0.56, 341], [-335, -844, 0.56, 342], [-362, -888, 0.60, 343], [-278, -892, 0.58, 344],
-      [30, -532, 0.56, 345], [58, -532, 0.56, 346], [85, -590, 0.60, 347], [-20, -600, 0.58, 348],
     ]
   );
   botanicalFoliage.addNorfolkPine(-342, 0, -848, 0.72, 401);
   botanicalFoliage.addNorfolkPine(-286, 0, -848, 0.70, 402);
-  botanicalFoliage.addNorfolkPine(36, 0, -536, 0.74, 403);
-  botanicalFoliage.addNorfolkPine(78, 0, -568, 0.72, 404);
 
   // PTI More District
   registerBotanicalZone(

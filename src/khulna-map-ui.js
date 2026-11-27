@@ -100,6 +100,18 @@ export function createKhulnaMapUI({ onWarpToLandmark, onOpenChange, onSyncSettin
         return lm;
       }),
     {
+      id: 'circuit_house_maidan',
+      n: '🏟️ Circuit House Maidan · সার্কিট হাউজ ময়দান',
+      bn: 'খুলনা সার্কিট হাউজ ময়দান (৩৬ আপার যশোর রোড · মেইন গেট)',
+      c: 'hero',
+      x: 40.0,
+      z: -595.0,
+      spawnX: 40.0,
+      spawnZ: -520.2,
+      lookX: 40.0,
+      lookZ: -548.0,
+    },
+    {
       id: 'khulna_model_mosque',
       n: 'Khulna District Model Mosque',
       bn: 'খুলনা জেলা মডেল মসজিদ (আলিয়া মাদ্রাসা ক্যাম্পাস)',
