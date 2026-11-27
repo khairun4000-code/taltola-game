@@ -1936,72 +1936,12 @@ export function createDrivableCar(scene, manager, config) {
     gripR.position.set(...(br.gripR || [-0.34, 0.02, -0.04]));
     steerPivot.add(gripR);
 
-    const dashCanvas = document.createElement('canvas');
-    dashCanvas.width = 256;
-    dashCanvas.height = 144;
-    const dashCtx = dashCanvas.getContext('2d');
-    const dashTex = new THREE.CanvasTexture(dashCanvas);
-    dashTex.colorSpace = THREE.SRGBColorSpace;
-
-    const dashHousing = new THREE.Group();
-    dashHousing.position.set(...(br.dash || [0, 1.13, 0.43]));
-    dashHousing.rotation.x = -0.58;
-    dashHousing.rotation.y = Math.PI;
-    rigGroup.add(dashHousing);
-    const bezel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.19, 0.11, 0.022),
-      new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.35, metalness: 0.65 }),
-    );
-    const screen = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.172, 0.094),
-      new THREE.MeshBasicMaterial({ map: dashTex }),
-    );
-    screen.position.z = 0.012;
-    dashHousing.add(bezel, screen);
-
     const povEyeLocal = new THREE.Vector3(...(br.povEye || [0, 1.40, -0.15]));
     const povLookLocal = new THREE.Vector3(...(br.povLook || [0, 1.20, 2.4]));
 
-    function drawBikeSpeedo(kmh, rpm, gear) {
-      const c = dashCtx;
-      c.fillStyle = '#07111f';
-      c.fillRect(0, 0, 256, 144);
-      c.strokeStyle = '#38bdf8';
-      c.lineWidth = 3;
-      c.strokeRect(4, 4, 248, 136);
-
-      const rpmFrac = THREE.MathUtils.clamp((rpm - 900) / 7200, 0.04, 1.0);
-      const segs = 16;
-      for (let i = 0; i < segs; i++) {
-        const on = (i + 1) / segs <= rpmFrac;
-        c.fillStyle = on ? (i >= 13 ? '#ef4444' : (i >= 9 ? '#facc15' : '#22c55e')) : '#1e293b';
-        c.fillRect(14 + i * 14.2, 14, 11, 16);
-      }
-
-      c.fillStyle = '#f8fafc';
-      c.font = 'bold 62px monospace';
-      c.textAlign = 'center';
-      c.fillText(String(Math.round(kmh)).padStart(2, '0'), 112, 98);
-      c.fillStyle = '#94a3b8';
-      c.font = 'bold 16px sans-serif';
-      c.fillText('KM/H', 112, 122);
-
-      c.fillStyle = '#d9ed9c';
-      c.fillRect(190, 48, 48, 52);
-      c.fillStyle = '#0f172a';
-      c.font = 'bold 36px monospace';
-      c.fillText(String(gear), 214, 86);
-      c.fillStyle = '#38bdf8';
-      c.font = 'bold 13px sans-serif';
-      c.fillText('GEAR', 214, 118);
-
-      dashTex.needsUpdate = true;
-    }
-    drawBikeSpeedo(0, 920, 'N');
-
     bikeDriverRig = {
       rigGroup, seatAnchor, footL, footR, steerPivot, gripL, gripR,
-      dashHousing, povEyeLocal, povLookLocal, drawBikeSpeedo, lastDashDraw: 0,
+      povEyeLocal, povLookLocal,
     };
   }
 
@@ -4739,14 +4679,6 @@ export function createDrivableCar(scene, manager, config) {
     }
     if (bikeDriverRig) {
       bikeDriverRig.steerPivot.rotation.y = state.steerAngle * 0.95;
-      bikeDriverRig.dashHousing.visible = state.driving && state.cameraMode === 'pov';
-      if (bikeDriverRig.dashHousing.visible) {
-        const nowD = performance.now();
-        if (nowD - bikeDriverRig.lastDashDraw > 45) {
-          bikeDriverRig.lastDashDraw = nowD;
-          bikeDriverRig.drawBikeSpeedo(Math.abs(state.speed) * 3.6, state.rpm, state.gear);
-        }
-      }
     }
     if (bikeFrontAssembly) {
       bikeFrontAssembly.rotation.y = state.steerAngle * 0.95;
@@ -5522,7 +5454,7 @@ export function createDrivableCar(scene, manager, config) {
           : '[F] Exit Rickshaw · [G] Sit in Passenger Seat';
       }
       if (config.isBike) {
-        return `[F] Dismount ${state.name} · [L] Headlight · [V] POV Speedometer`;
+        return `[F] Dismount ${state.name} · [L] Headlight · [V] POV Cam`;
       }
       return `[F] Exit ${state.name} · [E] Open Gate`;
     }

@@ -1982,7 +1982,7 @@ function syncCarHUD() {
       }
     }
     if (carCamLabelEl) {
-      const camNames = { chase: '3RD PERSON', hood: 'HOOD CAM', pov: 'POV SPEEDO', front: 'FRONT CAM' };
+      const camNames = { chase: '3RD PERSON', hood: 'HOOD CAM', pov: 'POV CAM', front: 'FRONT CAM' };
       const nextCamLabel = isRick ? 'CAMERA' : (camNames[activeCar.state.cameraMode] || '3RD PERSON');
       if (nextCamLabel !== lastCarCamLabelText) {
         lastCarCamLabelText = nextCamLabel;
