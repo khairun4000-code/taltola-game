@@ -3504,10 +3504,10 @@ async function initialize() {
       updateHUDPrompt();
     },
   });
-  // Spawn starter Atlas Roadster Bicycle + 125cc Naked Sport Motorcycle right in front of Taltola House; all 16 vehicles spawn on demand via [P] iFruit Phone!
+  // Spawn starter Atlas Roadster Bicycle + 125cc Naked Sport + Bajaj Pulsar 150 Twin Disc right in front of Taltola House; all vehicles spawn on demand via [P] iFruit Phone!
   cars = [];
   bmwCar = null;
-  const starterVehicleIds = ['atlas_roadster_bicycle', 'bike_125cc'];
+  const starterVehicleIds = ['atlas_roadster_bicycle', 'bike_125cc', 'pulsar_150'];
   const vehicleEnvStartup = skySystem?.getEnvTexture?.() || null;
   for (const vid of starterVehicleIds) {
     const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);

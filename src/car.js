@@ -680,6 +680,70 @@ export const CAR_FLEET_CONFIGS = [
     soundProfile: 'bike_dirt',
   },
   {
+    id: 'pulsar_150',
+    name: 'Bajaj Pulsar 150 Twin Disc',
+    badge: 'BAJAJ PULSAR 150 TWIN DISC',
+    assetUrl: './assets/pulsar.glb',
+    targetLength: 2.06,
+    width: 0.78,
+    rotateY: 0,
+    rotateX: 0,
+    exactVertexBounds: true,
+    spawnPos: [TALTOLA_HOUSE_OFFSET.x - 1.50, 0.006, TALTOLA_HOUSE_OFFSET.z - 4.8],
+    spawnHeading: 0.0,
+    paintPresets: BIKE_PAINT_PRESETS,
+    bodyPaintMats: ['main_body'],
+    glassMats: ['ClearGlass', 'BlackGlass'],
+    headlightMats: ['HeadLight'],
+    tailMats: ['tail'],
+    dashGlowMats: ['Instrumental_cluster'],
+    tireMats: ['FrontTyre', 'FrontTyre.001', 'TyreRear', 'TyreRear.001'],
+    chromeMats: ['Chrome', 'Chrome.001', 'SuspensionChrome', 'RearChrome', 'Exhaust_cap'],
+    maxSpeed: 33.4,
+    boostMaxSpeed: 36.8,
+    engineForce: 19.8,
+    engineBaseFreq: 56,
+    engineRangeFreq: 215,
+    hornFreqs: [510, 650],
+    camBack: 3.90,
+    camHeight: 1.86,
+    hoodHeight: 1.40,
+    hoodForward: 0.10,
+    exhaustTip: [-0.245, 0.395, -0.795],
+    isBMW: false,
+    isBike: true,
+    bikeSportLean: true,
+    bikeSplitMergedWheels: false,
+    bikeWheelNodes: {
+      front: 'front_wheel_579',
+      rear: 'back_wheel_34',
+      frontSteerExtra: ['pasted__polySurface4389_582', 'pasted__Retopo_polySurface4421_581', 'D_Cylinder_14', 'D_polySurface1149.001_15'],
+    },
+    bikeFrontSteerBounds: {
+      minHandleY: 0.935,
+      minHandleZ: 0.165,
+      maxHandleZ: 0.46,
+      minForkZ: 0.35,
+      centerForkZ: 0.42,
+    },
+    bikeRig: {
+      seat: [0, 0.97, -0.26],
+      footL: [0.20, 0.415, -0.195],
+      footR: [-0.20, 0.415, -0.195],
+      steerPivot: [0, 1.00, 0.43],
+      gripL: [0.305, 0.038, -0.217],
+      gripR: [-0.305, 0.038, -0.217],
+      headlight: { pos: [0.005, 0.854, 0.692], width: 0.19, height: 0.13, shape: 'rect' },
+      taillight: { pos: [0.004, 0.835, -0.935], width: 0.10, height: 0.07 },
+      frontDisc: { sideX: -0.065, radius: 0.141 },
+      dash: [0, 1.03, 0.45],
+      povEye: [0, 1.54, -0.37],
+      povLook: [0, 1.24, 2.6],
+    },
+    gearCount: 5,
+    soundProfile: 'bike_sport',
+  },
+  {
     id: 'bangladeshi_cng',
     name: 'Bangladeshi CNG Auto',
     badge: 'BANGLADESHI CNG AUTO',
@@ -1418,6 +1482,110 @@ function rigMotorcycleWheels(orientedWrapper, config) {
       frontAssemblyPivot,
       wheelRadius: wheelR,
     };
+  }
+
+  if (config.bikeWheelNodes) {
+    const frontNode = orientedWrapper.getObjectByName(config.bikeWheelNodes.front);
+    const rearNode = orientedWrapper.getObjectByName(config.bikeWheelNodes.rear);
+    const computeNodeVertexBox = (obj) => {
+      const box = new THREE.Box3();
+      const vTmp = new THREE.Vector3();
+      const toWrapper = new THREE.Matrix4();
+      if (!obj) return box;
+      obj.traverse((ch) => {
+        if (!ch.isMesh || !ch.visible || !ch.geometry?.attributes?.position) return;
+        toWrapper.multiplyMatrices(invWrapper, ch.matrixWorld);
+        const posA = ch.geometry.attributes.position;
+        for (let i = 0; i < posA.count; i++) {
+          vTmp.fromBufferAttribute(posA, i).applyMatrix4(toWrapper);
+          box.expandByPoint(vTmp);
+        }
+      });
+      return box;
+    };
+    const fBox = computeNodeVertexBox(frontNode);
+    const rBox = computeNodeVertexBox(rearNode);
+    const usedSet = new Set();
+    const builtWheels = [];
+    let rSum = 0;
+    let rCnt = 0;
+    for (const [isFront, node, refBox] of [[true, frontNode, fBox], [false, rearNode, rBox]]) {
+      if (!node || refBox.isEmpty()) continue;
+      const center = new THREE.Vector3(
+        (refBox.min.x + refBox.max.x) * 0.5,
+        (refBox.min.y + refBox.max.y) * 0.5,
+        (refBox.min.z + refBox.max.z) * 0.5,
+      );
+      refBox.getSize(tmpS);
+      const wr = THREE.MathUtils.clamp(tmpS.y * 0.5, 0.25, 0.42);
+      rSum += wr;
+      rCnt++;
+      const steerPivot = new THREE.Group();
+      if (isFront) {
+        steerPivot.position.copy(center).sub(frontAssemblyPivot.position);
+        frontAssemblyPivot.add(steerPivot);
+      } else {
+        steerPivot.position.copy(center);
+        orientedWrapper.add(steerPivot);
+      }
+      const spinPivot = new THREE.Group();
+      steerPivot.add(spinPivot);
+      orientedWrapper.updateMatrixWorld(true);
+      const wMeshes = [];
+      node.traverse((ch) => {
+        if (ch.isMesh && ch.visible) {
+          wMeshes.push(ch);
+          usedSet.add(ch);
+        }
+      });
+      for (const m of wMeshes) spinPivot.attach(m);
+      builtWheels.push({
+        wheelRoot: steerPivot,
+        spinGroup: spinPivot,
+        isFront,
+        steerAxis: 'y',
+        spinAxis: 'x',
+        restY: steerPivot.position.y,
+        parentSteers: isFront,
+      });
+    }
+
+    const frontSteerRoot = builtWheels.find((w) => w.isFront)?.wheelRoot || null;
+    if (frontSteerRoot && Array.isArray(config.bikeWheelNodes.frontSteerExtra)) {
+      orientedWrapper.updateMatrixWorld(true);
+      for (const extraName of config.bikeWheelNodes.frontSteerExtra) {
+        const extraObj = orientedWrapper.getObjectByName(extraName);
+        if (!extraObj) continue;
+        const extraMeshes = [];
+        extraObj.traverse((ch) => {
+          if (ch.isMesh && ch.visible && !usedSet.has(ch)) {
+            extraMeshes.push(ch);
+            usedSet.add(ch);
+          }
+        });
+        for (const em of extraMeshes) frontSteerRoot.attach(em);
+      }
+    }
+
+    orientedWrapper.updateMatrixWorld(true);
+    const frontTurnMeshes = [];
+    const th = config.bikeFrontSteerBounds || { minHandleY: 0.905, minHandleZ: 0.25, maxHandleZ: 0.55, minForkZ: 0.34, centerForkZ: 0.42 };
+    orientedWrapper.traverse((ch) => {
+      if (!ch.isMesh || !ch.visible || usedSet.has(ch)) return;
+      tmpBox.setFromObject(ch);
+      if (tmpBox.isEmpty()) return;
+      tmpBox.applyMatrix4(invWrapper);
+      tmpBox.getCenter(tmpC);
+      tmpBox.getSize(tmpS);
+      const isHandlebarOrMirror = tmpBox.min.y >= th.minHandleY && tmpC.z >= th.minHandleZ && tmpC.z <= th.maxHandleZ && tmpS.z < 0.38;
+      const isFrontForkOrLamp = tmpC.z >= th.centerForkZ && tmpBox.min.z >= th.minForkZ && tmpS.z < 0.65;
+      if (isHandlebarOrMirror || isFrontForkOrLamp) {
+        frontTurnMeshes.push(ch);
+      }
+    });
+    for (const fm of frontTurnMeshes) frontAssemblyPivot.attach(fm);
+
+    return { wheels: builtWheels, frontAssemblyPivot, wheelRadius: rCnt ? rSum / rCnt : 0.31 };
   }
 
   const frontBucket = { meshes: [], tireBox: new THREE.Box3(), allBox: new THREE.Box3() };
@@ -3163,9 +3331,21 @@ export function createDrivableCar(scene, manager, config) {
       if (config.rotateY || config.rotateX || config.isCNG) model.updateMatrixWorld(true);
 
       const bounds = new THREE.Box3();
-      orientedWrapper.traverse((ch) => {
-        if (ch.isMesh && ch.visible) bounds.expandByObject(ch);
-      });
+      if (config.exactVertexBounds) {
+        const vTmp = new THREE.Vector3();
+        orientedWrapper.traverse((ch) => {
+          if (!ch.isMesh || !ch.visible || !ch.geometry?.attributes?.position) return;
+          const posAttr = ch.geometry.attributes.position;
+          for (let i = 0; i < posAttr.count; i++) {
+            vTmp.fromBufferAttribute(posAttr, i).applyMatrix4(ch.matrixWorld);
+            bounds.expandByPoint(vTmp);
+          }
+        });
+      } else {
+        orientedWrapper.traverse((ch) => {
+          if (ch.isMesh && ch.visible) bounds.expandByObject(ch);
+        });
+      }
       if (bounds.isEmpty()) bounds.setFromObject(orientedWrapper);
       const center = bounds.getCenter(new THREE.Vector3());
       const size = bounds.getSize(new THREE.Vector3());
@@ -3994,7 +4174,7 @@ export function createDrivableCar(scene, manager, config) {
             const pName = ch.parent?.name || '';
             const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
             const mName = mats.map((mm) => mm?.name || '').join(' ');
-            if (/BrakeDisk/i.test(mName) || /Cylinder056/i.test(pName) || /Cylinder056/i.test(nName)) {
+            if (/BrakeDisk/i.test(mName) || /^Disk(\.001)?$/i.test(mName) || /Cylinder056/i.test(pName) || /Cylinder056/i.test(nName)) {
               ch.material = steelDiscMat;
             } else if (/Chrome|Mirror/i.test(mName)) {
               for (const mm of mats) {

@@ -20,6 +20,7 @@ export const PHONE_CHEAT_CODES = [
   { code: '6666', carId: 'bangladeshi_rickshaw_taltola', label: 'Bangladeshi Rickshaw' },
   { code: '7777', carId: 'bike_125cc', label: '125cc Naked Motorcycle' },
   { code: '8888', carId: 'honda_nxr_bros', label: 'Honda NXR Bros 2003' },
+  { code: '1500', carId: 'pulsar_150', label: 'Bajaj Pulsar 150 Twin Disc' },
   { code: '0000', carId: 'bangladeshi_cng', label: 'Bangladeshi CNG Auto' },
   { code: '1234', carId: 'atlas_roadster_bicycle', label: 'Atlas Roadster Bicycle' },
   { code: '5678', carId: 'bangladeshi_cargo_van', label: 'Bangladeshi Cargo Van' },
