@@ -310,7 +310,7 @@ export function createMaterials(renderer, manager) {
   const rugTex = createCarpetRugTexture();
 
   const materials = {
-    road: tiledMaterial(asphalt, { color: 0xcdcbc4, uvScale: 5.5, roughness: 0.78, normalStrength: 2.3, normalScale: 0.72 }),
+    road: tiledMaterial(asphalt, { color: 0x74787e, uvScale: 5.5, roughness: 0.72, envMapIntensity: 1.25, normalStrength: 2.3, normalScale: 0.72 }),
     brick: tiledMaterial(brick, { color: 0xc97b63, uvScale: 2.3, roughness: 0.88, normalStrength: 3.1, normalScale: 0.92 }),
     plaster: tiledMaterial(plaster, { color: 0xf4ead8, uvScale: 3.4, roughness: 0.84, normalStrength: 1.6, normalScale: 0.55 }),
     warmPlaster: tiledMaterial(plaster, { color: 0xe6dac8, emissive: 0x221e18, emissiveIntensity: 0.50, uvScale: 3.0, roughness: 0.82, normalStrength: 1.5, normalScale: 0.52 }),
@@ -344,8 +344,8 @@ export function createMaterials(renderer, manager) {
     rail: new THREE.MeshStandardMaterial({ color: 0xdce3df, roughness: 0.22, metalness: 0.88, envMapIntensity: 1.35 }),
     darkMetal: new THREE.MeshStandardMaterial({ color: 0x1e2423, roughness: 0.42, metalness: 0.72, envMapIntensity: 0.92 }),
     aluminum: new THREE.MeshStandardMaterial({ color: 0xd6ded9, emissive: 0x141817, emissiveIntensity: 0.25, roughness: 0.26, metalness: 0.85, envMapIntensity: 1.3 }),
-    glass: new THREE.MeshPhysicalMaterial({ color: 0x67a69c, roughness: 0.07, metalness: 0.10, clearcoat: 0.95, clearcoatRoughness: 0.06, envMapIntensity: 1.65, transparent: true, opacity: 0.42 }),
-    frostedGlass: new THREE.MeshPhysicalMaterial({ color: 0xa2bcc0, roughness: 0.34, metalness: 0.05, clearcoat: 0.4, envMapIntensity: 1.15, transparent: true, opacity: 0.66 }),
+    glass: new THREE.MeshPhysicalMaterial({ color: 0x4f9396, roughness: 0.045, metalness: 0.16, clearcoat: 1.0, clearcoatRoughness: 0.04, envMapIntensity: 2.15, transparent: true, opacity: 0.56 }),
+    frostedGlass: new THREE.MeshPhysicalMaterial({ color: 0x9bbac0, roughness: 0.28, metalness: 0.08, clearcoat: 0.55, envMapIntensity: 1.35, transparent: true, opacity: 0.68 }),
     interior: new THREE.MeshStandardMaterial({ color: 0x26322d, roughness: 0.88, metalness: 0.02 }),
     // Bright, warm, self-lit residential interior walls & ceilings (never looks like a dark bunker!)
     hallWall: tiledMaterial(plaster, { color: 0xfdf9f0, emissive: 0x4e493e, emissiveIntensity: 0.68, uvScale: 2.5, roughness: 0.78, normalStrength: 1.1, normalScale: 0.35 }),
@@ -454,6 +454,7 @@ export function createMaterials(renderer, manager) {
   };
 
   const reflectiveMaterials = [
+    materials.road,
     materials.pillarTile,
     materials.bathTile,
     materials.blackTile,

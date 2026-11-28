@@ -4871,11 +4871,12 @@ export function createDrivableCar(scene, manager, config) {
     const altGoliRes = envRef?.altapoleGoli?.applyCarCollisions?.(p, state);
     if (altGoliRes?.hitWall) hitWall = true;
 
-    // 3c. Solid Landmark Collisions (slim two-wheeler radius on bikes/bicycles so fast riding never snags invisible car-wide walls!)
+    // 3c. Solid Landmark & City Building Collisions (slim two-wheeler radius on bikes/bicycles so fast riding never snags invisible car-wide walls!)
     const preX = p.x;
     const preZ = p.z;
     const landmarkColRad = (config.isBike || config.isBicycle) ? Math.max(state.halfWidth, 0.44) : Math.max(state.halfWidth, 0.95);
     envRef?.landmarks?.applyCollisions?.(p, landmarkColRad, Math.max(0, p.y), true);
+    envRef?.city?.applyCityCollisions?.(p, landmarkColRad, Math.max(0, p.y));
     if (Math.abs(p.x - preX) > 0.005 || Math.abs(p.z - preZ) > 0.005) hitWall = true;
 
     // 3d. Solid Roadside Utility Poles — pole sways & recovers + slight vehicle damage (invisible 100% health system)
@@ -5792,7 +5793,7 @@ export function createDrivableCar(scene, manager, config) {
 
   function setQualityMode(nextQuality) {
     currentQuality = nextQuality;
-    const envIntensity = nextQuality === 'ultra' ? 2.1 : (nextQuality === 'high' ? 1.7 : (nextQuality === 'medium' ? 1.35 : 1.2));
+    const envIntensity = nextQuality === 'ultra' ? 2.40 : (nextQuality === 'high' ? 2.00 : (nextQuality === 'medium' ? 1.55 : 1.25));
     const clearcoatVal = nextQuality === 'low' ? 0.65 : 1.0;
 
     syncShadowCasters();
@@ -5812,7 +5813,10 @@ export function createDrivableCar(scene, manager, config) {
       bikeSteelDiscMat.emissiveIntensity = nextQuality === 'ultra' ? 0.17 : (nextQuality === 'high' ? 0.07 : 0.0);
       bikeSteelDiscMat.needsUpdate = true;
     }
-    contactShadow.visible = nextQuality === 'low' || nextQuality === 'medium';
+    contactShadow.visible = true;
+    if (contactShadow.material) {
+      contactShadow.material.opacity = (nextQuality === 'ultra' || nextQuality === 'high') ? 0.58 : 0.78;
+    }
   }
 
   function setEnvironmentMap(envTex) {

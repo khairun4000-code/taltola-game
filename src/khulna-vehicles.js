@@ -57,40 +57,85 @@ function createTruckBodyArtTexture() {
   return tex;
 }
 
+function createVehicleAOShadowTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, 128, 256);
+  ctx.save();
+  ctx.translate(64, 128);
+  ctx.scale(1.0, 2.0);
+  const grad = ctx.createRadialGradient(0, 0, 10, 0, 0, 58);
+  grad.addColorStop(0.0, 'rgba(5, 8, 14, 0.82)');
+  grad.addColorStop(0.55, 'rgba(8, 12, 18, 0.56)');
+  grad.addColorStop(0.84, 'rgba(10, 14, 20, 0.18)');
+  grad.addColorStop(1.0, 'rgba(10, 14, 20, 0.0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, 58, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 function createVehicleMaterialBank() {
+  const aoTex = createVehicleAOShadowTexture();
   const bank = {
-    tire: new THREE.MeshStandardMaterial({ color: 0x16181a, roughness: 0.88, metalness: 0.04 }),
-    rim: new THREE.MeshStandardMaterial({ color: 0xd9dfe6, roughness: 0.24, metalness: 0.88 }),
-    darkTrim: new THREE.MeshStandardMaterial({ color: 0x1e2226, roughness: 0.56, metalness: 0.24 }),
-    chrome: new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.12, metalness: 0.96, envMapIntensity: 1.4 }),
-    windshield: new THREE.MeshStandardMaterial({
-      color: 0x1a303c,
-      roughness: 0.08,
-      metalness: 0.35,
+    aoShadow: new THREE.MeshBasicMaterial({
+      map: aoTex,
       transparent: true,
       opacity: 0.72,
-      envMapIntensity: 1.45,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
+    }),
+    tire: new THREE.MeshStandardMaterial({ color: 0x16181a, roughness: 0.88, metalness: 0.04 }),
+    rim: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.16, metalness: 0.94, envMapIntensity: 1.75 }),
+    darkTrim: new THREE.MeshStandardMaterial({ color: 0x1e2226, roughness: 0.52, metalness: 0.28 }),
+    chrome: new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.08, metalness: 0.98, envMapIntensity: 1.95 }),
+    windshield: new THREE.MeshPhysicalMaterial({
+      color: 0x132836,
+      roughness: 0.04,
+      metalness: 0.22,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.04,
+      transparent: true,
+      opacity: 0.78,
+      envMapIntensity: 2.15,
     }),
     headlight: new THREE.MeshStandardMaterial({ color: 0xfff8e6, emissive: 0xffe8b2, emissiveIntensity: 0.8 }),
     taillight: new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 1.0 }),
     amber: new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 0.6 }),
-    cngGreen: new THREE.MeshStandardMaterial({ color: 0x146c3e, roughness: 0.22, metalness: 0.28, envMapIntensity: 1.25 }),
-    cngYellow: new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.28, metalness: 0.16, envMapIntensity: 1.1 }),
+    cngGreen: new THREE.MeshPhysicalMaterial({ color: 0x146c3e, roughness: 0.16, metalness: 0.34, clearcoat: 0.85, clearcoatRoughness: 0.09, envMapIntensity: 1.65 }),
+    cngYellow: new THREE.MeshPhysicalMaterial({ color: 0xfbbf24, roughness: 0.20, metalness: 0.18, clearcoat: 0.75, clearcoatRoughness: 0.10, envMapIntensity: 1.45 }),
     cngRexine: new THREE.MeshStandardMaterial({ color: 0x1a1e24, roughness: 0.76, metalness: 0.04 }),
-    easyTeal: new THREE.MeshStandardMaterial({ color: 0x0e7490, roughness: 0.20, metalness: 0.30, envMapIntensity: 1.25 }),
-    easyCrimson: new THREE.MeshStandardMaterial({ color: 0x9f1239, roughness: 0.20, metalness: 0.30, envMapIntensity: 1.25 }),
-    easyRoof: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.55 }),
-    sedanSilver: new THREE.MeshStandardMaterial({ color: 0xc2ccd6, roughness: 0.16, metalness: 0.65, envMapIntensity: 1.35 }),
-    sedanWhite: new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.18, metalness: 0.22, envMapIntensity: 1.2 }),
-    sedanBurgundy: new THREE.MeshStandardMaterial({ color: 0x6b182c, roughness: 0.17, metalness: 0.42, envMapIntensity: 1.3 }),
-    sedanBlue: new THREE.MeshStandardMaterial({ color: 0x1d3b63, roughness: 0.16, metalness: 0.52, envMapIntensity: 1.35 }),
-    truckCab: new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.28, metalness: 0.28, envMapIntensity: 1.15 }),
-    truckBed: new THREE.MeshStandardMaterial({ map: createTruckBodyArtTexture(), roughness: 0.65, metalness: 0.08 }),
+    easyTeal: new THREE.MeshPhysicalMaterial({ color: 0x0e7490, roughness: 0.15, metalness: 0.36, clearcoat: 0.88, clearcoatRoughness: 0.08, envMapIntensity: 1.70 }),
+    easyCrimson: new THREE.MeshPhysicalMaterial({ color: 0x9f1239, roughness: 0.15, metalness: 0.36, clearcoat: 0.88, clearcoatRoughness: 0.08, envMapIntensity: 1.70 }),
+    easyRoof: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.45, envMapIntensity: 1.1 }),
+    sedanSilver: new THREE.MeshPhysicalMaterial({ color: 0xcbd5e1, roughness: 0.11, metalness: 0.72, clearcoat: 1.0, clearcoatRoughness: 0.05, envMapIntensity: 2.05 }),
+    sedanWhite: new THREE.MeshPhysicalMaterial({ color: 0xf4f7fb, roughness: 0.12, metalness: 0.25, clearcoat: 1.0, clearcoatRoughness: 0.05, envMapIntensity: 1.85 }),
+    sedanBurgundy: new THREE.MeshPhysicalMaterial({ color: 0x72182f, roughness: 0.12, metalness: 0.48, clearcoat: 1.0, clearcoatRoughness: 0.05, envMapIntensity: 1.95 }),
+    sedanBlue: new THREE.MeshPhysicalMaterial({ color: 0x1b3d6b, roughness: 0.11, metalness: 0.58, clearcoat: 1.0, clearcoatRoughness: 0.05, envMapIntensity: 2.00 }),
+    truckCab: new THREE.MeshPhysicalMaterial({ color: 0xc2410c, roughness: 0.20, metalness: 0.34, clearcoat: 0.80, clearcoatRoughness: 0.10, envMapIntensity: 1.55 }),
+    truckBed: new THREE.MeshStandardMaterial({ map: createTruckBodyArtTexture(), roughness: 0.62, metalness: 0.08 }),
     plate: new THREE.MeshStandardMaterial({ map: createBanglaPlateTexture(), roughness: 0.5 }),
     rickshawHood: new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.64 }),
-    rickshawRed: new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.32, metalness: 0.20, envMapIntensity: 1.1 }),
+    rickshawRed: new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.28, metalness: 0.24, envMapIntensity: 1.3 }),
   };
   return bank;
+}
+
+function addUnderbodyAO(parent, bank, width, length) {
+  const ao = new THREE.Mesh(new THREE.PlaneGeometry(width, length), bank.aoShadow);
+  ao.rotation.x = -Math.PI / 2;
+  ao.position.y = -0.014;
+  ao.castShadow = false;
+  ao.receiveShadow = false;
+  parent.add(ao);
 }
 
 function makeWheel(bank, radius = 0.24, width = 0.14) {
@@ -109,7 +154,7 @@ function addPart(parent, geo, mat, pos, rot = null) {
   const m = new THREE.Mesh(geo, mat);
   m.position.set(pos[0], pos[1], pos[2]);
   if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
-  m.castShadow = false;
+  m.castShadow = true;
   m.receiveShadow = true;
   parent.add(m);
   return m;
@@ -159,6 +204,7 @@ export function buildCNGAuto(bank) {
   addPart(body, new THREE.BoxGeometry(0.42, 0.24, 0.34), bank.darkTrim, [0, 0.58, 0.30]);
   addPart(body, new THREE.BoxGeometry(0.96, 0.28, 0.44), bank.darkTrim, [0, 0.62, -0.60]);
   mergeStaticMeshes(body);
+  addUnderbodyAO(g, bank, 1.48, 2.55);
   g.userData.wheels = wheels;
   g.userData.wheelRadius = 0.21;
   return g;
@@ -196,6 +242,7 @@ export function buildEasybike(bank, altColor = false) {
   }
   addPart(body, new THREE.PlaneGeometry(0.32, 0.12), bank.plate, [0, 0.44, -1.08], [0, Math.PI, 0]);
   mergeStaticMeshes(body);
+  addUnderbodyAO(g, bank, 1.54, 2.75);
   g.userData.wheels = wheels;
   g.userData.wheelRadius = 0.22;
   return g;
@@ -238,6 +285,7 @@ export function buildSedanCar(bank, paintMat) {
   addPart(body, new THREE.PlaneGeometry(0.42, 0.12), bank.plate, [0, 0.44, 2.13]);
   addPart(body, new THREE.PlaneGeometry(0.42, 0.12), bank.plate, [0, 0.46, -2.13], [0, Math.PI, 0]);
   mergeStaticMeshes(body);
+  addUnderbodyAO(g, bank, 2.18, 4.85);
 
   g.userData.wheels = wheels;
   g.userData.wheelRadius = 0.30;
@@ -269,6 +317,7 @@ export function buildBanglaTruck(bank) {
     addPart(body, new THREE.BoxGeometry(0.28, 0.12, 0.06), bank.taillight, [sx, 0.66, -2.52]);
   }
   mergeStaticMeshes(body);
+  addUnderbodyAO(g, bank, 2.48, 5.85);
   g.userData.wheels = wheels;
   g.userData.wheelRadius = 0.38;
   return g;

@@ -151,6 +151,18 @@ function setupPostProcessing() {
     0.52,
     0.76
   );
+  // Guard HalfFloat HDR bloom extraction against any NaN/Inf pixel so blur mips never black out the screen
+  if (bloomPass.materialHighPassFilter?.fragmentShader) {
+    bloomPass.materialHighPassFilter.fragmentShader = bloomPass.materialHighPassFilter.fragmentShader.replace(
+      'vec4 texel = texture2D( tDiffuse, vUv );',
+      `vec4 texel = texture2D( tDiffuse, vUv );
+      if (!(texel.r >= 0.0 && texel.r <= 24.0)) texel.r = 0.0;
+      if (!(texel.g >= 0.0 && texel.g <= 24.0)) texel.g = 0.0;
+      if (!(texel.b >= 0.0 && texel.b <= 24.0)) texel.b = 0.0;
+      texel.a = 1.0;`
+    );
+    bloomPass.materialHighPassFilter.needsUpdate = true;
+  }
   composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
 }
@@ -159,9 +171,9 @@ function updateSunPositionFromAnchor(ax, az) {
   if (!sun) return;
   const preset = skySystem?.getActivePreset?.() || TIME_OF_DAY_PRESETS.golden;
   const [sx, sy, sz] = preset.sunPos;
-  const scale = 38 / Math.max(1, Math.hypot(sx, sy, sz));
+  const scale = 68 / Math.max(1, Math.hypot(sx, sy, sz));
   sun.target.position.set(ax, 1, az);
-  sun.position.set(ax + sx * scale, Math.max(8, sy * scale), az + sz * scale);
+  sun.position.set(ax + sx * scale, Math.max(14, sy * scale), az + sz * scale);
   sun.target.updateMatrixWorld();
 }
 
@@ -187,10 +199,10 @@ function applyTimeOfDay(nextId) {
     }
     environment?.setNightFactor?.(preset.nightFactor);
   }
-  // Full real PBR sky environment reflections on Ultra & High (and keep hero character clean across ALL tiers including Low!)
+  // Full real PBR sky & Khulna skyline environment reflections across Ultra, High & Medium!
   const selectiveEnv = quality === 'low' ? null : (skySystem?.getEnvTexture?.() || null);
   const heroEnv = skySystem?.getEnvTexture?.() || null;
-  const staticEnv = (quality === 'ultra' || quality === 'high') ? selectiveEnv : null;
+  const staticEnv = quality === 'low' ? null : selectiveEnv;
   sceneMaterials?.setEnvironmentMap?.(staticEnv);
   environment?.tower?.setEnvironmentMap?.(staticEnv);
   if (Object.keys(characterActors).length) {
@@ -320,8 +332,8 @@ const studioOrbit = {
   _lastMs: 0,
 };
 
-let quality = localStorage.getItem('taltola_quality') || 'medium';
-if (!['low', 'medium', 'high', 'ultra'].includes(quality)) quality = 'medium';
+let quality = localStorage.getItem('taltola_quality') || 'high';
+if (!['low', 'medium', 'high', 'ultra'].includes(quality)) quality = 'high';
 let baseWalkFov = THREE.MathUtils.clamp(Number(localStorage.getItem('taltola_fov')) || 60, 48, 75);
 let mouseSensitivity = THREE.MathUtils.clamp(Number(localStorage.getItem('taltola_mouse_sens')) || 1.0, 0.4, 2.4);
 let shadowsOverride = localStorage.getItem('taltola_shadows') || 'auto'; // 'auto' | 'on' | 'off'
@@ -1323,7 +1335,7 @@ function setUltraFastPerf(enabled) {
 
 function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynamic = false) {
   if (!sun || inStudio) return;
-  const radius = quality === 'ultra' ? 52 : (quality === 'high' ? 32 : (quality === 'medium' ? 22 : 18));
+  const radius = quality === 'ultra' ? 82 : (quality === 'high' ? 60 : (quality === 'medium' ? 38 : 20));
   const mapSize = sun.shadow.mapSize.x || 2048;
   const worldUnitsPerTexel = (radius * 2) / mapSize;
 
@@ -1331,11 +1343,11 @@ function updateSunShadowTarget(focusPos, nowPerf = performance.now(), forceDynam
   const snapX = Math.round(focusPos.x / worldUnitsPerTexel) * worldUnitsPerTexel;
   const snapZ = Math.round(focusPos.z / worldUnitsPerTexel) * worldUnitsPerTexel;
 
-  const moveThresh = quality === 'ultra' ? 1.55 : (quality === 'high' ? 1.40 : 1.35);
+  const moveThresh = quality === 'ultra' ? 0.85 : (quality === 'high' ? 0.90 : 1.10);
   const anchorMoved = Math.abs(snapX - lastSunAnchorX) > moveThresh || Math.abs(snapZ - lastSunAnchorZ) > moveThresh;
   const activeDrivingSpeed = Math.abs(getDrivingCar()?.state?.speed || 0);
-  const baseCadence = quality === 'ultra' ? 260 : (quality === 'high' ? 260 : (quality === 'medium' ? 280 : 320));
-  const driveCadence = quality === 'ultra' ? 340 : (quality === 'high' ? 340 : 360);
+  const baseCadence = quality === 'ultra' ? 85 : (quality === 'high' ? 95 : (quality === 'medium' ? 140 : 220));
+  const driveCadence = quality === 'ultra' ? 95 : (quality === 'high' ? 110 : 165);
   const shadowCadenceMs = activeDrivingSpeed > 4.0 ? Math.max(baseCadence, driveCadence) : baseCadence;
   const elapsedSinceShadow = nowPerf - lastShadowUpdateAt;
   if (anchorMoved && (lastShadowUpdateAt === 0 || elapsedSinceShadow >= shadowCadenceMs)) {
@@ -1374,7 +1386,13 @@ function applyQuality(nextQuality) {
     high: Math.min(dpr, 1.40),
     ultra: Math.min(dpr, 1.50),
   };
-  const shadowSizes = { low: 1024, medium: 1024, high: 1536, ultra: 2048 };
+  const maxTex = renderer.capabilities?.maxTextureSize || 4096;
+  const shadowSizes = {
+    low: 1024,
+    medium: Math.min(1536, maxTex),
+    high: Math.min(2048, maxTex),
+    ultra: Math.min(4096, maxTex),
+  };
   const useShadows = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : !isLow);
   const activeRatio = ratios[quality] ?? ratios.high;
 
@@ -1390,8 +1408,8 @@ function applyQuality(nextQuality) {
     );
   }
   renderer.shadowMap.enabled = useShadows;
-  // Hardware 4-tap PCFShadowMap + radius=2.4 gives crisp wide soft shadows everywhere at ~60 FPS!
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  // PCFSoftShadowMap on High/Ultra delivers smooth realistic street/building/tree penumbra shadows
+  renderer.shadowMap.type = (isUltra || isHigh) ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
   if (useShadows) {
     renderer.shadowMap.needsUpdate = true;
@@ -1401,9 +1419,9 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = isLow ? 130 : (quality === 'medium' ? 180 : (isUltra ? 220 : 195));
-    scene.fog.far = isLow ? 290 : (quality === 'medium' ? 420 : (isUltra ? 510 : 460));
-    camera.far = isLow ? 340 : (quality === 'medium' ? 460 : (isUltra ? 550 : 500));
+    scene.fog.near = isLow ? 130 : (quality === 'medium' ? 185 : (isUltra ? 240 : 210));
+    scene.fog.far = isLow ? 290 : (quality === 'medium' ? 430 : (isUltra ? 540 : 480));
+    camera.far = isLow ? 340 : (quality === 'medium' ? 470 : (isUltra ? 580 : 520));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
@@ -1420,27 +1438,27 @@ function applyQuality(nextQuality) {
   }
   if (ambientLight) {
     ambientLight.visible = true;
-    ambientLight.intensity = isLow && !inStudio ? 0.58 : (isUltra ? 0.52 : 0.46);
+    ambientLight.intensity = isLow && !inStudio ? 0.58 : (isUltra ? 0.50 : 0.45);
   }
   if (hemisphereLight) {
     hemisphereLight.visible = true;
-    hemisphereLight.intensity = isLow && !inStudio ? 1.22 : (isUltra ? 1.14 : 1.06);
+    hemisphereLight.intensity = isLow && !inStudio ? 1.22 : (isUltra ? 1.12 : 1.04);
     hemisphereLight.color.setHex(0xbad9f7);
     hemisphereLight.groundColor.setHex(0x685b4a);
   }
   if (sun) {
     sun.visible = true;
-    sun.intensity = isUltra ? 2.68 : (isHigh ? 2.32 : 2.02);
+    sun.intensity = isUltra ? 2.75 : (isHigh ? 2.42 : 2.08);
     sun.castShadow = useShadows;
     if (useShadows) {
       const size = shadowSizes[quality] || 2048;
-      const radius = isUltra ? 52 : (isHigh ? 32 : (quality === 'medium' ? 22 : 18));
+      const radius = isUltra ? 82 : (isHigh ? 60 : (quality === 'medium' ? 38 : 20));
       sun.shadow.camera.left = -radius;
       sun.shadow.camera.right = radius;
       sun.shadow.camera.top = radius;
       sun.shadow.camera.bottom = -radius;
       sun.shadow.camera.near = 2;
-      sun.shadow.camera.far = isUltra ? 185 : 145;
+      sun.shadow.camera.far = isUltra ? 240 : 195;
       sun.shadow.camera.updateProjectionMatrix();
 
       if (sun.shadow.mapSize.x !== size || sun.shadow.mapSize.y !== size) {
@@ -1450,9 +1468,9 @@ function applyQuality(nextQuality) {
           sun.shadow.map = null;
         }
       }
-      sun.shadow.radius = isUltra ? 2.4 : 1.7;
-      sun.shadow.bias = isUltra ? -0.0004 : -0.0005;
-      sun.shadow.normalBias = isUltra ? 0.045 : 0.04;
+      sun.shadow.radius = isUltra ? 2.2 : 1.6;
+      sun.shadow.bias = isUltra ? -0.00032 : -0.00042;
+      sun.shadow.normalBias = isUltra ? 0.038 : 0.036;
       renderer.shadowMap.needsUpdate = true;
       lastShadowUpdateAt = 0;
     }
@@ -1463,7 +1481,7 @@ function applyQuality(nextQuality) {
   const isInsideVehicle = (obj) => {
     let cur = obj;
     while (cur) {
-      if (cur.name && cur.name.startsWith('DrivableCar_')) return true;
+      if (cur.name && (cur.name.startsWith('DrivableCar_') || cur.name === 'KhulnaLiveTraffic')) return true;
       cur = cur.parent;
     }
     return false;
@@ -5258,7 +5276,10 @@ function computeGroundHeight(pos, isGroundedOverride = grounded, velYOverride = 
     ((lz >= -5.12 && lz <= -1.48) || (lz >= 1.52 && lz <= 5.12));
 
   if (!insideMainSlab && !inFrontBalconyZone) {
-    return environment?.landmarks?.getGroundHeight?.(pos) ?? 0.0;
+    return Math.max(
+      environment?.landmarks?.getGroundHeight?.(pos) ?? 0.0,
+      environment?.city?.getGroundHeight?.(pos) ?? 0.0
+    );
   }
 
   let bestHouseY = 0.0;
@@ -5303,7 +5324,8 @@ function computeGroundHeight(pos, isGroundedOverride = grounded, velYOverride = 
 }
 
 function applyWorldCollisions(pos, isProbe = false) {
-  environment?.city?.applyCityCollisions?.(pos, PLAYER_RADIUS);
+  const footY = pos.y - EYE_HEIGHT;
+  environment?.city?.applyCityCollisions?.(pos, PLAYER_RADIUS, footY);
   if (!isProbe) {
     environment?.city?.applyPoleCollisions?.(pos, PLAYER_RADIUS, {
       impactSpeed: horizontalVelocity.length(),
@@ -5311,7 +5333,6 @@ function applyWorldCollisions(pos, isProbe = false) {
     });
   }
 
-  const footY = pos.y - EYE_HEIGHT;
   // Solid showcase landmark colliders (Chingri Chattar, Royal More buildings, buses & medians)
   environment?.landmarks?.applyCollisions?.(pos, PLAYER_RADIUS, footY);
   // Enterable Altapole Lane realistic houses, 6-story head tower & opposite goli colliders

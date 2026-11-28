@@ -138,9 +138,14 @@ export function buildKhulnaCircuitHouseMaidan(parent, _m, renderer = null) {
         model.traverse((obj) => {
           if (!obj.isMesh) return;
           const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          let hasNormalMap = false;
           for (const mat of mats) {
-            if (!mat || seenMats.has(mat)) continue;
+            if (!mat || seenMats.has(mat)) {
+              if (mat?.normalMap) hasNormalMap = true;
+              continue;
+            }
             seenMats.add(mat);
+            if (mat.normalMap) hasNormalMap = true;
             if (mat.name === 'M_Blue_Mesh_Net') {
               mat.transparent = true;
               mat.opacity = 0.68;
@@ -148,6 +153,30 @@ export function buildKhulnaCircuitHouseMaidan(parent, _m, renderer = null) {
               mat.depthWrite = false;
             }
             state.allMats.push(mat);
+          }
+
+          // Sanitize any zero-area UV side-cap triangles on normal-mapped meshes so dFdx/dFdy tangent frames never emit NaN under HDR Bloom!
+          if (hasNormalMap && obj.geometry && obj.geometry.attributes.uv && obj.geometry.attributes.position) {
+            if (obj.geometry.index) {
+              obj.geometry = obj.geometry.toNonIndexed();
+            }
+            const uvAttr = obj.geometry.attributes.uv;
+            const posAttr = obj.geometry.attributes.position;
+            for (let t = 0; t + 2 < uvAttr.count; t += 3) {
+              const u0 = uvAttr.getX(t), v0 = uvAttr.getY(t);
+              const u1 = uvAttr.getX(t + 1), v1 = uvAttr.getY(t + 1);
+              const u2 = uvAttr.getX(t + 2), v2 = uvAttr.getY(t + 2);
+              const area2 = Math.abs((u1 - u0) * (v2 - v0) - (u2 - u0) * (v1 - v0));
+              if (area2 < 1e-8) {
+                for (let k = 0; k < 3; k++) {
+                  const px = posAttr.getX(t + k);
+                  const py = posAttr.getY(t + k);
+                  const pz = posAttr.getZ(t + k);
+                  uvAttr.setXY(t + k, (px + pz) * 0.5, py * 0.5);
+                }
+              }
+            }
+            uvAttr.needsUpdate = true;
           }
 
           const n = obj.name || '';

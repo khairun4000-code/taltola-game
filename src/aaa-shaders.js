@@ -677,38 +677,125 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
   skyDome.renderOrder = -999;
   scene.add(skyDome);
 
-  // Miniature proxy sky+ground scene baked into an HDR cubemap via PMREMGenerator
+  // Detailed 360° Khulna Skyline + Sunlit Cloud Band + Specular Street Scene baked into HDR PMREM cubemap
   const pmremGen = new THREE.PMREMGenerator(renderer);
   pmremGen.compileEquirectangularShader();
 
   const envScene = new THREE.Scene();
-  const envSkyMat = new THREE.MeshBasicMaterial({ color: TIME_OF_DAY_PRESETS.golden.skyTop, side: THREE.BackSide });
-  const envSkySphere = new THREE.Mesh(new THREE.SphereGeometry(20, 16, 12), envSkyMat);
-  const envGroundMat = new THREE.MeshBasicMaterial({ color: 0x3b352c });
-  const envGround = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), envGroundMat);
+  const envSkyMat = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    uniforms: {
+      uTop: { value: new THREE.Color(TIME_OF_DAY_PRESETS.golden.skyTop) },
+      uHorizon: { value: new THREE.Color(TIME_OF_DAY_PRESETS.golden.skyHorizon) },
+      uSunGlow: { value: new THREE.Color(TIME_OF_DAY_PRESETS.golden.skySunGlow) },
+      uSunColor: { value: new THREE.Color(TIME_OF_DAY_PRESETS.golden.sunColor) },
+      uGround: { value: new THREE.Color(0x23262b) },
+      uSunDir: { value: new THREE.Vector3(0.65, 0.38, -0.54).normalize() },
+      uNight: { value: 0.0 },
+    },
+    vertexShader: /* glsl */ `
+      varying vec3 vEnvDir;
+      void main() {
+        vEnvDir = normalize(position);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uTop;
+      uniform vec3 uHorizon;
+      uniform vec3 uSunGlow;
+      uniform vec3 uSunColor;
+      uniform vec3 uGround;
+      uniform vec3 uSunDir;
+      uniform float uNight;
+      varying vec3 vEnvDir;
+      void main() {
+        vec3 d = normalize(vEnvDir);
+        if (d.y < -0.02) {
+          float gT = clamp((-d.y - 0.02) * 2.4, 0.0, 1.0);
+          vec3 roadBounce = mix(uHorizon * 0.42, uGround, gT);
+          gl_FragColor = vec4(roadBounce, 1.0);
+          return;
+        }
+        float h = clamp(d.y, 0.0, 1.0);
+        vec3 col = mix(uHorizon * 1.12, uTop, pow(h, 0.50));
+        float sunCos = max(dot(d, normalize(uSunDir)), 0.0);
+        float dayW = 1.0 - uNight * 0.82;
+        col += uSunGlow * pow(sunCos, 5.0) * 0.48 * dayW;
+        col += uSunColor * pow(sunCos, 42.0) * 1.35 * dayW;
+        // High-contrast sunlit cloud ribbons so car clearcoat & building glass show crisp sky reflections
+        float cloudBand = sin(d.x * 7.0 + d.z * 5.0) * 0.5 + 0.5;
+        float cloudBand2 = cos(d.z * 11.0 - d.x * 6.0) * 0.5 + 0.5;
+        float cloudMask = smoothstep(0.48, 0.84, cloudBand * 0.62 + cloudBand2 * 0.38) * smoothstep(0.04, 0.24, h) * (1.0 - smoothstep(0.55, 0.92, h));
+        vec3 cloudCol = mix(vec3(1.05, 0.98, 0.90), vec3(0.14, 0.18, 0.28), uNight);
+        col = mix(col, cloudCol * (0.95 + sunCos * 0.45), cloudMask * 0.72);
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+  const envSkySphere = new THREE.Mesh(new THREE.SphereGeometry(24, 32, 20), envSkyMat);
+  const envGroundMat = new THREE.MeshBasicMaterial({ color: 0x262930 });
+  const envGround = new THREE.Mesh(new THREE.PlaneGeometry(46, 46), envGroundMat);
   envGround.rotation.x = -Math.PI / 2;
-  envGround.position.y = -3.0;
-  const envHorizonRing = new THREE.Mesh(
-    new THREE.CylinderGeometry(16, 16, 7.5, 24, 1, true),
-    new THREE.MeshBasicMaterial({ color: TIME_OF_DAY_PRESETS.golden.skyHorizon, side: THREE.BackSide })
-  );
-  envHorizonRing.position.y = 0.5;
+  envGround.position.y = -2.6;
+
+  // 360° procedural Khulna urban skyline proxy silhouettes for realistic building/tree reflections on cars & glass
+  const skylineGroup = new THREE.Group();
+  const skylineWallMats = [
+    new THREE.MeshBasicMaterial({ color: 0xd8cbb8 }),
+    new THREE.MeshBasicMaterial({ color: 0x3b6982 }),
+    new THREE.MeshBasicMaterial({ color: 0xb97a63 }),
+    new THREE.MeshBasicMaterial({ color: 0xc5ced6 }),
+  ];
+  const skylineWinMat = new THREE.MeshBasicMaterial({ color: 0xffe4b5 });
+  for (let i = 0; i < 28; i++) {
+    const ang = (i / 28) * Math.PI * 2;
+    const dist = 15.2 + (i % 3) * 1.1;
+    const bw = 1.8 + ((i * 7) % 4) * 0.55;
+    const bh = 2.2 + ((i * 13) % 6) * 0.95;
+    const matIdx = i % skylineWallMats.length;
+    const bMesh = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, 1.4), skylineWallMats[matIdx]);
+    bMesh.position.set(Math.cos(ang) * dist, -2.5 + bh * 0.5, Math.sin(ang) * dist);
+    bMesh.lookAt(0, -2.5 + bh * 0.5, 0);
+    skylineGroup.add(bMesh);
+
+    if (i % 2 === 0) {
+      const wStrip = new THREE.Mesh(new THREE.PlaneGeometry(bw * 0.76, bh * 0.68), skylineWinMat);
+      wStrip.position.set(Math.cos(ang) * (dist - 0.74), -2.5 + bh * 0.54, Math.sin(ang) * (dist - 0.74));
+      wStrip.lookAt(0, -2.5 + bh * 0.54, 0);
+      skylineGroup.add(wStrip);
+    }
+  }
+
   const envSunPanel = new THREE.Mesh(
-    new THREE.PlaneGeometry(9, 9),
-    new THREE.MeshBasicMaterial({ color: 0xffd2a6, side: THREE.DoubleSide })
+    new THREE.PlaneGeometry(7.5, 7.5),
+    new THREE.MeshBasicMaterial({ color: 0xffe6c2, side: THREE.DoubleSide })
   );
   envSunPanel.position.set(12, 7, -10);
   envSunPanel.lookAt(0, 0, 0);
-  envScene.add(envSkySphere, envGround, envHorizonRing, envSunPanel);
+  envScene.add(envSkySphere, envGround, skylineGroup, envSunPanel);
 
+  const baseSkylineColors = [0xd8cbb8, 0x3b6982, 0xb97a63, 0xc5ced6];
   let currentEnvRT = null;
   let activePresetId = 'golden';
 
   function rebakePMREM(preset) {
-    envSkyMat.color.setHex(preset.skyTop);
-    envHorizonRing.material.color.setHex(preset.skyHorizon);
-    envGroundMat.color.setHex(preset.hemiGround);
-    envSunPanel.material.color.setHex(preset.sunColor).multiplyScalar(preset.isNight ? 0.8 : 2.2);
+    envSkyMat.uniforms.uTop.value.setHex(preset.skyTop);
+    envSkyMat.uniforms.uHorizon.value.setHex(preset.skyHorizon);
+    envSkyMat.uniforms.uSunGlow.value.setHex(preset.skySunGlow);
+    envSkyMat.uniforms.uSunColor.value.setHex(preset.sunColor);
+    envSkyMat.uniforms.uGround.value.setHex(preset.hemiGround).multiplyScalar(0.55);
+    envSkyMat.uniforms.uSunDir.value.set(...preset.sunPos).normalize();
+    envSkyMat.uniforms.uNight.value = preset.nightFactor || 0;
+
+    envGroundMat.color.setHex(preset.hemiGround).multiplyScalar(preset.isNight ? 0.35 : 0.62);
+    const facadeDim = preset.isNight ? 0.22 : (preset.id === 'sunset' ? 0.68 : 0.92);
+    for (let i = 0; i < skylineWallMats.length; i++) {
+      skylineWallMats[i].color.setHex(baseSkylineColors[i]).multiplyScalar(facadeDim);
+    }
+    skylineWinMat.color.setHex(preset.isNight ? 0xffcf86 : 0xbad9f5).multiplyScalar(preset.isNight ? 1.35 : 0.85);
+
+    envSunPanel.material.color.setHex(preset.sunColor).multiplyScalar(preset.isNight ? 0.65 : 2.6);
     const sx = preset.sunPos[0];
     const sy = preset.sunPos[1];
     const sz = preset.sunPos[2];
@@ -716,7 +803,7 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
     envSunPanel.position.set(sx * inv, sy * inv, sz * inv);
     envSunPanel.lookAt(0, 0, 0);
 
-    const nextRT = pmremGen.fromScene(envScene, 0.04);
+    const nextRT = pmremGen.fromScene(envScene, 0.025);
     scene.environment = nextRT.texture;
     if (currentEnvRT) currentEnvRT.dispose();
     currentEnvRT = nextRT;
@@ -738,10 +825,10 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
     sharedUniforms.uStarAlpha.value = preset.starAlpha;
     sharedUniforms.uNightFactor.value = preset.nightFactor;
 
-    const lowFillMult = quality === 'low' ? 1.12 : (quality === 'medium' ? 1.08 : 1.0);
+    const lowFillMult = quality === 'low' ? 1.12 : (quality === 'medium' ? 1.06 : 1.0);
     if (sun) {
       sun.color.setHex(preset.sunColor);
-      sun.intensity = preset.sunIntensity * (quality === 'ultra' ? 1.12 : 1.0);
+      sun.intensity = preset.sunIntensity * (quality === 'ultra' ? 1.14 : (quality === 'high' ? 1.06 : 1.0));
     }
     if (hemisphereLight) {
       hemisphereLight.color.setHex(preset.hemiSky);
@@ -755,7 +842,7 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
       scene.fog.color.setHex(preset.fogColor);
     }
     scene.background = new THREE.Color(preset.fogColor);
-    renderer.toneMappingExposure = quality === 'ultra' ? preset.exposure : Math.max(1.02, preset.exposure - 0.03);
+    renderer.toneMappingExposure = quality === 'ultra' ? preset.exposure : Math.max(1.03, preset.exposure - 0.02);
 
     if (composerPasses?.bloom) {
       if (quality === 'ultra') {
@@ -763,9 +850,9 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
         composerPasses.bloom.radius = 0.52;
         composerPasses.bloom.threshold = preset.bloomThreshold;
       } else if (quality === 'high') {
-        composerPasses.bloom.strength = preset.bloomStrength * 0.60;
-        composerPasses.bloom.radius = 0.36;
-        composerPasses.bloom.threshold = Math.min(0.95, preset.bloomThreshold + 0.05);
+        composerPasses.bloom.strength = preset.bloomStrength * 0.68;
+        composerPasses.bloom.radius = 0.40;
+        composerPasses.bloom.threshold = Math.min(0.92, preset.bloomThreshold + 0.03);
       } else {
         composerPasses.bloom.strength = 0;
         composerPasses.bloom.threshold = preset.bloomThreshold;
@@ -774,8 +861,14 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
 
     skyDome.visible = true;
     rebakePMREM(preset);
-    // Keep selective envMap on reflective glass/chrome/tiles/cars/characters instead of forcing heavy global PMREM IBL on every matte building pixel (+35-45% Ultra FPS!)
-    scene.environment = null;
+    // Active PBR IBL environment across buildings, GLB landmarks, vehicles, glass & damp roads!
+    if (quality === 'low') {
+      scene.environment = null;
+      scene.environmentIntensity = 0.0;
+    } else {
+      scene.environment = currentEnvRT?.texture || null;
+      scene.environmentIntensity = quality === 'ultra' ? 0.90 : (quality === 'high' ? 0.78 : 0.60);
+    }
     return preset;
   }
 
@@ -795,4 +888,154 @@ export function createAtmosphericSkyAndPMREM(scene, renderer) {
       pmremGen.dispose();
     },
   };
+}
+
+/**
+ * Upgrades any building facade / Thai-glass curtain-wall MeshStandardMaterial with:
+ * 1) Crisp mirror-smooth PBR glass roughness (0.042) & metallic tint on window texels
+ * 2) 3D Interior-Mapped Parallax Rooms (recessed LED ceiling panels, depth walls, blinds)
+ * 3) Grazing-angle Fresnel sky & solar specular glints (inspired by flyingcarsimulator.io)
+ */
+export function upgradeReflectiveBuildingFacade(material, skySharedUniforms, options = {}) {
+  if (!material) return material;
+  const roomWidth = options.roomWidth ?? 3.4;
+  const roomHeight = options.roomHeight ?? 3.2;
+  const roomDepth = options.roomDepth ?? 3.1;
+  const glassMetalness = options.glassMetalness ?? 0.32;
+  const cacheTag = `taltola-reflective-bldg-v1-${roomWidth.toFixed(1)}-${glassMetalness.toFixed(2)}`;
+
+  const uSunDir = skySharedUniforms?.uSunDir || { value: new THREE.Vector3(0.65, 0.38, -0.54).normalize() };
+  const uSunColor = skySharedUniforms?.uSunColor || { value: new THREE.Color(0xffdfba) };
+  const uSkyTop = skySharedUniforms?.uSkyTop || { value: new THREE.Color(0x4b87c8) };
+  const uSkyHorizon = skySharedUniforms?.uSkyHorizon || { value: new THREE.Color(0xe8c9a8) };
+  const uNightFactor = skySharedUniforms?.uNightFactor || { value: 0.0 };
+
+  material.customProgramCacheKey = () => cacheTag;
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uBldgSunDir = uSunDir;
+    shader.uniforms.uBldgSunColor = uSunColor;
+    shader.uniforms.uBldgSkyTop = uSkyTop;
+    shader.uniforms.uBldgSkyHorizon = uSkyHorizon;
+    shader.uniforms.uBldgNight = uNightFactor;
+
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        varying vec3 vBldgWorldPos;
+        varying vec3 vBldgWorldNormal;`
+      )
+      .replace(
+        '#include <worldpos_vertex>',
+        `#include <worldpos_vertex>
+        vBldgWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        vBldgWorldNormal = normalize(mat3(modelMatrix) * objectNormal);`
+      );
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        varying vec3 vBldgWorldPos;
+        varying vec3 vBldgWorldNormal;
+        uniform vec3 uBldgSunDir;
+        uniform vec3 uBldgSunColor;
+        uniform vec3 uBldgSkyTop;
+        uniform vec3 uBldgSkyHorizon;
+        uniform float uBldgNight;
+
+        float hashBldg3(vec3 p) {
+          p = fract(p * vec3(443.897, 441.423, 437.195));
+          p += dot(p, p.yzx + 19.19);
+          return fract((p.x + p.y) * p.z);
+        }`
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>
+        float bldgWallMask = step(abs(vBldgWorldNormal.y), 0.45);
+        float bldgGlassMask = smoothstep(0.38, 0.15, roughnessFactor) * bldgWallMask;
+        roughnessFactor = mix(roughnessFactor, 0.042, bldgGlassMask);`
+      )
+      .replace(
+        '#include <metalnessmap_fragment>',
+        `#include <metalnessmap_fragment>
+        metalnessFactor = mix(metalnessFactor, ${glassMetalness.toFixed(3)}, bldgGlassMask);`
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+        if (bldgGlassMask > 0.02) {
+          vec3 wN = normalize(vBldgWorldNormal + vec3(0.0, 1e-6, 0.0));
+          vec3 wUp = vec3(0.0, 1.0, 0.0);
+          vec3 wT = normalize(cross(wUp, wN) + vec3(1e-6, 0.0, 0.0));
+          vec3 viewDelta = vBldgWorldPos - cameraPosition;
+          vec3 viewRay = viewDelta / max(length(viewDelta), 1e-4);
+          float ndotv = clamp(dot(-viewRay, wN), 0.0, 1.0);
+          float fresnel = pow(max(1.0 - ndotv, 1e-4), 3.6);
+
+          // 3D Interior-Mapped Room Parallax Raycast
+          float coordU = dot(vBldgWorldPos.xz, wT.xz) / ${roomWidth.toFixed(2)};
+          float coordV = max(0.0, vBldgWorldPos.y - 0.15) / ${roomHeight.toFixed(2)};
+          vec2 roomId = floor(vec2(coordU, coordV));
+          vec2 roomFrac = fract(vec2(coordU, coordV));
+
+          float rU = dot(viewRay, wT) / ${roomWidth.toFixed(2)};
+          float rV = viewRay.y / ${roomHeight.toFixed(2)};
+          float rD = max(0.06, dot(viewRay, -wN)) / ${roomDepth.toFixed(2)};
+
+          float tBack = 1.0 / rD;
+          float tWallU = rU > 0.0 ? (1.0 - roomFrac.x) / max(rU, 1e-4) : -roomFrac.x / min(rU, -1e-4);
+          float tWallV = rV > 0.0 ? (1.0 - roomFrac.y) / max(rV, 1e-4) : -roomFrac.y / min(rV, -1e-4);
+          float tHit = min(tBack, min(tWallU, tWallV));
+
+          vec3 hitLocal = vec3(roomFrac.x + rU * tHit, roomFrac.y + rV * tHit, rD * tHit);
+          vec3 blockSeed = vec3(roomId, floor(dot(vBldgWorldPos.xz, wN.xz) * 0.12));
+          float rndRoom = hashBldg3(blockSeed);
+          float rndTone = hashBldg3(blockSeed + 7.31);
+
+          // Warm vs cool daylight fluorescent Khulna office/apartment palette
+          vec3 warmBulb = vec3(1.00, 0.80, 0.52);
+          vec3 coolTube = vec3(0.82, 0.93, 1.00);
+          vec3 lightTint = mix(warmBulb, coolTube, step(0.58, rndTone));
+
+          bool hitCeiling = (tWallV <= tBack && tWallV <= tWallU && rV > 0.0);
+          bool hitFloor = (tWallV <= tBack && tWallV <= tWallU && rV <= 0.0);
+
+          vec3 roomCol = lightTint * (0.28 + 0.24 * (1.0 - hitLocal.z * 0.55));
+          if (hitCeiling) {
+            // Dual recessed ceiling LED panels in 3D perspective
+            float p1 = step(abs(hitLocal.x - 0.32), 0.095) * step(abs(fract(hitLocal.z * 1.6) - 0.5), 0.30);
+            float p2 = step(abs(hitLocal.x - 0.68), 0.095) * step(abs(fract(hitLocal.z * 1.6) - 0.5), 0.30);
+            float panel = max(p1, p2);
+            roomCol = mix(lightTint * 0.22, lightTint * 1.65, panel);
+          } else if (hitFloor) {
+            roomCol = lightTint * 0.14;
+          } else {
+            // Back/side interior walls with subtle desk/shelf band & window blinds
+            float deskShadow = smoothstep(0.28, 0.36, hitLocal.y);
+            float blinds = 0.88 + 0.12 * sin(roomFrac.y * 42.0);
+            float curtain = step(0.35, rndTone) * smoothstep(0.45, 0.85, roomFrac.y) * 0.12;
+            roomCol = lightTint * (0.18 + 0.36 * deskShadow + curtain) * blinds;
+          }
+
+          // Active room occupancy: subtle sunlit/interior depth by day, vibrant warm city windows at sunset/night!
+          float litDay = step(0.44, rndRoom) * 0.48 + 0.14;
+          float litNight = step(0.32, rndRoom) * 1.28 + 0.05;
+          float roomActivity = mix(litDay, litNight, smoothstep(0.15, 0.85, uBldgNight));
+
+          // Crisp architectural glass reflection boost + solar specular glint
+          vec3 reflDir = reflect(viewRay, wN);
+          vec3 skyRefl = mix(uBldgSkyHorizon, uBldgSkyTop, clamp(reflDir.y * 0.85 + 0.15, 0.0, 1.0));
+          float sunGlint = pow(max(dot(reflDir, normalize(uBldgSunDir)), 1e-4), 48.0) * (1.0 - uBldgNight * 0.85);
+          vec3 glassSheen = skyRefl * (0.16 + fresnel * 0.52) * (1.0 - uBldgNight * 0.65) + uBldgSunColor * sunGlint * 1.35;
+
+          // Grazing angles turn glass into a sky mirror; straight-on view reveals 3D interior rooms
+          vec3 interiorVisible = roomCol * roomActivity * (1.0 - fresnel * 0.76);
+          totalEmissiveRadiance += (interiorVisible + glassSheen) * bldgGlassMask;
+        }`
+      );
+  };
+  material.needsUpdate = true;
+  return material;
 }

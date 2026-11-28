@@ -3,6 +3,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import worldData from './data/khulna-world-data.json';
 import { clampToKhulnaBounds, worldXZToLatLon, TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
 import { createKhulnaStreetPropsSystem } from './khulna-street-props.js';
+import { createKhulnaCityBuildingsSystem } from './khulna-city-buildings.js';
+import { buildCircuitGradeCityRoadSystem } from './khulna-city-roads.js';
 import {
   generateNormalAndRoughnessMaps,
   attachDerivedPBRMaps,
@@ -799,59 +801,6 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
     }
   }
 
-  // 3. Merged Road Network Ribbons (only 4 draw calls for all 349 Khulna streets!)
-  const sidewalkMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    map: tex.sidewalkTex,
-    roughness: 0.88,
-    metalness: 0.03,
-    polygonOffset: true,
-    polygonOffsetFactor: 1,
-    polygonOffsetUnits: 1,
-  });
-  attachDerivedPBRMaps(sidewalkMat, tex.sidewalkTex, { strength: 2.0, roughBase: 0.88, normalScale: 0.65 });
-  // Use Taltola House's exact realistic wet-asphalt PBR material (m.road) across ALL Khulna streets, flush at y ≈ 0.000 (ZERO wheel/foot sinking!)
-  const unifiedRoadMat = taltolaRoadMat || new THREE.MeshStandardMaterial({ color: 0xd8dce0, map: tex.roadMajorTex, roughness: 0.78, metalness: 0.04 });
-  const uvS = taltolaRoadMat ? 5.5 : 0;
-
-  const sidewalkGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t <= 3, -0.014, 1.5, 0);
-  const majorGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t <= 1, -0.001, 0.0, uvS);
-  const midGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t === 2 || r.t === 3, -0.003, 0.0, uvS);
-  const laneGeo = buildMergedRoadGeometry(worldData.roads, (r) => r.t >= 4, -0.005, 0.0, uvS);
-
-  for (const [geo, mat] of [
-    [sidewalkGeo, sidewalkMat],
-    [majorGeo, unifiedRoadMat],
-    [midGeo, unifiedRoadMat],
-    [laneGeo, unifiedRoadMat],
-  ]) {
-    if (!geo) continue;
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.receiveShadow = true;
-    group.add(mesh);
-  }
-
-
-  // 4. Khulna Citywide Utility Poles, Tangled Overhead Wires, Posters & Election Banners!
-  // (Auto-generated OSM city box buildings removed so only clean roads, parks, fields & high-detail landmarks remain.)
-  const streetProps = createKhulnaStreetPropsSystem(group, worldData, shaderUniforms);
-
-  function refreshActiveChunks(playerX, playerZ, qualityMode = 'high') {
-    streetProps.refreshActiveChunks(playerX, playerZ, qualityMode);
-  }
-
-  // Initialize around Taltola House cleanly on frame 0
-  refreshActiveChunks(TALTOLA_HOUSE_OFFSET.x, TALTOLA_HOUSE_OFFSET.z, 'high');
-
-  function applyCityCollisions(pos, radius) {
-    clampToKhulnaBounds(pos, worldData.meta.bounds);
-
-    // Allow swimming out into Rupsha River near ghats while preventing leaving world east edge
-    if (pos.x > 1285) {
-      pos.x = 1285;
-    }
-  }
-
   function isInWater(x, z) {
     for (let i = 0; i < pondPolys.length; i++) {
       const p = pondPolys[i];
@@ -866,6 +815,34 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
       }
     }
     return false;
+  }
+
+  // 3. Circuit-House-Maidan-Grade Citywide Pitch-Asphalt Roads, Double-Yellow/Dashed Markings,
+  //    Zebra Crosswalks, 3D Black-and-Yellow Striped Curbs, 3D Interlocking Hex-Paver Sidewalks & Storm Drains!
+  const cityRoads = buildCircuitGradeCityRoadSystem(group, worldData, renderer, skySystem, shaderUniforms, isInWater);
+
+  // 4. Khulna Citywide Utility Poles, Tangled Overhead Wires, Posters & Election Banners!
+  const streetProps = createKhulnaStreetPropsSystem(group, worldData, shaderUniforms);
+
+  // 5. Khulna Citywide Reflective Buildings (Thai-Glass Towers, Balcony Apartments, Bengali Shops & Roadside Trees)
+  const cityBuildings = createKhulnaCityBuildingsSystem(group, worldData, skySystem, shaderUniforms, isInWater);
+
+  function refreshActiveChunks(playerX, playerZ, qualityMode = 'high') {
+    streetProps.refreshActiveChunks(playerX, playerZ, qualityMode);
+    cityBuildings.refreshActiveChunks(playerX, playerZ, qualityMode);
+  }
+
+  // Initialize around Taltola House cleanly on frame 0
+  refreshActiveChunks(TALTOLA_HOUSE_OFFSET.x, TALTOLA_HOUSE_OFFSET.z, 'high');
+
+  function applyCityCollisions(pos, radius, footY = 0) {
+    clampToKhulnaBounds(pos, worldData.meta.bounds);
+    cityBuildings.applyBuildingCollisions(pos, radius, footY);
+
+    // Allow swimming out into Rupsha River near ghats while preventing leaving world east edge
+    if (pos.x > 1285) {
+      pos.x = 1285;
+    }
   }
 
   let cachedRoadCellKey = '';
@@ -929,10 +906,14 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
   function setNightFactor(nightFactor = 0) {
     const nf = THREE.MathUtils.clamp(nightFactor, 0, 1);
     streetProps.setNightFactor(nf);
+    cityBuildings.setNightFactor(nf);
+    cityRoads.setNightFactor(nf);
   }
 
   function setQualityMode(qualityMode) {
     const isLow = qualityMode === 'low';
+    cityBuildings.setQualityMode(qualityMode);
+    cityRoads.setQualityMode(qualityMode);
     const nextWaterMat = isLow ? waterLowMat : (waterShaderMat || waterLowMat);
     for (const wm of waterMeshes) {
       if (wm.material !== nextWaterMat) wm.material = nextWaterMat;
@@ -963,6 +944,7 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
     group,
     data: worldData,
     refreshActiveChunks,
+    getGroundHeight: (pos) => cityRoads.getGroundHeight(pos),
     applyCityCollisions,
     applyPoleCollisions: (pos, radius, opts) => streetProps.applyPoleCollisions(pos, radius, opts),
     updatePoles: (dt) => streetProps.updatePoles(dt),
@@ -975,6 +957,7 @@ export function buildKhulnaCity(parent, renderer, skySystem = null, shaderUnifor
     setVisible(visible) {
       group.visible = visible;
       streetProps.setVisible(visible);
+      cityBuildings.setVisible(visible);
     },
   };
 }
