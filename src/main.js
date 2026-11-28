@@ -3,6 +3,8 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { FirstPersonControls } from './controls.js';
 import { createMaterials } from './materials.js';
 import { buildHouse } from './house.js';
@@ -103,9 +105,24 @@ const crosshairEl = document.querySelector('.crosshair');
 const brandTitle = document.querySelector('#brand-title');
 const brandSubtitle = document.querySelector('#brand-subtitle');
 
+const isEarlySoftwareGpu = (() => {
+  try {
+    const probe = document.createElement('canvas');
+    const gl = probe.getContext('webgl2') || probe.getContext('webgl');
+    if (!gl) return false;
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    const glName = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return /SwiftShader|llvmpipe|Basic Render|Software|Subzero/i.test(String(glName || ''));
+  } catch {
+    return false;
+  }
+})();
+const urlForcedQuality = new URLSearchParams(window.location.search).has('quality');
+
 const renderer = new THREE.WebGLRenderer({
   canvas,
-  antialias: true,
+  antialias: !isEarlySoftwareGpu,
   powerPreference: 'high-performance',
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -128,9 +145,18 @@ if (!TIME_OF_DAY_PRESETS[timeOfDayId]) timeOfDayId = 'golden';
 let skySystem = null;
 let composer = null;
 let bloomPass = null;
+let fxaaPass = null;
+
+function updateFxaaResolution() {
+  if (!fxaaPass) return;
+  const pr = renderer.getPixelRatio();
+  const w = Math.max(1, window.innerWidth * pr);
+  const h = Math.max(1, window.innerHeight * pr);
+  fxaaPass.material.uniforms['resolution'].value.set(1 / w, 1 / h);
+}
 
 function setupPostProcessing() {
-  // Fast non-MSAA HalfFloat render target + true quarter-res (0.25x) UnrealBloomPass delivers creamy Ultra glow at ~60 FPS with ZERO resolution loss!
+  // Fast non-MSAA HalfFloat render target + true quarter-res (0.25x) UnrealBloomPass + crisp FXAA anti-aliasing!
   const composerRT = new THREE.WebGLRenderTarget(
     Math.max(1, window.innerWidth),
     Math.max(1, window.innerHeight),
@@ -165,6 +191,9 @@ function setupPostProcessing() {
   }
   composer.addPass(bloomPass);
   composer.addPass(new OutputPass());
+  fxaaPass = new ShaderPass(FXAAShader);
+  composer.addPass(fxaaPass);
+  updateFxaaResolution();
 }
 
 function updateSunPositionFromAnchor(ax, az) {
@@ -228,15 +257,20 @@ function cycleTimeOfDay() {
 timeToggleButton?.addEventListener('click', cycleTimeOfDay);
 
 function renderActiveScene() {
-  // Full-resolution 4x MSAA EffectComposer + half-res UnrealBloomPass glow on Ultra & High across ALL times of day!
-  const useBloom = Boolean(
+  // Full-resolution EffectComposer + FXAA anti-aliasing (+ Bloom on High & Ultra 4K; also FXAA on Medium when software renderer lacks hardware MSAA!)
+  const useComposer = Boolean(
     !inStudio
     && composer
     && bloomPass
-    && (quality === 'ultra' || quality === 'high')
-    && bloomPass.strength > 0.02
+    && (
+      ((quality === 'ultra' || quality === 'high') && bloomPass.strength > 0.02)
+      || (quality === 'medium' && softwareRendererDetected)
+    )
   );
-  if (useBloom) {
+  if (useComposer) {
+    if (bloomPass) {
+      bloomPass.enabled = (quality === 'ultra' || quality === 'high') && bloomPass.strength > 0.02;
+    }
     composer.render();
   } else {
     renderer.render(scene, camera);
@@ -275,6 +309,14 @@ let landRecoveryClip = null;
 let landingCamDip = 0;
 let landingCamDipVel = 0;
 let inWater = false;
+let wasInWater = false;
+let curWaterSurfaceY = -0.012;
+let swimStrokeTimer = 0;
+let vehicleSplashTimer = 0;
+let nearWaterHintCached = false;
+let lastNearWaterProbeAt = 0;
+const waterAimDir = new THREE.Vector3();
+const waterThrowOrigin = new THREE.Vector3();
 let wallAhead = false;
 const wallProbePos = new THREE.Vector3();
 const ledgeHangState = {
@@ -539,8 +581,8 @@ let smoothedCamDist = 1.95;
 let camHideMeshState = false;
 let isThirdPersonEyeFallback = false;
 let lastResolvedCamMode = null;
-let ultraFastMode = false;
-let softwareRendererDetected = false;
+let ultraFastMode = isEarlySoftwareGpu && !urlForcedQuality;
+let softwareRendererDetected = isEarlySoftwareGpu;
 let lowFpsStreak = 0;
 let khulnaMapUI = null;
 let gtaPhoneUI = null;
@@ -1379,21 +1421,18 @@ function applyQuality(nextQuality) {
   const isLow = quality === 'low';
   const isUltra = quality === 'ultra';
   const isHigh = quality === 'high';
-  // 4 Game-Style Presets: full crisp Ultra 4K resolution + 60 FPS GPU fillrate balance; rock-solid 60 FPS on Low
+  // 4 Game-Style Presets: sharp QHD+ resolution with 60 FPS GPU fillrate balance across Low Smooth -> Ultra 4K
+  // ONLY Low Smooth uses dynamic CPU scaling on software renderers; Medium, High & Ultra 4K ALWAYS render at full 100%+ sharp resolution with real shadows & PBR!
   const ratios = {
-    low: Math.min(dpr, 1.0),
-    medium: Math.min(dpr, 1.25),
-    high: Math.min(dpr, 1.40),
-    ultra: Math.min(dpr, 1.50),
+    low: (softwareRendererDetected && !urlForcedQuality) ? 0.62 : Math.min(dpr, 1.15),
+    medium: Math.max(1.0, Math.min(dpr, 1.25)),
+    high: Math.max(1.10, Math.min(dpr, 1.40)),
+    ultra: Math.max(1.35, Math.min(dpr * 1.35, 1.65)),
   };
-  const maxTex = renderer.capabilities?.maxTextureSize || 4096;
-  const shadowSizes = {
-    low: 1024,
-    medium: Math.min(1536, maxTex),
-    high: Math.min(2048, maxTex),
-    ultra: Math.min(4096, maxTex),
-  };
-  const useShadows = shadowsOverride === 'on' ? true : (shadowsOverride === 'off' ? false : !isLow);
+  const shadowSizes = { low: 1024, medium: 1024, high: 1536, ultra: 2048 };
+  const useShadows = shadowsOverride === 'on'
+    ? true
+    : (shadowsOverride === 'off' ? false : !isLow);
   const activeRatio = ratios[quality] ?? ratios.high;
 
   renderer.setPixelRatio(activeRatio);
@@ -1406,6 +1445,7 @@ function applyQuality(nextQuality) {
       Math.max(240, Math.floor(window.innerWidth * 0.25)),
       Math.max(135, Math.floor(window.innerHeight * 0.25))
     );
+    updateFxaaResolution();
   }
   renderer.shadowMap.enabled = useShadows;
   // PCFSoftShadowMap on High/Ultra delivers smooth realistic street/building/tree penumbra shadows
@@ -1419,9 +1459,10 @@ function applyQuality(nextQuality) {
   document.body.classList.toggle('low-perf-ui', isLow);
 
   if (!inStudio) {
-    scene.fog.near = isLow ? 130 : (quality === 'medium' ? 185 : (isUltra ? 240 : 210));
-    scene.fog.far = isLow ? 290 : (quality === 'medium' ? 430 : (isUltra ? 540 : 480));
-    camera.far = isLow ? 340 : (quality === 'medium' ? 470 : (isUltra ? 580 : 520));
+    const softFast = softwareRendererDetected && !urlForcedQuality && isLow;
+    scene.fog.near = softFast ? 135 : (isLow ? 145 : (quality === 'medium' ? 180 : (isUltra ? 215 : 195)));
+    scene.fog.far = softFast ? 330 : (isLow ? 340 : (quality === 'medium' ? 420 : (isUltra ? 495 : 460)));
+    camera.far = softFast ? 375 : (isLow ? 390 : (quality === 'medium' ? 460 : (isUltra ? 535 : 500)));
     camera.updateProjectionMatrix();
     environment?.setFogBounds?.(scene.fog.near, scene.fog.far);
   }
@@ -1505,7 +1546,7 @@ function applyQuality(nextQuality) {
     }
   });
 
-  sceneMaterials?.setQualityMode?.(quality);
+  sceneMaterials?.setQualityMode?.(quality, isLow && softwareRendererDetected && !urlForcedQuality);
   environment?.setQualityMode?.(quality);
   environment?.tower?.setQualityMode?.(quality);
   environment?.city?.refreshActiveChunks?.(playerPos.x, playerPos.z, quality);
@@ -1519,7 +1560,7 @@ function applyQuality(nextQuality) {
   for (const c of cars) {
     c?.setQualityMode?.(quality);
   }
-  if (environment?.farGroup) environment.farGroup.visible = true;
+  environment?.syncVisibility?.(playerPos);
   if (!inStudio && skySystem) {
     if (skySystem.skyDome) skySystem.skyDome.visible = true;
     applyTimeOfDay(timeOfDayId);
@@ -3471,7 +3512,7 @@ async function initialize() {
   for (const vid of starterVehicleIds) {
     const vCfg = CAR_FLEET_CONFIGS.find((c) => c.id === vid);
     if (!vCfg) continue;
-    const starterVeh = createDrivableCar(scene, undefined, vCfg);
+    const starterVeh = createDrivableCar(scene, undefined, { ...vCfg, deferLoad: true });
     starterVeh.setQualityMode?.(quality);
     starterVeh.setEnvironmentMap?.(vehicleEnvStartup);
     cars.push(starterVeh);
@@ -3490,13 +3531,19 @@ async function initialize() {
       localStorage.setItem('taltola_quality', quality);
       localStorage.setItem('taltola_quality_manual', '1');
     } catch {}
+  } else if (isEarlySoftwareGpu && !localStorage.getItem('taltola_quality_manual')) {
+    softwareRendererDetected = true;
+    quality = 'low';
+    ultraFastMode = true;
+  } else if (isEarlySoftwareGpu) {
+    softwareRendererDetected = true;
+    ultraFastMode = quality === 'low';
   } else {
     try {
       const gl = renderer.getContext();
       const dbgExt = gl.getExtension('WEBGL_debug_renderer_info');
       const glRenderer = dbgExt ? gl.getParameter(dbgExt.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
-      if (/SwiftShader|llvmpipe|Basic Render|Software|Subzero/i.test(String(glRenderer || ''))
-        && !localStorage.getItem('taltola_quality_manual')) {
+      if (/SwiftShader|llvmpipe|Basic Render|Software|Subzero/i.test(String(glRenderer || ''))) {
         softwareRendererDetected = true;
         quality = 'low';
         ultraFastMode = true;
@@ -3598,6 +3645,8 @@ async function initialize() {
     khulnaMapUI,
     setQuality: applyQuality,
     setTimeOfDay: applyTimeOfDay,
+    waterSystem: environment?.waterSystem,
+    waterHub: environment?.waterHub,
     measureSceneStats() {
       syncSceneVisibility(true);
       renderer.render(scene, camera);
@@ -4017,6 +4066,11 @@ function warpToLandmark(lm, lockControls = false) {
     sz = -520.2;
     lx = 40.0;
     lz = -548.0;
+  } else if (lm.id === 'rupsha_bridge') {
+    sx = 1175.0;
+    sz = 820.0;
+    lx = 1395.0;
+    lz = 820.0;
   }
 
   if (activeCar) {
@@ -4037,12 +4091,13 @@ function warpToLandmark(lm, lockControls = false) {
     for (const [ox, oz] of probeOffsets) {
       const tx = sx + ox;
       const tz = sz + oz;
-      if (environment?.city?.isInWater?.(tx, tz)) continue;
-      probeVec.set(tx, EYE_HEIGHT, tz);
+      const deckY = computeGroundHeight(new THREE.Vector3(tx, 24.0, tz), true, 0);
+      if (deckY <= 0.3 && environment?.city?.isInWater?.(tx, tz)) continue;
+      probeVec.set(tx, deckY + EYE_HEIGHT, tz);
       const beforeX = probeVec.x;
       const beforeZ = probeVec.z;
-      environment?.landmarks?.applyCollisions?.(probeVec, Math.max(activeCar.state.halfWidth, 1.05), 0);
-      environment?.altapoleGoli?.applyPlayerCollisions?.(probeVec, Math.max(activeCar.state.halfWidth, 1.05), 0);
+      environment?.landmarks?.applyCollisions?.(probeVec, Math.max(activeCar.state.halfWidth, 1.05), deckY);
+      environment?.altapoleGoli?.applyPlayerCollisions?.(probeVec, Math.max(activeCar.state.halfWidth, 1.05), deckY);
       if (Math.hypot(probeVec.x - beforeX, probeVec.z - beforeZ) < 0.08) {
         bestX = tx;
         bestZ = tz;
@@ -4051,8 +4106,8 @@ function warpToLandmark(lm, lockControls = false) {
     }
 
     activeCar.spawnAt(bestX, bestZ, heading);
-    const groundY = Math.max(0, computeGroundHeight(new THREE.Vector3(bestX, EYE_HEIGHT, bestZ)));
-    if (groundY >= 0 && groundY < 2.2) {
+    const groundY = Math.max(0, computeGroundHeight(new THREE.Vector3(bestX, 24.0, bestZ), true, 0));
+    if (groundY >= 0 && groundY < 22.0) {
       activeCar.state.pos.y = groundY + 0.006;
       activeCar.group.position.y = groundY + 0.006;
     }
@@ -4107,12 +4162,14 @@ function warpToLandmark(lm, lockControls = false) {
     return;
   }
 
-  playerPos.set(sx, EYE_HEIGHT, sz);
+  playerPos.set(sx, 24.0, sz);
   horizontalVelocity.set(0, 0);
   verticalVelocity = 0;
   grounded = true;
+  inWater = false;
+  wasInWater = false;
   environment?.city?.refreshActiveChunks?.(playerPos.x, playerPos.z, quality);
-  const groundY = computeGroundHeight(playerPos);
+  const groundY = computeGroundHeight(playerPos, true, 0);
   playerPos.y = groundY + EYE_HEIGHT;
   syncSceneVisibility(true);
   if (sun?.castShadow) {
@@ -4850,6 +4907,42 @@ window.addEventListener('keydown', (event) => {
     } else {
       playerCharacter?.playCombatVoice?.({ force: true });
     }
+  } else if (event.code === 'KeyH' && !event.repeat) {
+    event.preventDefault();
+    if (isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence();
+    } else if (environment?.waterSystem) {
+      camera.getWorldDirection(waterAimDir);
+      waterThrowOrigin.copy(playerPos);
+      waterThrowOrigin.y -= 0.14;
+      environment.waterSystem.throwObject(waterThrowOrigin, waterAimDir, 1.05);
+      playerCharacter?.triggerAttack?.(1);
+    }
+  } else if (event.code === 'KeyJ' && !event.repeat) {
+    event.preventDefault();
+    if (isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence();
+    } else if (environment?.waterSystem) {
+      camera.getWorldDirection(waterAimDir);
+      const hit = environment.waterSystem.raycastBulletWaterHit(camera.position, waterAimDir, 210.0, 1.15);
+      if (!hit) {
+        gtaPhoneUI?.showToast?.('🔫 পুকুর বা নদীর পানির দিকে তাকিয়ে [J] চাপুন — গুলির আঘাতে পানি ছিটকে উঠবে!');
+      }
+    }
+  } else if (event.code === 'KeyU' && !event.repeat) {
+    event.preventDefault();
+    if (isPosInModelMosque(playerPos)) {
+      notifyMosqueSilence();
+    } else if (environment?.waterSystem) {
+      camera.getWorldDirection(waterAimDir);
+      waterThrowOrigin.copy(playerPos);
+      waterThrowOrigin.y -= 0.10;
+      environment.waterSystem.throwBomb(waterThrowOrigin, waterAimDir, 1.15);
+      playerCharacter?.triggerAttack?.(1);
+      setTimeout(() => {
+        landingCamDipVel -= 1.35;
+      }, 950);
+    }
   }
 
   shiftHeld = event.shiftKey || event.code === 'ShiftLeft' || event.code === 'ShiftRight';
@@ -5278,7 +5371,8 @@ function computeGroundHeight(pos, isGroundedOverride = grounded, velYOverride = 
   if (!insideMainSlab && !inFrontBalconyZone) {
     return Math.max(
       environment?.landmarks?.getGroundHeight?.(pos) ?? 0.0,
-      environment?.city?.getGroundHeight?.(pos) ?? 0.0
+      environment?.city?.getGroundHeight?.(pos) ?? 0.0,
+      environment?.corridors?.getGroundHeight?.(pos) ?? 0.0,
     );
   }
 
@@ -5333,8 +5427,9 @@ function applyWorldCollisions(pos, isProbe = false) {
     });
   }
 
-  // Solid showcase landmark colliders (Chingri Chattar, Royal More buildings, buses & medians)
+  // Solid showcase landmark, Circuit House Maidan & Rupsha Bridge parapet colliders
   environment?.landmarks?.applyCollisions?.(pos, PLAYER_RADIUS, footY);
+  environment?.corridors?.applyCollisions?.(pos, PLAYER_RADIUS, footY);
   // Enterable Altapole Lane realistic houses, 6-story head tower & opposite goli colliders
   environment?.altapole?.applyCollisions?.(pos, PLAYER_RADIUS, footY);
   environment?.altapoleTower?.applyPlayerCollisions?.(pos, PLAYER_RADIUS, footY);
@@ -5761,13 +5856,26 @@ function updateHUDPrompt(force = true) {
       } else if (nearSeat) {
         promptText = `[E / F] Sit on ${nearSeat.label}`;
       } else if (inWater) {
-        promptText = '[SPACE] Jump Out · [WASD] Swim';
+        promptText = '[SPACE] Jump Out · [WASD] Swim · [H] Stone · [J] Shot · [U] Bomb';
       } else if (ledgeHangState.active) {
         promptText = '[W / SPACE] Climb Over · [S] Drop';
       } else if (wallAhead && !climbState.active) {
         promptText = '[SPACE / F] Grab Ledge';
       } else {
-        promptText = carPrompt || null;
+        const nowW = performance.now();
+        if (nowW - lastNearWaterProbeAt > 250) {
+          lastNearWaterProbeAt = nowW;
+          nearWaterHintCached = false;
+          if ((playerPos.y - EYE_HEIGHT) < 3.6) {
+            for (const [ox, oz] of [[4.5, 0], [-4.5, 0], [0, 4.5], [0, -4.5], [6.5, 6.5], [-6.5, 6.5], [6.5, -6.5], [-6.5, -6.5]]) {
+              if (environment?.city?.isInWater?.(playerPos.x + ox, playerPos.z + oz)) {
+                nearWaterHintCached = true;
+                break;
+              }
+            }
+          }
+        }
+        promptText = carPrompt || (nearWaterHintCached ? '[H] Throw Stone · [J] Bullet Splash · [U] Water Bomb' : null);
       }
     }
   }
@@ -5964,10 +6072,13 @@ function updateMovement(delta) {
       const dxV = car.state.pos.x - refX;
       const dzV = car.state.pos.z - refZ;
       const dSq = dxV * dxV + dzV * dzV;
-      const vis = car.state.driving || car.state.aiDriving || dSq < 150 * 150;
-      if (car.group.visible !== vis) car.group.visible = vis;
-      if (vis || Math.abs(car.state.speed) > 0.05) {
+      if (car.state.driving || car.state.aiDriving || dSq < 115 * 115) {
+        car.ensureLoaded?.();
+      }
+      const isActiveVeh = car.state.driving || car.state.aiDriving || Math.abs(car.state.speed) > 0.04;
+      if (isActiveVeh || dSq < 16 * 16 || (car._settledFrames || 0) < 48) {
         car.update(delta, keys, house, environment, cars, computeGroundHeight);
+        car._settledFrames = isActiveVeh ? 0 : ((car._settledFrames || 0) + 1);
       }
     }
     if (updateVehicleTransition(delta)) {
@@ -6136,6 +6247,26 @@ function updateMovement(delta) {
               anchors: drivingCar.getCarDriverAnchors?.(),
             },
           });
+        }
+      }
+
+      const carSpdAbs = Math.abs(st.speed);
+      if (carSpdAbs > 0.75 && environment?.waterSystem && environment?.city?.getWaterInfo) {
+        const cw = environment.city.getWaterInfo(st.pos.x, st.pos.z);
+        if (cw.inWater && st.pos.y <= cw.surfaceY + 0.35) {
+          vehicleSplashTimer -= delta;
+          if (vehicleSplashTimer <= 0) {
+            vehicleSplashTimer = THREE.MathUtils.clamp(0.28 - carSpdAbs * 0.012, 0.09, 0.28);
+            environment.waterSystem.triggerSwimStroke(
+              st.pos.x,
+              st.pos.z,
+              cw.surfaceY,
+              Math.min(6.5, carSpdAbs * 0.65),
+              sinH,
+              cosH,
+              true,
+            );
+          }
         }
       }
 
@@ -6344,9 +6475,44 @@ function updateMovement(delta) {
   const groundY = computeGroundHeight(playerPos);
   const targetEyeY = groundY + EYE_HEIGHT;
 
-  // Detect water entry (Hadis Park Lake, Alia Madrasah Pond, Rupsha River — only when not standing high on piers/bridges!)
-  const overWaterPoly = Boolean(environment?.city?.isInWater?.(playerPos.x, playerPos.z));
-  inWater = overWaterPoly && groundY <= 0.22 && !climbState.active && playerPos.y <= EYE_HEIGHT + 0.35;
+  // Detect water entry (Hadis Park Lake, Alia Madrasah Ponds, City Ponds, Rupsha River — only when not standing high on piers/bridges!)
+  const wInfoNow = environment?.city?.getWaterInfo
+    ? environment.city.getWaterInfo(playerPos.x, playerPos.z)
+    : { inWater: Boolean(environment?.city?.isInWater?.(playerPos.x, playerPos.z)), surfaceY: -0.012 };
+  const overWaterPoly = Boolean(wInfoNow.inWater);
+  curWaterSurfaceY = wInfoNow.surfaceY ?? -0.012;
+  const prevVertVelBeforeWater = verticalVelocity;
+  inWater = overWaterPoly && groundY <= curWaterSurfaceY + 0.24 && !climbState.active && playerPos.y <= curWaterSurfaceY + EYE_HEIGHT + 0.38;
+
+  if (inWater && !wasInWater && environment?.waterSystem) {
+    const downwardSpd = Math.max(0, -prevVertVelBeforeWater);
+    const impactSpd = downwardSpd > 2.2 ? downwardSpd : (1.1 + horizontalVelocity.length() * 0.28);
+    environment.waterSystem.triggerWaterPlunge(playerPos.x, playerPos.z, curWaterSurfaceY, impactSpd);
+    swimStrokeTimer = 0.22;
+  }
+  if (inWater && environment?.waterSystem) {
+    const swimSpd = horizontalVelocity.length();
+    swimStrokeTimer -= delta;
+    if (swimStrokeTimer <= 0) {
+      if (swimSpd > 0.32) {
+        swimStrokeTimer = THREE.MathUtils.lerp(0.46, 0.23, Math.min(1, swimSpd / 4.4));
+        const invS = 1.0 / Math.max(0.01, swimSpd);
+        environment.waterSystem.triggerSwimStroke(
+          playerPos.x,
+          playerPos.z,
+          curWaterSurfaceY,
+          swimSpd,
+          horizontalVelocity.x * invS,
+          horizontalVelocity.y * invS,
+          true,
+        );
+      } else {
+        swimStrokeTimer = 1.05;
+        environment.waterSystem.triggerSwimStroke(playerPos.x, playerPos.z, curWaterSurfaceY, 0.22, 0, 1, false);
+      }
+    }
+  }
+  wasInWater = inWater;
 
   // Probe wall ahead for interactive Wall Climb ([SPACE] against wall or [F] Wall Climb) — throttled to ~20Hz
   if (inWater || climbState.active) {
@@ -6387,10 +6553,14 @@ function updateMovement(delta) {
       doubleSpaceJumpPending = false;
       const doFlip = isSprinting && !inWater && !diveState.active && !isHighJump;
       const jumpBoost = specialAbility?.jumpMultiplier ?? 1.0;
+      if (inWater && environment?.waterSystem) {
+        environment.waterSystem.triggerWaterPlunge(playerPos.x, playerPos.z, curWaterSurfaceY, 3.6);
+      }
       verticalVelocity = (inWater ? 6.45 : (isHighJump ? 8.35 : (doFlip ? 6.95 : 6.25))) * jumpBoost;
       isFlipping = doFlip;
       grounded = false;
       inWater = false;
+      wasInWater = false;
       coyoteTimer = 0;
       jumpBuffer = 0;
       airPeakY = playerPos.y;
@@ -6415,7 +6585,7 @@ function updateMovement(delta) {
   if (climbState.active || ledgeHangState.active) {
     // Climb arc controls playerPos.y directly
   } else if (inWater) {
-    const waterEyeY = EYE_HEIGHT - 0.55;
+    const waterEyeY = curWaterSurfaceY + EYE_HEIGHT - 0.56;
     playerPos.y += (waterEyeY - playerPos.y) * Math.min(1, delta * 9.0);
     verticalVelocity = 0;
     grounded = true;
@@ -6655,6 +6825,7 @@ window.addEventListener('resize', () => {
     Math.max(240, Math.floor(window.innerWidth * 0.25)),
     Math.max(135, Math.floor(window.innerHeight * 0.25))
   );
+  updateFxaaResolution();
 });
 
 let fpsFrames = 0;

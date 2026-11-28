@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 /**
@@ -259,12 +259,12 @@ const GOOSE_SPOTS = [
   { cx: 26.0, cz: -565.0, rx: 6.5, rz: 5.5, y: 0.02, speed: 0.15, phase: 2.2, scale: 0.56, zone: 'boro_lawn', intermittent: true, cycleOffset: 32 },
 ];
 
-export function buildKhulnaWildlife(parent) {
+export function buildKhulnaWildlife(parent, waterHub = null) {
   const root = new THREE.Group();
   root.name = 'KhulnaLivingWildlife';
   parent.add(root);
 
-  const loader = new GLTFLoader();
+  const loader = createConfiguredGLTFLoader();
   const flocks = [];
   const geese = [];
   const mixers = [];
@@ -408,7 +408,7 @@ export function buildKhulnaWildlife(parent) {
   });
 
   let lastTime = 0;
-  const maxActiveDistSq = 240 * 240;
+  let maxActiveDistSq = 135 * 135;
 
   function update(time, playerPos = null) {
     const dt = lastTime > 0 ? Math.min(0.05, Math.max(0.001, time - lastTime)) : 0.016;
@@ -567,9 +567,21 @@ export function buildKhulnaWildlife(parent) {
         const swimYaw = Math.atan2(dx, dz);
         g.holder.rotation.y = swimYaw;
       }
-      // Subtle buoyant water rocking & paddling waddle
+      // Subtle buoyant water rocking & paddling waddle + gentle live pond ripples behind swimming geese!
       g.gooseMesh.rotation.z = Math.sin(time * 3.1 + c.phase) * 0.065;
       g.gooseMesh.rotation.x = Math.cos(time * 2.2 + c.phase) * 0.04;
+      if (waterHub && c.zone !== 'boro_lawn' && (!g.nextRippleAt || time >= g.nextRippleAt)) {
+        g.nextRippleAt = time + 1.65 + (i % 4) * 0.42;
+        waterHub.spawnRipple({
+          x: nx,
+          z: nz,
+          amplitude: 0.0085,
+          speed: 1.15,
+          freqK: 10.5,
+          decay: 1.75,
+          foam: 0.05,
+        });
+      }
 
       g.prevX = nx;
       g.prevZ = nz;
@@ -581,6 +593,10 @@ export function buildKhulnaWildlife(parent) {
     update,
     setVisible(visible) {
       root.visible = visible;
+    },
+    setQualityMode(q = 'high') {
+      const dist = q === 'low' ? 68 : (q === 'medium' ? 105 : 135);
+      maxActiveDistSq = dist * dist;
     },
   };
 }

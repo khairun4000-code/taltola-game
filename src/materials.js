@@ -412,24 +412,23 @@ export function createMaterials(renderer, manager) {
     }
   };
 
-  materials.setQualityMode = (quality) => {
+  materials.setQualityMode = (quality, softwareFast = false) => {
     const isLow = quality === 'low';
     const isUltra = quality === 'ultra';
-    // Even on Low Smooth, keep crisp 4x anisotropy and PBR normal maps so everything stays high-detail while running at 60 FPS!
-    const nextAniso = isLow ? Math.min(4, anisotropy) : (quality === 'medium' ? Math.min(4, anisotropy) : (quality === 'high' ? Math.min(8, anisotropy) : anisotropy));
+    const nextAniso = softwareFast ? 1 : (isLow ? Math.min(4, anisotropy) : (quality === 'medium' ? Math.min(4, anisotropy) : (quality === 'high' ? Math.min(8, anisotropy) : anisotropy)));
     const normMult = isUltra ? 1.18 : 1.0;
-    const envMult = isUltra ? 1.22 : (isLow ? 0.85 : 1.0);
+    const envMult = softwareFast ? 0.0 : (isUltra ? 1.22 : (isLow ? 0.65 : 1.0));
     for (const mat of allMaterials) {
       if (!mat || typeof mat !== 'object' || !mat.isMaterial) continue;
       if (mat.userData && mat.userData.pbrNormalMap) {
-        const nextNorm = mat.userData.pbrNormalMap;
-        const nextRough = (isLow || quality === 'medium') ? null : mat.userData.pbrRoughnessMap;
+        const nextNorm = softwareFast ? null : mat.userData.pbrNormalMap;
+        const nextRough = (isLow || quality === 'medium' || softwareFast) ? null : mat.userData.pbrRoughnessMap;
         if (mat.normalMap !== nextNorm || mat.roughnessMap !== nextRough) {
           mat.normalMap = nextNorm;
           mat.roughnessMap = nextRough;
           mat.needsUpdate = true;
         }
-        if (mat.normalScale) {
+        if (mat.normalScale && nextNorm) {
           if (mat.userData._origNormalScale === undefined) {
             mat.userData._origNormalScale = mat.normalScale.x;
           }

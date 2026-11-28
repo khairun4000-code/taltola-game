@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { attachDerivedPBRMaps, upgradeWetAsphaltMaterial } from './aaa-shaders.js';
 import { buildBanglaTruck, buildCNGAuto } from './khulna-vehicles.js';
 import { decorateCorridorPole, addBigNetaWallPoster } from './khulna-street-props.js';
 import { TALTOLA_HOUSE_OFFSET } from './khulna-geo.js';
-import { buildKhanJahanAliBridge } from './khan-jahan-ali-bridge.js';
+import { buildKhanJahanAliBridge, sampleBridgeDeckY } from './khan-jahan-ali-bridge.js';
 
 function seeded(seed = 7731) {
   let s = seed >>> 0;
@@ -1429,7 +1429,7 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
   addBox(staticG, [7.2, 0.08, 10.5], [ox - 7.8, 0.015, oz + 38.5], m.grass, { castShadow: false, uvScale: 2.5 });
 
   // Populate Taltola House lawns & roadside verges with the new 3D Durba Grass Model (durba_grass_3d.glb)
-  const durbaLoader = new GLTFLoader();
+  const durbaLoader = createConfiguredGLTFLoader();
   durbaLoader.load(
     './assets/durba_grass_3d.glb',
     (gltf) => {
@@ -1464,7 +1464,7 @@ function buildTaltolaNeighborhoodCorridor(staticG, dynamicG, bank, m, helpers, t
         { x0: ox + 3.1,  x1: ox + 7.3, z0: oz + 7.0,  z1: oz + 14.2 },
         { x0: ox - 11.2, x1: ox - 4.4, z0: oz + 33.4, z1: oz + 43.5 },
       ];
-      const count = 80;
+      const count = 32;
       const dummy = new THREE.Object3D();
       const col = new THREE.Color();
 
@@ -2464,9 +2464,30 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
     scale: 0.96,
     shipTravelRangeZ: 210,
     enableDeckTraffic: true,
-    enablePointLights: true,
+    enablePointLights: false,
   });
   bridgeSlice.dynamicG.add(khanJahanAliBridge.root);
+
+  // West Approach Highway Flyover Ramp connecting Khulna road network (x = 1052, y = 0) smoothly onto Khan Jahan Ali (Rupsha) Bridge (x = 1148.3, y = 6.58m)!
+  {
+    const rampX0 = 1052.0;
+    const rampX1 = 1149.0;
+    const rampY1 = -0.35 + sampleBridgeDeckY(-257) * 0.96; // ~6.58m
+    const rampLen = Math.hypot(rampX1 - rampX0, rampY1);
+    const rampSlope = Math.atan2(rampY1, rampX1 - rampX0);
+    const midX = (rampX0 + rampX1) * 0.5;
+    const midY = rampY1 * 0.5;
+    addBox(bridgeSlice.staticG, [rampLen, 0.85, 16.4], [midX, midY - 0.42, 820], bank.concrete, { rotZ: rampSlope, uvScale: 6.0 });
+    addBox(bridgeSlice.staticG, [rampLen, 0.08, 14.2], [midX, midY + 0.03, 820], m.road, { rotZ: rampSlope, uvScale: 8.0, castShadow: false });
+    addBox(bridgeSlice.staticG, [rampLen, 1.05, 0.42], [midX, midY + 0.52, 820 - 8.0], bank.colonialCream, { rotZ: rampSlope });
+    addBox(bridgeSlice.staticG, [rampLen, 1.05, 0.42], [midX, midY + 0.52, 820 + 8.0], bank.colonialCream, { rotZ: rampSlope });
+    for (let px = 1072; px <= 1140; px += 22) {
+      const t = (px - rampX0) / (rampX1 - rampX0);
+      const py = t * rampY1;
+      addBox(bridgeSlice.staticG, [2.2, py + 0.6, 1.8], [px, py * 0.5 - 0.3, 820 - 4.8], bank.concrete);
+      addBox(bridgeSlice.staticG, [2.2, py + 0.6, 1.8], [px, py * 0.5 - 0.3, 820 + 4.8], bank.concrete);
+    }
+  }
   buildTaltolaNeighborhoodCorridor(taltolaSlice.staticG, taltolaSlice.dynamicG, bank, m, helpers, taltolaSlice.treesG);
   buildAltapoleLaneCorridor(altapoleSlice.staticG, altapoleSlice.dynamicG, bank, m, helpers, altapoleSlice.treesG);
   buildCircuitStadiumRoadNetwork(circuitRoadsSlice.staticG, circuitRoadsSlice.dynamicG, bank, m, helpers, circuitRoadsSlice.treesG);
@@ -2488,9 +2509,35 @@ export function buildKhulnaCorridors(parent, m, helpers = {}) {
     }
   }
 
+  function getGroundHeight(pos) {
+    if (!pos) return 0;
+    // Walkable & Drivable Khan Jahan Ali (Rupsha) Bridge + West Approach Flyover Ramp (z ∈ [810.5, 829.5], x ∈ [1052, 1669.5])
+    if (pos.z >= 810.5 && pos.z <= 829.5 && pos.x >= 1052.0 && pos.x <= 1669.5) {
+      const westStartY = -0.35 + sampleBridgeDeckY(-257) * 0.96; // ~6.58m
+      if (pos.x < 1148.32) {
+        const t = Math.max(0, Math.min(1, (pos.x - 1052.0) / (1148.32 - 1052.0)));
+        return t * westStartY;
+      }
+      const localX = (pos.x - 1395.0) / 0.96;
+      return -0.35 + sampleBridgeDeckY(localX) * 0.96;
+    }
+    return 0;
+  }
+
+  function applyCollisions(pos, radius = 0.34, footY = 0) {
+    if (!pos) return;
+    // Side parapet guardrails along Khan Jahan Ali (Rupsha) Bridge & Approach Ramp when up on the bridge deck
+    if (pos.x >= 1055.0 && pos.x <= 1669.5 && pos.z >= 808.0 && pos.z <= 832.0 && footY > 1.2) {
+      if (pos.z < 811.4 + radius && pos.z > 809.5) pos.z = 811.4 + radius;
+      if (pos.z > 828.6 - radius && pos.z < 830.5) pos.z = 828.6 - radius;
+    }
+  }
+
   return {
     group,
     syncVisibility,
+    getGroundHeight,
+    applyCollisions,
     setNightFactor(nightFactor) {
       const nf = Math.max(0, Math.min(1, nightFactor || 0));
       for (const e of bank.emissiveMaterials) {

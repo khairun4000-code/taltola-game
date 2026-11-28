@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { attachDerivedPBRMaps, applyFoliageWindShader } from './aaa-shaders.js';
 import { buildCNGAuto } from './khulna-vehicles.js';
@@ -502,7 +502,7 @@ function buildAliaMadrasahCampus(staticG, dynamicG, lm, m) {
   box(staticG, [32.0, 0.04, 22.8], [208.0, 0.012, 122.8], soilBedMat, { castShadow: false });
 
   // Load real 3D Grass Field Clumps (extracted from user's grass_field.glb) & cover BOTH fields densely!
-  const grassLoader = new GLTFLoader();
+  const grassLoader = createConfiguredGLTFLoader();
   grassLoader.load('./assets/alia_grass_clumps.glb', (gltf) => {
     const clumpTemplates = [];
     gltf.scene.updateMatrixWorld(true);
@@ -1327,7 +1327,7 @@ function buildCircuitHouseAndStadium(staticG, dynamicG, lm, m) {
   box(staticG, [15.4, 0.06, 10.0], [minarX, podiumTopY + 0.02, minarZ - 0.6], lm.whitePlaster);
 
   // Load User's Real 3D Shaheed Minar Model (shaheed_minar_red_sun.glb) right onto the elevated 6-step podium!
-  const minarLoader = new GLTFLoader();
+  const minarLoader = createConfiguredGLTFLoader();
   minarLoader.load('./assets/shaheed_minar_red_sun.glb', (gltf) => {
     const model = gltf.scene;
     model.rotation.y = 0.22; // Face slightly SE directly toward the Main Gate & Causeway!
@@ -1537,7 +1537,7 @@ function buildTaltolaLaneWard23(staticG, dynamicG, lm) {
   );
 }
 
-export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliage = null) {
+export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliage = null, waterHub = null) {
   const group = new THREE.Group();
   group.name = 'KhulnaCityLandmarks';
   parent.add(group);
@@ -1564,8 +1564,8 @@ export function buildKhulnaLandmarks(parent, m, renderer = null, botanicalFoliag
   const circuitHouse = buildKhulnaCircuitHouse(group, m, renderer, botanicalFoliage);
   const circuitHouseMaidan = buildKhulnaCircuitHouseMaidan(group, m, renderer);
   const judgeCourt = buildKhulnaJudgeCourt(group, m, renderer);
-  const aliaMadrasah = buildAliaMadrasahDistrict(group, m);
-  const royalMore = buildRoyalMoreDistrict(group, m, botanicalFoliage);
+  const aliaMadrasah = buildAliaMadrasahDistrict(group, m, waterHub);
+  const royalMore = buildRoyalMoreDistrict(group, m, botanicalFoliage, waterHub);
   const ptiMore = buildPtiMoreDistrict(group, m);
   const satrastaMore = buildSatrastaMoreDistrict(group, m, botanicalFoliage);
   const kjaCorridor = buildKjaCorridorDistrict(group, m, botanicalFoliage);

@@ -1311,7 +1311,7 @@ export function buildAltapoleEnterableHouses(parent, m, helpers = {}) {
       }
     },
     update(delta, playerPos = null, isLow = false) {
-      const nearCorridor = !playerPos || ((playerPos.x - 176) ** 2 + (playerPos.z + 445) ** 2) < 275 * 275;
+      const nearCorridor = !playerPos || ((playerPos.x - 178) ** 2 + (playerPos.z + 448) ** 2) <= 215 * 215;
       if (root.visible !== nearCorridor) root.visible = nearCorridor;
       if (!nearCorridor) return;
 

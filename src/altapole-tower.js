@@ -1337,9 +1337,12 @@ export function buildAltapoleHeadTower(parent, m) {
     liftDoorLeft.position.z = -liftDoorW * 0.5 - slideOff;
     liftDoorRight.position.z = liftDoorW * 0.5 + slideOff;
 
-    // 6) Per-floor Interior Visibility Culling (keeps 60-120 FPS!)
+    // 6) Exterior & Per-floor Interior Visibility Culling (keeps 60-120 FPS!)
     const pFootY = playerPos ? (playerPos.y - 1.68) : 0;
     const distSq = playerPos ? ((playerPos.x - CX) ** 2 + (playerPos.z - CZ) ** 2) : 0;
+    const inTowerRange = !playerPos || distSq <= 170 * 170;
+    if (root.visible !== inTowerRange) root.visible = inTowerRange;
+    if (!inTowerRange) return;
     const nearInt = distSq < 54 * 54;
     const curFl = nearestFloorIndex(pFootY);
     for (let k = 1; k <= 5; k++) {

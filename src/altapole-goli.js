@@ -1860,7 +1860,7 @@ export function buildAltapoleOppositeGoli(parent, m, helpers = {}) {
     },
     update(delta, playerPos = null, isLow = false) {
       const dt = Math.min(delta, 0.05);
-      const nearGoli = !playerPos || ((playerPos.x - 194) ** 2 + (playerPos.z + 404) ** 2) < 250 * 250;
+      const nearGoli = !playerPos || ((playerPos.x - 194) ** 2 + (playerPos.z + 404) ** 2) <= 215 * 215;
       if (root.visible !== nearGoli) root.visible = nearGoli;
       if (!nearGoli) return;
       for (const b of buildings) {

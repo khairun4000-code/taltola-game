@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
 import { mergeStaticMeshes } from './scene-utils.js';
 
 /**
@@ -171,7 +171,7 @@ export function buildKhulnaCircuitHouse(parent, m, renderer = null, botanicalFol
     if (state.loaded || state.loading) return;
     state.loading = true;
 
-    const loader = new GLTFLoader();
+    const loader = createConfiguredGLTFLoader();
     loader.load(
       './assets/khulna_circuit_house.glb',
       (gltf) => {

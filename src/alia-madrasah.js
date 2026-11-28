@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { createConfiguredGLTFLoader } from './gltf-loader.js';
 import { box, cylinder, rodBetween, mergeStaticMeshes } from './scene-utils.js';
 import { attachDerivedPBRMaps } from './aaa-shaders.js';
 import {
@@ -809,7 +809,7 @@ function addWallClock(staticG, dynamicG, bank, x, y, z, rotY = Math.PI * 0.5) {
   face.rotation.z = Math.PI * 0.5;
   face.rotation.y = rotY - Math.PI * 0.5;
   face.position.set(x, y, z);
-  dynamicG.add(face);
+  staticG.add(face);
 }
 
 /**
@@ -839,8 +839,8 @@ function addGrilledWindow(staticG, dynamicG, bank, x, fy, z, width = 1.9, height
     box(staticG, [0.025, 0.025, width - 0.12], [cx + facingX * 0.04, cy + gy, z], bank.steelDark);
   }
 
-  // Tinted Glass Pane
-  box(dynamicG, [0.03, height - 0.12, width - 0.12], [cx - facingX * 0.03, cy, z], lit ? bank.warmWindowLit : bank.glassCurtain, { castShadow: false });
+  // Tinted Glass Pane (shares static material; emissiveIntensity updates dynamically at night with 1 batched draw call!)
+  box(staticG, [0.03, height - 0.12, width - 0.12], [cx - facingX * 0.03, cy, z], lit ? bank.warmWindowLit : bank.glassCurtain, { castShadow: false });
 }
 
 function addCoconutPalm(staticG, bank, x, z, height = 11.2, leanX = 0.5, leanZ = 0.3) {
@@ -948,7 +948,7 @@ function addAliaOfficeFurniture(staticG, dynamicG, bank, cx, cz, fy, labelTitle,
   box(staticG, [1.85, 0.78, 0.96], [cx - 0.85, fy + 0.39, cz], bank.teakWood);
   box(staticG, [1.94, 0.06, 1.04], [cx - 0.85, fy + 0.79, cz], bank.lightWood);
   box(staticG, [0.06, 0.36, 0.58], [cx - 1.08, fy + 1.05, cz - 0.05], bank.steelDark);
-  box(dynamicG, [0.03, 0.30, 0.52], [cx - 1.04, fy + 1.05, cz - 0.05], bank.screenGlow, { castShadow: false });
+  box(staticG, [0.03, 0.30, 0.52], [cx - 1.04, fy + 1.05, cz - 0.05], bank.screenGlow, { castShadow: false });
   box(staticG, [0.16, 0.08, 0.14], [cx - 1.08, fy + 0.85, cz - 0.05], bank.steelDark);
   box(staticG, [0.18, 0.025, 0.42], [cx - 0.78, fy + 0.83, cz - 0.05], bank.steelDark);
   box(staticG, [0.09, 0.025, 0.06], [cx - 0.78, fy + 0.83, cz + 0.24], bank.steelDark);
@@ -993,8 +993,8 @@ function addAliaOfficeFurniture(staticG, dynamicG, bank, cx, cz, fy, labelTitle,
   addCeilingFan(staticG, bank, cx + 1.8, fy + 3.45, cz);
   box(staticG, [0.26, 0.34, 1.15], [wallX + 0.14, fy + 2.92, cz], bank.acMat);
   addWallClock(staticG, dynamicG, bank, wallX + 0.05, fy + 2.65, cz - 2.3, Math.PI * 0.5);
-  box(dynamicG, [1.8, 0.07, 0.12], [cx - 0.4, fy + 3.44, cz - 2.0], bank.tubeGlow, { castShadow: false });
-  box(dynamicG, [1.8, 0.07, 0.12], [cx - 0.4, fy + 3.44, cz + 2.0], bank.tubeGlow, { castShadow: false });
+  box(staticG, [1.8, 0.07, 0.12], [cx - 0.4, fy + 3.44, cz - 2.0], bank.tubeGlow, { castShadow: false });
+  box(staticG, [1.8, 0.07, 0.12], [cx - 0.4, fy + 3.44, cz + 2.0], bank.tubeGlow, { castShadow: false });
   addSignBox(
     dynamicG,
     bank,
@@ -1080,7 +1080,7 @@ function addAliaClassroomFurniture(staticG, dynamicG, bank, cx, cz, fy, roomName
   const boardFace = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.44, 3.92), bank.chalkboard);
   boardFace.position.set(wallX + 0.11, fy + 1.72, cz);
   boardFace.rotation.y = 0;
-  dynamicG.add(boardFace);
+  staticG.add(boardFace);
   box(staticG, [0.20, 0.07, 4.00], [wallX + 0.15, fy + 0.96, cz], bank.teakWood);
   box(staticG, [0.07, 0.04, 0.18], [wallX + 0.19, fy + 1.02, cz - 0.65], bank.warmOchre);
   box(staticG, [0.03, 0.03, 0.12], [wallX + 0.19, fy + 1.01, cz + 0.45], bank.chalkLine);
@@ -1106,8 +1106,8 @@ function addAliaClassroomFurniture(staticG, dynamicG, bank, cx, cz, fy, roomName
   addCeilingFan(staticG, bank, cx - 0.5, fy + 3.45, cz - 1.85);
   addCeilingFan(staticG, bank, cx - 0.5, fy + 3.45, cz + 1.85);
   for (const lx of [cx - 1.4, cx + 1.4]) {
-    box(dynamicG, [1.8, 0.06, 0.12], [lx, fy + 3.44, cz - 2.6], bank.tubeGlow, { castShadow: false });
-    box(dynamicG, [1.8, 0.06, 0.12], [lx, fy + 3.44, cz + 2.6], bank.tubeGlow, { castShadow: false });
+    box(staticG, [1.8, 0.06, 0.12], [lx, fy + 3.44, cz - 2.6], bank.tubeGlow, { castShadow: false });
+    box(staticG, [1.8, 0.06, 0.12], [lx, fy + 3.44, cz + 2.6], bank.tubeGlow, { castShadow: false });
   }
   addWallClock(staticG, dynamicG, bank, wallX + 0.05, fy + 2.82, cz + 2.85, Math.PI * 0.5);
   cylinder(staticG, 0.16, 0.13, 0.38, [doorX - 0.65, fy + 0.19, cz - halfLen + 0.45], bank.steelDark, 8);
@@ -1290,7 +1290,7 @@ function buildMainPorticoBuilding(outerStaticG, outerDynamicG, bank) {
       box(staticG, [0.96, 2.28, 0.06], [186.15, fy + 1.14, dz - 0.96], bank.teakWood);
       // Grilled window looking out onto the veranda next to each door
       addGrilledWindow(staticG, dynamicG, bank, 186.65, fy, dz + 2.4, 1.55, 1.45, 1, false);
-      box(dynamicG, [0.14, 0.05, 1.55], [188.3, fy + 3.42, dz], bank.tubeGlow, { castShadow: false });
+      box(staticG, [0.14, 0.05, 1.55], [188.3, fy + 3.42, dz], bank.tubeGlow, { castShadow: false });
     }
     // Room divider walls
     for (const divZ of [85.5, 95.0, 104.5, 111.5, 121.0, 130.5]) {
@@ -1523,7 +1523,7 @@ function buildAcademicBuildings(staticG, dynamicG, bank) {
     for (let bx = -12.0; bx <= 12.1; bx += 3.0) {
       const bayX = b4x + bx;
       box(b4StaticRoot, [2.56, 2.22, 0.46], [bayX, fy + 1.78, b4z + 4.44], bank.emeraldDark);
-      box(b4DynRoot, [1.45, 1.24, 0.08], [bayX, fy + 1.72, b4z + 4.62], bank.warmWindowLit, { castShadow: false });
+      box(b4StaticRoot, [1.45, 1.24, 0.08], [bayX, fy + 1.72, b4z + 4.62], bank.warmWindowLit, { castShadow: false });
       addTrueArchSpandrel(b4StaticRoot, {
         span: 2.66,
         height: 0.72,
@@ -1570,7 +1570,7 @@ function buildAcademicBuildings(staticG, dynamicG, bank) {
     for (let bx = -15.0; bx <= 15.0; bx += 3.0) {
       box(staticG, [2.30, 1.98, 0.36], [b6x + bx, fy + 1.92, b6z + 4.80], bank.cavityMat);
       if ((fl + Math.round(bx)) % 2 === 0) {
-        box(dynamicG, [1.60, 1.35, 0.08], [b6x + bx, fy + 1.92, b6z + 4.94], bank.warmWindowLit, { castShadow: false });
+        box(staticG, [1.60, 1.35, 0.08], [b6x + bx, fy + 1.92, b6z + 4.94], bank.warmWindowLit, { castShadow: false });
       } else {
         box(staticG, [1.60, 1.35, 0.08], [b6x + bx, fy + 1.92, b6z + 4.94], bank.glassCurtain, { castShadow: false });
       }
@@ -1631,7 +1631,7 @@ function resolveCircleAABB(pos, radius, minX, maxX, minZ, maxZ) {
   }
 }
 
-export function buildAliaMadrasahDistrict(parent, m) {
+export function buildAliaMadrasahDistrict(parent, m, waterHub = null) {
   const root = new THREE.Group();
   root.name = 'KhulnaLandmark_Alia';
   const staticG = new THREE.Group();
@@ -1645,7 +1645,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
   box(staticG, [37.6, 0.04, 48.6], [216.0, 0.012, 106.0], bank.grassTurf, { castShadow: false, uvScale: 18.0 });
 
   // GPU-Instanced Real 3D Durba Grass Clumps (ultra-fast 260 instances over the real Central Play Ground!)
-  const grassLoader = new GLTFLoader();
+  const grassLoader = createConfiguredGLTFLoader();
   grassLoader.load('./assets/alia_grass_clumps.glb', (gltf) => {
     const clumpTemplates = [];
     gltf.scene.updateMatrixWorld(true);
@@ -1672,7 +1672,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
     if (!clumpTemplates.length) return;
 
     const rand = seeded(195201);
-    const perClumpCount = 260;
+    const perClumpCount = 84;
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
 
@@ -1686,9 +1686,9 @@ export function buildAliaMadrasahDistrict(parent, m) {
         const gz = 82.4 + rand() * 47.2;
         dummy.position.set(gx, 0.02, gz);
         dummy.rotation.set((rand() - 0.5) * 0.06, rand() * Math.PI * 2, (rand() - 0.5) * 0.06);
-        const sx = 1.15 + rand() * 0.55;
+        const sx = 1.65 + rand() * 0.75;
         const sy = 0.09 + rand() * 0.045;
-        const sz = 1.15 + rand() * 0.55;
+        const sz = 1.65 + rand() * 0.75;
         dummy.scale.set(sx, sy, sz);
         dummy.updateMatrix();
         inst.setMatrixAt(i, dummy.matrix);
@@ -1714,7 +1714,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
 
   // 5) Central Pond Brick Ghat + High-Graphics Campus Roads + SW Main Gate + Darwan Post + Walkable Etimkhana
   buildMainGateAndPondGhat(staticG, dynamicG, bank);
-  const blockout = buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank);
+  const blockout = buildAliaCampusBlockoutAndRoads(staticG, dynamicG, bank, waterHub);
   const mainGate = blockout.swMainGate;
   let gateTarget = 1;
   let gateRatio = 1;
@@ -1749,7 +1749,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
   dynamicG.add(flagPivot);
 
   // Real 3D Upgraded Krishnachura (Royal Poinciana / Delonix regia) Trees (cleanly off the main road & gate corner!)
-  const krishnaLoader = new GLTFLoader();
+  const krishnaLoader = createConfiguredGLTFLoader();
   krishnaLoader.load(
     './assets/krishnachura_tree.glb',
     (gltf) => {
@@ -1791,6 +1791,7 @@ export function buildAliaMadrasahDistrict(parent, m) {
         { x: 237.5, z: 78.0, targetH: 8.2, rotY: Math.PI * 0.85 },
       ];
 
+      mergeStaticMeshes(template);
       for (const p of placements) {
         const tree = template.clone(true);
         const s = p.targetH / baseH;
@@ -1859,7 +1860,14 @@ export function buildAliaMadrasahDistrict(parent, m) {
       }
     }
 
-    // 2) Khulna District Model Mosque 3-Level Walkable Interior & Grand Staircase
+    // 2) Covered Tin-Shed Pukur Ghat Platform & Stepped Entry into Clean Bathing Pond (x = 194.0..203.2, z = 150.0..161.0)
+    if (pos.x >= 194.0 && pos.x <= 203.2 && pos.z >= 150.0 && pos.z <= 161.0) {
+      if (pos.x <= 199.8) return 0.22;
+      const st = THREE.MathUtils.clamp((pos.x - 199.8) / 3.2, 0, 1);
+      return 0.22 * (1.0 - st);
+    }
+
+    // 3) Khulna District Model Mosque 3-Level Walkable Interior & Grand Staircase
     const mosqueY = getModelMosqueGroundHeight(pos, grounded, verticalVelocity);
     if (mosqueY > 0) return mosqueY;
     return 0.0;
